@@ -15,18 +15,13 @@ export default {
 
   // /
   "home.title": "<h>DropMB.com</h> a free file-sharing platform.",
-
-  "home.description":
-    "Our platform allows you to generate a link for any file you wish to share, ensuring a hassle-free transfer experience.",
+  "home.description": "Our platform allows you to generate a link for any file you wish to share, ensuring a hassle-free transfer experience.",
   "home.bullet.a.name": "Custom Expiration",
   "home.bullet.a.description": "You have the option to set expiration dates on your shared files.",
   "home.bullet.b.name": "Passwords and Download Limits",
-  "home.bullet.b.description":
-    "Elevate the security of your file sharing with customizable download limits and password protection.",
+  "home.bullet.b.description": "Elevate the security of your file sharing with customizable download limits and password protection.",
   "home.bullet.c.name": "Sharing via Email",
-  "home.bullet.c.description":
-    "An integrated email feature allows you to send files directly to recipients' inboxes.",
-
+  "home.bullet.c.description": "An integrated email feature allows you to send files directly to recipients' inboxes.",
   "home.button.start": "New upload",
   "home.button.source": "About",
   // END /
