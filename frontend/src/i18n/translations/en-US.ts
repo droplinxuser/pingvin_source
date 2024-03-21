@@ -25,7 +25,7 @@ export default {
     "Elevate the security of your file sharing with customizable download limits and password protection.",
   "home.bullet.c.name": "Sharing via Email",
   "home.bullet.c.description":
-    "Integrated email feature, allowing you to send files directly to recipients' inboxes.",
+    "An integrated email feature, allowing you to send files directly to recipients' inboxes.",
 
   "home.button.start": "Get started",
   "home.button.source": "About",
