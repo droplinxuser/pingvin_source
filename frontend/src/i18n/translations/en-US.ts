@@ -14,10 +14,10 @@ export default {
   // END navbar
 
   // /
-  "home.title": "A <h>self-hosted</h> file sharing platform.",
+  "home.title": "<h>DropMB</h> is a free file-sharing platform.",
 
   "home.description":
-    "Do you really want to give your personal files in the hand of third parties like WeTransfer?",
+    "DropMB is a free file-sharing platform.",
   "home.bullet.a.name": "Self-Hosted",
   "home.bullet.a.description": "Host Pingvin Share on your own machine.",
   "home.bullet.b.name": "Privacy",
