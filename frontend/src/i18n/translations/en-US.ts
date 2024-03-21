@@ -14,7 +14,7 @@ export default {
   // END navbar
 
   // /
-  "home.title": "<h>DropMB</h> a free file-sharing platform.",
+  "home.title": "<h>DropMB.com</h> a free file-sharing platform.",
 
   "home.description":
     "Our platform allows you to generate a link for any file you wish to share, ensuring a hassle-free transfer experience. Whether it's documents, images, or videos, sharing is just a link away.",
