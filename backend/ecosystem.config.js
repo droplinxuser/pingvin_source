@@ -9,7 +9,6 @@ module.exports = {
       DATA_DIRECTORY: "/var/www/pingvin_data"
     },
     log_file: "/var/www/pingvin_data/p_s_b.log",
-    instances: 0,
-    exec_mode: "cluster"
+    instances: 0
   }]
 };
