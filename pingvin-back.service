@@ -6,7 +6,7 @@ StartLimitBurst=5
 
 [Service]
 Type=simple
-User=root
+User=pingvin
 Restart=always
 RestartSec=5s
 LimitNOFILE=524288
