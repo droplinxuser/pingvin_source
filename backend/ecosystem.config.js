@@ -3,7 +3,6 @@ module.exports = {
     name: "pingvin-backend",
     script: "npm",
     args: "run prod",
-    watch: true,
     env: {
       PORT: 8080,
       DATABASE_URL: "file:/var/www/pingvin_data/pingvin-share.db?connection_limit=1",
