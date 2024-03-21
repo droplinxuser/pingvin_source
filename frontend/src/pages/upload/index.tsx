@@ -19,7 +19,7 @@ import { CreateShare, Share } from "../../types/share.type";
 import toast from "../../utils/toast.util";
 
 const promiseLimit = pLimit(3);
-const chunkSize = 10 * 1024 * 1024; // 10MB
+const chunkSize = 50 * 1024 * 1024; // 50MB
 let errorToastShown = false;
 let createdShare: Share;
 
