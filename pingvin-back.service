@@ -12,7 +12,7 @@ RestartSec=5s
 LimitNOFILE=524288
 
 WorkingDirectory=/var/www/pingvin_source/backend
-ExecStart=/usr/bin/npm run --prefix /var/www/pingvin_source/backend prod
+ExecStart=/usr/bin/npm -- run prod
 
 [Install]
 WantedBy=multi-user.target
