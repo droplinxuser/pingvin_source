@@ -3,7 +3,6 @@ module.exports = {
     name: "pingvin-frontend",
     script: "npm",
     args: "run start",
-    watch: true,
     env: {
       API_URL: "http://localhost:8080",
       PORT: 3030
