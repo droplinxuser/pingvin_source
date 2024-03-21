@@ -47,7 +47,7 @@ export class FileService {
     }
 
     // If the sent chunk index and the expected chunk index doesn't match throw an error
-    const chunkSize = 50 * 1024 * 1024; // 50MB
+    const chunkSize = 20 * 1024 * 1024; // 20MB
     const expectedChunkIndex = Math.ceil(diskFileSize / chunkSize);
 
     if (expectedChunkIndex != chunk.index)
