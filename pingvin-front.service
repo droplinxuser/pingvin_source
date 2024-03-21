@@ -1,0 +1,18 @@
+[Unit]
+Description=Pingvin Frontend
+After=network.target
+StartLimitIntervalSec=30
+StartLimitBurst=5
+
+[Service]
+Type=simple
+User=psitransfer
+Restart=always
+RestartSec=5s
+LimitNOFILE=524288
+
+WorkingDirectory=/var/www/pingvin_source/frontend
+ExecStart=PORT=3030 /usr/bin/npm -- run start
+
+[Install]
+WantedBy=multi-user.target
