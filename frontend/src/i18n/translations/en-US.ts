@@ -17,7 +17,7 @@ export default {
   "home.title": "<h>DropMB.com</h> a free file-sharing platform.",
 
   "home.description":
-    "Our platform allows you to generate a link for any file you wish to share, ensuring a hassle-free transfer experience. Whether it's documents, images, or videos, sharing is just a link away.",
+    "Our platform allows you to generate a link for any file you wish to share, ensuring a hassle-free transfer experience.",
   "home.bullet.a.name": "Custom Expiration",
   "home.bullet.a.description": "You have the option to set expiration dates on your shared files.",
   "home.bullet.b.name": "Passwords and Download Limits",
