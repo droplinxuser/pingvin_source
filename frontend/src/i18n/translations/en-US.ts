@@ -27,7 +27,7 @@ export default {
   "home.bullet.c.description":
     "An integrated email feature allows you to send files directly to recipients' inboxes.",
 
-  "home.button.start": "Get started",
+  "home.button.start": "New upload",
   "home.button.source": "About",
   // END /
 
