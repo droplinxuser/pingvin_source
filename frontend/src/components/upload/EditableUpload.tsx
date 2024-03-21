@@ -16,7 +16,7 @@ import toast from "../../utils/toast.util";
 import { useRouter } from "next/router";
 
 const promiseLimit = pLimit(3);
-const chunkSize = 10 * 1024 * 1024; // 10MB
+const chunkSize = 50 * 1024 * 1024; // 50MB
 let errorToastShown = false;
 
 const EditableUpload = ({
