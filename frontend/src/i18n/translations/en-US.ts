@@ -17,18 +17,18 @@ export default {
   "home.title": "<h>DropMB</h> is a free file-sharing platform.",
 
   "home.description":
-    "DropMB is a free file-sharing platform.",
-  "home.bullet.a.name": "Self-Hosted",
-  "home.bullet.a.description": "Host Pingvin Share on your own machine.",
-  "home.bullet.b.name": "Privacy",
+    "Our platform allows you to generate a link for any file you wish to share, ensuring a hassle-free transfer experience. Whether it's documents, images, or videos, sharing is just a link away.",
+  "home.bullet.a.name": "Custom Expiration",
+  "home.bullet.a.description": "You have the option to set expiration dates on your shared files.",
+  "home.bullet.b.name": "Passwords and Download Limits",
   "home.bullet.b.description":
-    "Your files are your files and should never get into the hands of third parties.",
-  "home.bullet.c.name": "No annoying file size limit",
+    "Elevate the security of your file sharing with customizable download limits and password protection.",
+  "home.bullet.c.name": "Sharing via Email",
   "home.bullet.c.description":
-    "Upload as big files as you want. Only your hard drive will be your limit.",
+    "Integrated email feature, allowing you to send files directly to recipients' inboxes.",
 
   "home.button.start": "Get started",
-  "home.button.source": "Source code",
+  "home.button.source": "About",
   // END /
 
   // /auth/signin
