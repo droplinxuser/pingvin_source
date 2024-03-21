@@ -8,7 +8,6 @@ module.exports = {
       PORT: 3030
     },
     log_file: "/var/www/pingvin_data/p_s_f.log",
-    instances: 0,
-    exec_mode: "cluster"
+    instances: 0
   }]
 };
