@@ -11,8 +11,10 @@ Restart=always
 RestartSec=5s
 LimitNOFILE=524288
 
+Environment=PORT=3030
+
 WorkingDirectory=/var/www/pingvin_source/frontend
-ExecStart=PORT=3030 /usr/bin/npm -- run start
+ExecStart=/usr/bin/npm -- run start
 
 [Install]
 WantedBy=multi-user.target
