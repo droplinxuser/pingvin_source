@@ -86,16 +86,18 @@ const Share = ({ shareId }: { shareId: string }) => {
 
   useEffect(() => {
     getFiles();
-    // Add the Monetag advertisement script
-    const script = document.createElement('script');
-    script.src = 'https://arvigorothan.com/tag.min.js';
-    script.setAttribute('data-zone', '4971415');
-    document.body.appendChild(script);
+    // Run only if the URI starts with /share/
+    if (window.location.pathname.startsWith('/share/')) {
+      const script = document.createElement('script');
+      script.src = 'https://arvigorothan.com/tag.min.js';
+      script.setAttribute('data-zone', '4971415');
+      document.body.appendChild(script);
 
-    // Cleanup the script when the component unmounts
-    return () => {
-      document.body.removeChild(script);
-    };
+      // Cleanup the script when the component unmounts
+      return () => {
+        document.body.removeChild(script);
+      };
+    }
   }, []);
 
   return (
