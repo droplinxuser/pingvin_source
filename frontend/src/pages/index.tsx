@@ -151,7 +151,7 @@ export default function Home() {
               </Button>
               <Button
                 component={Link}
-                href="/about"
+                href="https://phc.onl/t/359698/"
                 target="_blank"
                 variant="default"
                 radius="xl"
