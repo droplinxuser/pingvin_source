@@ -14,7 +14,7 @@ LimitNOFILE=524288
 Environment=PORT=3030
 
 WorkingDirectory=/var/www/pingvin_source/frontend
-ExecStart=/usr/bin/npm -- run start
+ExecStart=/usr/bin/node .next/standalone/server.js
 
 [Install]
 WantedBy=multi-user.target
