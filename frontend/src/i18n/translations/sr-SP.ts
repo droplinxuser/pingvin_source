@@ -11,16 +11,16 @@ export default {
   "navbar.avatar.signout": "Одјави се",
   // END navbar
   // /
-  "home.title": "<h>DropMB.com</h> a free file-sharing platform.",
-  "home.description": "Our platform allows you to generate a link for any file you wish to share, ensuring a hassle-free transfer experience.",
-  "home.bullet.a.name": "Custom Expiration",
-  "home.bullet.a.description": "You have the option to set expiration dates on your shared files.",
-  "home.bullet.b.name": "Passwords and Download Limits",
-  "home.bullet.b.description": "Elevate the security of your file sharing with customizable download limits and password protection.",
-  "home.bullet.c.name": "Sharing via Email",
-  "home.bullet.c.description": "An integrated email feature allows you to send files directly to recipients' inboxes.",
-  "home.button.start": "New upload",
-  "home.button.source": "About",
+  "home.title": "<h>self-hosted</h> платформа за дељење фајлова.",
+  "home.description": "Да ли заиста желите да дате своје личне датотеке у руке трећих страна као што је WeTransfer?",
+  "home.bullet.a.name": "Личан хостинг",
+  "home.bullet.a.description": "Хостујте Pingvin Share на својој машини.",
+  "home.bullet.b.name": "Privatnost",
+  "home.bullet.b.description": "Ваше датотеке су ваше датотеке и никада не би требало да дођу у руке трећих лица.",
+  "home.bullet.c.name": "Нема досадног ограничења величине датотеке",
+  "home.bullet.c.description": "Отпремите онолико великих датотека колико желите. Само ваш чврсти диск ће бити ваше ограничење.",
+  "home.button.start": "Почети",
+  "home.button.source": "Изворни код",
   // END /
   // /auth/signin
   "signin.title": "Добродошли назад",

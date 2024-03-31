@@ -11,16 +11,16 @@ export default {
   "navbar.avatar.signout": "Αποσύνδεση",
   // END navbar
   // /
-  "home.title": "<h>DropMB.com</h> a free file-sharing platform.",
-  "home.description": "Our platform allows you to generate a link for any file you wish to share, ensuring a hassle-free transfer experience.",
-  "home.bullet.a.name": "Custom Expiration",
-  "home.bullet.a.description": "You have the option to set expiration dates on your shared files.",
-  "home.bullet.b.name": "Passwords and Download Limits",
-  "home.bullet.b.description": "Elevate the security of your file sharing with customizable download limits and password protection.",
-  "home.bullet.c.name": "Sharing via Email",
-  "home.bullet.c.description": "An integrated email feature allows you to send files directly to recipients' inboxes.",
-  "home.button.start": "New upload",
-  "home.button.source": "About",
+  "home.title": "Μια πλατφόρμα κοινής χρήσης αρχείων <h>σε ιδιωτική εγκατάσταση</h>.",
+  "home.description": "Θέλετε πραγματικά να δώσετε τα προσωπικά σας αρχεία στο χέρι τρίτων όπως WeTransfer?",
+  "home.bullet.a.name": "Ιδιωτική εγκατάσταση",
+  "home.bullet.a.description": "Φιλοξενήστε το Pingvin Share στο δικό σας μηχάνημα.",
+  "home.bullet.b.name": "Απόρρητο",
+  "home.bullet.b.description": "Τα αρχεία σας είναι αρχεία σας και δεν πρέπει ποτέ να μπείτε στα χέρια τρίτων.",
+  "home.bullet.c.name": "Χωρίς όριο μεγέθους αρχείου",
+  "home.bullet.c.description": "Ανεβάστε όσο μεγάλα αρχεία θέλετε. Μόνο ο σκληρός σας δίσκος θα είναι το όριό σας.",
+  "home.button.start": "Ας αρχίσουμε",
+  "home.button.source": "Πηγαίος κώδικας",
   // END /
   // /auth/signin
   "signin.title": "Καλώς ήρθατε ξανά",

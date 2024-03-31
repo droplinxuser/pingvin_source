@@ -11,16 +11,16 @@ export default {
   "navbar.avatar.signout": "サインアウト",
   // END navbar
   // /
-  "home.title": "<h>DropMB.com</h> a free file-sharing platform.",
-  "home.description": "Our platform allows you to generate a link for any file you wish to share, ensuring a hassle-free transfer experience.",
-  "home.bullet.a.name": "Custom Expiration",
-  "home.bullet.a.description": "You have the option to set expiration dates on your shared files.",
-  "home.bullet.b.name": "Passwords and Download Limits",
-  "home.bullet.b.description": "Elevate the security of your file sharing with customizable download limits and password protection.",
-  "home.bullet.c.name": "Sharing via Email",
-  "home.bullet.c.description": "An integrated email feature allows you to send files directly to recipients' inboxes.",
-  "home.button.start": "New upload",
-  "home.button.source": "About",
+  "home.title": "<h>セルフホスト</h>のファイル共有プラットフォーム。",
+  "home.description": "WeTransferのようなサードパーティーサービスに自分のファイルを渡したいですか？",
+  "home.bullet.a.name": "セルフホスト",
+  "home.bullet.a.description": "Pingvin Shareをあなたのマシンでホストしましょう。",
+  "home.bullet.b.name": "プライバシー",
+  "home.bullet.b.description": "あなたのファイルはあなたのものであり、決して第三者の手に入るべきではありません。",
+  "home.bullet.c.name": "ファイルサイズ制限に悩まされることはありません",
+  "home.bullet.c.description": "大きなファイルもアップロード。ストレージのサイズだけが唯一の制限です。",
+  "home.button.start": "始めましょう",
+  "home.button.source": "ソースコード",
   // END /
   // /auth/signin
   "signin.title": "おかえりなさい",

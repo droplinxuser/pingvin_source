@@ -11,16 +11,16 @@ export default {
   "navbar.avatar.signout": "Cerrar sesión",
   // END navbar
   // /
-  "home.title": "<h>DropMB.com</h> a free file-sharing platform.",
-  "home.description": "Our platform allows you to generate a link for any file you wish to share, ensuring a hassle-free transfer experience.",
-  "home.bullet.a.name": "Custom Expiration",
-  "home.bullet.a.description": "You have the option to set expiration dates on your shared files.",
-  "home.bullet.b.name": "Passwords and Download Limits",
-  "home.bullet.b.description": "Elevate the security of your file sharing with customizable download limits and password protection.",
-  "home.bullet.c.name": "Sharing via Email",
-  "home.bullet.c.description": "An integrated email feature allows you to send files directly to recipients' inboxes.",
-  "home.button.start": "New upload",
-  "home.button.source": "About",
+  "home.title": "Una plataforma <h>autoalojada</h> para compartir archivos.",
+  "home.description": "¿En realidad quieres dejar tus archivos personales en manos de terceros como WeTransfer?",
+  "home.bullet.a.name": "Autoalojada",
+  "home.bullet.a.description": "Aloja Pingvin Share en tu propio equipo.",
+  "home.bullet.b.name": "Privacidad",
+  "home.bullet.b.description": "Tus archivos son tus archivos y nunca deberían terminar en manos de terceros.",
+  "home.bullet.c.name": "Sin molestos límites de tamaño de archivo",
+  "home.bullet.c.description": "Sube archivos tan grandes como quieras. El único límite es la capacidad de tu disco duro.",
+  "home.button.start": "Comenzar",
+  "home.button.source": "Código fuente",
   // END /
   // /auth/signin
   "signin.title": "Bienvenido nuevamente",

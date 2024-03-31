@@ -11,16 +11,16 @@ export default {
   "navbar.avatar.signout": "Se déconnecter",
   // END navbar
   // /
-  "home.title": "<h>DropMB.com</h> a free file-sharing platform.",
-  "home.description": "Our platform allows you to generate a link for any file you wish to share, ensuring a hassle-free transfer experience.",
-  "home.bullet.a.name": "Custom Expiration",
-  "home.bullet.a.description": "You have the option to set expiration dates on your shared files.",
-  "home.bullet.b.name": "Passwords and Download Limits",
-  "home.bullet.b.description": "Elevate the security of your file sharing with customizable download limits and password protection.",
-  "home.bullet.c.name": "Sharing via Email",
-  "home.bullet.c.description": "An integrated email feature allows you to send files directly to recipients' inboxes.",
-  "home.button.start": "New upload",
-  "home.button.source": "About",
+  "home.title": "Une plateforme de partage de fichier <h>auto-hébergée</h>.",
+  "home.description": "Voulez-vous vraiment remettre vos fichiers personnels dans les mains de tiers comme WeTransfer ?",
+  "home.bullet.a.name": "Auto-hébergé",
+  "home.bullet.a.description": "Hébergez Pingvin Share sur votre propre machine.",
+  "home.bullet.b.name": "Confidentialité",
+  "home.bullet.b.description": "Vos fichiers sont vos fichiers et ne devraient jamais être mis entre les mains de tiers.",
+  "home.bullet.c.name": "Aucune rébarbative limite de taille",
+  "home.bullet.c.description": "Téléchargez des fichiers aussi volumineux que vous le souhaitez. Seul votre disque dur est la limite.",
+  "home.button.start": "Commencer",
+  "home.button.source": "Code source",
   // END /
   // /auth/signin
   "signin.title": "Content de vous revoir",
@@ -57,7 +57,7 @@ export default {
   // /auth/reset-password
   "resetPassword.title": "Mot de passe oublié ?",
   "resetPassword.description": "Saisissez votre courriel pour réinitialiser votre mot de passe.",
-  "resetPassword.notify.success": "A message with a link to reset your password has been sent if the email exists.",
+  "resetPassword.notify.success": "Un message avec un lien pour réinitialiser votre mot de passe a été envoyé si le courriel existe.",
   "resetPassword.button.back": "Retour à la page de connexion",
   "resetPassword.text.resetPassword": "Réinitialiser le mot de passe",
   "resetPassword.text.enterNewPassword": "Saisissez votre nouveau mot de passe",
