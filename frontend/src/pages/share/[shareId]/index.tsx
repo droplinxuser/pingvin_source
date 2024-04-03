@@ -88,9 +88,9 @@ const Share = ({ shareId }: { shareId: string }) => {
     getFiles();
 
     // Dynamically load the Adsterra script
-    const script = document.createElement('script');
-    script.src = '//pl22899864.profitablegatecpm.com/4d/69/6f/4d696fd2a6a11010f9f9e4cdbadc5907.js';
-    script.type = 'text/javascript';
+    const script = document.createElement("script");
+    script.src = "//pl22899864.profitablegatecpm.com/4d/69/6f/4d696fd2a6a11010f9f9e4cdbadc5907.js";
+    script.type = "text/javascript";
     script.async = true;
     document.body.appendChild(script);
 
