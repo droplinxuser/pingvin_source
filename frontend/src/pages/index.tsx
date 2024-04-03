@@ -151,7 +151,7 @@ export default function Home() {
               </Button>
               <Button
                 component={Link}
-                href="https://phc.onl/t/359698/"
+                href="https://dropmb.com/about"
                 target="_blank"
                 variant="default"
                 radius="xl"
