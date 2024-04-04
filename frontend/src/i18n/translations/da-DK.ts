@@ -11,16 +11,16 @@ export default {
   "navbar.avatar.signout": "Log ud",
   // END navbar
   // /
-  "home.title": "<h>DropMB.com</h> a free file-sharing platform.",
-  "home.description": "Our platform allows you to generate a link for any file you wish to share, ensuring a hassle-free transfer experience.",
-  "home.bullet.a.name": "Custom Expiration & Download Limits",
-  "home.bullet.a.description": "You have the option to set expiration dates on your shared files, customize download limits, or provide password protection.",
-  "home.bullet.b.name": "Sharing via Email",
-  "home.bullet.b.description": "An integrated email feature allows you to send files directly to recipients' inboxes.",
-  "home.bullet.c.name": "Contact Us",
-  "home.bullet.c.description": "For any inquiries, takedown requests, or other concerns, please reach out to us directly at admin@dropmb.com.",
-  "home.button.start": "New upload",
-  "home.button.source": "About",
+  "home.title": "En <h>self-hosted</h> fildelingsplatform.",
+  "home.description": "Er du sikker på, at du vil overlade dine personlige filer til tredjeparter som WeTransfer?",
+  "home.bullet.a.name": "Self-Hosted",
+  "home.bullet.a.description": "Host Pingvin Share på din egen maskine.",
+  "home.bullet.b.name": "Privatliv",
+  "home.bullet.b.description": "Dine filer er dine filer og bør ikke komme i hænderne på tredjeparter.",
+  "home.bullet.c.name": "Ingen irriterende grænse for filstørrelse",
+  "home.bullet.c.description": "Upload så store filer, som du vil. Kun din harddisk sætter grænsen.",
+  "home.button.start": "Kom i gang",
+  "home.button.source": "Source code",
   // END /
   // /auth/signin
   "signin.title": "Velkommen tilbage",
