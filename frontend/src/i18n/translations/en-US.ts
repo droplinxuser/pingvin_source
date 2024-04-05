@@ -14,16 +14,21 @@ export default {
   // END navbar
 
   // /
-  "home.title": "<h>DropMB.com</h> a free file-sharing platform.",
-  "home.description": "Our platform allows you to generate a link for any file you wish to share, ensuring a hassle-free transfer experience.",
-  "home.bullet.a.name": "Custom Expiration & Download Limits",
-  "home.bullet.a.description": "You have the option to set expiration dates on your shared files, customize download limits, or provide password protection.",
-  "home.bullet.b.name": "Sharing via Email",
-  "home.bullet.b.description": "An integrated email feature allows you to send files directly to recipients' inboxes.",
-  "home.bullet.c.name": "Contact Us",
-  "home.bullet.c.description": "For any inquiries, takedown requests, or other concerns, please reach out to us directly at admin@dropmb.com.",
-  "home.button.start": "New upload",
-  "home.button.source": "About",
+  "home.title": "A <h>self-hosted</h> file sharing platform.",
+
+  "home.description":
+    "Do you really want to give your personal files in the hand of third parties like WeTransfer?",
+  "home.bullet.a.name": "Self-Hosted",
+  "home.bullet.a.description": "Host Pingvin Share on your own machine.",
+  "home.bullet.b.name": "Privacy",
+  "home.bullet.b.description":
+    "Your files are your files and should never get into the hands of third parties.",
+  "home.bullet.c.name": "No annoying file size limit",
+  "home.bullet.c.description":
+    "Upload as big files as you want. Only your hard drive will be your limit.",
+
+  "home.button.start": "Get started",
+  "home.button.source": "Source code",
   // END /
 
   // /auth/signin
@@ -375,7 +380,7 @@ export default {
   "admin.config.general.app-name.description": "Name of the application",
   "admin.config.general.app-url": "App URL",
   "admin.config.general.app-url.description":
-    "On which URL DropMB is available",
+    "On which URL Pingvin Share is available",
   "admin.config.general.show-home-page": "Show home page",
   "admin.config.general.show-home-page.description":
     "Whether to show the home page",
@@ -427,7 +432,6 @@ export default {
   "admin.config.share.zip-compression-level": "Zip compression level",
   "admin.config.share.zip-compression-level.description":
     "Adjust the level to balance between file size and compression speed. Valid values range from 0 to 9, with 0 being no compression and 9 being maximum compression. ",
-
   "admin.config.share.chunk-size": "Chunk size",
   "admin.config.share.chunk-size.description": "Adjust the chunk size (in bytes) for your uploads to balance efficiency and reliability according to your internet connection. Smaller chunks can enhance success rates for unstable connections, while larger chunks speed up uploads for stable connections.",
   
