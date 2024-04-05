@@ -70,6 +70,11 @@ export const LOCALES = {
     code: "ru-RU",
     messages: russian,
   },
+  UKRAINIAN: {
+    name: "Українська",
+    code: "uk-UA",
+    messages: ukrainian,
+  },
   THAI: {
     name: "ไทย",
     code: "th-TH",
