@@ -115,7 +115,7 @@ const FileList = ({
                   <td>{byteToHumanSizeString(parseInt(file.size))}</td>
                   <td>
                     <Group position="right">
-                      {shareService.doesFileSupportPreview(file.name) && parseInt(file.size) <= 512000 && (
+                      {shareService.doesFileSupportPreview(file.name) && parseInt(file.size) <= 99000000 && (
                         <ActionIcon
                           onClick={() =>
                             showFilePreviewModal(share.id, file, modals)
@@ -125,7 +125,7 @@ const FileList = ({
                           <TbEye />
                         </ActionIcon>
                       )}
-                      {!share.hasPassword && parseInt(file.size) <= 512000 && (
+                      {!share.hasPassword && parseInt(file.size) <= 99000 && (
                         <ActionIcon
                           size={25}
                           onClick={() => copyFileLink(file)}
