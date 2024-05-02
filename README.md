@@ -2,7 +2,7 @@
 
 ---
 
-_Read this in another language: [Spanish](/docs/README.es.md), [English](/README.md), [Simplified Chinese](/docs/README.zh-cn.md), [日本語](/docs/README.ja-jp.md)_
+_Read this in another language: [Spanish](/docs/README.es.md), [English](/README.md), [简体中文](/docs/README.zh-cn.md), [日本語](/docs/README.ja-jp.md)_
 
 ---
 
@@ -87,6 +87,7 @@ View the [OAuth 2 guide](/docs/oauth2-guide.md) for more information.
 ### Additional resources
 
 - [Synology NAS installation](https://mariushosting.com/how-to-install-pingvin-share-on-your-synology-nas/)
+- [Zeabur installation](https://zeabur.com/templates/19G6OK)
 
 ### Upgrade to a new version
 
