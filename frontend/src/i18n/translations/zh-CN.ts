@@ -56,7 +56,7 @@ export default {
   // END /auth/totp
   // /auth/reset-password
   "resetPassword.title": "忘记密码？",
-  "resetPassword.description": "请输入电子邮件接受重置密码邮件",
+  "resetPassword.description": "请输入电子邮箱地址来接收重置密码邮件",
   "resetPassword.notify.success": "A message with a link to reset your password has been sent if the email exists.",
   "resetPassword.button.back": "返回登录页面",
   "resetPassword.text.resetPassword": "重置密码",
@@ -169,6 +169,7 @@ export default {
   // /admin
   "admin.title": "管理",
   "admin.button.users": "用户管理",
+  "admin.button.shares": "Share management",
   "admin.button.config": "配置管理",
   "admin.version": "版本",
   // END /admin
@@ -195,6 +196,15 @@ export default {
   "admin.users.modal.create.admin": "管理员",
   "admin.users.modal.create.admin.description": "如果勾选，用户将能访问管理员面板",
   // END /admin/users
+  // /admin/shares
+  "admin.shares.title": "Share management",
+  "admin.shares.table.id": "Share ID",
+  "admin.shares.table.username": "Creator",
+  "admin.shares.table.visitors": "Visitors",
+  "admin.shares.table.expires": "Expires At",
+  "admin.shares.edit.delete.title": "Delete share {id}",
+  "admin.shares.edit.delete.description": "Do you really want to delete this share?",
+  // END /admin/shares
   // /upload
   "upload.title": "上传",
   "upload.notify.generic-error": "创建共享的过程中发生了错误",
@@ -229,8 +239,9 @@ export default {
   "upload.modal.expires.month-plural": "月",
   "upload.modal.expires.year-singular": "1 年",
   "upload.modal.expires.year-plural": "年",
-  "upload.modal.accordion.description.title": "描述",
-  "upload.modal.accordion.description.placeholder": "共享文件备注信息",
+  "upload.modal.accordion.name-and-description.title": "Name and description",
+  "upload.modal.accordion.name-and-description.name.placeholder": "Name",
+  "upload.modal.accordion.name-and-description.description.placeholder": "Note for the recipients of this share",
   "upload.modal.accordion.email.title": "邮件提醒",
   "upload.modal.accordion.email.placeholder": "收件人电子邮件地址",
   "upload.modal.accordion.email.invalid-email": "邮件地址不可用",

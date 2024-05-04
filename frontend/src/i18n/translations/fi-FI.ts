@@ -169,6 +169,7 @@ export default {
   // /admin
   "admin.title": "Ylläpito",
   "admin.button.users": "Käyttäjien Hallinta",
+  "admin.button.shares": "Share management",
   "admin.button.config": "Asetukset",
   "admin.version": "Versio",
   // END /admin
@@ -195,6 +196,15 @@ export default {
   "admin.users.modal.create.admin": "Ylläpitäjän oikeudet",
   "admin.users.modal.create.admin.description": "Jos valittu, käyttäjä voi käyttää hallintapaneelia.",
   // END /admin/users
+  // /admin/shares
+  "admin.shares.title": "Share management",
+  "admin.shares.table.id": "Share ID",
+  "admin.shares.table.username": "Creator",
+  "admin.shares.table.visitors": "Visitors",
+  "admin.shares.table.expires": "Expires At",
+  "admin.shares.edit.delete.title": "Delete share {id}",
+  "admin.shares.edit.delete.description": "Do you really want to delete this share?",
+  // END /admin/shares
   // /upload
   "upload.title": "Pilvetä",
   "upload.notify.generic-error": "Kohdattiin odottamaton virhe jaon luomisessa.",
@@ -229,8 +239,9 @@ export default {
   "upload.modal.expires.month-plural": "Kuukautta",
   "upload.modal.expires.year-singular": "Vuosi",
   "upload.modal.expires.year-plural": "Vuotta",
-  "upload.modal.accordion.description.title": "Kuvaus",
-  "upload.modal.accordion.description.placeholder": "Huomautus tämän jaon vastaanottajille",
+  "upload.modal.accordion.name-and-description.title": "Name and description",
+  "upload.modal.accordion.name-and-description.name.placeholder": "Name",
+  "upload.modal.accordion.name-and-description.description.placeholder": "Note for the recipients of this share",
   "upload.modal.accordion.email.title": "Sähköpostin vastaanottajat",
   "upload.modal.accordion.email.placeholder": "Syötä sähköpostin vastaanottajat",
   "upload.modal.accordion.email.invalid-email": "Virheellinen sähköpostiosoite",

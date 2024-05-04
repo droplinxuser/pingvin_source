@@ -169,6 +169,7 @@ export default {
   // /admin
   "admin.title": "แผงควบคุมระบบ",
   "admin.button.users": "การจัดการผู้ใช้",
+  "admin.button.shares": "Share management",
   "admin.button.config": "การตั้งค่า",
   "admin.version": "เวอร์ชัน",
   // END /admin
@@ -195,6 +196,15 @@ export default {
   "admin.users.modal.create.admin": "สิทธิ์ของผู้ดูแลระบบ",
   "admin.users.modal.create.admin.description": "หากติ๊กเลือก ผู้ใช้จะสามารถเข้าถึงแผงควบคุมระบบได้",
   // END /admin/users
+  // /admin/shares
+  "admin.shares.title": "Share management",
+  "admin.shares.table.id": "Share ID",
+  "admin.shares.table.username": "Creator",
+  "admin.shares.table.visitors": "Visitors",
+  "admin.shares.table.expires": "Expires At",
+  "admin.shares.edit.delete.title": "Delete share {id}",
+  "admin.shares.edit.delete.description": "Do you really want to delete this share?",
+  // END /admin/shares
   // /upload
   "upload.title": "อัปโหลด",
   "upload.notify.generic-error": "เกิดข้อผิดพลาดขณะที่กำลังจัดการการแชร์ของคุณ",
@@ -229,8 +239,9 @@ export default {
   "upload.modal.expires.month-plural": "เดือน",
   "upload.modal.expires.year-singular": "ปี",
   "upload.modal.expires.year-plural": "ปี",
-  "upload.modal.accordion.description.title": "คำอธิบาย",
-  "upload.modal.accordion.description.placeholder": "หมายเหตุสำหรับผู้รับการแชร์นี้",
+  "upload.modal.accordion.name-and-description.title": "Name and description",
+  "upload.modal.accordion.name-and-description.name.placeholder": "Name",
+  "upload.modal.accordion.name-and-description.description.placeholder": "Note for the recipients of this share",
   "upload.modal.accordion.email.title": "ผู้รับอีเมล์",
   "upload.modal.accordion.email.placeholder": "ป้อนผู้รับอีเมล์",
   "upload.modal.accordion.email.invalid-email": "ที่อยู่อีเมล์ไม่ถูกต้อง",

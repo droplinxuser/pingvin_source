@@ -169,6 +169,7 @@ export default {
   // /admin
   "admin.title": "Administration",
   "admin.button.users": "Brugeradministration",
+  "admin.button.shares": "Share management",
   "admin.button.config": "Konfiguration",
   "admin.version": "Version",
   // END /admin
@@ -195,6 +196,15 @@ export default {
   "admin.users.modal.create.admin": "Admin rettigheder",
   "admin.users.modal.create.admin.description": "If checked, the user will be able to access the admin panel.",
   // END /admin/users
+  // /admin/shares
+  "admin.shares.title": "Share management",
+  "admin.shares.table.id": "Share ID",
+  "admin.shares.table.username": "Creator",
+  "admin.shares.table.visitors": "Visitors",
+  "admin.shares.table.expires": "Expires At",
+  "admin.shares.edit.delete.title": "Delete share {id}",
+  "admin.shares.edit.delete.description": "Do you really want to delete this share?",
+  // END /admin/shares
   // /upload
   "upload.title": "Upload",
   "upload.notify.generic-error": "Der opstod en fejl under afslutningen af din deling.",
@@ -229,8 +239,9 @@ export default {
   "upload.modal.expires.month-plural": "Måneder",
   "upload.modal.expires.year-singular": "År",
   "upload.modal.expires.year-plural": "År",
-  "upload.modal.accordion.description.title": "Beskrivelse",
-  "upload.modal.accordion.description.placeholder": "Bemærkning til modtagerne af dette share",
+  "upload.modal.accordion.name-and-description.title": "Name and description",
+  "upload.modal.accordion.name-and-description.name.placeholder": "Name",
+  "upload.modal.accordion.name-and-description.description.placeholder": "Note for the recipients of this share",
   "upload.modal.accordion.email.title": "E-mail modtagere",
   "upload.modal.accordion.email.placeholder": "Indtast e-mail modtagere",
   "upload.modal.accordion.email.invalid-email": "Ugyldig e-mailadresse",

@@ -169,6 +169,7 @@ export default {
   // /admin
   "admin.title": "Administracija",
   "admin.button.users": "Upravljanje uporabnikov",
+  "admin.button.shares": "Share management",
   "admin.button.config": "Nastavitve",
   "admin.version": "Različica",
   // END /admin
@@ -195,6 +196,15 @@ export default {
   "admin.users.modal.create.admin": "Administratorski privilegiji",
   "admin.users.modal.create.admin.description": "Če je omogočeno, bo lahko porabnik dostopal do administratorskega vmesnika.",
   // END /admin/users
+  // /admin/shares
+  "admin.shares.title": "Share management",
+  "admin.shares.table.id": "Share ID",
+  "admin.shares.table.username": "Creator",
+  "admin.shares.table.visitors": "Visitors",
+  "admin.shares.table.expires": "Expires At",
+  "admin.shares.edit.delete.title": "Delete share {id}",
+  "admin.shares.edit.delete.description": "Do you really want to delete this share?",
+  // END /admin/shares
   // /upload
   "upload.title": "Naložite",
   "upload.notify.generic-error": "Prišlo je do napake pri ustvarjanju vašega deljenja.",
@@ -229,8 +239,9 @@ export default {
   "upload.modal.expires.month-plural": "Meseci",
   "upload.modal.expires.year-singular": "Leto",
   "upload.modal.expires.year-plural": "Leta",
-  "upload.modal.accordion.description.title": "Opis",
-  "upload.modal.accordion.description.placeholder": "Sporočilo za prejemnika te delitve",
+  "upload.modal.accordion.name-and-description.title": "Name and description",
+  "upload.modal.accordion.name-and-description.name.placeholder": "Name",
+  "upload.modal.accordion.name-and-description.description.placeholder": "Note for the recipients of this share",
   "upload.modal.accordion.email.title": "Prejemnik e-pošte",
   "upload.modal.accordion.email.placeholder": "Vnesite prejemnika e-pošte",
   "upload.modal.accordion.email.invalid-email": "Neveljaven e-poštni naslov",

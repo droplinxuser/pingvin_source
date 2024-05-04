@@ -169,6 +169,7 @@ export default {
   // /admin
   "admin.title": "Адміністрування",
   "admin.button.users": "Управління користувачами",
+  "admin.button.shares": "Share management",
   "admin.button.config": "Конфігурація",
   "admin.version": "Версія",
   // END /admin
@@ -195,6 +196,15 @@ export default {
   "admin.users.modal.create.admin": "Права адміністратора",
   "admin.users.modal.create.admin.description": "Якщо зазначено, користувач матиме доступ до панелі адміністратора.",
   // END /admin/users
+  // /admin/shares
+  "admin.shares.title": "Share management",
+  "admin.shares.table.id": "Share ID",
+  "admin.shares.table.username": "Creator",
+  "admin.shares.table.visitors": "Visitors",
+  "admin.shares.table.expires": "Expires At",
+  "admin.shares.edit.delete.title": "Delete share {id}",
+  "admin.shares.edit.delete.description": "Do you really want to delete this share?",
+  // END /admin/shares
   // /upload
   "upload.title": "Завантажити",
   "upload.notify.generic-error": "Сталася помилка під час завершення вашого завантаження.",
@@ -229,8 +239,9 @@ export default {
   "upload.modal.expires.month-plural": "Місяця(-ів)",
   "upload.modal.expires.year-singular": "Рік",
   "upload.modal.expires.year-plural": "Роки (роки)",
-  "upload.modal.accordion.description.title": "Опис",
-  "upload.modal.accordion.description.placeholder": "Примітка для одержувачів цього завантаження",
+  "upload.modal.accordion.name-and-description.title": "Name and description",
+  "upload.modal.accordion.name-and-description.name.placeholder": "Name",
+  "upload.modal.accordion.name-and-description.description.placeholder": "Note for the recipients of this share",
   "upload.modal.accordion.email.title": "Одержувачі листа",
   "upload.modal.accordion.email.placeholder": "Одержувачі e-mail",
   "upload.modal.accordion.email.invalid-email": "Неприпустима адреса електронної пошти",

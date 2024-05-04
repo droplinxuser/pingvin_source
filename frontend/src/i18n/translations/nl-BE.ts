@@ -169,6 +169,7 @@ export default {
   // /admin
   "admin.title": "Instellingen",
   "admin.button.users": "Gebruikers beheer",
+  "admin.button.shares": "Share management",
   "admin.button.config": "Configuratie",
   "admin.version": "Versie",
   // END /admin
@@ -195,6 +196,15 @@ export default {
   "admin.users.modal.create.admin": "Beheerdersrechten",
   "admin.users.modal.create.admin.description": "Indien aangevinkt, heeft de gebruiker toegang tot de beheeromgeving.",
   // END /admin/users
+  // /admin/shares
+  "admin.shares.title": "Share management",
+  "admin.shares.table.id": "Share ID",
+  "admin.shares.table.username": "Creator",
+  "admin.shares.table.visitors": "Visitors",
+  "admin.shares.table.expires": "Expires At",
+  "admin.shares.edit.delete.title": "Delete share {id}",
+  "admin.shares.edit.delete.description": "Do you really want to delete this share?",
+  // END /admin/shares
   // /upload
   "upload.title": "Uploaden",
   "upload.notify.generic-error": "Er is een fout opgetreden tijdens het voltooien van uw share.",
@@ -229,8 +239,9 @@ export default {
   "upload.modal.expires.month-plural": "Maanden",
   "upload.modal.expires.year-singular": "Jaar",
   "upload.modal.expires.year-plural": "Jaren",
-  "upload.modal.accordion.description.title": "Beschrijving",
-  "upload.modal.accordion.description.placeholder": "Opmerking voor de ontvangers van deze share",
+  "upload.modal.accordion.name-and-description.title": "Name and description",
+  "upload.modal.accordion.name-and-description.name.placeholder": "Name",
+  "upload.modal.accordion.name-and-description.description.placeholder": "Note for the recipients of this share",
   "upload.modal.accordion.email.title": "E-mail van de ontvangers",
   "upload.modal.accordion.email.placeholder": "Voer e-mail ontvangers in",
   "upload.modal.accordion.email.invalid-email": "Ongeldig e-mailadres",

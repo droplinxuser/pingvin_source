@@ -224,6 +224,7 @@ export default {
   // /admin
   "admin.title": "Administration",
   "admin.button.users": "User management",
+  "admin.button.shares": "Share management",
   "admin.button.config": "Configuration",
   "admin.version": "Version",
   // END /admin
@@ -259,6 +260,19 @@ export default {
     "If checked, the user will be able to access the admin panel.",
 
   // END /admin/users
+
+  // /admin/shares
+  "admin.shares.title": "Share management",
+  "admin.shares.table.id": "Share ID",
+  "admin.shares.table.username": "Creator",
+  "admin.shares.table.visitors": "Visitors",
+  "admin.shares.table.expires": "Expires At",
+
+  "admin.shares.edit.delete.title": "Delete share {id}",
+  "admin.shares.edit.delete.description":
+    "Do you really want to delete this share?",
+
+  // END /admin/shares
 
   // /upload
   "upload.title": "Upload",
@@ -307,8 +321,9 @@ export default {
   "upload.modal.expires.year-singular": "Year",
   "upload.modal.expires.year-plural": "Years",
 
-  "upload.modal.accordion.description.title": "Description",
-  "upload.modal.accordion.description.placeholder":
+  "upload.modal.accordion.name-and-description.title": "Name and description",
+  "upload.modal.accordion.name-and-description.name.placeholder": "Name",
+  "upload.modal.accordion.name-and-description.description.placeholder":
     "Note for the recipients of this share",
 
   "upload.modal.accordion.email.title": "Email recipients",

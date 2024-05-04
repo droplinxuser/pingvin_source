@@ -169,6 +169,7 @@ export default {
   // /admin
   "admin.title": "管理",
   "admin.button.users": "使用者管理",
+  "admin.button.shares": "Share management",
   "admin.button.config": "配置管理",
   "admin.version": "版本",
   // END /admin
@@ -195,6 +196,15 @@ export default {
   "admin.users.modal.create.admin": "管理員",
   "admin.users.modal.create.admin.description": "如果勾選，使用者將能查看管理員面板",
   // END /admin/users
+  // /admin/shares
+  "admin.shares.title": "Share management",
+  "admin.shares.table.id": "Share ID",
+  "admin.shares.table.username": "Creator",
+  "admin.shares.table.visitors": "Visitors",
+  "admin.shares.table.expires": "Expires At",
+  "admin.shares.edit.delete.title": "Delete share {id}",
+  "admin.shares.edit.delete.description": "Do you really want to delete this share?",
+  // END /admin/shares
   // /upload
   "upload.title": "上傳",
   "upload.notify.generic-error": "建立分享的過程中發生了錯誤",
@@ -229,8 +239,9 @@ export default {
   "upload.modal.expires.month-plural": "月",
   "upload.modal.expires.year-singular": "年",
   "upload.modal.expires.year-plural": "年",
-  "upload.modal.accordion.description.title": "描述",
-  "upload.modal.accordion.description.placeholder": "分享檔案備註資訊",
+  "upload.modal.accordion.name-and-description.title": "Name and description",
+  "upload.modal.accordion.name-and-description.name.placeholder": "Name",
+  "upload.modal.accordion.name-and-description.description.placeholder": "Note for the recipients of this share",
   "upload.modal.accordion.email.title": "Email提醒",
   "upload.modal.accordion.email.placeholder": "收件人Email地址",
   "upload.modal.accordion.email.invalid-email": "Email地址不可用",

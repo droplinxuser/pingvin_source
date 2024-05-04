@@ -169,6 +169,7 @@ export default {
   // /admin
   "admin.title": "Administration",
   "admin.button.users": "Användarhantering",
+  "admin.button.shares": "Share management",
   "admin.button.config": "Konfiguration",
   "admin.version": "Version",
   // END /admin
@@ -195,6 +196,15 @@ export default {
   "admin.users.modal.create.admin": "Administratörsbehörigheter",
   "admin.users.modal.create.admin.description": "Om detta markeras kommer användaren att kunna komma åt administratörspanelen.",
   // END /admin/users
+  // /admin/shares
+  "admin.shares.title": "Share management",
+  "admin.shares.table.id": "Share ID",
+  "admin.shares.table.username": "Creator",
+  "admin.shares.table.visitors": "Visitors",
+  "admin.shares.table.expires": "Expires At",
+  "admin.shares.edit.delete.title": "Delete share {id}",
+  "admin.shares.edit.delete.description": "Do you really want to delete this share?",
+  // END /admin/shares
   // /upload
   "upload.title": "Ladda upp",
   "upload.notify.generic-error": "Ett fel uppstod när din delning skulle slutföras.",
@@ -229,8 +239,9 @@ export default {
   "upload.modal.expires.month-plural": "Månader",
   "upload.modal.expires.year-singular": "År",
   "upload.modal.expires.year-plural": "År",
-  "upload.modal.accordion.description.title": "Beskrivning",
-  "upload.modal.accordion.description.placeholder": "Anteckning till mottagare av denna delning",
+  "upload.modal.accordion.name-and-description.title": "Name and description",
+  "upload.modal.accordion.name-and-description.name.placeholder": "Name",
+  "upload.modal.accordion.name-and-description.description.placeholder": "Note for the recipients of this share",
   "upload.modal.accordion.email.title": "E-postmottagare",
   "upload.modal.accordion.email.placeholder": "Ange e-postmottagare",
   "upload.modal.accordion.email.invalid-email": "Ogiltig e-postadress",
