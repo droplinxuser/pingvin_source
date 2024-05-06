@@ -11,8 +11,8 @@ Restart=always
 RestartSec=5s
 LimitNOFILE=524288
 
-Environment=DATABASE_URL=file:/var/www/pingvin_data/pingvin-share.db?connection_limit=1
-Environment=DATA_DIRECTORY=/var/www/pingvin_data
+Environment=DATABASE_URL="file:/var/www/pingvin_data/pingvin-share.db?connection_limit=1"
+Environment=DATA_DIRECTORY="/var/www/pingvin_data"
 
 WorkingDirectory=/var/www/pingvin_source/backend
 ExecStart=/usr/bin/npm -- run prod
