@@ -319,7 +319,13 @@ const CreateUploadModalBody = ({
               </Accordion.Control>
               <Accordion.Panel>
                 <Stack align="stretch">
-                  
+                  <TextInput
+                    variant="filled"
+                    placeholder={t(
+                      "upload.modal.accordion.name-and-description.name.placeholder",
+                    )}
+                    {...form.getInputProps("name")}
+                  />                  
                   <Textarea
                     variant="filled"
                     placeholder={t(
