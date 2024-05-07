@@ -325,7 +325,7 @@ const CreateUploadModalBody = ({
                       "upload.modal.accordion.name-and-description.name.placeholder",
                     )}
                     {...form.getInputProps("name")}
-                  />                  
+                  />
                   <Textarea
                     variant="filled"
                     placeholder={t(
