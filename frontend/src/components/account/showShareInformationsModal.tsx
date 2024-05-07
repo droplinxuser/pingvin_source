@@ -38,7 +38,12 @@ const showShareInformationsModal = (
           </b>
           {share.id}
         </Text>
-
+        <Text size="sm">
+          <b>
+            <FormattedMessage id="account.shares.table.name" />:{" "}
+          </b>
+          {share.name || "-"}
+        </Text>
         <Text size="sm">
           <b>
             <FormattedMessage id="account.shares.table.description" />:{" "}
