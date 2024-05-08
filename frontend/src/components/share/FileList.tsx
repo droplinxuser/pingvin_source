@@ -125,7 +125,7 @@ const FileList = ({
                           <TbEye />
                         </ActionIcon>
                       )}
-                      {!share.hasPassword && parseInt(file.size) <= 99000 && (
+                      {!share.hasPassword && parseInt(file.size) <= 1 && (
                         <ActionIcon
                           size={25}
                           onClick={() => copyFileLink(file)}
