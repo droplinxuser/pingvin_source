@@ -115,7 +115,7 @@ const FileList = ({
                   <td>{byteToHumanSizeString(parseInt(file.size))}</td>
                   <td>
                     <Group position="right">
-                      {shareService.doesFileSupportPreview(file.name) && parseInt(file.size) <= 99000 && (
+                      {shareService.doesFileSupportPreview(file.name) && parseInt(file.size) <= 100000000 && (
                         <ActionIcon
                           onClick={() =>
                             showFilePreviewModal(share.id, file, modals)
