@@ -11,16 +11,16 @@ export default {
   "navbar.avatar.signout": "Wyloguj się",
   // END navbar
   // /
-  "home.title": "<h>Samodzielnie utrzymywana</h> platforma udostępniania plików.",
-  "home.description": "Czy na pewno chcesz przekazać swoje prywatne pliki w ręce osób trzecich, takich jak WeTransfer?",
-  "home.bullet.a.name": "Samodzielnie Utrzymywana",
-  "home.bullet.a.description": "Utrzymuj Pingvin Share na własnym serwerze.",
-  "home.bullet.b.name": "Prywatność",
-  "home.bullet.b.description": "To są twoje pliki i nigdy nie powinny trafiać w ręce osób trzecich.",
-  "home.bullet.c.name": "Brak irytującego ograniczenia rozmiaru pliku",
-  "home.bullet.c.description": "Prześlij tak duże pliki, jak chcesz. Ograniczeniem będzie tylko twój dysk twardy.",
-  "home.button.start": "Zaczynajmy",
-  "home.button.source": "Kod źródłowy",
+  "home.title": "<h>DropMB.com</h> a free file-sharing platform.",
+  "home.description": "Our platform allows you to generate a link for any file you wish to share, ensuring a hassle-free transfer experience.",
+  "home.bullet.a.name": "Custom Expiration & Download Limits",
+  "home.bullet.a.description": "You have the option to set expiration dates on your shared files, customize download limits, or provide password protection.",
+  "home.bullet.b.name": "Sharing via Email",
+  "home.bullet.b.description": "An integrated email feature allows you to send files directly to recipients' inboxes.",
+  "home.bullet.c.name": "Contact Us",
+  "home.bullet.c.description": "For any inquiries, takedown requests, or other concerns, please reach out to us directly at admin@dropmb.com.",
+  "home.button.start": "New upload",
+  "home.button.source": "About",
   // END /
   // /auth/signin
   "signin.title": "Witaj ponownie",
