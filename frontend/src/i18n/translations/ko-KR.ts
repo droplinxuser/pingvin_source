@@ -11,20 +11,16 @@ export default {
   "navbar.avatar.signout": "로그아웃",
   // END navbar
   // /
-  "home.title": "<h>직접 호스팅</h>하는 파일 공유 플랫폼.",
-  "home.description":
-    "정말 WeTransfer와 같은 제3자에게 개인 파일을 맡기고 싶으세요?",
-  "home.bullet.a.name": "직접 호스팅",
-  "home.bullet.a.description":
-    "자신의 컴퓨터에서 Pingvin Share를 호스팅하세요.",
-  "home.bullet.b.name": "개인 정보 보호",
-  "home.bullet.b.description":
-    "당신의 파일은 당신의 것이므로 절대로 제3자의 손에 들어가서는 안 됩니다.",
-  "home.bullet.c.name": "귀찮은 파일 크기 제한 없음",
-  "home.bullet.c.description":
-    "원하는 만큼 큰 파일을 업로드하세요. 오직 여러분의 하드 디스크만이 한계가 될 것입니다.",
-  "home.button.start": "시작하기",
-  "home.button.source": "소스 코드",
+  "home.title": "<h>DropMB.com</h> a free file-sharing platform.",
+  "home.description": "Our platform allows you to generate a link for any file you wish to share, ensuring a hassle-free transfer experience.",
+  "home.bullet.a.name": "Custom Expiration & Download Limits",
+  "home.bullet.a.description": "You have the option to set expiration dates on your shared files, customize download limits, or provide password protection.",
+  "home.bullet.b.name": "Sharing via Email",
+  "home.bullet.b.description": "An integrated email feature allows you to send files directly to recipients' inboxes.",
+  "home.bullet.c.name": "Contact Us",
+  "home.bullet.c.description": "For any inquiries, takedown requests, or other concerns, please reach out to us directly at admin@dropmb.com.",
+  "home.button.start": "New upload",
+  "home.button.source": "About",
   // END /
   // /auth/signin
   "signin.title": "다시 오신 것을 환영합니다!",
