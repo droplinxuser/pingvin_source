@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ForbiddenException,
   Injectable,
+  Logger,
   UnauthorizedException,
 } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
@@ -24,8 +25,9 @@ export class AuthService {
     private config: ConfigService,
     private emailService: EmailService,
   ) {}
+  private readonly logger = new Logger(AuthService.name);
 
-  async signUp(dto: AuthRegisterDTO) {
+  async signUp(dto: AuthRegisterDTO, ip: string) {
     const isFirstUser = (await this.prisma.user.count()) == 0;
 
     const hash = dto.password ? await argon.hash(dto.password) : null;
@@ -44,6 +46,7 @@ export class AuthService {
       );
       const accessToken = await this.createAccessToken(user, refreshTokenId);
 
+      this.logger.log(`User ${user.email} signed up from IP ${ip}`);
       return { accessToken, refreshToken, user };
     } catch (e) {
       if (e instanceof PrismaClientKnownRequestError) {
@@ -57,9 +60,12 @@ export class AuthService {
     }
   }
 
-  async signIn(dto: AuthSignInDTO) {
+  async signIn(dto: AuthSignInDTO, ip: string) {
     if (!dto.email && !dto.username)
       throw new BadRequestException("Email or username is required");
+
+    if (this.config.get("oauth.disablePassword"))
+      throw new ForbiddenException("Password sign in is disabled");
 
     const user = await this.prisma.user.findFirst({
       where: {
@@ -67,9 +73,14 @@ export class AuthService {
       },
     });
 
-    if (!user || !(await argon.verify(user.password, dto.password)))
+    if (!user || !(await argon.verify(user.password, dto.password))) {
+      this.logger.log(
+        `Failed login attempt for user ${dto.email} from IP ${ip}`,
+      );
       throw new UnauthorizedException("Wrong email or password");
+    }
 
+    this.logger.log(`Successful login for user ${dto.email} from IP ${ip}`);
     return this.generateToken(user);
   }
 
@@ -94,6 +105,9 @@ export class AuthService {
   }
 
   async requestResetPassword(email: string) {
+    if (this.config.get("oauth.disablePassword"))
+      throw new ForbiddenException("Password sign in is disabled");
+
     const user = await this.prisma.user.findFirst({
       where: { email },
       include: { resetPasswordToken: true },
@@ -119,6 +133,9 @@ export class AuthService {
   }
 
   async resetPassword(token: string, newPassword: string) {
+    if (this.config.get("oauth.disablePassword"))
+      throw new ForbiddenException("Password sign in is disabled");
+
     const user = await this.prisma.user.findFirst({
       where: { resetPasswordToken: { token } },
     });
