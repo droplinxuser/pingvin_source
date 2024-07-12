@@ -14,21 +14,21 @@ export default {
   // END navbar
 
   // /
-  "home.title": "<h>DropMB.com</h> a free file-sharing platform.",
+  "home.title": "A <h>self-hosted</h> file sharing platform.",
 
   "home.description":
-    "Our platform allows you to generate a link for any file you wish to share, ensuring a hassle-free transfer experience.",
-  "home.bullet.a.name": "Custom Expiration & Download Limits",
-  "home.bullet.a.description": "You have the option to set expiration dates on your shared files, customize download limits, or provide password protection.",
-  "home.bullet.b.name": "Sharing via Email",
+    "Do you really want to give your personal files in the hand of third parties like WeTransfer?",
+  "home.bullet.a.name": "Self-Hosted",
+  "home.bullet.a.description": "Host Pingvin Share on your own machine.",
+  "home.bullet.b.name": "Privacy",
   "home.bullet.b.description":
-    "An integrated email feature allows you to send files directly to recipients' inboxes.",
-  "home.bullet.c.name": "Contact Us",
+    "Your files are your files and should never get into the hands of third parties.",
+  "home.bullet.c.name": "No annoying file size limit",
   "home.bullet.c.description":
-    "For any inquiries, takedown requests, or other concerns, please reach out to us directly at admin@dropmb.com.",
+    "Upload as big files as you want. Only your hard drive will be your limit.",
 
-  "home.button.start": "New upload",
-  "home.button.source": "About",
+  "home.button.start": "Get started",
+  "home.button.source": "Source code",
   // END /
 
   // /auth/signin
@@ -400,9 +400,8 @@ export default {
   "admin.config.general.show-home-page": "Show home page",
   "admin.config.general.show-home-page.description":
     "Whether to show the home page",
-  "admin.config.general.session-duration": 
-    "Session Duration",
-  "admin.config.general.session-duration.description": 
+  "admin.config.general.session-duration": "Session Duration",
+  "admin.config.general.session-duration.description":
     "Time in hours after which a user must log in again (default: 3 months).",
   "admin.config.general.logo": "Logo",
   "admin.config.general.logo.description":
@@ -454,9 +453,11 @@ export default {
   "admin.config.share.zip-compression-level.description":
     "Adjust the level to balance between file size and compression speed. Valid values range from 0 to 9, with 0 being no compression and 9 being maximum compression. ",
   "admin.config.share.chunk-size": "Chunk size",
-  "admin.config.share.chunk-size.description": "Adjust the chunk size (in bytes) for your uploads to balance efficiency and reliability according to your internet connection. Smaller chunks can enhance success rates for unstable connections, while larger chunks speed up uploads for stable connections.",
+  "admin.config.share.chunk-size.description":
+    "Adjust the chunk size (in bytes) for your uploads to balance efficiency and reliability according to your internet connection. Smaller chunks can enhance success rates for unstable connections, while larger chunks speed up uploads for stable connections.",
   "admin.config.share.auto-open-share-modal": "Auto open create share modal",
-  "admin.config.share.auto-open-share-modal.description": "The share creation modal automatically appears when a user selects files, eliminating the need to manually click the button.",
+  "admin.config.share.auto-open-share-modal.description":
+    "The share creation modal automatically appears when a user selects files, eliminating the need to manually click the button.",
 
   "admin.config.smtp.enabled": "Enabled",
   "admin.config.smtp.enabled.description":
@@ -473,6 +474,10 @@ export default {
   "admin.config.smtp.password": "Password",
   "admin.config.smtp.password.description": "Password of the SMTP server",
   "admin.config.smtp.button.test": "Send test email",
+  "admin.config.smtp.allow-unauthorized-certificates":
+    "Trust unauthorized SMTP server certificates",
+  "admin.config.smtp.allow-unauthorized-certificates.description":
+    "Only set this to true if you need to trust self signed certificates.",
 
   "admin.config.oauth.allow-registration": "Allow registration",
   "admin.config.oauth.allow-registration.description":
