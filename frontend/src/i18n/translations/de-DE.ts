@@ -11,16 +11,16 @@ export default {
   "navbar.avatar.signout": "Abmelden",
   // END navbar
   // /
-  "home.title": "<h>DropMB.com</h> a free file-sharing platform.",
-  "home.description": "Our platform allows you to generate a link for any file you wish to share, ensuring a hassle-free transfer experience.",
-  "home.bullet.a.name": "Custom Expiration & Download Limits",
-  "home.bullet.a.description": "You have the option to set expiration dates on your shared files, customize download limits, or provide password protection.",
-  "home.bullet.b.name": "Sharing via Email",
-  "home.bullet.b.description": "An integrated email feature allows you to send files directly to recipients' inboxes.",
-  "home.bullet.c.name": "Contact Us",
-  "home.bullet.c.description": "For any inquiries, takedown requests, or other concerns, please reach out to us directly at admin@dropmb.com.",
-  "home.button.start": "New upload",
-  "home.button.source": "About",
+  "home.title": "Eine <h>selbst gehostete</h> Dateifreigabe-Plattform.",
+  "home.description": "Möchtest du wirklich deine persönlichen Dateien an Drittanbieter wie WeTransfer weitergeben?",
+  "home.bullet.a.name": "Selbst gehostet",
+  "home.bullet.a.description": "Betreibe Pingvin Share auf deinem eigenen Server.",
+  "home.bullet.b.name": "Privatsphäre",
+  "home.bullet.b.description": "Deine Dateien gehören dir und sollten niemals in die Hände Dritter gelangen.",
+  "home.bullet.c.name": "Keine lästige Dateigrößenbegrenzung",
+  "home.bullet.c.description": "Lade Dateien beliebiger Größe hoch. Nur dein Festplattenspeicher stellt die Grenze dar.",
+  "home.button.start": "Lege los",
+  "home.button.source": "Quellcode",
   // END /
   // /auth/signin
   "signin.title": "Willkommen zurück",
@@ -388,18 +388,11 @@ export default {
   "admin.config.oauth.oidc-username-claim": "OpenID Connect Benutzername anfordern",
   "admin.config.oauth.oidc-username-claim.description": "Benutzername im OpenID Token. Leer lassen, wenn du nicht weißt, was diese Konfiguration bedeutet.",
   "admin.config.oauth.oidc-role-path": "Path to roles in OpenID Connect token",
-  "admin.config.oauth.oidc-role-path.description":
-    "Muss ein valider JMES-Pfad sein, der zu einem Array an Rollen führt. " +
-    "Die Zugangsverwaltung über Rollen in OpenID Connect ist nur empfohlen, wenn kein anderer Identitätsprovider konfiguriert und die Anmeldung per Password deaktiviert ist. " +
-    "Leer lassen, wenn du nicht weißt, was diese Konfiguration bedeutet.",
+  "admin.config.oauth.oidc-role-path.description": "Muss ein valider JMES-Pfad sein, der zu einem Array an Rollen führt. " + "Die Zugangsverwaltung über Rollen in OpenID Connect ist nur empfohlen, wenn kein anderer Identitätsprovider konfiguriert und die Anmeldung per Password deaktiviert ist. " + "Leer lassen, wenn du nicht weißt, was diese Konfiguration bedeutet.",
   "admin.config.oauth.oidc-role-general-access": "OpenID Connect role for general access",
-  "admin.config.oauth.oidc-role-general-access.description":
-    "Rolle für generellen Zugriff. Muss Teil der Rollen eines Benutzers sein, damit dieser sich anmelden kann. " +
-    "Leer lassen, wenn du nicht weißt, was diese Konfiguration bedeutet.",
+  "admin.config.oauth.oidc-role-general-access.description": "Rolle für generellen Zugriff. Muss Teil der Rollen eines Benutzers sein, damit dieser sich anmelden kann. " + "Leer lassen, wenn du nicht weißt, was diese Konfiguration bedeutet.",
   "admin.config.oauth.oidc-role-admin-access": "OpenID Connect role for admin access",
-  "admin.config.oauth.oidc-role-admin-access.description":
-    "Rolle für administrativen Zugriff. Muss Teil der Rollen eines Benutzers sein, damit dieser auf das Administrator-Panel zugreifen kann. " +
-    "Leer lassen, wenn du nicht weißt, was diese Konfiguration bedeutet.",
+  "admin.config.oauth.oidc-role-admin-access.description": "Rolle für administrativen Zugriff. Muss Teil der Rollen eines Benutzers sein, damit dieser auf das Administrator-Panel zugreifen kann. " + "Leer lassen, wenn du nicht weißt, was diese Konfiguration bedeutet.",
   "admin.config.oauth.oidc-client-id": "OpenID Connect Client-ID",
   "admin.config.oauth.oidc-client-id.description": "Client-ID der OpenID Connect OAuth-App",
   "admin.config.oauth.oidc-client-secret": "OpenID Connect Client-Secret",
