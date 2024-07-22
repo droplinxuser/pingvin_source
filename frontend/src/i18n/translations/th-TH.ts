@@ -13,23 +13,23 @@ export default {
   // /
   "home.title": "แพลตฟอร์มสำหรับแชร์ไฟล์ที่คุณสามารถโฮสต์ด้วยตนเอง.",
   "home.description": "คุณอยากให้บริษัทภายนอกเช่น WeTransfer เข้าถึงไฟล์ส่วนตัวของคุณหรือเปล่า?",
-  // /
-  "home.title": "<h>DropMB.com</h> a free file-sharing platform.",
-
-  "home.description":
-    "Our platform allows you to generate a link for any file you wish to share, ensuring a hassle-free transfer experience.",
-  "home.bullet.a.name": "Custom Expiration & Download Limits",
-  "home.bullet.a.description": "You have the option to set expiration dates on your shared files, customize download limits, or provide password protection.",
-  "home.bullet.b.name": "Sharing via Email",
-  "home.bullet.b.description":
-    "An integrated email feature allows you to send files directly to recipients' inboxes.",
-  "home.bullet.c.name": "Contact Us",
-  "home.bullet.c.description":
-    "For any inquiries, takedown requests, or other concerns, please reach out to us directly at admin@dropmb.com.",
-
-  "home.button.start": "New upload",
-  "home.button.source": "About",
+  "home.bullet.a.name": "Self-Hosted",
+  "home.bullet.a.description": "โฮสต์ Pingvin Share บนเครื่องของคุณเอง.",
+  "home.bullet.b.name": "ความเป็นส่วนตัว",
+  "home.bullet.b.description": "ไฟล์ของคุณคือไฟล์ของคุณ มันไม่ควรตกอยู่บนมือของบุคคลที่สาม",
+  "home.bullet.c.name": "ไม่มีการจำกัดขนาดไฟล์ที่น่ารำคาญ",
+  "home.bullet.c.description": "อัพโหลดใหญ่เท่าไหนก็ได้ จำกัดอย่างเดียวคือความจุของเคื่องคุณ",
+  "home.button.start": "เริ่มต้น",
+  "home.button.source": "ซอร์สโค้ด",
   // END /
+  // /auth/signin
+  "signin.title": "ยินดีต้อนรับกลับ",
+  "signin.description": "ยังไม่มีบัญชี?",
+  "signin.button.signup": "สมัครบัญชี",
+  "signin.input.email-or-username": "อีเมล์์์์์์์์หรือชื่อผู้ใช้",
+  "signin.input.email-or-username.placeholder": "อีเมล์์์์์์์หรือชื่อผู้ใช้ของคุณ",
+  "signin.input.password": "รหัสผ่าน",
+  "signin.input.password.placeholder": "รหัสผ่านของคุณ",
   "signin.button.submit": "เข้าสู่ระบบ",
   "signIn.notify.totp-required.title": "ยืนยันตรวจสอบสิทธิ์สองปัจจัย",
   "signIn.notify.totp-required.description": "กรุณาใส่รหัสยืนยันตัวตนสองปัจจัย",

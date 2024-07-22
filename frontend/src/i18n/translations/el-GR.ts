@@ -13,23 +13,23 @@ export default {
   // /
   "home.title": "Μια πλατφόρμα κοινής χρήσης αρχείων <h>σε ιδιωτική εγκατάσταση</h>.",
   "home.description": "Θέλετε πραγματικά να δώσετε τα προσωπικά σας αρχεία στο χέρι τρίτων όπως WeTransfer?",
-  // /
-  "home.title": "<h>DropMB.com</h> a free file-sharing platform.",
-
-  "home.description":
-    "Our platform allows you to generate a link for any file you wish to share, ensuring a hassle-free transfer experience.",
-  "home.bullet.a.name": "Custom Expiration & Download Limits",
-  "home.bullet.a.description": "You have the option to set expiration dates on your shared files, customize download limits, or provide password protection.",
-  "home.bullet.b.name": "Sharing via Email",
-  "home.bullet.b.description":
-    "An integrated email feature allows you to send files directly to recipients' inboxes.",
-  "home.bullet.c.name": "Contact Us",
-  "home.bullet.c.description":
-    "For any inquiries, takedown requests, or other concerns, please reach out to us directly at admin@dropmb.com.",
-
-  "home.button.start": "New upload",
-  "home.button.source": "About",
+  "home.bullet.a.name": "Ιδιωτική εγκατάσταση",
+  "home.bullet.a.description": "Φιλοξενήστε το Pingvin Share στο δικό σας μηχάνημα.",
+  "home.bullet.b.name": "Απόρρητο",
+  "home.bullet.b.description": "Τα αρχεία σας είναι αρχεία σας και δεν πρέπει ποτέ να μπείτε στα χέρια τρίτων.",
+  "home.bullet.c.name": "Χωρίς όριο μεγέθους αρχείου",
+  "home.bullet.c.description": "Ανεβάστε όσο μεγάλα αρχεία θέλετε. Μόνο ο σκληρός σας δίσκος θα είναι το όριό σας.",
+  "home.button.start": "Ας αρχίσουμε",
+  "home.button.source": "Πηγαίος κώδικας",
   // END /
+  // /auth/signin
+  "signin.title": "Καλώς ήρθατε ξανά",
+  "signin.description": "Δεν έχετε ακόμα λογαριασμό;",
+  "signin.button.signup": "Εγγραφή",
+  "signin.input.email-or-username": "E-mail ή όνομα χρήστη",
+  "signin.input.email-or-username.placeholder": "Το email ή το όνομα χρήστη",
+  "signin.input.password": "Κωδικόs πρόσβασης",
+  "signin.input.password.placeholder": "Ο κωδικός πρόσβασής σας",
   "signin.button.submit": "Είσοδος",
   "signIn.notify.totp-required.title": "Απαιτείται έλεγχος ταυτότητας δύο παραγόντων.",
   "signIn.notify.totp-required.description": "Παρακαλώ εισάγετε τον κωδικό 2FA.",

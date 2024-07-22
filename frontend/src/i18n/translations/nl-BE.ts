@@ -13,23 +13,23 @@ export default {
   // /
   "home.title": "Een <h>zelfgehost</h> platform voor het delen van bestanden.",
   "home.description": "Wil je echt je persoonlijke bestanden geven aan derden zoals WeTransfer?",
-  // /
-  "home.title": "<h>DropMB.com</h> a free file-sharing platform.",
-
-  "home.description":
-    "Our platform allows you to generate a link for any file you wish to share, ensuring a hassle-free transfer experience.",
-  "home.bullet.a.name": "Custom Expiration & Download Limits",
-  "home.bullet.a.description": "You have the option to set expiration dates on your shared files, customize download limits, or provide password protection.",
-  "home.bullet.b.name": "Sharing via Email",
-  "home.bullet.b.description":
-    "An integrated email feature allows you to send files directly to recipients' inboxes.",
-  "home.bullet.c.name": "Contact Us",
-  "home.bullet.c.description":
-    "For any inquiries, takedown requests, or other concerns, please reach out to us directly at admin@dropmb.com.",
-
-  "home.button.start": "New upload",
-  "home.button.source": "About",
+  "home.bullet.a.name": "Zelfgehost",
+  "home.bullet.a.description": "Host Pingvin Share op uw eigen machine.",
+  "home.bullet.b.name": "Privacy",
+  "home.bullet.b.description": "Uw bestanden zijn van u en mogen nooit in handen komen van derden.",
+  "home.bullet.c.name": "Geen vervelende limiet voor bestandsgrootte",
+  "home.bullet.c.description": "Upload zo grote bestanden als je wilt. Alleen je harde schijf is je limiet.",
+  "home.button.start": "Aan de slag",
+  "home.button.source": "Broncode",
   // END /
+  // /auth/signin
+  "signin.title": "Welkom terug",
+  "signin.description": "Heeft u nog geen account?",
+  "signin.button.signup": "Registreren",
+  "signin.input.email-or-username": "E-mailadres of gebruikersnaam",
+  "signin.input.email-or-username.placeholder": "Uw e-mailadres of gebruikersnaam",
+  "signin.input.password": "Wachtwoord",
+  "signin.input.password.placeholder": "Uw wachtwoord",
   "signin.button.submit": "Aanmelden",
   "signIn.notify.totp-required.title": "Tweestapsverificatie vereist",
   "signIn.notify.totp-required.description": "Voer uw tweestapsverificatiecode in",

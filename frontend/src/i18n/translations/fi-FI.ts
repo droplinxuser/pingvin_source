@@ -13,23 +13,23 @@ export default {
   // /
   "home.title": "<h>\"Itse isännöitty\"</h> tiedostojen jakamisen alusta.",
   "home.description": "Haluatko oikeasti jakaa yksityisiä tiedostojasi kolmannen osapuolen yhtiöille niin kuin WeTransfer?",
-  // /
-  "home.title": "<h>DropMB.com</h> a free file-sharing platform.",
-
-  "home.description":
-    "Our platform allows you to generate a link for any file you wish to share, ensuring a hassle-free transfer experience.",
-  "home.bullet.a.name": "Custom Expiration & Download Limits",
-  "home.bullet.a.description": "You have the option to set expiration dates on your shared files, customize download limits, or provide password protection.",
-  "home.bullet.b.name": "Sharing via Email",
-  "home.bullet.b.description":
-    "An integrated email feature allows you to send files directly to recipients' inboxes.",
-  "home.bullet.c.name": "Contact Us",
-  "home.bullet.c.description":
-    "For any inquiries, takedown requests, or other concerns, please reach out to us directly at admin@dropmb.com.",
-
-  "home.button.start": "New upload",
-  "home.button.source": "About",
+  "home.bullet.a.name": "Itse-Isännöitty",
+  "home.bullet.a.description": "Isännöi \"Pingvin Share\" omalla palvelimellasi.",
+  "home.bullet.b.name": "Yksityisyys",
+  "home.bullet.b.description": "Sinun tiedostosi ovat sinun ja niiden ei ikinä pidä päättyä kolmannen osapuolen käsiin.",
+  "home.bullet.c.name": "Ei ärsyttävää tiedoston kokorajoitusta",
+  "home.bullet.c.description": "Lataa niin paljon isoja tiedostoja kuin tykkäät. Vain kovalevysi on rajana.",
+  "home.button.start": "Aloita",
+  "home.button.source": "Lähdekoodi",
   // END /
+  // /auth/signin
+  "signin.title": "Tervetuloa takaisin",
+  "signin.description": "Eikö sinulla ole vielä tiliä?",
+  "signin.button.signup": "Rekisteröidy",
+  "signin.input.email-or-username": "Sähköposti tai käyttäjänimi",
+  "signin.input.email-or-username.placeholder": "Sähköpostisi tai käyttäjänimesi",
+  "signin.input.password": "Salasana",
+  "signin.input.password.placeholder": "Salasana",
   "signin.button.submit": "Kirjaudu sisään",
   "signIn.notify.totp-required.title": "Kaksivaiheinen tunnistautuminen vaadittu",
   "signIn.notify.totp-required.description": "Syötä kaksivaiheisen tunnistautumisen koodi tähän",

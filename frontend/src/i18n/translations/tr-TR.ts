@@ -13,23 +13,23 @@ export default {
   // /
   "home.title": "<h>Kişisel barındırılan</h> bir dosya paylaşım platformu.",
   "home.description": "Kişisel dosyalarınızı WeTransfer gibi üçüncü tarafların eline gerçekten vermek istiyor musunuz?",
-  // /
-  "home.title": "<h>DropMB.com</h> a free file-sharing platform.",
-
-  "home.description":
-    "Our platform allows you to generate a link for any file you wish to share, ensuring a hassle-free transfer experience.",
-  "home.bullet.a.name": "Custom Expiration & Download Limits",
-  "home.bullet.a.description": "You have the option to set expiration dates on your shared files, customize download limits, or provide password protection.",
-  "home.bullet.b.name": "Sharing via Email",
-  "home.bullet.b.description":
-    "An integrated email feature allows you to send files directly to recipients' inboxes.",
-  "home.bullet.c.name": "Contact Us",
-  "home.bullet.c.description":
-    "For any inquiries, takedown requests, or other concerns, please reach out to us directly at admin@dropmb.com.",
-
-  "home.button.start": "New upload",
-  "home.button.source": "About",
+  "home.bullet.a.name": "Kişisel Barındırılan",
+  "home.bullet.a.description": "Pingvin Share'i kendi makinenizde barındırın.",
+  "home.bullet.b.name": "Gizlilik",
+  "home.bullet.b.description": "Dosyalarınız sizin dosyalarınızdır ve asla üçüncü şahısların ellerinde bulunmamalıdır.",
+  "home.bullet.c.name": "Can sıkıcı dosya boyutu sınırı yok",
+  "home.bullet.c.description": "İstediğiniz kadar büyük dosya yükleyin. Sınırınız sadece sabit diskiniz olacaktır.",
+  "home.button.start": "Başlayalım",
+  "home.button.source": "Kaynak kodu",
   // END /
+  // /auth/signin
+  "signin.title": "Tekrar hoşgeldiniz",
+  "signin.description": "Henüz bir hesabınız yok mu?",
+  "signin.button.signup": "Kaydol",
+  "signin.input.email-or-username": "Eposta veya kullanıcı adı",
+  "signin.input.email-or-username.placeholder": "E-Posta veya kullanıcı adı",
+  "signin.input.password": "Şifre",
+  "signin.input.password.placeholder": "Şifreniz",
   "signin.button.submit": "Giriş Yap",
   "signIn.notify.totp-required.title": "İki faktörlü kimlik doğrulama gerekli",
   "signIn.notify.totp-required.description": "Lütfen iki faktörlü doğrulama kodunuzu girin",
