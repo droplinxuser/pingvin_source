@@ -13,23 +13,23 @@ export default {
   // /
   "home.title": "Una piattaforma di condivisione di file <h>autohosted</h>.",
   "home.description": "Vuoi davvero dare i tuoi file personali in mano a terzi come WeTransfer?",
-  "home.bullet.a.name": "Self-hosted",
-  "home.bullet.a.description": "Ospita Pingvin Condividi sulla tua macchina.",
-  "home.bullet.b.name": "Privacy",
-  "home.bullet.b.description": "I tuoi file sono i tuoi file e non dovrebbero mai entrare nelle mani di terzi.",
-  "home.bullet.c.name": "Nessun fastidioso limite alle dimensioni dei files",
-  "home.bullet.c.description": "Carica file grandi quanto vuoi. Solo il tuo disco rigido sarà il tuo limite.",
-  "home.button.start": "Inizia adesso",
-  "home.button.source": "Codice sorgente",
+  // /
+  "home.title": "<h>DropMB.com</h> a free file-sharing platform.",
+
+  "home.description":
+    "Our platform allows you to generate a link for any file you wish to share, ensuring a hassle-free transfer experience.",
+  "home.bullet.a.name": "Custom Expiration & Download Limits",
+  "home.bullet.a.description": "You have the option to set expiration dates on your shared files, customize download limits, or provide password protection.",
+  "home.bullet.b.name": "Sharing via Email",
+  "home.bullet.b.description":
+    "An integrated email feature allows you to send files directly to recipients' inboxes.",
+  "home.bullet.c.name": "Contact Us",
+  "home.bullet.c.description":
+    "For any inquiries, takedown requests, or other concerns, please reach out to us directly at admin@dropmb.com.",
+
+  "home.button.start": "New upload",
+  "home.button.source": "About",
   // END /
-  // /auth/signin
-  "signin.title": "Bentornato",
-  "signin.description": "Non hai ancora un account?",
-  "signin.button.signup": "Registrazione",
-  "signin.input.email-or-username": "Email o nome utente",
-  "signin.input.email-or-username.placeholder": "La tua email o nome utente",
-  "signin.input.password": "Password",
-  "signin.input.password.placeholder": "Password",
   "signin.button.submit": "Accedi",
   "signIn.notify.totp-required.title": "Autenticazione a due fattori richiesta",
   "signIn.notify.totp-required.description": "Inserisci il tuo codice di autenticazione a due fattori",

@@ -13,23 +13,23 @@ export default {
   // /
   "home.title": "<h>自建</h> 檔案分享平台！",
   "home.description": "您真的放心把檔案交到第三方檔案平台手中嗎？",
-  "home.bullet.a.name": "完全自建",
-  "home.bullet.a.description": "輕松使用私有服務器搭建檔案分享平台",
-  "home.bullet.b.name": "完全隱私",
-  "home.bullet.b.description": "您的檔案只屬於您！不需將它放到第三方檔案平台",
-  "home.bullet.c.name": "完全無限",
-  "home.bullet.c.description": "想上傳多大都可以，更需要擔心的是您的存儲空間容量",
-  "home.button.start": "開始使用",
-  "home.button.source": "原始碼",
+  // /
+  "home.title": "<h>DropMB.com</h> a free file-sharing platform.",
+
+  "home.description":
+    "Our platform allows you to generate a link for any file you wish to share, ensuring a hassle-free transfer experience.",
+  "home.bullet.a.name": "Custom Expiration & Download Limits",
+  "home.bullet.a.description": "You have the option to set expiration dates on your shared files, customize download limits, or provide password protection.",
+  "home.bullet.b.name": "Sharing via Email",
+  "home.bullet.b.description":
+    "An integrated email feature allows you to send files directly to recipients' inboxes.",
+  "home.bullet.c.name": "Contact Us",
+  "home.bullet.c.description":
+    "For any inquiries, takedown requests, or other concerns, please reach out to us directly at admin@dropmb.com.",
+
+  "home.button.start": "New upload",
+  "home.button.source": "About",
   // END /
-  // /auth/signin
-  "signin.title": "歡迎回來",
-  "signin.description": "還沒有帳號嗎？請",
-  "signin.button.signup": "註冊",
-  "signin.input.email-or-username": "電子郵件或使用者名稱",
-  "signin.input.email-or-username.placeholder": "請輸入電子郵件或使用者名稱",
-  "signin.input.password": "密碼",
-  "signin.input.password.placeholder": "請輸入密碼",
   "signin.button.submit": "登入",
   "signIn.notify.totp-required.title": "請繼續兩步驗證",
   "signIn.notify.totp-required.description": "請輸入一次性驗證碼",

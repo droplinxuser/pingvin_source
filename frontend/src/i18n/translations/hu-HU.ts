@@ -13,23 +13,23 @@ export default {
   // /
   "home.title": "<h>Saját üzemeltetésű</h> fájl megosztó platform.",
   "home.description": "Valóban hozzáférhetővé akarja tenni fájljait a WeTransfer és más hasonló harmadik felek számára?",
-  "home.bullet.a.name": "Saját üzemeltetés",
-  "home.bullet.a.description": "A Pingvin Share megosztót saját gépéről futtathatja.",
-  "home.bullet.b.name": "Adatvédelem",
-  "home.bullet.b.description": "A saját fájlok személyesek és semmi keresnivalójuk harmadik feleknél.",
-  "home.bullet.c.name": "Nincs bosszantó fájl méretkorlát",
-  "home.bullet.c.description": "Akkora fájlokat oszt meg, amekkorákat csak akar. Határt csak a lemezterület szab.",
-  "home.button.start": "Nosza, kezdjük",
-  "home.button.source": "Forráskód",
+  // /
+  "home.title": "<h>DropMB.com</h> a free file-sharing platform.",
+
+  "home.description":
+    "Our platform allows you to generate a link for any file you wish to share, ensuring a hassle-free transfer experience.",
+  "home.bullet.a.name": "Custom Expiration & Download Limits",
+  "home.bullet.a.description": "You have the option to set expiration dates on your shared files, customize download limits, or provide password protection.",
+  "home.bullet.b.name": "Sharing via Email",
+  "home.bullet.b.description":
+    "An integrated email feature allows you to send files directly to recipients' inboxes.",
+  "home.bullet.c.name": "Contact Us",
+  "home.bullet.c.description":
+    "For any inquiries, takedown requests, or other concerns, please reach out to us directly at admin@dropmb.com.",
+
+  "home.button.start": "New upload",
+  "home.button.source": "About",
   // END /
-  // /auth/signin
-  "signin.title": "Üdv ismét itt",
-  "signin.description": "Nincsen még fiókja?",
-  "signin.button.signup": "Feliratkozás",
-  "signin.input.email-or-username": "Email vagy felhasználónév",
-  "signin.input.email-or-username.placeholder": "Az Ön emailcíme vagy felhasználóneve",
-  "signin.input.password": "Jelszó",
-  "signin.input.password.placeholder": "Az Ön jelszava",
   "signin.button.submit": "Bejelentkezés",
   "signIn.notify.totp-required.title": "Kétfaktoros hitelesítésre van szükség",
   "signIn.notify.totp-required.description": "Adja meg a másik úton kapott kódját",

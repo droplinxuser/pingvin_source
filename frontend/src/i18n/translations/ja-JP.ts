@@ -13,23 +13,23 @@ export default {
   // /
   "home.title": "<h>セルフホスト</h>のファイル共有プラットフォーム。",
   "home.description": "WeTransferのようなサードパーティーサービスに自分のファイルを渡したいですか？",
-  "home.bullet.a.name": "セルフホスト",
-  "home.bullet.a.description": "Pingvin Shareをあなたのマシンでホストしましょう。",
-  "home.bullet.b.name": "プライバシー",
-  "home.bullet.b.description": "あなたのファイルはあなたのものであり、決して第三者の手に入るべきではありません。",
-  "home.bullet.c.name": "ファイルサイズ制限に悩まされることはありません",
-  "home.bullet.c.description": "大きなファイルもアップロード。ストレージのサイズだけが唯一の制限です。",
-  "home.button.start": "始めましょう",
-  "home.button.source": "ソースコード",
+  // /
+  "home.title": "<h>DropMB.com</h> a free file-sharing platform.",
+
+  "home.description":
+    "Our platform allows you to generate a link for any file you wish to share, ensuring a hassle-free transfer experience.",
+  "home.bullet.a.name": "Custom Expiration & Download Limits",
+  "home.bullet.a.description": "You have the option to set expiration dates on your shared files, customize download limits, or provide password protection.",
+  "home.bullet.b.name": "Sharing via Email",
+  "home.bullet.b.description":
+    "An integrated email feature allows you to send files directly to recipients' inboxes.",
+  "home.bullet.c.name": "Contact Us",
+  "home.bullet.c.description":
+    "For any inquiries, takedown requests, or other concerns, please reach out to us directly at admin@dropmb.com.",
+
+  "home.button.start": "New upload",
+  "home.button.source": "About",
   // END /
-  // /auth/signin
-  "signin.title": "おかえりなさい",
-  "signin.description": "アカウントをお持ちではありませんか？",
-  "signin.button.signup": "会員登録",
-  "signin.input.email-or-username": "メールアドレスまたはユーザー名",
-  "signin.input.email-or-username.placeholder": "メールアドレスまたはユーザー名",
-  "signin.input.password": "パスワード",
-  "signin.input.password.placeholder": "あなたのパスワード",
   "signin.button.submit": "サインイン",
   "signIn.notify.totp-required.title": "二段階認証が必要です",
   "signIn.notify.totp-required.description": "二段階認証コードを入力してください",

@@ -13,23 +13,23 @@ export default {
   // /
   "home.title": "<h>自建</h> 文件共享平台！",
   "home.description": "你真的放心把文件交到第三方文件平台手中吗？",
-  "home.bullet.a.name": "完全自建",
-  "home.bullet.a.description": "轻松使用私有服务器搭建文件共享平台",
-  "home.bullet.b.name": "完全隐私",
-  "home.bullet.b.description": "你的文件只属于你！不要将它放到第三方文件平台",
-  "home.bullet.c.name": "完全无限",
-  "home.bullet.c.description": "想上传多大都可以，硬盘容量的大小是唯一的限制",
-  "home.button.start": "开始使用",
-  "home.button.source": "源代码",
+  // /
+  "home.title": "<h>DropMB.com</h> a free file-sharing platform.",
+
+  "home.description":
+    "Our platform allows you to generate a link for any file you wish to share, ensuring a hassle-free transfer experience.",
+  "home.bullet.a.name": "Custom Expiration & Download Limits",
+  "home.bullet.a.description": "You have the option to set expiration dates on your shared files, customize download limits, or provide password protection.",
+  "home.bullet.b.name": "Sharing via Email",
+  "home.bullet.b.description":
+    "An integrated email feature allows you to send files directly to recipients' inboxes.",
+  "home.bullet.c.name": "Contact Us",
+  "home.bullet.c.description":
+    "For any inquiries, takedown requests, or other concerns, please reach out to us directly at admin@dropmb.com.",
+
+  "home.button.start": "New upload",
+  "home.button.source": "About",
   // END /
-  // /auth/signin
-  "signin.title": "欢迎回来",
-  "signin.description": "还没有账户吗？请",
-  "signin.button.signup": "注册",
-  "signin.input.email-or-username": "电子邮件或用户名",
-  "signin.input.email-or-username.placeholder": "请输入电子邮件或用户名",
-  "signin.input.password": "密码",
-  "signin.input.password.placeholder": "请输入密码",
   "signin.button.submit": "登录",
   "signIn.notify.totp-required.title": "请继续两步验证",
   "signIn.notify.totp-required.description": "请输入一次性验证码",

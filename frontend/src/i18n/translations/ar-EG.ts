@@ -13,23 +13,23 @@ export default {
   // /
   "home.title": "منصة لمشاركة الملفات <h>باستضافة ذاتية</h>.",
   "home.description": "أحقًا تريد تسليم ملفاتك الشخصية لطرف ثالث مثل WeTransfer؟",
-  "home.bullet.a.name": "استضافة ذاتية",
-  "home.bullet.a.description": "قم باستضافة Pingvin Share على جهازك.",
-  "home.bullet.b.name": "الخصوصية",
-  "home.bullet.b.description": "ملفاتك تخصّك وحدك فقط، ولا ينبغي أبدًا أن تقع بأيدي طرفٍ ثالث.",
-  "home.bullet.c.name": "ليس هناك أية قيود على حجم الملفات",
-  "home.bullet.c.description": "ارفع أي ملف تريده مهما كان حجمه كبيرًا. إن مساحة قرصك الصلب هي المحدد الوحيد هنا.",
-  "home.button.start": "ابدأ",
-  "home.button.source": "النص البرمجي المصدري",
+  // /
+  "home.title": "<h>DropMB.com</h> a free file-sharing platform.",
+
+  "home.description":
+    "Our platform allows you to generate a link for any file you wish to share, ensuring a hassle-free transfer experience.",
+  "home.bullet.a.name": "Custom Expiration & Download Limits",
+  "home.bullet.a.description": "You have the option to set expiration dates on your shared files, customize download limits, or provide password protection.",
+  "home.bullet.b.name": "Sharing via Email",
+  "home.bullet.b.description":
+    "An integrated email feature allows you to send files directly to recipients' inboxes.",
+  "home.bullet.c.name": "Contact Us",
+  "home.bullet.c.description":
+    "For any inquiries, takedown requests, or other concerns, please reach out to us directly at admin@dropmb.com.",
+
+  "home.button.start": "New upload",
+  "home.button.source": "About",
   // END /
-  // /auth/signin
-  "signin.title": "أهلًا بعودتك",
-  "signin.description": "ليس لديك حساب؟",
-  "signin.button.signup": "إنشاء حساب",
-  "signin.input.email-or-username": "البريد أو اسم المستخدم",
-  "signin.input.email-or-username.placeholder": "بريدك أو اسم المستخدم",
-  "signin.input.password": "كلمة السر",
-  "signin.input.password.placeholder": "كلمة السر",
   "signin.button.submit": "تسجيل الدخول",
   "signIn.notify.totp-required.title": "إن المصادقة الثنائية ضرورية",
   "signIn.notify.totp-required.description": "فضلًا أدخل رمز المصادقة الثنائية",

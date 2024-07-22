@@ -13,23 +13,23 @@ export default {
   // /
   "home.title": "<h>self-hosted</h> платформа за дељење фајлова.",
   "home.description": "Да ли заиста желите да дате своје личне датотеке у руке трећих страна као што је WeTransfer?",
-  "home.bullet.a.name": "Личан хостинг",
-  "home.bullet.a.description": "Хостујте Pingvin Share на својој машини.",
-  "home.bullet.b.name": "Privatnost",
-  "home.bullet.b.description": "Ваше датотеке су ваше датотеке и никада не би требало да дођу у руке трећих лица.",
-  "home.bullet.c.name": "Нема досадног ограничења величине датотеке",
-  "home.bullet.c.description": "Отпремите онолико великих датотека колико желите. Само ваш чврсти диск ће бити ваше ограничење.",
-  "home.button.start": "Почети",
-  "home.button.source": "Изворни код",
+  // /
+  "home.title": "<h>DropMB.com</h> a free file-sharing platform.",
+
+  "home.description":
+    "Our platform allows you to generate a link for any file you wish to share, ensuring a hassle-free transfer experience.",
+  "home.bullet.a.name": "Custom Expiration & Download Limits",
+  "home.bullet.a.description": "You have the option to set expiration dates on your shared files, customize download limits, or provide password protection.",
+  "home.bullet.b.name": "Sharing via Email",
+  "home.bullet.b.description":
+    "An integrated email feature allows you to send files directly to recipients' inboxes.",
+  "home.bullet.c.name": "Contact Us",
+  "home.bullet.c.description":
+    "For any inquiries, takedown requests, or other concerns, please reach out to us directly at admin@dropmb.com.",
+
+  "home.button.start": "New upload",
+  "home.button.source": "About",
   // END /
-  // /auth/signin
-  "signin.title": "Добродошли назад",
-  "signin.description": "Још увек немате налог?",
-  "signin.button.signup": "Региструј се",
-  "signin.input.email-or-username": "Е-пошта или корисничко име",
-  "signin.input.email-or-username.placeholder": "Ваша Е-пошта или корисничко име",
-  "signin.input.password": "Лозинка",
-  "signin.input.password.placeholder": "Ваша лозинка",
   "signin.button.submit": "Пријавите се",
   "signIn.notify.totp-required.title": "Потребна је двофакторска аутентификација",
   "signIn.notify.totp-required.description": "Унесите свој двофакторски код за аутентификацију",

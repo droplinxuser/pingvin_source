@@ -13,23 +13,23 @@ export default {
   // /
   "home.title": "Uma plataforma de compartilhamento de arquivos <h>auto-hospedada</h>.",
   "home.description": "Deseja realmente dar os seus arquivos pessoais na mão de terceiros como o WeTransfer?",
-  "home.bullet.a.name": "Auto-Hospedado",
-  "home.bullet.a.description": "Hospede o Pingvin Share em sua própria máquina.",
-  "home.bullet.b.name": "Privacidade",
-  "home.bullet.b.description": "Seus arquivos são seus arquivos e nunca devem cair nas mãos de terceiros.",
-  "home.bullet.c.name": "Sem limite de tamanho de arquivo irritante",
-  "home.bullet.c.description": "Carregue os arquivos grandes que desejar. Apenas o seu disco rígido será o seu limite.",
-  "home.button.start": "Começar",
-  "home.button.source": "Código-fonte",
+  // /
+  "home.title": "<h>DropMB.com</h> a free file-sharing platform.",
+
+  "home.description":
+    "Our platform allows you to generate a link for any file you wish to share, ensuring a hassle-free transfer experience.",
+  "home.bullet.a.name": "Custom Expiration & Download Limits",
+  "home.bullet.a.description": "You have the option to set expiration dates on your shared files, customize download limits, or provide password protection.",
+  "home.bullet.b.name": "Sharing via Email",
+  "home.bullet.b.description":
+    "An integrated email feature allows you to send files directly to recipients' inboxes.",
+  "home.bullet.c.name": "Contact Us",
+  "home.bullet.c.description":
+    "For any inquiries, takedown requests, or other concerns, please reach out to us directly at admin@dropmb.com.",
+
+  "home.button.start": "New upload",
+  "home.button.source": "About",
   // END /
-  // /auth/signin
-  "signin.title": "Bem-vindo de volta",
-  "signin.description": "Ainda não tem uma conta?",
-  "signin.button.signup": "Registo",
-  "signin.input.email-or-username": "E-mail ou nome de usuário",
-  "signin.input.email-or-username.placeholder": "Seu e-mail ou nome de usuário",
-  "signin.input.password": "Senha",
-  "signin.input.password.placeholder": "A sua senha",
   "signin.button.submit": "Iniciar sessão",
   "signIn.notify.totp-required.title": "Autenticação de dois fatores necessária",
   "signIn.notify.totp-required.description": "Insira seu código de autenticação de dois fatores",
