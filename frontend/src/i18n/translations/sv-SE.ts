@@ -11,16 +11,16 @@ export default {
   "navbar.avatar.signout": "Logga ut",
   // END navbar
   // /
-  "home.title": "En <h>egen</h> fildelningsplattform.",
-  "home.description": "Vill du verkligen lägga dina personliga filer hos en tredje part som WeTransfer?",
-  "home.bullet.a.name": "Lokalt installerad",
-  "home.bullet.a.description": "Hosta Pingvin Share på din egen maskin.",
-  "home.bullet.b.name": "Sekretess",
-  "home.bullet.b.description": "Dina filer är dina filer och bör aldrig hamna i händerna på tredje part.",
-  "home.bullet.c.name": "Ingen irriterande filstorleksbegränsning",
-  "home.bullet.c.description": "Ladda upp så stora filer som du vill. Endast din hårddisk kommer att vara din gräns.",
-  "home.button.start": "Kom igång",
-  "home.button.source": "Källkod",
+  "home.title": "<h>DropMB.com</h> a free file-sharing platform.",
+  "home.description": "Our platform allows you to generate a link for any file you wish to share, ensuring a hassle-free transfer experience.",
+  "home.bullet.a.name": "Custom Expiration & Download Limits",
+  "home.bullet.a.description": "You have the option to set expiration dates on your shared files, customize download limits, or provide password protection.",
+  "home.bullet.b.name": "Sharing via Email",
+  "home.bullet.b.description": "An integrated email feature allows you to send files directly to recipients' inboxes.",
+  "home.bullet.c.name": "Contact Us",
+  "home.bullet.c.description": "For any inquiries, takedown requests, or other concerns, please reach out to us directly at admin@dropmb.com.",
+  "home.button.start": "New upload",
+  "home.button.source": "About",
   // END /
   // /auth/signin
   "signin.title": "Välkommen tillbaka",
