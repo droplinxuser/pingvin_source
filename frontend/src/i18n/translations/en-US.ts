@@ -14,21 +14,21 @@ export default {
   // END navbar
 
   // /
-  "home.title": "<h>DropMB.com</h> a free file-sharing platform.",
+  "home.title": "A <h>self-hosted</h> file sharing platform.",
 
   "home.description":
-    "Our platform allows you to generate a link for any file you wish to share, ensuring a hassle-free transfer experience.",
-  "home.bullet.a.name": "Custom Expiration & Download Limits",
-  "home.bullet.a.description": "You have the option to set expiration dates on your shared files, customize download limits, or provide password protection.",
-  "home.bullet.b.name": "Sharing via Email",
+    "Do you really want to give your personal files in the hand of third parties like WeTransfer?",
+  "home.bullet.a.name": "Self-Hosted",
+  "home.bullet.a.description": "Host Pingvin Share on your own machine.",
+  "home.bullet.b.name": "Privacy",
   "home.bullet.b.description":
-    "An integrated email feature allows you to send files directly to recipients' inboxes.",
-  "home.bullet.c.name": "Contact Us",
+    "Your files are your files and should never get into the hands of third parties.",
+  "home.bullet.c.name": "No annoying file size limit",
   "home.bullet.c.description":
-    "For any inquiries, takedown requests, or other concerns, please reach out to us directly at admin@dropmb.com.",
+    "Upload as big files as you want. Only your hard drive will be your limit.",
 
-  "home.button.start": "New upload",
-  "home.button.source": "About",
+  "home.button.start": "Get started",
+  "home.button.source": "Source code",
   // END /
 
   // /auth/signin
@@ -446,7 +446,7 @@ export default {
     "Subject of the email which gets sent when an admin invites a user.",
   "admin.config.email.invite-message": "Invite message",
   "admin.config.email.invite-message.description":
-    "Message which gets sent when an admin invites a user. {url} will be replaced with the invite URL and {password} with the password.",
+    "Message which gets sent when an admin invites a user. {url} will be replaced with the invite URL, {email} with the email and {password} with the password of the user.",
 
   "admin.config.share.allow-registration": "Allow registration",
   "admin.config.share.allow-registration.description":
@@ -569,6 +569,22 @@ export default {
   "admin.config.oauth.oidc-client-secret": "OpenID Connect Client secret",
   "admin.config.oauth.oidc-client-secret.description":
     "Client secret of the OpenID Connect OAuth app",
+
+  "admin.config.category.ldap": "LDAP",
+  "admin.config.ldap.enabled": "Enabled LDAP",
+  "admin.config.ldap.enabled.description": "Use LDAP authentication for user login",
+  "admin.config.ldap.url": "Server URL",
+  "admin.config.ldap.url.description": "URL of the LDAP server",
+  "admin.config.ldap.bind-dn": "Bind DN",
+  "admin.config.ldap.bind-dn.description": "Default user which will be used to execute the user search",
+  "admin.config.ldap.bind-password": "Bind password",
+  "admin.config.ldap.bind-password.description": "Password for the user search user",
+  "admin.config.ldap.search-base": "User base",
+  "admin.config.ldap.search-base.description": "Base location, where the user search will be performed",
+  "admin.config.ldap.search-query": "User query",
+  "admin.config.ldap.search-query.description": "The user query will be used to search the 'User base' for the LDAP user. %username% can be used as the placeholder for the user given input.",
+  "admin.config.ldap.admin-groups": "Admin group",
+  "admin.config.ldap.admin-groups.description": "Group required for administrative access.",
 
   // 404
   "404.description": "Oops this page doesn't exist.",
