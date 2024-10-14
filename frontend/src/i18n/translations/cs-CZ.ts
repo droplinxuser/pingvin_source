@@ -11,16 +11,16 @@ export default {
   "navbar.avatar.signout": "Odhlásit se",
   // END navbar
   // /
-  "home.title": "<h>Samostatně hostovaná</h> platforma pro sdílení souborů.",
-  "home.description": "Opravdu chcete dát své osobní soubory do rukou třetích stran, jako je WeTransfer?",
-  "home.bullet.a.name": "Self-Hosted",
-  "home.bullet.a.description": "Hostujte Pingvin Share na svém vlastním počítači.",
-  "home.bullet.b.name": "Soukromí",
-  "home.bullet.b.description": "Vaše soubory jsou vaše soubory a nikdy by se neměly dostat do rukou třetích stran.",
-  "home.bullet.c.name": "Žádný otravný limit pro velikost souborů",
-  "home.bullet.c.description": "Nahrajte tak velké soubory, jak chcete. Limitem je pouze váš pevný disk.",
-  "home.button.start": "Začít",
-  "home.button.source": "Zdrojový kód",
+  "home.title": "<h>DropMB.com</h> a free file-sharing platform.",
+  "home.description": "Our platform allows you to generate a link for any file you wish to share, ensuring a hassle-free transfer experience.",
+  "home.bullet.a.name": "Custom Expiration & Download Limits",
+  "home.bullet.a.description": "You have the option to set expiration dates on your shared files, customize download limits, or provide password protection.",
+  "home.bullet.b.name": "Sharing via Email",
+  "home.bullet.b.description": "An integrated email feature allows you to send files directly to recipients' inboxes.",
+  "home.bullet.c.name": "Contact Us",
+  "home.bullet.c.description": "For any inquiries, takedown requests, or other concerns, please reach out to us directly at admin@dropmb.com.",
+  "home.button.start": "New upload",
+  "home.button.source": "About",
   // END /
   // /auth/signin
   "signin.title": "Vítejte zpět",
