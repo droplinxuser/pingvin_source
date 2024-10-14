@@ -12,7 +12,7 @@ const configVariables: ConfigVariables = {
   general: {
     appName: {
       type: "string",
-      defaultValue: "DropMB",
+      defaultValue: "Pingvin Share",
       secret: false,
     },
     appUrl: {
@@ -93,7 +93,7 @@ const configVariables: ConfigVariables = {
     },
     resetPasswordSubject: {
       type: "string",
-      defaultValue: "DropMB.com password reset",
+      defaultValue: "Pingvin Share password reset",
     },
     resetPasswordMessage: {
       type: "text",
@@ -102,12 +102,12 @@ const configVariables: ConfigVariables = {
     },
     inviteSubject: {
       type: "string",
-      defaultValue: "DropMB.com invite",
+      defaultValue: "Pingvin Share invite",
     },
     inviteMessage: {
       type: "text",
       defaultValue:
-        "Hey!\n\nYou were invited to DropMB.com. Click this link to accept the invite: {url}\n\nYour password is: {password}\n\nDropMB.com",
+        'Hey!\n\nYou were invited to Pingvin Share. Click this link to accept the invite: {url}\n\nYou can use the email "{email}" and the password "{password}" to sign in.\n\nDropMB.com',
     },
   },
   smtp: {
@@ -143,6 +143,51 @@ const configVariables: ConfigVariables = {
       defaultValue: "",
       obscured: true,
     },
+  },
+  ldap: {
+    enabled: {
+      type: "boolean",
+      defaultValue: "false",
+      secret: false,
+    },
+
+    url: {
+      type: "string",
+      defaultValue: "",
+    },
+
+    bindDn: {
+      type: "string",
+      defaultValue: "",
+    },
+    bindPassword: {
+      type: "string",
+      defaultValue: "",
+      obscured: true,
+    },
+
+    searchBase: {
+      type: "string",
+      defaultValue: "",
+    },
+    searchQuery: {
+      type: "string",
+      defaultValue: ""
+    },
+
+    adminGroups: {
+      type: "string",
+      defaultValue: ""
+    },
+
+    fieldNameMemberOf: {
+      type: "string",
+      defaultValue: "memberOf",
+    },
+    fieldNameEmail: {
+      type: "string",
+      defaultValue: "userPrincipalName",
+    }
   },
   oauth: {
     "allowRegistration": {
@@ -209,6 +254,10 @@ const configVariables: ConfigVariables = {
       type: "string",
       defaultValue: "",
     },
+    "discord-limitedUsers": {
+      type: "string",
+      defaultValue: "",
+    },
     "discord-clientId": {
       type: "string",
       defaultValue: "",
@@ -225,6 +274,10 @@ const configVariables: ConfigVariables = {
     "oidc-discoveryUri": {
       type: "string",
       defaultValue: "",
+    },
+    "oidc-signOut": {
+      type: "boolean",
+      defaultValue: "false",
     },
     "oidc-usernameClaim": {
       type: "string",
@@ -308,7 +361,7 @@ async function migrateConfigVariables() {
   for (const existingConfigVariable of existingConfigVariables) {
     const configVariable =
       configVariables[existingConfigVariable.category]?.[
-        existingConfigVariable.name
+      existingConfigVariable.name
       ];
 
     // Delete the config variable if it doesn't exist in the seed
