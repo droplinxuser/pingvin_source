@@ -1,4 +1,4 @@
-import { Inject, Injectable, Logger } from "@nestjs/common";
+import { forwardRef, Inject, Injectable, Logger } from "@nestjs/common";
 import { User } from "@prisma/client";
 import { nanoid } from "nanoid";
 import { AuthService } from "../auth/auth.service";
@@ -6,14 +6,16 @@ import { ConfigService } from "../config/config.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { OAuthSignInDto } from "./dto/oauthSignIn.dto";
 import { ErrorPageException } from "./exceptions/errorPage.exception";
+import { OAuthProvider } from "./provider/oauthProvider.interface";
 
 @Injectable()
 export class OAuthService {
   constructor(
     private prisma: PrismaService,
     private config: ConfigService,
-    private auth: AuthService,
+    @Inject(forwardRef(() => AuthService)) private auth: AuthService,
     @Inject("OAUTH_PLATFORMS") private platforms: string[],
+    @Inject("OAUTH_PROVIDERS") private oAuthProviders: Record<string, OAuthProvider<unknown>>,
   ) {}
   private readonly logger = new Logger(OAuthService.name);
 
@@ -25,6 +27,16 @@ export class OAuthService {
       ])
       .filter(([_, enabled]) => enabled)
       .map(([platform, _]) => platform);
+  }
+
+  availableProviders(): Record<string, OAuthProvider<unknown>> {
+    return Object.fromEntries(Object.entries(this.oAuthProviders)
+      .map(([providerName, provider]) => [
+        [providerName, provider],
+        this.config.get(`oauth.${providerName}-enabled`),
+      ])
+      .filter(([_, enabled]) => enabled)
+      .map(([provider, _]) => provider));
   }
 
   async status(user: User) {
@@ -51,11 +63,11 @@ export class OAuthService {
       await this.updateIsAdmin(user);
       const updatedUser = await this.prisma.user.findFirst({
         where: {
-          email: user.email,
+          id: oauthUser.userId,
         },
       });
       this.logger.log(`Successful login for user ${user.email} from IP ${ip}`);
-      return this.auth.generateToken(updatedUser, true);
+      return this.auth.generateToken(updatedUser, { idToken: user.idToken });
     }
 
     return this.signUp(user, ip);
@@ -108,8 +120,10 @@ export class OAuthService {
   }
 
   private async getAvailableUsername(preferredUsername: string) {
-    // only remove + and - from preferred username for now (maybe not enough)
-    let username = preferredUsername.replace(/[+-]/g, "").substring(0, 20);
+    // Only keep letters, numbers, dots, and underscores. Truncate to 20 characters.
+    let username = preferredUsername
+      .replace(/[^a-zA-Z0-9._]/g, "")
+      .substring(0, 20);
     while (true) {
       const user = await this.prisma.user.findFirst({
         where: {
@@ -154,7 +168,7 @@ export class OAuthService {
         },
       });
       await this.updateIsAdmin(user);
-      return this.auth.generateToken(existingUser, true);
+      return this.auth.generateToken(existingUser, { idToken: user.idToken });
     }
 
     const result = await this.auth.signUp(

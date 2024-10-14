@@ -1,3 +1,102 @@
+## [1.2.0](https://github.com/stonith404/pingvin-share/compare/v1.1.3...v1.2.0) (2024-10-14)
+
+
+### Features
+
+* **oauth:** add ability to limit user IDs for Discord authentication ([#621](https://github.com/stonith404/pingvin-share/issues/621)) ([5883dff](https://github.com/stonith404/pingvin-share/commit/5883dff4cf0abe99b3ac8f0b56fdc9d04e80b51c))
+* **oauth:** Add option to logout from OpenID Connect provider ([2b3ce3f](https://github.com/stonith404/pingvin-share/commit/2b3ce3ffd250f7e3052d43c1c1e76947abf91e55)), closes [#598](https://github.com/stonith404/pingvin-share/issues/598)
+
+
+### Bug Fixes
+
+* use unique port env variable for backend ([d6b8b56](https://github.com/stonith404/pingvin-share/commit/d6b8b56247814087c2b676fe2367300172b5a94b))
+
+## [1.1.3](https://github.com/stonith404/pingvin-share/compare/v1.1.2...v1.1.3) (2024-09-27)
+
+
+### Features
+
+* improve the LDAP implementation ([#615](https://github.com/stonith404/pingvin-share/issues/615)) ([3310fe5](https://github.com/stonith404/pingvin-share/commit/3310fe53b3e4c89db78d57ede6c8d57d8137ecc1)), closes [#601](https://github.com/stonith404/pingvin-share/issues/601)
+
+
+### Bug Fixes
+
+* omit invalid username characters in oidc registration ([adc4af9](https://github.com/stonith404/pingvin-share/commit/adc4af996d30b295b06e4ee517aa53be62c0f6c1))
+
+## [1.1.2](https://github.com/stonith404/pingvin-share/compare/v1.1.1...v1.1.2) (2024-09-24)
+
+
+### Bug Fixes
+
+* disable auto complete for email recipients and share password ([ee73293](https://github.com/stonith404/pingvin-share/commit/ee73293c0f822d3e79cfefd096c656d4c36a12d1))
+* enable secure cookies if app url starts with https ([69752b8](https://github.com/stonith404/pingvin-share/commit/69752b8b417edda1ab4a4acedbdda09d545d6df8))
+
+## [1.1.1](https://github.com/stonith404/pingvin-share/compare/v1.1.0...v1.1.1) (2024-09-18)
+
+
+### Features
+
+* add environment variable to trust the reverse proxy ([b13a81a](https://github.com/stonith404/pingvin-share/commit/b13a81a88ca871c5714b2ed52d0e12fb7ceca176))
+
+
+### Bug Fixes
+
+* disable email login if ldap is enabled ([d9cfe69](https://github.com/stonith404/pingvin-share/commit/d9cfe697d66e9db7bfbc2252b3700580793ce9bb))
+
+## [1.1.0](https://github.com/stonith404/pingvin-share/compare/v1.0.4...v1.1.0) (2024-09-14)
+
+
+### Features
+
+* allow smpt without username and password ([8b3e28b](https://github.com/stonith404/pingvin-share/commit/8b3e28bac83e5326234096445395046ebdb0c4d7))
+* auto redirect to oauth provider ([7dc2e56](https://github.com/stonith404/pingvin-share/commit/7dc2e56fee1afc1078774cc702c0f1fee9bae938))
+
+## [1.0.4](https://github.com/stonith404/pingvin-share/compare/v1.0.3...v1.0.4) (2024-09-06)
+
+
+### Bug Fixes
+
+* oauth2 login can fail in some cases because the user can't be found ([92e1e82](https://github.com/stonith404/pingvin-share/commit/92e1e82e095075edf04019887f9c2048c21d00d6))
+
+## [1.0.3](https://github.com/stonith404/pingvin-share/compare/v1.0.2...v1.0.3) (2024-09-03)
+
+
+### Bug Fixes
+
+* improve oidc error logging ([dee7098](https://github.com/stonith404/pingvin-share/commit/dee70987eb74eda4a9ab7332522fa5540cee9761))
+
+## [1.0.2](https://github.com/stonith404/pingvin-share/compare/v1.0.1...v1.0.2) (2024-08-28)
+
+
+### Bug Fixes
+
+* default logo not displayed on fresh installations ([3e0735c](https://github.com/stonith404/pingvin-share/commit/3e0735c62079ac777fd08051b7e7602eebf74a5d))
+
+## [1.0.1](https://github.com/stonith404/pingvin-share/compare/v1.0.0...v1.0.1) (2024-08-25)
+
+
+### Features
+
+* **email:** add {email} placeholder to user invitation email ([#564](https://github.com/stonith404/pingvin-share/issues/564)) ([8c5c696](https://github.com/stonith404/pingvin-share/commit/8c5c696c514a5fb450462184240b21553d7f1532))
+
+
+### Bug Fixes
+
+* **translations:** add missing string for ldap group ([64efac5](https://github.com/stonith404/pingvin-share/commit/64efac5b685bf2de9d65c6a4f8890d45afe6476d))
+
+## [1.0.0](https://github.com/stonith404/pingvin-share/compare/v0.29.0...v1.0.0) (2024-08-25)
+
+
+### Features
+
+* **ldap:** Adding support for LDAP authentication ([#554](https://github.com/stonith404/pingvin-share/issues/554)) ([4186a76](https://github.com/stonith404/pingvin-share/commit/4186a768b310855282bc4876d1f294700963b8f5))
+
+
+### Bug Fixes
+
+* get started button on home page not working when sign-up is disabled ([4924f76](https://github.com/stonith404/pingvin-share/commit/4924f763947c9a6b79ba0d85887f104ed9545c78))
+* internal server error if user has no password when trying to sign in ([9c381a2](https://github.com/stonith404/pingvin-share/commit/9c381a2ed6b3b7dfd95d4278889b937ffb85e01b))
+
 ## [0.29.0](https://github.com/stonith404/pingvin-share/compare/v0.28.0...v0.29.0) (2024-07-30)
 
 

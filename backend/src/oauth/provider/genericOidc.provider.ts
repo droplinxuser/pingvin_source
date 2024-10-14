@@ -1,13 +1,13 @@
-import { Logger } from "@nestjs/common";
-import { ConfigService } from "../../config/config.service";
+import { InternalServerErrorException, Logger } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import { Cache } from "cache-manager";
 import * as jmespath from "jmespath";
 import { nanoid } from "nanoid";
+import { ConfigService } from "../../config/config.service";
 import { OAuthCallbackDto } from "../dto/oauthCallback.dto";
-import { OAuthProvider, OAuthToken } from "./oauthProvider.interface";
 import { OAuthSignInDto } from "../dto/oauthSignIn.dto";
 import { ErrorPageException } from "../exceptions/errorPage.exception";
+import { OAuthProvider, OAuthToken } from "./oauthProvider.interface";
 
 export abstract class GenericOidcProvider implements OAuthProvider<OidcToken> {
   protected discoveryUri: string;
@@ -116,7 +116,13 @@ export abstract class GenericOidcProvider implements OAuthProvider<OidcToken> {
     },
   ): Promise<OAuthSignInDto> {
     const idTokenData = this.decodeIdToken(token.idToken);
-    // maybe it's not necessary to verify the id token since it's directly obtained from the provider
+
+    if (!idTokenData) {
+      this.logger.error(
+        `Can not get ID Token from response ${JSON.stringify(token.rawToken, undefined, 2)}`,
+      );
+      throw new InternalServerErrorException();
+    }
 
     const key = `oauth-${this.name}-nonce-${query.state}`;
     const nonce = await this.cache.get(key);
@@ -191,6 +197,7 @@ export abstract class GenericOidcProvider implements OAuthProvider<OidcToken> {
       providerId: idTokenData.sub,
       providerUsername: username,
       ...(isAdmin !== undefined && { isAdmin }),
+      idToken: `${this.name}:${token.idToken}`,
     };
   }
 
@@ -245,6 +252,8 @@ export interface OidcConfiguration {
   id_token_signing_alg_values_supported: string[];
   scopes_supported?: string[];
   claims_supported?: string[];
+  frontchannel_logout_supported?: boolean;
+  end_session_endpoint?: string;
 }
 
 export interface OidcJwk {

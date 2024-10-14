@@ -1,6 +1,8 @@
 import {
   BadRequestException,
   ForbiddenException,
+  forwardRef,
+  Inject,
   Injectable,
   Logger,
   UnauthorizedException,
@@ -16,6 +18,10 @@ import { EmailService } from "src/email/email.service";
 import { PrismaService } from "src/prisma/prisma.service";
 import { AuthRegisterDTO } from "./dto/authRegister.dto";
 import { AuthSignInDTO } from "./dto/authSignIn.dto";
+import { LdapService } from "./ldap.service";
+import { GenericOidcProvider } from "../oauth/provider/genericOidc.provider";
+import { OAuthService } from "../oauth/oauth.service";
+import { UserSevice } from "../user/user.service";
 
 @Injectable()
 export class AuthService {
@@ -24,6 +30,9 @@ export class AuthService {
     private jwtService: JwtService,
     private config: ConfigService,
     private emailService: EmailService,
+    private ldapService: LdapService,
+    private userService: UserSevice,
+    @Inject(forwardRef(() => OAuthService)) private oAuthService: OAuthService,
   ) {}
   private readonly logger = new Logger(AuthService.name);
 
@@ -61,35 +70,59 @@ export class AuthService {
   }
 
   async signIn(dto: AuthSignInDTO, ip: string) {
-    if (!dto.email && !dto.username)
+    if (!dto.email && !dto.username) {
       throw new BadRequestException("Email or username is required");
-
-    if (this.config.get("oauth.disablePassword"))
-      throw new ForbiddenException("Password sign in is disabled");
-
-    const user = await this.prisma.user.findFirst({
-      where: {
-        OR: [{ email: dto.email }, { username: dto.username }],
-      },
-    });
-
-    if (!user || !(await argon.verify(user.password, dto.password))) {
-      this.logger.log(
-        `Failed login attempt for user ${dto.email} from IP ${ip}`,
-      );
-      throw new UnauthorizedException("Wrong email or password");
     }
 
-    this.logger.log(`Successful login for user ${user.email} from IP ${ip}`);
-    return this.generateToken(user);
+    if (!this.config.get("oauth.disablePassword")) {
+      const user = await this.prisma.user.findFirst({
+        where: {
+          OR: [{ email: dto.email }, { username: dto.username }],
+        },
+      });
+
+      if (user?.password && (await argon.verify(user.password, dto.password))) {
+        this.logger.log(
+          `Successful password login for user ${user.email} from IP ${ip}`,
+        );
+        return this.generateToken(user);
+      }
+    }
+
+    if (this.config.get("ldap.enabled")) {
+      /*
+       * E-mail-like user credentials are passed as the email property
+       * instead of the username. Since the username format does not matter
+       * when searching for users in LDAP, we simply use the username
+       * in whatever format it is provided.
+       */
+      const ldapUsername = dto.username || dto.email;
+      this.logger.debug(`Trying LDAP login for user ${ldapUsername}`);
+      const ldapUser = await this.ldapService.authenticateUser(
+        ldapUsername,
+        dto.password,
+      );
+      if (ldapUser) {
+        const user = await this.userService.findOrCreateFromLDAP(dto, ldapUser);
+        this.logger.log(
+          `Successful LDAP login for user ${ldapUsername} (${user.id}) from IP ${ip}`,
+        );
+        return this.generateToken(user);
+      }
+    }
+
+    this.logger.log(
+      `Failed login attempt for user ${dto.email || dto.username} from IP ${ip}`,
+    );
+    throw new UnauthorizedException("Wrong email or password");
   }
 
-  async generateToken(user: User, isOAuth = false) {
+  async generateToken(user: User, oauth?: { idToken?: string }) {
     // TODO: Make all old loginTokens invalid when a new one is created
     // Check if the user has TOTP enabled
     if (
       user.totpVerified &&
-      !(isOAuth && this.config.get("oauth.ignoreTotp"))
+      !(oauth && this.config.get("oauth.ignoreTotp"))
     ) {
       const loginToken = await this.createLoginToken(user.id);
 
@@ -98,6 +131,7 @@ export class AuthService {
 
     const { refreshToken, refreshTokenId } = await this.createRefreshToken(
       user.id,
+      oauth?.idToken,
     );
     const accessToken = await this.createAccessToken(user, refreshTokenId);
 
@@ -196,12 +230,39 @@ export class AuthService {
       }) || {};
 
     if (refreshTokenId) {
+      const oauthIDToken = await this.prisma.refreshToken
+        .findFirst({ select: { oauthIDToken: true }, where: { id: refreshTokenId } })
+        .then((refreshToken) => refreshToken?.oauthIDToken)
+        .catch((e) => {
+          // Ignore error if refresh token doesn't exist
+          if (e.code != "P2025") throw e;
+        });
       await this.prisma.refreshToken
         .delete({ where: { id: refreshTokenId } })
         .catch((e) => {
           // Ignore error if refresh token doesn't exist
           if (e.code != "P2025") throw e;
         });
+
+      if (typeof oauthIDToken === "string") {
+        const [providerName, idTokenHint] = oauthIDToken.split(":");
+        const provider = this.oAuthService.availableProviders()[providerName];
+        let signOutFromProviderSupportedAndActivated = false;
+        try {
+          signOutFromProviderSupportedAndActivated = this.config.get(`oauth.${providerName}-signOut`);
+        } catch (_) {
+          // Ignore error if the provider is not supported or if the provider sign out is not activated
+        }
+        if (provider instanceof GenericOidcProvider && signOutFromProviderSupportedAndActivated) {
+          const configuration =  await provider.getConfiguration();
+          if (configuration.frontchannel_logout_supported && URL.canParse(configuration.end_session_endpoint)) {
+            const redirectURI = new URL(configuration.end_session_endpoint);
+            redirectURI.searchParams.append("id_token_hint", idTokenHint);
+            redirectURI.searchParams.append("client_id", this.config.get(`oauth.${providerName}-clientId`));
+            return redirectURI.toString();
+          }
+        }
+      }
     }
   }
 
@@ -220,13 +281,14 @@ export class AuthService {
     );
   }
 
-  async createRefreshToken(userId: string) {
+  async createRefreshToken(userId: string, idToken?: string) {
     const { id, token } = await this.prisma.refreshToken.create({
       data: {
         userId,
         expiresAt: moment()
           .add(this.config.get("general.sessionDuration"), "hours")
           .toDate(),
+        oauthIDToken: idToken,
       },
     });
 
@@ -248,9 +310,11 @@ export class AuthService {
     refreshToken?: string,
     accessToken?: string,
   ) {
+    const isSecure = this.config.get("general.appUrl").startsWith("https");
     if (accessToken)
       response.cookie("access_token", accessToken, {
         sameSite: "lax",
+        secure: isSecure,
         maxAge: 1000 * 60 * 60 * 24 * 30 * 3, // 3 months
       });
     if (refreshToken)
@@ -258,6 +322,7 @@ export class AuthService {
         path: "/api/auth/token",
         httpOnly: true,
         sameSite: "strict",
+        secure: isSecure,
         maxAge: 1000 * 60 * 60 * this.config.get("general.sessionDuration"),
       });
   }

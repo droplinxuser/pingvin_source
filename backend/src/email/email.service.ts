@@ -17,14 +17,15 @@ export class EmailService {
     if (!this.config.get("smtp.enabled"))
       throw new InternalServerErrorException("SMTP is disabled");
 
+    const username = this.config.get("smtp.username");
+    const password = this.config.get("smtp.password");
+
     return nodemailer.createTransport({
       host: this.config.get("smtp.host"),
       port: this.config.get("smtp.port"),
       secure: this.config.get("smtp.port") == 465,
-      auth: {
-        user: this.config.get("smtp.username"),
-        pass: this.config.get("smtp.password"),
-      },
+      auth:
+        username || password ? { user: username, pass: password } : undefined,
       tls: {
         rejectUnauthorized: !this.config.get(
           "smtp.allowUnauthorizedCertificates",
@@ -116,7 +117,8 @@ export class EmailService {
       this.config
         .get("email.inviteMessage")
         .replaceAll("{url}", loginUrl)
-        .replaceAll("{password}", password),
+        .replaceAll("{password}", password)
+        .replaceAll("{email}", recipientEmail),
     );
   }
 

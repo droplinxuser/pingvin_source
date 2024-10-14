@@ -16,6 +16,7 @@ model User {
   email    String  @unique
   password String?
   isAdmin  Boolean @default(false)
+  ldapDN   String? @unique
 
   shares        Share[]
   refreshTokens RefreshToken[]
@@ -39,6 +40,8 @@ model RefreshToken {
 
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  oauthIDToken  String? // prefixed with the ID of the issuing OAuth provider, separated by a colon
 }
 
 model LoginToken {
