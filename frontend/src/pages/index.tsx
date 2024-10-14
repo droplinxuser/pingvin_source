@@ -95,7 +95,7 @@ export default function Home() {
   }, [config]);
 
   const getButtonHref = () => {
-    return signupEnabled ? "/auth/signUp" : "/auth/signIn";
+    return signupEnabled ? "/upload" : "/auth/signIn";
   };
 
   return (
