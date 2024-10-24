@@ -11,16 +11,16 @@ export default {
   "navbar.avatar.signout": "Αποσύνδεση",
   // END navbar
   // /
-  "home.title": "Μια πλατφόρμα κοινής χρήσης αρχείων <h>σε ιδιωτική εγκατάσταση</h>.",
-  "home.description": "Θέλετε πραγματικά να δώσετε τα προσωπικά σας αρχεία στο χέρι τρίτων όπως WeTransfer?",
-  "home.bullet.a.name": "Ιδιωτική εγκατάσταση",
-  "home.bullet.a.description": "Φιλοξενήστε το Pingvin Share στο δικό σας μηχάνημα.",
-  "home.bullet.b.name": "Απόρρητο",
-  "home.bullet.b.description": "Your files are yours and will never be accessed by third parties.",
-  "home.bullet.c.name": "Χωρίς όριο μεγέθους αρχείου",
-  "home.bullet.c.description": "Upload files as big as you want. Only your hard drive will be your limit.",
-  "home.button.start": "Ας αρχίσουμε",
-  "home.button.source": "Πηγαίος κώδικας",
+  "home.title": "<h>DropMB.com</h> a free file-sharing platform.",
+  "home.description": "Our platform allows you to generate a link for any file you wish to share, ensuring a hassle-free transfer experience.",
+  "home.bullet.a.name": "Custom Expiration & Download Limits",
+  "home.bullet.a.description": "You have the option to set expiration dates on your shared files, customize download limits, or provide password protection.",
+  "home.bullet.b.name": "Sharing via Email",
+  "home.bullet.b.description": "An integrated email feature allows you to send files directly to recipients' inboxes.",
+  "home.bullet.c.name": "Contact Us",
+  "home.bullet.c.description": "For any inquiries, takedown requests, or other concerns, please reach out to us directly at admin@dropmb.com.",
+  "home.button.start": "New upload",
+  "home.button.source": "About",
   // END /
   // /auth/signin
   "signin.title": "Καλώς ήρθατε ξανά",
