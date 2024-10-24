@@ -39,6 +39,8 @@ const Share = ({ shareId }: { shareId: string }) => {
             t("share.error.visitor-limit-exceeded.description"),
             "go-home",
           );
+        } else if (error == "share_password_required") {
+          showEnterPasswordModal(modals, getShareToken);
         } else {
           toast.axiosError(e);
         }
