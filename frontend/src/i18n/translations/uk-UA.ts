@@ -11,16 +11,16 @@ export default {
   "navbar.avatar.signout": "Вийти",
   // END navbar
   // /
-  "home.title": "<h>DropMB.com</h> a free file-sharing platform.",
-  "home.description": "Our platform allows you to generate a link for any file you wish to share, ensuring a hassle-free transfer experience.",
-  "home.bullet.a.name": "Custom Expiration & Download Limits",
-  "home.bullet.a.description": "You have the option to set expiration dates on your shared files, customize download limits, or provide password protection.",
-  "home.bullet.b.name": "Sharing via Email",
-  "home.bullet.b.description": "An integrated email feature allows you to send files directly to recipients' inboxes.",
-  "home.bullet.c.name": "Contact Us",
-  "home.bullet.c.description": "For any inquiries, takedown requests, or other concerns, please reach out to us directly at admin@dropmb.com.",
-  "home.button.start": "New upload",
-  "home.button.source": "About",
+  "home.title": "Платформа для обміну файлами із <h>власного хостингу</h>.",
+  "home.description": "Ви дійсно бажаєте надати свої особисті файли У руки третіх осіб, таких як WeTransfer?",
+  "home.bullet.a.name": "На власному сервері",
+  "home.bullet.a.description": "Pingvin Share працює на вашій машині.",
+  "home.bullet.b.name": "Конфіденційність",
+  "home.bullet.b.description": "Your files are yours and will never be accessed by third parties.",
+  "home.bullet.c.name": "Без дратівливого обмеження розміру файлу",
+  "home.bullet.c.description": "Upload files as big as you want. Only your hard drive will be your limit.",
+  "home.button.start": "Почнемо",
+  "home.button.source": "Вихідний код",
   // END /
   // /auth/signin
   "signin.title": "З поверненням",
