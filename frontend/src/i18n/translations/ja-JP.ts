@@ -11,16 +11,16 @@ export default {
   "navbar.avatar.signout": "サインアウト",
   // END navbar
   // /
-  "home.title": "<h>セルフホスト</h>のファイル共有プラットフォーム。",
-  "home.description": "WeTransferのようなサードパーティーサービスに自分のファイルを渡したいですか？",
-  "home.bullet.a.name": "セルフホスト",
-  "home.bullet.a.description": "Pingvin Shareをあなたのマシンでホストしましょう。",
-  "home.bullet.b.name": "プライバシー",
-  "home.bullet.b.description": "あなたのファイルはあなたのものであり、第三者がアクセスすることは決してありません。",
-  "home.bullet.c.name": "ファイルサイズ制限に悩まされることはありません",
-  "home.bullet.c.description": "必要なだけ大きなファイルをアップロードできます。制限があるのはハードドライブのみです。",
-  "home.button.start": "始めましょう",
-  "home.button.source": "ソースコード",
+  "home.title": "<h>DropMB.com</h> a free file-sharing platform.",
+  "home.description": "Our platform allows you to generate a link for any file you wish to share, ensuring a hassle-free transfer experience.",
+  "home.bullet.a.name": "Custom Expiration & Download Limits",
+  "home.bullet.a.description": "You have the option to set expiration dates on your shared files, customize download limits, or provide password protection.",
+  "home.bullet.b.name": "Sharing via Email",
+  "home.bullet.b.description": "An integrated email feature allows you to send files directly to recipients' inboxes.",
+  "home.bullet.c.name": "Contact Us",
+  "home.bullet.c.description": "For any inquiries, takedown requests, or other concerns, please reach out to us directly at admin@dropmb.com.",
+  "home.button.start": "New upload",
+  "home.button.source": "About",
   // END /
   // /auth/signin
   "signin.title": "おかえりなさい",
