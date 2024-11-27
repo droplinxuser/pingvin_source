@@ -11,19 +11,16 @@ export default {
   "navbar.avatar.signout": "Kirjaudu ulos",
   // END navbar
   // /
-  "home.title": '<h>"Itse isännöitty"</h> tiedostojen jakamisen alusta.',
-  "home.description":
-    "Haluatko oikeasti jakaa yksityisiä tiedostojasi kolmannen osapuolen yhtiöille niin kuin WeTransfer?",
-  "home.bullet.a.name": "Itse-Isännöitty",
-  "home.bullet.a.description": 'Isännöi "Pingvin Share" omalla palvelimellasi.',
-  "home.bullet.b.name": "Yksityisyys",
-  "home.bullet.b.description":
-    "Your files are yours and will never be accessed by third parties.",
-  "home.bullet.c.name": "Ei ärsyttävää tiedoston kokorajoitusta",
-  "home.bullet.c.description":
-    "Upload files as big as you want. Only your hard drive will be your limit.",
-  "home.button.start": "Aloita",
-  "home.button.source": "Lähdekoodi",
+  "home.title": "<h>DropMB.com</h> a free file-sharing platform.",
+  "home.description": "Our platform allows you to generate a link for any file you wish to share, ensuring a hassle-free transfer experience.",
+  "home.bullet.a.name": "Custom Expiration & Download Limits",
+  "home.bullet.a.description": "You have the option to set expiration dates on your shared files, customize download limits, or provide password protection.",
+  "home.bullet.b.name": "Sharing via Email",
+  "home.bullet.b.description": "An integrated email feature allows you to send files directly to recipients' inboxes.",
+  "home.bullet.c.name": "Contact Us",
+  "home.bullet.c.description": "For any inquiries, takedown requests, or other concerns, please reach out to us directly at admin@dropmb.com.",
+  "home.button.start": "New upload",
+  "home.button.source": "About",
   // END /
   // /auth/signin
   "signin.title": "Tervetuloa takaisin",
