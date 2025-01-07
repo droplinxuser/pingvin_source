@@ -34,7 +34,7 @@ const Footer = () => {
             href="https://phc.onl/contact"
             target="_blank"
           >
-            for any inquiries or takedown requests
+            for any inquiries
           </Anchor>
         </Text>
         <div>
