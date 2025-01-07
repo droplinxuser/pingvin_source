@@ -28,13 +28,13 @@ const Footer = () => {
       <SimpleGrid cols={isMobile ? 2 : 3} m={0}>
         {!isMobile && <div></div>}
         <Text size="xs" color="dimmed" align={isMobile ? "left" : "center"}>
-          Powered by{" "}
+          Contact {" "}
           <Anchor
             size="xs"
-            href="https://dropmb.com/about"
+            href="https://phc.onl/contact"
             target="_blank"
           >
-            PHCorner
+            for any inquiries or takedown requests
           </Anchor>
         </Text>
         <div>
