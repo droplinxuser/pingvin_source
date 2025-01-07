@@ -16,9 +16,10 @@ import {
   TbMail,
   TbShare,
   TbSocial,
-  TbSquare,
+  TbBucket,
   TbBinaryTree,
   TbSettings,
+  TbScale,
 } from "react-icons/tb";
 import { FormattedMessage } from "react-intl";
 
@@ -29,6 +30,8 @@ const categories = [
   { name: "SMTP", icon: <TbAt /> },
   { name: "OAuth", icon: <TbSocial /> },
   { name: "LDAP", icon: <TbBinaryTree /> },
+  { name: "S3", icon: <TbBucket /> },
+  { name: "Legal", icon: <TbScale /> },
 ];
 
 const useStyles = createStyles((theme) => ({
