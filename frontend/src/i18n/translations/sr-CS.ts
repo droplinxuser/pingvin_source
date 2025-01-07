@@ -11,16 +11,16 @@ export default {
   "navbar.avatar.signout": "Odjavi se",
   // END navbar
   // /
-  "home.title": "<h>Samo-hostovana</h> platforma za deljenje fajlova.",
-  "home.description": "Da li zaista želite da date svoje lične datoteke u ruke trećih strana kao što je WeTransfer?",
-  "home.bullet.a.name": "Samo-hostovano",
-  "home.bullet.a.description": "Hostujte Pingvin Share na svojoj mašini.",
-  "home.bullet.b.name": "Privatnost",
-  "home.bullet.b.description": "Vaše datoteke su vaše i nikada neće biti dostupne trećim stranama.",
-  "home.bullet.c.name": "Nema dosadnog ograničenja veličine datoteke",
-  "home.bullet.c.description": "Otpremite onoliko velikih datoteka koliko želite. Samo vaš čvrsti disk je granica.",
-  "home.button.start": "Započni",
-  "home.button.source": "Izvorni kod",
+  "home.title": "<h>DropMB.com</h> a free file-sharing platform.",
+  "home.description": "Our platform allows you to generate a link for any file you wish to share, ensuring a hassle-free transfer experience.",
+  "home.bullet.a.name": "Custom Expiration & Download Limits",
+  "home.bullet.a.description": "You have the option to set expiration dates on your shared files, customize download limits, or provide password protection.",
+  "home.bullet.b.name": "Sharing via Email",
+  "home.bullet.b.description": "An integrated email feature allows you to send files directly to recipients' inboxes.",
+  "home.bullet.c.name": "Contact Us",
+  "home.bullet.c.description": "For any inquiries, takedown requests, or other concerns, please reach out to us directly at admin@dropmb.com.",
+  "home.button.start": "New upload",
+  "home.button.source": "About",
   // END /
   // /auth/signin
   "signin.title": "Dobrodošli nazad",
