@@ -302,6 +302,8 @@ export default {
   "privacy.title": "プライバシーポリシー",
   // END /privacy
   // /admin/config
+  "admin.config.config-file-warning.title": "構成ファイルがあります",
+  "admin.config.config-file-warning.description": "設定ファイル設定で済みのPingvin ShareはUI を使用して設定を変更することはできません。",
   "admin.config.title": "設定",
   "admin.config.category.general": "一般",
   "admin.config.category.share": "共有",
@@ -317,7 +319,7 @@ export default {
   "admin.config.general.show-home-page": "ホームページを表示する",
   "admin.config.general.show-home-page.description": "ホームページを表示するかどうか選択",
   "admin.config.general.session-duration": "セッション期間",
-  "admin.config.general.session-duration.description": "ユーザーが再度ログインする必要がある時間（時間単位）（デフォルト: 3 か月）。",
+  "admin.config.general.session-duration.description": "ユーザーが再度ログインするまでの時間（デフォルト: 3 ヶ月）。",
   "admin.config.general.logo": "ロゴ",
   "admin.config.general.logo.description": "新しい画像をアップロードしてロゴを変更できます。画像は、PNG形式でアスペクト比が1:1である必要があります。",
   "admin.config.general.logo.placeholder": "画像を選択",
@@ -362,7 +364,7 @@ export default {
   "admin.config.smtp.port": "ポート番号",
   "admin.config.smtp.port.description": "SMTPサーバーのポート番号",
   "admin.config.smtp.email": "メールアドレス",
-  "admin.config.smtp.email.description": "メールの送信元となるメールアドレス",
+  "admin.config.smtp.email.description": "メール送信元のメールアドレス",
   "admin.config.smtp.username": "ユーザー名",
   "admin.config.smtp.username.description": "SMTPサーバーのユーザー名",
   "admin.config.smtp.password": "パスワード",

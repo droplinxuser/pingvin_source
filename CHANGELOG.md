@@ -1,3 +1,61 @@
+## [1.10.4](https://github.com/stonith404/pingvin-share/compare/v1.10.3...v1.10.4) (2025-03-20)
+
+
+### Bug Fixes
+
+* admin role gets reset if signing in with an OIDC provider ([ccb7fdc](https://github.com/stonith404/pingvin-share/commit/ccb7fdca43a2d458243e56a24510fe5325fa7942))
+
+## [1.10.3](https://github.com/stonith404/pingvin-share/compare/v1.10.2...v1.10.3) (2025-03-10)
+
+
+### Bug Fixes
+
+* error while signing in with OIDC if roles claim is undefined ([b737cba](https://github.com/stonith404/pingvin-share/commit/b737cba35e59255904eccae9e9de1cbd36284fb1))
+
+## [1.10.2](https://github.com/stonith404/pingvin-share/compare/v1.10.1...v1.10.2) (2025-03-07)
+
+
+### Bug Fixes
+
+* don't throw error if group claim is missing ([e7b3c48](https://github.com/stonith404/pingvin-share/commit/e7b3c48ff48bd7cfb206c32ea97862b757057573))
+
+## [1.10.1](https://github.com/stonith404/pingvin-share/compare/v1.10.0...v1.10.1) (2025-02-28)
+
+
+### Bug Fixes
+
+* admin property can't be set if OAuth2 user email doesn't match actual user's email ([1159d97](https://github.com/stonith404/pingvin-share/commit/1159d972a8c32a0d6bf53d161c2fc09e6f8dfb28))
+* type error when trying to run the seed command ([b6d1720](https://github.com/stonith404/pingvin-share/commit/b6d1720fe637497ad624c6cdc40058b1b0f0c74c))
+
+## [1.10.0](https://github.com/stonith404/pingvin-share/compare/v1.9.1...v1.10.0) (2025-02-28)
+
+
+### Features
+
+* add ability to configure application with a config file ([#740](https://github.com/stonith404/pingvin-share/issues/740)) ([9dfb52a](https://github.com/stonith404/pingvin-share/commit/9dfb52a14587065dacd9fcd2bb2efa1b458880a5))
+
+
+### Bug Fixes
+
+* confusing config configuration description for session duration ([28fdbc2](https://github.com/stonith404/pingvin-share/commit/28fdbc22814260040c78e27a62d86b84df83751f))
+* page crash if new release check fails ([e848675](https://github.com/stonith404/pingvin-share/commit/e848675d634a08efe3aac4e02d98136c36b36bfc))
+* smtp password gets autofilled in Firefox ([f429142](https://github.com/stonith404/pingvin-share/commit/f4291421b5531b0eeae5bcca9139f80c3cd43b4b))
+
+## [1.9.1](https://github.com/stonith404/pingvin-share/compare/v1.9.0...v1.9.1) (2025-02-14)
+
+
+### Bug Fixes
+
+* page doesn't reload on user deletion ([a2e0313](https://github.com/stonith404/pingvin-share/commit/a2e031326e51f7663c2d864dd0d08a65f180318e))
+* redirection to the OIDC end session endpoint ([ec92e85](https://github.com/stonith404/pingvin-share/commit/ec92e85c8d294b30117ad2599ad03b0bbb04574c))
+
+## [1.9.0](https://github.com/stonith404/pingvin-share/compare/v1.8.2...v1.9.0) (2025-02-12)
+
+
+### Features
+
+* ability to add email to recipients list by clicking enter ([#760](https://github.com/stonith404/pingvin-share/issues/760)) ([70b577f](https://github.com/stonith404/pingvin-share/commit/70b577f5ac8385cfc6a22ffee4c7e317e3cc6403))
+
 ## [1.8.2](https://github.com/stonith404/pingvin-share/compare/v1.8.1...v1.8.2) (2025-01-21)
 
 
