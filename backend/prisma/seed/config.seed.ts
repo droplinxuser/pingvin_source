@@ -12,7 +12,7 @@ export const configVariables = {
   general: {
     appName: {
       type: "string",
-      defaultValue: "DropMB",
+      defaultValue: "Dropden",
       secret: false,
     },
     appUrl: {
@@ -89,7 +89,7 @@ export const configVariables = {
     shareRecipientsMessage: {
       type: "text",
       defaultValue:
-        "Hey!\n\n{creator} ({creatorEmail}) shared some files with you, view or download the files with this link: {shareUrl}\n\nThe share will expire {expires}.\n\nNote: {desc}\n\nShared securely with DropMB",
+        "Hey!\n\n{creator} ({creatorEmail}) shared some files with you, view or download the files with this link: {shareUrl}\n\nThe share will expire {expires}.\n\nNote: {desc}\n\nShared securely with Dropden",
     },
     reverseShareSubject: {
       type: "string",
@@ -98,25 +98,25 @@ export const configVariables = {
     reverseShareMessage: {
       type: "text",
       defaultValue:
-        "Hey!\n\nA share was just created with your reverse share link: {shareUrl}\n\nShared securely with DropMB",
+        "Hey!\n\nA share was just created with your reverse share link: {shareUrl}\n\nShared securely with Dropden",
     },
     resetPasswordSubject: {
       type: "string",
-      defaultValue: "DropMB password reset",
+      defaultValue: "Dropden password reset",
     },
     resetPasswordMessage: {
       type: "text",
       defaultValue:
-        "Hey!\n\nYou requested a password reset. Click this link to reset your password: {url}\nThe link expires in a hour.\n\nDropMB",
+        "Hey!\n\nYou requested a password reset. Click this link to reset your password: {url}\nThe link expires in a hour.\n\nDropden",
     },
     inviteSubject: {
       type: "string",
-      defaultValue: "DropMB invite",
+      defaultValue: "Dropden invite",
     },
     inviteMessage: {
       type: "text",
       defaultValue:
-        'Hey!\n\nYou were invited to DropMB. Click this link to accept the invite: {url}\n\nYou can use the email "{email}" and the password "{password}" to sign in.\n\nDropMB',
+        'Hey!\n\nYou were invited to Dropden. Click this link to accept the invite: {url}\n\nYou can use the email "{email}" and the password "{password}" to sign in.\n\nDropden',
     },
   },
   smtp: {

@@ -166,7 +166,7 @@ export default function Home() {
               </Button>
               <Button
                 component={Link}
-                href="https://dropmb.com/about"
+                href="https://dropden.com/about"
                 target="_blank"
                 variant="default"
                 radius="xl"
