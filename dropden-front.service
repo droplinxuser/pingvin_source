@@ -1,5 +1,5 @@
 [Unit]
-Description=Pingvin Frontend
+Description=Dropden Frontend
 After=network.target
 StartLimitIntervalSec=30
 StartLimitBurst=5
@@ -13,7 +13,7 @@ LimitNOFILE=524288
 
 Environment=PORT=3030
 
-WorkingDirectory=/var/www/pingvin_source/frontend
+WorkingDirectory=/var/www/dropden_source/frontend
 ExecStart=/usr/bin/node .next/standalone/server.js
 
 [Install]
