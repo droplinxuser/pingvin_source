@@ -38,6 +38,7 @@ const DownloadAllButton = ({ shareId }: { shareId: string }) => {
   }, []);
 
   return (
+    isZipReady && (
     <Button
       variant="outline"
       loading={isLoading}
@@ -51,6 +52,7 @@ const DownloadAllButton = ({ shareId }: { shareId: string }) => {
     >
       <FormattedMessage id="share.button.download-all" />
     </Button>
+  )
   );
 };
 
