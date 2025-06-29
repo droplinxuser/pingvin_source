@@ -11,16 +11,16 @@ export default {
   "navbar.avatar.signout": "Çıkış Yap",
   // END navbar
   // /
-  "home.title": "Kendi sunucunuzda <h>barındırabileceğiniz</h> bir dosya paylaşım platformu.",
-  "home.description": "Kişisel dosyalarınızı gerçekten WeTransfer gibi üçüncü taraf hizmetlere emanet etmek istiyor musunuz?",
-  "home.bullet.a.name": "Kendi Sunucunda Barındır",
-  "home.bullet.a.description": "Pingvin Share'i kendi sunucunuzda barındırın.",
-  "home.bullet.b.name": "Gizlilik",
-  "home.bullet.b.description": "Dosyalarınız size aittir ve asla üçüncü taraflarca erişilemez.",
-  "home.bullet.c.name": "Can Sıkıcı Dosya Boyutu Limiti Yok",
-  "home.bullet.c.description": "İstediğiniz kadar büyük dosyalar yükleyin. Tek limitiniz sabit diskiniz olacak.",
-  "home.button.start": "Hemen Başlayın",
-  "home.button.source": "Kaynak Kodu",
+  "home.title": "<h>DropMB.com</h> a free file-sharing platform.",
+  "home.description": "Our platform allows you to generate a link for any file you wish to share, ensuring a hassle-free transfer experience.",
+  "home.bullet.a.name": "Custom Expiration & Download Limits",
+  "home.bullet.a.description": "You have the option to set expiration dates on your shared files, customize download limits, or provide password protection.",
+  "home.bullet.b.name": "Sharing via Email",
+  "home.bullet.b.description": "An integrated email feature allows you to send files directly to recipients' inboxes.",
+  "home.bullet.c.name": "Contact Us",
+  "home.bullet.c.description": "For any inquiries, takedown requests, or other concerns, please reach out to us directly at admin@dropmb.com.",
+  "home.button.start": "New upload",
+  "home.button.source": "About",
   // END /
   // /auth/signin
   "signin.title": "Tekrar hoş geldiniz",
