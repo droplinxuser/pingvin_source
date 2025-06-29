@@ -12,7 +12,7 @@ export const configVariables = {
   general: {
     appName: {
       type: "string",
-      defaultValue: "Pingvin Share",
+      defaultValue: "DropMB",
       secret: false,
     },
     appUrl: {
@@ -108,7 +108,7 @@ export const configVariables = {
     shareRecipientsMessage: {
       type: "text",
       defaultValue:
-        "Hey!\n\n{creator} ({creatorEmail}) shared some files with you. You can view or download the files with this link: {shareUrl}\n\nThe share will expire {expires}.\n\nNote: {desc}\n\nShared securely with Pingvin Share 🐧",
+        "Hey!\n\n{creator} ({creatorEmail}) shared some files with you. You can view or download the files with this link: {shareUrl}\n\nThe share will expire {expires}.\n\nNote: {desc}\n\nShared securely with DropMB",
     },
     reverseShareSubject: {
       type: "string",
@@ -117,25 +117,25 @@ export const configVariables = {
     reverseShareMessage: {
       type: "text",
       defaultValue:
-        "Hey!\n\nA share was just created with your reverse share link: {shareUrl}\n\nShared securely with Pingvin Share 🐧",
+        "Hey!\n\nA share was just created with your reverse share link: {shareUrl}\n\nShared securely with DropMB",
     },
     resetPasswordSubject: {
       type: "string",
-      defaultValue: "Pingvin Share password reset",
+      defaultValue: "DropMB password reset",
     },
     resetPasswordMessage: {
       type: "text",
       defaultValue:
-        "Hey!\n\nYou requested a password reset. Click this link to reset your password: {url}\nThe link expires in an hour.\n\nPingvin Share 🐧",
+        "Hey!\n\nYou requested a password reset. Click this link to reset your password: {url}\nThe link expires in an hour.\n\nDropMB",
     },
     inviteSubject: {
       type: "string",
-      defaultValue: "Pingvin Share invite",
+      defaultValue: "DropMB invite",
     },
     inviteMessage: {
       type: "text",
       defaultValue:
-        'Hey!\n\nYou were invited to Pingvin Share. Click this link to accept the invite: {url}\n\nYou can use the email "{email}" and the password "{password}" to sign in.\n\nPingvin Share 🐧',
+        'Hey!\n\nYou were invited to DropMB. Click this link to accept the invite: {url}\n\nYou can use the email "{email}" and the password "{password}" to sign in.\n\nDropMB',
     },
   },
   smtp: {
@@ -431,7 +431,7 @@ const prisma = new PrismaClient({
     db: {
       url:
         process.env.DATABASE_URL ||
-        "file:../data/pingvin-share.db?connection_limit=1",
+        "file:/var/www/pingvin_data/pingvin-share.db?connection_limit=1",
     },
   },
 });
