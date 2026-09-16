@@ -1,8 +1,10 @@
 > ## ⚠️ Project Archived
 >
-> After much consideration, I've chosen to focus my limited time and energy on my other project, [Pocket ID](https://github.com/pocket-id/pocket-id). As a solo developer, I've found it difficult to actively maintain multiple open source projects with the care and attention they deserve.
+> Pingvin Share has been archived since Jun 29, 2025.
 >
-> If you're interested in continuing this work through a fork, I'd be happy to link to it here in the README.
+> **I recommend you to checkout [Pingvin Share X](https://github.com/smp46/pingvin-share-x), a well-maintained fork as of May 2026.**
+>
+> After much consideration, I've chosen to focus my limited time and energy on my other project, [Pocket ID](https://github.com/pocket-id/pocket-id). As a solo developer, I've found it difficult to actively maintain multiple open source projects with the care and attention they deserve.
 >
 > Thanks to all the contributors and users who have supported Pingvin Share over the years :)
 
