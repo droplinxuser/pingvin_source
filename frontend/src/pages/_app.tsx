@@ -142,7 +142,7 @@ function App({ Component, pageProps }: AppProps) {
                       >
                         <div>
                           <Header />
-                          <Container>
+                          <Container size="lg">
                             <Component {...pageProps} />
                           </Container>
                         </div>
