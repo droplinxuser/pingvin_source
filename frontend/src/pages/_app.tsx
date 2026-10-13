@@ -142,7 +142,7 @@ function App({ Component, pageProps }: AppProps) {
                       >
                         <div>
                           <Header />
-                          <Container size="lg">
+                          <Container size={router.pathname === "/admin/shares" ? "lg" : undefined}>
                             <Component {...pageProps} />
                           </Container>
                         </div>
