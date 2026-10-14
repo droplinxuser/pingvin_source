@@ -6,6 +6,7 @@ import { FormattedMessage } from "react-intl";
 import Meta from "../../../components/Meta";
 import DownloadAllButton from "../../../components/share/DownloadAllButton";
 import FileList from "../../../components/share/FileList";
+import Ads from "../../../components/Ads";
 import showEnterPasswordModal from "../../../components/share/showEnterPasswordModal";
 import showErrorModal from "../../../components/share/showErrorModal";
 import useTranslate from "../../../hooks/useTranslate.hook";
@@ -137,6 +138,7 @@ const Share = ({ shareId }: { shareId: string }) => {
         share={share!}
         isLoading={!share}
       />
+      <Ads />
     </>
   );
 };
