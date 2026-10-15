@@ -181,7 +181,7 @@ const MediaPreviewCard = ({
       withBorder
       radius="md"
       p="sm"
-      sx={{ display: "flex", flexDirection: "column" }}
+      sx={{ display: "flex", flexDirection: "column", minWidth: 0 }}
     >
       {isNotSupported ? (
         <MediaNotSupported />
@@ -214,6 +214,7 @@ const MediaPreviewCard = ({
               variant="light"
               color="blue"
               size={30}
+              aria-label={t("share.modal.file-preview.original_file")}
             >
               <TbExternalLink />
             </ActionIcon>
@@ -223,6 +224,7 @@ const MediaPreviewCard = ({
               variant="light"
               color="cyan"
               size={30}
+              aria-label={t("common.button.download")}
               onClick={() =>
                 shareService.downloadFile(shareId, file.id, recipientId)
               }
