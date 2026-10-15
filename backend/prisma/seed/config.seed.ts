@@ -12,7 +12,7 @@ export const configVariables = {
   general: {
     appName: {
       type: "string",
-      defaultValue: "Pingvin Share X",
+      defaultValue: "SiteName",
       secret: false,
     },
     appUrl: {
@@ -226,7 +226,7 @@ export const configVariables = {
     shareRecipientsMessage: {
       type: "text",
       defaultValue:
-        "Hey!\n\n{creator} ({creatorEmail}) shared some files with you. You can view or download the files with this link: {shareUrl}\n\nThe share will expire {expires}.\n\nNote: {desc}\n\nShared securely with Pingvin Share 🐧",
+        "Hey!\n\n{creator} ({creatorEmail}) shared some files with you. You can view or download the files with this link: {shareUrl}\n\nThe share will expire {expires}.\n\nNote: {desc}\n\nShared securely with {appName}",
     },
     reverseShareSubject: {
       type: "string",
@@ -235,25 +235,25 @@ export const configVariables = {
     reverseShareMessage: {
       type: "text",
       defaultValue:
-        "Hey {name}!\n\nA share was just created with your reverse share link: {shareUrl}\n\nShared securely with Pingvin Share 🐧",
+        "Hey {name}!\n\nA share was just created with your reverse share link: {shareUrl}\n\nShared securely with {appName}",
     },
     resetPasswordSubject: {
       type: "string",
-      defaultValue: "Pingvin Share password reset",
+      defaultValue: "{appName} password reset",
     },
     resetPasswordMessage: {
       type: "text",
       defaultValue:
-        "Hey {name}!\n\nYou requested a password reset. Click this link to reset your password: {url}\nThe link expires in an hour.\n\nPingvin Share 🐧",
+        "Hey {name}!\n\nYou requested a password reset. Click this link to reset your password: {url}\nThe link expires in an hour.\n\n{appName}",
     },
     inviteSubject: {
       type: "string",
-      defaultValue: "Pingvin Share invite",
+      defaultValue: "{appName} invite",
     },
     inviteMessage: {
       type: "text",
       defaultValue:
-        'Hey {name}!\n\nYou were invited to Pingvin Share. Click this link to accept the invite: {url}\n\nYou can use the email "{email}" and the password "{password}" to sign in.\n\nPingvin Share 🐧',
+        'Hey {name}!\n\nYou were invited to {appName}. Click this link to accept the invite: {url}\n\nYou can use the email "{email}" and the password "{password}" to sign in.\n\n{appName}',
     },
     shareDownloadNotificationSubject: {
       type: "string",
@@ -262,16 +262,16 @@ export const configVariables = {
     shareDownloadNotificationMessage: {
       type: "text",
       defaultValue:
-        "Hey!\n\n{recipientEmail} downloaded {fileName} from your share: {shareUrl}\n\nPingvin Share 🐧",
+        "Hey!\n\n{recipientEmail} downloaded {fileName} from your share: {shareUrl}\n\n{appName}",
     },
     verificationSubject: {
       type: "string",
-      defaultValue: "Verify your Pingvin Share account",
+      defaultValue: "Verify your {appName} account",
     },
     verificationMessage: {
       type: "text",
       defaultValue:
-        "Hey {name}!\n\nYou just signed up for Pingvin Share. Click this link to verify your account: {url}\n\nThe link expires in 24 hours.\n\nPingvin Share 🐧",
+        "Hey {name}!\n\nYou just signed up for {appName}. Click this link to verify your account: {url}\n\nThe link expires in 24 hours.\n\n{appName}",
     },
   },
   smtp: {

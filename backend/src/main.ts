@@ -1,3 +1,9 @@
+import { config as loadEnvConfig } from "dotenv";
+
+// Load .env files (backend/.env first, then the repository root .env)
+// before any other module reads process.env.
+loadEnvConfig({ path: [".env", "../.env"] });
+
 import { ClassSerializerInterceptor, Logger, LogLevel } from "@nestjs/common";
 import { NestFactory, Reflector } from "@nestjs/core";
 import { NestExpressApplication } from "@nestjs/platform-express";

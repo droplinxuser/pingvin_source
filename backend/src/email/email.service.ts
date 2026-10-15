@@ -125,6 +125,7 @@ export class EmailService {
       recipient: recipientName ?? "",
       recipientEmail,
       email: recipientEmail,
+      appName: this.config.get("general.appName"),
     };
 
     await this.sendMail(
@@ -162,6 +163,7 @@ export class EmailService {
       shareUrl,
       creator: creatorName ?? "",
       name: creatorName ?? "",
+      appName: this.config.get("general.appName"),
     };
 
     await this.sendMail(
@@ -191,6 +193,7 @@ export class EmailService {
       creator: recipientName ?? "",
       recipient: recipientName ?? "",
       email: recipientEmail,
+      appName: this.config.get("general.appName"),
     };
 
     await this.sendMail(
@@ -216,6 +219,7 @@ export class EmailService {
       username: recipientName ?? "",
       displayName: recipientName ?? "",
       email: recipientEmail,
+      appName: this.config.get("general.appName"),
     };
 
     await this.sendMail(
@@ -240,6 +244,7 @@ export class EmailService {
       name: recipientName ?? "",
       username: recipientName ?? "",
       displayName: recipientName ?? "",
+      appName: this.config.get("general.appName"),
     };
 
     await this.sendMail(
@@ -265,6 +270,7 @@ export class EmailService {
       username: recipientName ?? "",
       displayName: recipientName ?? "",
       email: recipientEmail,
+      appName: this.config.get("general.appName"),
     };
 
     await this.sendMail(

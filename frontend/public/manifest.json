@@ -1,5 +1,6 @@
 {
-  "name": "Pingvin Share X",
+  "name": "SiteName",
+  "short_name": "SiteName",
   "theme_color": "#46509e",
   "background_color": "#ffffff",
   "display": "standalone",
