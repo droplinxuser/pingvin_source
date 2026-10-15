@@ -203,7 +203,6 @@ export default {
   "account.reverseShares.modal.public-access.description": "Gjer delingar oppretta med denne omvende delinga offentlege. Om deaktivert, vil berre du og den som oppretta delinga ha tilgang til å sjå ho.",
   "account.reverseShares.modal.max-use.label": "Maks tal på bruk",
   "account.reverseShares.modal.max-use.description": "Det maksimale talet på gonger denne URL-en kan brukast til å opprette ei deling.",
-  "account.reverseShare.never-expires": "Denne omvende delinga vil aldri gå ut.",
   "account.reverseShare.expires-on": "Denne omvende delinga går ut den {expiration}.",
   "account.reverseShares.table.no-shares": "Ingen delingar oppretta enno",
   "account.reverseShares.table.count.singular": "deling",
@@ -282,6 +281,13 @@ export default {
   "admin.shares.table.deletes": "Slettast den",
   "admin.shares.edit.delete.title": "Slett deling: {id}",
   "admin.shares.edit.delete.description": "Vil du verkeleg slette denne delinga?",
+  "admin.shares.notify.deleted": "Share deleted successfully",
+
+  "admin.shares.search.placeholder": "Search by name, creator or share ID",
+  "admin.shares.empty": "No shares found",
+  "admin.shares.search.empty": "No shares match your search query",
+  "admin.shares.search.clear": "Clear search",
+
   // END /admin/shares
 
   // /upload
@@ -317,8 +323,6 @@ export default {
   "upload.modal.link.error.s3-etag-missing": "Mangler ETag-header i S3-respons. Sørg for at CORS eksponerer ETag-headeren.",
   "upload.modal.not-signed-in": "Du er ikkje logget inn",
   "upload.modal.not-signed-in-description": "Du vil ikkje kunne slette delinga di manuelt eller sjå talet på besøkjande.",
-  "upload.modal.expires.never": "aldri",
-  "upload.modal.expires.never-long": "Permanent deling",
   "upload.modal.expires.error.too-long": "Utgangsdatoen overskrider maksgrensen på {max}.",
   "upload.modal.link.label": "Lenkje",
   "upload.modal.expires.label": "Utgang",
@@ -347,7 +351,6 @@ export default {
   "upload.modal.accordion.security.max-views.label": "Maksimalt tal på visingar",
   "upload.modal.accordion.security.max-views.placeholder": "Ingen grense",
   // showCompletedUploadModal.tsx
-  "upload.modal.completed.never-expires": "Denne delinga vil aldri gå ut.",
   "upload.modal.completed.expires-on": "Denne delinga går ut den {expiration}.",
   "upload.modal.completed.share-ready": "Deling er klar",
   "upload.modal.completed.notified-reverse-share-creator": "Vi har varsla opprettaren av den omvende delinga. Du kan også manuelt dele denne lenkja med dei på andre måtar.",
@@ -613,6 +616,9 @@ export default {
   "admin.config.oauth.oidc-client-id.description": "Client ID for OpenID Connect OAuth-appen",
   "admin.config.oauth.oidc-client-secret": "OpenID Connect Client Secret",
   "admin.config.oauth.oidc-client-secret.description": "Client Secret for OpenID Connect OAuth-appen",
+  "admin.config.oauth.allowed-hosts": "Allowed OAuth Hosts",
+  "admin.config.oauth.allowed-hosts.description":
+    "Comma-separated list of additional hostnames allowed for OAuth sign-in (e.g. share.internal.example.com).",
   "admin.config.category.ldap": "LDAP",
   "admin.config.ldap.enabled": "Aktiver LDAP",
   "admin.config.ldap.enabled.description": "Bruk LDAP-autentisering for brukarinnlogging",

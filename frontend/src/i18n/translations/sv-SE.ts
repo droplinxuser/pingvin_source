@@ -17,16 +17,16 @@ export default {
   // END footer
 
   // /
-  "home.title": "En <h>egen</h> fildelningsplattform.",
-  "home.description": "Vill du verkligen lägga dina personliga filer hos en tredje part som WeTransfer?",
-  "home.bullet.a.name": "Lokalt installerad",
-  "home.bullet.a.description": "Hosta Pingvin Share på din egen maskin.",
-  "home.bullet.b.name": "Sekretess",
-  "home.bullet.b.description": "Dina filer är dina och kommer aldrig att nås av tredje part.",
-  "home.bullet.c.name": "Ingen irriterande filstorleksbegränsning",
-  "home.bullet.c.description": "Ladda upp filer så stora du vill. Endast hårddisken kommer vara din begränsning.",
-  "home.button.start": "Kom igång",
-  "home.button.source": "Källkod",
+  "home.title": "<h>{siteName}</h> a free file-sharing platform.",
+  "home.description": "Our platform allows you to generate a link for any file you wish to share, ensuring a hassle-free transfer experience.",
+  "home.bullet.a.name": "Custom Expiration & Download Limits",
+  "home.bullet.a.description": "You have the option to set expiration dates on your shared files, customize download limits, or provide password protection.",
+  "home.bullet.b.name": "Sharing via Email",
+  "home.bullet.b.description": "An integrated email feature allows you to send files directly to recipients' inboxes.",
+  "home.bullet.c.name": "Contact Us",
+  "home.bullet.c.description": "For any inquiries, takedown requests, or other concerns, please reach out to us directly at {contactEmail}.",
+  "home.button.start": "New upload",
+  "home.button.source": "About",
   // END /
 
   // /auth/signin
@@ -203,7 +203,6 @@ export default {
   "account.reverseShares.modal.public-access.description": "Gör delningar skapade med denna länk för omvänd delning publik. Om inaktiverad, kommer endast du och delningsskaparen att ha tillgång till den.",
   "account.reverseShares.modal.max-use.label": "Maxanvändningar",
   "account.reverseShares.modal.max-use.description": "Den maximala mängden gånger denna URL kan användas för att skapa en delning.",
-  "account.reverseShare.never-expires": "Denna omvända delning kommer aldrig att förfalla.",
   "account.reverseShare.expires-on": "Denna sammanlagda delning löper ut på {expiration}.",
   "account.reverseShares.table.no-shares": "Inga delningar har skapats ännu",
   "account.reverseShares.table.count.singular": "delning",
@@ -282,6 +281,13 @@ export default {
   "admin.shares.table.deletes": "Raderar den",
   "admin.shares.edit.delete.title": "Ta bort delning: {id}",
   "admin.shares.edit.delete.description": "Vill du verkligen ta bort denna delning?",
+  "admin.shares.notify.deleted": "Share deleted successfully",
+
+  "admin.shares.search.placeholder": "Search by name, creator or share ID",
+  "admin.shares.empty": "No shares found",
+  "admin.shares.search.empty": "No shares match your search query",
+  "admin.shares.search.clear": "Clear search",
+
   // END /admin/shares
 
   // /upload
@@ -317,8 +323,6 @@ export default {
   "upload.modal.link.error.s3-etag-missing": "ETag-header saknas i S3-svaret. Se till att CORS exponerar ETag-headern.",
   "upload.modal.not-signed-in": "Du är inte inloggad",
   "upload.modal.not-signed-in-description": "Du kommer inte att kunna ta bort din delning manuellt och visa antalet besökare.",
-  "upload.modal.expires.never": "aldrig",
-  "upload.modal.expires.never-long": "Permanent delning",
   "upload.modal.expires.error.too-long": "Förfallodatum överskrider maximalt av {max}.",
   "upload.modal.link.label": "Länk",
   "upload.modal.expires.label": "Förfaller",
@@ -347,7 +351,6 @@ export default {
   "upload.modal.accordion.security.max-views.label": "Max antal visningar",
   "upload.modal.accordion.security.max-views.placeholder": "Ingen gräns",
   // showCompletedUploadModal.tsx
-  "upload.modal.completed.never-expires": "Denna delning kommer aldrig att upphöra.",
   "upload.modal.completed.expires-on": "Denna delning upphör att gälla {expiration}.",
   "upload.modal.completed.share-ready": "Delning redo",
   "upload.modal.completed.notified-reverse-share-creator": "Vi har meddelat skaparen av omvänd delning. Du kan också manuellt dela denna länk med dem på andra sätt.",
@@ -613,6 +616,9 @@ export default {
   "admin.config.oauth.oidc-client-id.description": "Client ID för OpenID OAuth",
   "admin.config.oauth.oidc-client-secret": "OpenID Connect Client secret",
   "admin.config.oauth.oidc-client-secret.description": "Client secret för OpenID OAuth",
+  "admin.config.oauth.allowed-hosts": "Allowed OAuth Hosts",
+  "admin.config.oauth.allowed-hosts.description":
+    "Comma-separated list of additional hostnames allowed for OAuth sign-in (e.g. share.internal.example.com).",
   "admin.config.category.ldap": "LDAP",
   "admin.config.ldap.enabled": "Aktivera LDAP",
   "admin.config.ldap.enabled.description": "Använd LDAP-autentisering för användarinloggning",

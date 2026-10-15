@@ -17,16 +17,16 @@ export default {
   // END footer
 
   // /
-  "home.title": "منصة لمشاركة الملفات <h>باستضافة ذاتية</h>.",
-  "home.description": "أحقًا تريد تسليم ملفاتك الشخصية لطرف ثالث مثل WeTransfer؟",
-  "home.bullet.a.name": "استضافة ذاتية",
-  "home.bullet.a.description": "قم باستضافة Pingvin Share على جهازك.",
-  "home.bullet.b.name": "الخصوصية",
-  "home.bullet.b.description": "ملفاتك ملك لك ولن يتم الوصول إليها أبدًا من قبل أطراف ثالثة.",
-  "home.bullet.c.name": "ليس هناك أية قيود على حجم الملفات",
-  "home.bullet.c.description": "ارفع ملفات بالحجم الذي تريده. سيكون القرص الصلب الخاص بك هو الحد الوحيد.",
-  "home.button.start": "ابدأ",
-  "home.button.source": "النص البرمجي المصدري",
+  "home.title": "<h>{siteName}</h> a free file-sharing platform.",
+  "home.description": "Our platform allows you to generate a link for any file you wish to share, ensuring a hassle-free transfer experience.",
+  "home.bullet.a.name": "Custom Expiration & Download Limits",
+  "home.bullet.a.description": "You have the option to set expiration dates on your shared files, customize download limits, or provide password protection.",
+  "home.bullet.b.name": "Sharing via Email",
+  "home.bullet.b.description": "An integrated email feature allows you to send files directly to recipients' inboxes.",
+  "home.bullet.c.name": "Contact Us",
+  "home.bullet.c.description": "For any inquiries, takedown requests, or other concerns, please reach out to us directly at {contactEmail}.",
+  "home.button.start": "New upload",
+  "home.button.source": "About",
   // END /
 
   // /auth/signin
@@ -203,7 +203,6 @@ export default {
   "account.reverseShares.modal.public-access.description": "اجعل المشاركات التي تم إنشاؤها باستخدام هذه المشاركة العكسية عامة. إذا تم التعطيل، فلن يتمكن سوى أنت ومنشئ المشاركة من الوصول لعرضها.",
   "account.reverseShares.modal.max-use.label": "الحد الأقصى لعدد الاستخدامات",
   "account.reverseShares.modal.max-use.description": "أقصى عدد من المرّات التي يمكن فيها استخدام هذا الرابط لإنشاء مشاركة.",
-  "account.reverseShare.never-expires": "لن تنتهي صلاحية هذه المشاركة العكسية أبدًا.",
   "account.reverseShare.expires-on": "هذه المشاركة العكسية ستنتهي صلاحيتها في {expiration}.",
   "account.reverseShares.table.no-shares": "لم يتم إنشاء أي مشاركة بعد",
   "account.reverseShares.table.count.singular": "مشاركة",
@@ -282,6 +281,13 @@ export default {
   "admin.shares.table.deletes": "يُحذف في",
   "admin.shares.edit.delete.title": "حذف المشاركة: {id}",
   "admin.shares.edit.delete.description": "هل تريد حذف هذه المشاركة حقاً؟",
+  "admin.shares.notify.deleted": "Share deleted successfully",
+
+  "admin.shares.search.placeholder": "Search by name, creator or share ID",
+  "admin.shares.empty": "No shares found",
+  "admin.shares.search.empty": "No shares match your search query",
+  "admin.shares.search.clear": "Clear search",
+
   // END /admin/shares
 
   // /upload
@@ -317,8 +323,6 @@ export default {
   "upload.modal.link.error.s3-etag-missing": "ترويسة ETag مفقودة في استجابة S3. تأكد من أن CORS يكشف ترويسة ETag.",
   "upload.modal.not-signed-in": "لم تقم بتسجيل الدخول",
   "upload.modal.not-signed-in-description": "لن تتمكن من حذف مشاركتك يدوياً أو عرض عدد الزوار.",
-  "upload.modal.expires.never": "أبدًا",
-  "upload.modal.expires.never-long": "مشاركة دائمة",
   "upload.modal.expires.error.too-long": "تاريخ انتهاء الصلاحية يتجاوز الحد الأقصى وهو {max}.",
   "upload.modal.link.label": "الرابط",
   "upload.modal.expires.label": "انتهاء الصلاحية",
@@ -347,7 +351,6 @@ export default {
   "upload.modal.accordion.security.max-views.label": "الحد الأقصى للمشاهدات",
   "upload.modal.accordion.security.max-views.placeholder": "لا يوجد حد",
   // showCompletedUploadModal.tsx
-  "upload.modal.completed.never-expires": "لن تنتهي صلاحية هذه المشاركة أبدًا.",
   "upload.modal.completed.expires-on": "هذه المشاركة ستنتهي صلاحيتها في {expiration}.",
   "upload.modal.completed.share-ready": "المشاركة جاهزة",
   "upload.modal.completed.notified-reverse-share-creator": "لقد أبلغنا منشئ المشاركة العكسية. يمكنك أيضًا مشاركة هذا الرابط معه يدويًا عبر وسائل أخرى.",
@@ -613,6 +616,9 @@ export default {
   "admin.config.oauth.oidc-client-id.description": "معرف العميل لتطبيق OpenID Connect OAuth",
   "admin.config.oauth.oidc-client-secret": "الرمز السري لـ OpenID Connect Client",
   "admin.config.oauth.oidc-client-secret.description": "الرّمز السرّي للعميل لتطبيق OpenID Connect OAuth",
+  "admin.config.oauth.allowed-hosts": "Allowed OAuth Hosts",
+  "admin.config.oauth.allowed-hosts.description":
+    "Comma-separated list of additional hostnames allowed for OAuth sign-in (e.g. share.internal.example.com).",
   "admin.config.category.ldap": "LDAP",
   "admin.config.ldap.enabled": "تمكين LDAP",
   "admin.config.ldap.enabled.description": "استخدام مصادقة LDAP لتسجيل دخول المستخدمين",

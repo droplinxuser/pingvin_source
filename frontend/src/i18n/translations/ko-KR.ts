@@ -17,16 +17,16 @@ export default {
   // END footer
 
   // /
-  "home.title": "<h>직접 호스팅</h>하는 파일 공유 플랫폼.",
-  "home.description": "정말 WeTransfer와 같은 제3자에게 개인 파일을 맡기고 싶으세요?",
-  "home.bullet.a.name": "직접 호스팅",
-  "home.bullet.a.description": "자신의 컴퓨터에서 Pingvin Share를 호스팅하세요.",
-  "home.bullet.b.name": "개인 정보 보호",
-  "home.bullet.b.description": "파일은 사용자의 소유이며 제3자가 절대 접근할 수 없습니다.",
-  "home.bullet.c.name": "귀찮은 파일 크기 제한 없음",
-  "home.bullet.c.description": "원하는 만큼 큰 파일을 업로드하세요. 유일한 한계는 하드 드라이브뿐입니다.",
-  "home.button.start": "시작하기",
-  "home.button.source": "소스 코드",
+  "home.title": "<h>{siteName}</h> a free file-sharing platform.",
+  "home.description": "Our platform allows you to generate a link for any file you wish to share, ensuring a hassle-free transfer experience.",
+  "home.bullet.a.name": "Custom Expiration & Download Limits",
+  "home.bullet.a.description": "You have the option to set expiration dates on your shared files, customize download limits, or provide password protection.",
+  "home.bullet.b.name": "Sharing via Email",
+  "home.bullet.b.description": "An integrated email feature allows you to send files directly to recipients' inboxes.",
+  "home.bullet.c.name": "Contact Us",
+  "home.bullet.c.description": "For any inquiries, takedown requests, or other concerns, please reach out to us directly at {contactEmail}.",
+  "home.button.start": "New upload",
+  "home.button.source": "About",
   // END /
 
   // /auth/signin
@@ -203,7 +203,6 @@ export default {
   "account.reverseShares.modal.public-access.description": "이 역방향 공유로 생성된 공유를 공개로 설정합니다. 비활성화하면 본인과 공유 생성자만 볼 수 있습니다.",
   "account.reverseShares.modal.max-use.label": "공유 생성 제한",
   "account.reverseShares.modal.max-use.description": "이 URL을 사용하여 공유를 생성할 수 있는 최대 횟수입니다.",
-  "account.reverseShare.never-expires": "이 역공유 링크는 만료되지 않습니다.",
   "account.reverseShare.expires-on": "이 역방향 공유는 {expiration} 에 만료됩니다.",
   "account.reverseShares.table.no-shares": "아직 생성된 공유가 없습니다.",
   "account.reverseShares.table.count.singular": "공유",
@@ -282,6 +281,13 @@ export default {
   "admin.shares.table.deletes": "삭제일",
   "admin.shares.edit.delete.title": "공유 삭제: {id}",
   "admin.shares.edit.delete.description": "정말로 이 공유를 삭제하시겠습니까?",
+  "admin.shares.notify.deleted": "Share deleted successfully",
+
+  "admin.shares.search.placeholder": "Search by name, creator or share ID",
+  "admin.shares.empty": "No shares found",
+  "admin.shares.search.empty": "No shares match your search query",
+  "admin.shares.search.clear": "Clear search",
+
   // END /admin/shares
 
   // /upload
@@ -317,8 +323,6 @@ export default {
   "upload.modal.link.error.s3-etag-missing": "S3 응답에 ETag 헤더가 없습니다. CORS가 ETag 헤더를 노출하도록 설정되어 있는지 확인하세요.",
   "upload.modal.not-signed-in": "로그인하지 않았습니다",
   "upload.modal.not-signed-in-description": "공유를 수동으로 삭제하고 방문자 수를 볼 수 없습니다.",
-  "upload.modal.expires.never": "절대 안 함",
-  "upload.modal.expires.never-long": "영구 공유",
   "upload.modal.expires.error.too-long": "만료 날짜가 최대 {max}을(를) 초과합니다.",
   "upload.modal.link.label": "링크",
   "upload.modal.expires.label": "만료일",
@@ -347,7 +351,6 @@ export default {
   "upload.modal.accordion.security.max-views.label": "최대 보기 횟수",
   "upload.modal.accordion.security.max-views.placeholder": "제한 없음",
   // showCompletedUploadModal.tsx
-  "upload.modal.completed.never-expires": "이 공유 만료되지 않습니다.",
   "upload.modal.completed.expires-on": "이 공유는 {expiration} 에 만료됩니다.",
   "upload.modal.completed.share-ready": "공유 준비",
   "upload.modal.completed.notified-reverse-share-creator": "역방향 공유 생성자에게 알림을 보냈습니다. 다른 방법을 통해 직접 이 링크를 공유할 수도 있습니다.",
@@ -613,6 +616,9 @@ export default {
   "admin.config.oauth.oidc-client-id.description": "OpenID Connect OAuth 앱의 클라이언트 ID",
   "admin.config.oauth.oidc-client-secret": "OpenID 클라이언트 secret",
   "admin.config.oauth.oidc-client-secret.description": "OpenID Connect OAuth 앱의 클라이언트 secret",
+  "admin.config.oauth.allowed-hosts": "Allowed OAuth Hosts",
+  "admin.config.oauth.allowed-hosts.description":
+    "Comma-separated list of additional hostnames allowed for OAuth sign-in (e.g. share.internal.example.com).",
   "admin.config.category.ldap": "LDAP",
   "admin.config.ldap.enabled": "LDAP 활성화",
   "admin.config.ldap.enabled.description": "사용자 로그인에 LDAP 인증 사용",

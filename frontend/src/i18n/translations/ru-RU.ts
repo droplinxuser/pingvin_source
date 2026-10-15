@@ -17,16 +17,16 @@ export default {
   // END footer
 
   // /
-  "home.title": "Платформа для обмена файлами с <h>собственного хостинга</h>.",
-  "home.description": "Вы действительно хотите предоставить свои личные файлы в руки третьих лиц, таких как WeTransfer?",
-  "home.bullet.a.name": "На собственном сервере",
-  "home.bullet.a.description": "Pingvin Share работает на вашей машине.",
-  "home.bullet.b.name": "Конфиденциальность",
-  "home.bullet.b.description": "Ваши файлы принадлежат защищены от действия третьих лиц.",
-  "home.bullet.c.name": "Без раздражающего ограничения размера файла",
-  "home.bullet.c.description": "Загружайте файлы любого размера. Ваш жёсткий диск - это ваше ограничение.",
-  "home.button.start": "Начнем",
-  "home.button.source": "Исходный код",
+  "home.title": "<h>{siteName}</h> a free file-sharing platform.",
+  "home.description": "Our platform allows you to generate a link for any file you wish to share, ensuring a hassle-free transfer experience.",
+  "home.bullet.a.name": "Custom Expiration & Download Limits",
+  "home.bullet.a.description": "You have the option to set expiration dates on your shared files, customize download limits, or provide password protection.",
+  "home.bullet.b.name": "Sharing via Email",
+  "home.bullet.b.description": "An integrated email feature allows you to send files directly to recipients' inboxes.",
+  "home.bullet.c.name": "Contact Us",
+  "home.bullet.c.description": "For any inquiries, takedown requests, or other concerns, please reach out to us directly at {contactEmail}.",
+  "home.button.start": "New upload",
+  "home.button.source": "About",
   // END /
 
   // /auth/signin
@@ -203,7 +203,6 @@ export default {
   "account.reverseShares.modal.public-access.description": "Сделать файлы общедоступными, созданные с этим обратным общим публичным доступом. Если отключено, только вы и создатель ресурса будут иметь доступ к ним для просмотра.",
   "account.reverseShares.modal.max-use.label": "Максимум использований",
   "account.reverseShares.modal.max-use.description": "Максимальное количество раз, когда URL может быть использован для создания загрузки.",
-  "account.reverseShare.never-expires": "Эта обратная загрузка никогда не устареет.",
   "account.reverseShare.expires-on": "Эта обратная загрузка устареет {expiration}.",
   "account.reverseShares.table.no-shares": "Нет созданных загрузок",
   "account.reverseShares.table.count.singular": "загрузка",
@@ -282,6 +281,13 @@ export default {
   "admin.shares.table.deletes": "Удалён",
   "admin.shares.edit.delete.title": "Удалить раздачу: {id}",
   "admin.shares.edit.delete.description": "Вы действительно хотите удалить эту загрузку?",
+  "admin.shares.notify.deleted": "Share deleted successfully",
+
+  "admin.shares.search.placeholder": "Search by name, creator or share ID",
+  "admin.shares.empty": "No shares found",
+  "admin.shares.search.empty": "No shares match your search query",
+  "admin.shares.search.clear": "Clear search",
+
   // END /admin/shares
 
   // /upload
@@ -317,8 +323,6 @@ export default {
   "upload.modal.link.error.s3-etag-missing": "Отсутствует заголовок ETag в ответе S3. Убедитесь, что CORS содержит ETag заголовок.",
   "upload.modal.not-signed-in": "Вы не авторизованы",
   "upload.modal.not-signed-in-description": "Вы не сможете удалить свои файлы вручную и просмотреть количество посетителей.",
-  "upload.modal.expires.never": "никогда",
-  "upload.modal.expires.never-long": "Постоянный доступ",
   "upload.modal.expires.error.too-long": "Срок действия превышает максимальный предел {max}.",
   "upload.modal.link.label": "Ссылка",
   "upload.modal.expires.label": "Истекает",
@@ -347,7 +351,6 @@ export default {
   "upload.modal.accordion.security.max-views.label": "Максимум просмотров",
   "upload.modal.accordion.security.max-views.placeholder": "Без ограничения",
   // showCompletedUploadModal.tsx
-  "upload.modal.completed.never-expires": "Эта загрузка никогда не устареет.",
   "upload.modal.completed.expires-on": "Эта загрузка устареет {expiration}.",
   "upload.modal.completed.share-ready": "Готово",
   "upload.modal.completed.notified-reverse-share-creator": "Мы уведомили создателя обратного ресурса. Вы также можете вручную поделиться этой ссылкой с ними другими средствами.",
@@ -613,6 +616,9 @@ export default {
   "admin.config.oauth.oidc-client-id.description": "ID клиента (Client ID) OAuth-приложения OpenID Connect",
   "admin.config.oauth.oidc-client-secret": "Секрет клиента OpenID Connect (Client secret)",
   "admin.config.oauth.oidc-client-secret.description": "Секрет клиента (Client secret) OAuth-приложения OpenID Connect",
+  "admin.config.oauth.allowed-hosts": "Allowed OAuth Hosts",
+  "admin.config.oauth.allowed-hosts.description":
+    "Comma-separated list of additional hostnames allowed for OAuth sign-in (e.g. share.internal.example.com).",
   "admin.config.category.ldap": "LDAP",
   "admin.config.ldap.enabled": "Включить LDAP",
   "admin.config.ldap.enabled.description": "Использовать аутентификацию LDAP для входа пользователей",

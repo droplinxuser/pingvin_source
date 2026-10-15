@@ -17,16 +17,16 @@ export default {
   // END footer
 
   // /
-  "home.title": "En <h>self-hosted</h> fildelingsplatform.",
-  "home.description": "Er du sikker på, at du vil overlade dine personlige filer til tredjeparter som WeTransfer?",
-  "home.bullet.a.name": "Self-Hosted",
-  "home.bullet.a.description": "Host Pingvin Share på din egen maskine.",
-  "home.bullet.b.name": "Privatliv",
-  "home.bullet.b.description": "Dine filer tilhører dig og vil aldrig være tilgængelige for tredjeparter.",
-  "home.bullet.c.name": "Ingen irriterende grænse for filstørrelse",
-  "home.bullet.c.description": "Upload filer så store du vil. Kun din harddisk sætter grænsen.",
-  "home.button.start": "Kom i gang",
-  "home.button.source": "Kildekode",
+  "home.title": "<h>{siteName}</h> a free file-sharing platform.",
+  "home.description": "Our platform allows you to generate a link for any file you wish to share, ensuring a hassle-free transfer experience.",
+  "home.bullet.a.name": "Custom Expiration & Download Limits",
+  "home.bullet.a.description": "You have the option to set expiration dates on your shared files, customize download limits, or provide password protection.",
+  "home.bullet.b.name": "Sharing via Email",
+  "home.bullet.b.description": "An integrated email feature allows you to send files directly to recipients' inboxes.",
+  "home.bullet.c.name": "Contact Us",
+  "home.bullet.c.description": "For any inquiries, takedown requests, or other concerns, please reach out to us directly at {contactEmail}.",
+  "home.button.start": "New upload",
+  "home.button.source": "About",
   // END /
 
   // /auth/signin
@@ -203,7 +203,6 @@ export default {
   "account.reverseShares.modal.public-access.description": "Lav filerne i denne omvendte deling offentlige. Hvis deaktiveret kan kun dig og delingens ejer have adgang til filerne.",
   "account.reverseShares.modal.max-use.label": "Maksimal anvendelser",
   "account.reverseShares.modal.max-use.description": "Det maksimale antal gange, denne URL kan bruges til at oprette en deling.",
-  "account.reverseShare.never-expires": "Denne omvendte deling udløber aldrig.",
   "account.reverseShare.expires-on": "Denne omvendte deling udløber den {expiration}.",
   "account.reverseShares.table.no-shares": "Der er ikke oprettet nogle delinger endnu",
   "account.reverseShares.table.count.singular": "del",
@@ -282,6 +281,13 @@ export default {
   "admin.shares.table.deletes": "Slettes den",
   "admin.shares.edit.delete.title": "Slet deling: {id}",
   "admin.shares.edit.delete.description": "Ønsker du virkelig at slette denne deling?",
+  "admin.shares.notify.deleted": "Share deleted successfully",
+
+  "admin.shares.search.placeholder": "Search by name, creator or share ID",
+  "admin.shares.empty": "No shares found",
+  "admin.shares.search.empty": "No shares match your search query",
+  "admin.shares.search.clear": "Clear search",
+
   // END /admin/shares
 
   // /upload
@@ -317,8 +323,6 @@ export default {
   "upload.modal.link.error.s3-etag-missing": "Manglende ETag-header i S3-svar. Sørg for, at CORS eksponerer ETag-headeren.",
   "upload.modal.not-signed-in": "Du er ikke logget ind",
   "upload.modal.not-signed-in-description": "Du vil ikke være i stand til at slette din deling manuelt og se antallet af besøgende.",
-  "upload.modal.expires.never": "aldrig",
-  "upload.modal.expires.never-long": "Permanent deling",
   "upload.modal.expires.error.too-long": "Udløbsdatoen overskrider maksimum på {max}.",
   "upload.modal.link.label": "Link",
   "upload.modal.expires.label": "Udløb",
@@ -347,7 +351,6 @@ export default {
   "upload.modal.accordion.security.max-views.label": "Max antal visninger",
   "upload.modal.accordion.security.max-views.placeholder": "Ingen begrænsning",
   // showCompletedUploadModal.tsx
-  "upload.modal.completed.never-expires": "Denne deling vil aldrig udløbe.",
   "upload.modal.completed.expires-on": "Denne deling udløber den {expiration}.",
   "upload.modal.completed.share-ready": "Delingen er klar",
   "upload.modal.completed.notified-reverse-share-creator": "Vi har underrettet opretteren af den omvendte deling. Du kan også manuelt dele dette link med dem på anden vis.",
@@ -613,6 +616,9 @@ export default {
   "admin.config.oauth.oidc-client-id.description": "Client ID for OpenID Connect OAuth-appen",
   "admin.config.oauth.oidc-client-secret": "OpenID Connect Client secret",
   "admin.config.oauth.oidc-client-secret.description": "Client secret for OpenID Connect OAuth-appen",
+  "admin.config.oauth.allowed-hosts": "Allowed OAuth Hosts",
+  "admin.config.oauth.allowed-hosts.description":
+    "Comma-separated list of additional hostnames allowed for OAuth sign-in (e.g. share.internal.example.com).",
   "admin.config.category.ldap": "LDAP",
   "admin.config.ldap.enabled": "Aktivér LDAP",
   "admin.config.ldap.enabled.description": "Brug LDAP-godkendelse til brugerlogin",

@@ -17,16 +17,16 @@ export default {
   // END footer
 
   // /
-  "home.title": "แพลตฟอร์มสำหรับแชร์ไฟล์ที่คุณสามารถ<h>โฮสต์ด้วยตนเอง</h>",
-  "home.description": "คุณอยากให้บริษัทภายนอกเช่น WeTransfer เข้าถึงไฟล์ส่วนตัวของคุณหรือเปล่า?",
-  "home.bullet.a.name": "โฮสต์ด้วยตนเอง",
-  "home.bullet.a.description": "โฮสต์ Pingvin Share บนเครื่องของคุณเอง.",
-  "home.bullet.b.name": "ความเป็นส่วนตัว",
-  "home.bullet.b.description": "ไฟล์ของคุณเป็นของคุณ และจะไม่ถูกเข้าถึงโดยบุคคลที่สาม",
-  "home.bullet.c.name": "ไม่มีการจำกัดขนาดไฟล์ที่น่ารำคาญ",
-  "home.bullet.c.description": "อัปโหลดไฟล์ขนาดใหญ่ได้ตามที่คุณต้องการ ขีดจำกัดขึ้นอยู่กับฮาร์ดไดรฟ์ของคุณเท่านั้น",
-  "home.button.start": "เริ่มต้น",
-  "home.button.source": "ซอร์สโค้ด",
+  "home.title": "<h>{siteName}</h> a free file-sharing platform.",
+  "home.description": "Our platform allows you to generate a link for any file you wish to share, ensuring a hassle-free transfer experience.",
+  "home.bullet.a.name": "Custom Expiration & Download Limits",
+  "home.bullet.a.description": "You have the option to set expiration dates on your shared files, customize download limits, or provide password protection.",
+  "home.bullet.b.name": "Sharing via Email",
+  "home.bullet.b.description": "An integrated email feature allows you to send files directly to recipients' inboxes.",
+  "home.bullet.c.name": "Contact Us",
+  "home.bullet.c.description": "For any inquiries, takedown requests, or other concerns, please reach out to us directly at {contactEmail}.",
+  "home.button.start": "New upload",
+  "home.button.source": "About",
   // END /
 
   // /auth/signin
@@ -203,7 +203,6 @@ export default {
   "account.reverseShares.modal.public-access.description": "ทำให้การแชร์ที่สร้างด้วยรีเวิร์สแชร์นี้เป็นแบบสาธารณะ หากปิดใช้งาน จะมีเพียงคุณและผู้สร้างการแชร์เท่านั้นที่มีสิทธิ์ดู",
   "account.reverseShares.modal.max-use.label": "จำนวนการใช้งานสูงสุด",
   "account.reverseShares.modal.max-use.description": "จำนวนครั้งสูงสุดที่ลิงค์นี้สามารถใช้งานได้",
-  "account.reverseShare.never-expires": "ลิงค์นี้ไม่มีวันหมดอายุ",
   "account.reverseShare.expires-on": "ลิงค์นี้จะหมดอายุใน {expiration}.",
   "account.reverseShares.table.no-shares": "ยังไม่มีการสร้างแชร์",
   "account.reverseShares.table.count.singular": "แชร์",
@@ -282,6 +281,13 @@ export default {
   "admin.shares.table.deletes": "จะถูกลบวันที่",
   "admin.shares.edit.delete.title": "ลบการแชร์: {id}",
   "admin.shares.edit.delete.description": "คุณต้องการลบแชร์นี้หรือไม่?",
+  "admin.shares.notify.deleted": "Share deleted successfully",
+
+  "admin.shares.search.placeholder": "Search by name, creator or share ID",
+  "admin.shares.empty": "No shares found",
+  "admin.shares.search.empty": "No shares match your search query",
+  "admin.shares.search.clear": "Clear search",
+
   // END /admin/shares
 
   // /upload
@@ -317,8 +323,6 @@ export default {
   "upload.modal.link.error.s3-etag-missing": "ไม่มีส่วนหัว ETag ในการตอบกลับจาก S3 ตรวจสอบให้แน่ใจว่า CORS ได้เปิดเผยส่วนหัว ETag",
   "upload.modal.not-signed-in": "คุณยังไม่ได้เข้าสู่ระบบ",
   "upload.modal.not-signed-in-description": "คุณจะไม่สามารถลบการแชร์ของคุณด้วยตนเองและดูจำนวนผู้เข้าชมได้",
-  "upload.modal.expires.never": "ไม่มีกำหนด",
-  "upload.modal.expires.never-long": "การแชร์ถาวร",
   "upload.modal.expires.error.too-long": "วันหมดอายุเกินกำหนดสูงสุดที่ {max}",
   "upload.modal.link.label": "ลิงค์",
   "upload.modal.expires.label": "หมดอายุ",
@@ -347,7 +351,6 @@ export default {
   "upload.modal.accordion.security.max-views.label": "จำนวนการเข้าชมสูงสุด",
   "upload.modal.accordion.security.max-views.placeholder": "ไม่จำกัด",
   // showCompletedUploadModal.tsx
-  "upload.modal.completed.never-expires": "การแชร์นี้จะไม่มีวันหมดอายุ",
   "upload.modal.completed.expires-on": "การแชร์นี้จะหมดอายุเมื่อวันที่ {expiration}",
   "upload.modal.completed.share-ready": "แชร์พร้อมใช้งาน",
   "upload.modal.completed.notified-reverse-share-creator": "เราได้แจ้งเตือนผู้สร้างรีเวิร์สแชร์แล้ว คุณยังสามารถแชร์ลิงก์นี้ให้กับพวกเขาผ่านช่องทางอื่นได้ด้วยตนเอง",
@@ -613,6 +616,9 @@ export default {
   "admin.config.oauth.oidc-client-id.description": "Client ID ของแอป OAuth ของ OpenID Connect",
   "admin.config.oauth.oidc-client-secret": "OpenID Connect Client secret",
   "admin.config.oauth.oidc-client-secret.description": "Client secret ของแอป OAuth ของ OpenID Connect",
+  "admin.config.oauth.allowed-hosts": "Allowed OAuth Hosts",
+  "admin.config.oauth.allowed-hosts.description":
+    "Comma-separated list of additional hostnames allowed for OAuth sign-in (e.g. share.internal.example.com).",
   "admin.config.category.ldap": "LDAP",
   "admin.config.ldap.enabled": "เปิดใช้งาน LDAP",
   "admin.config.ldap.enabled.description": "ใช้การตรวจสอบสิทธิ์ LDAP สำหรับการเข้าสู่ระบบของผู้ใช้",

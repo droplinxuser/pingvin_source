@@ -17,16 +17,16 @@ export default {
   // END footer
 
   // /
-  "home.title": "<h>Samostatně hostovaná</h> platforma pro sdílení souborů.",
-  "home.description": "Opravdu chcete dát své osobní soubory do rukou třetích stran, jako je WeTransfer?",
-  "home.bullet.a.name": "Vlastní hosting",
-  "home.bullet.a.description": "Hostujte Pingvin Share na svém vlastním počítači.",
-  "home.bullet.b.name": "Soukromí",
-  "home.bullet.b.description": "Vaše soubory jsou Vaše a nikdy k nim nebudou mít přístup třetí strany.",
-  "home.bullet.c.name": "Žádný otravný limit pro velikost souborů",
-  "home.bullet.c.description": "Nahrajte tak velké soubory, jak chcete. Limitem je pouze Váš pevný disk.",
-  "home.button.start": "Začít",
-  "home.button.source": "Zdrojový kód",
+  "home.title": "<h>{siteName}</h> a free file-sharing platform.",
+  "home.description": "Our platform allows you to generate a link for any file you wish to share, ensuring a hassle-free transfer experience.",
+  "home.bullet.a.name": "Custom Expiration & Download Limits",
+  "home.bullet.a.description": "You have the option to set expiration dates on your shared files, customize download limits, or provide password protection.",
+  "home.bullet.b.name": "Sharing via Email",
+  "home.bullet.b.description": "An integrated email feature allows you to send files directly to recipients' inboxes.",
+  "home.bullet.c.name": "Contact Us",
+  "home.bullet.c.description": "For any inquiries, takedown requests, or other concerns, please reach out to us directly at {contactEmail}.",
+  "home.button.start": "New upload",
+  "home.button.source": "About",
   // END /
 
   // /auth/signin
@@ -203,7 +203,6 @@ export default {
   "account.reverseShares.modal.public-access.description": "Zveřejnit soubory vytvořená tímto opačným sdílením. Pokud není povoleno, pouze Vy a tvůrce sdílení má práva k zobrazení.",
   "account.reverseShares.modal.max-use.label": "Max. použití",
   "account.reverseShares.modal.max-use.description": "Maximální počet sdílení, která mohou být vytvořena za pomoci tohoto URL.",
-  "account.reverseShare.never-expires": "Toto opačné sdílení nikdy nevyprší.",
   "account.reverseShare.expires-on": "Toto opačné sdílení vyprší {expiration}.",
   "account.reverseShares.table.no-shares": "Zatím nebyla vytvořena žádná sdílení",
   "account.reverseShares.table.count.singular": "sdílení",
@@ -282,6 +281,13 @@ export default {
   "admin.shares.table.deletes": "Smaže se dne",
   "admin.shares.edit.delete.title": "Odstranit sdílení: {id}",
   "admin.shares.edit.delete.description": "Opravdu chcete smazat toto sdílení?",
+  "admin.shares.notify.deleted": "Share deleted successfully",
+
+  "admin.shares.search.placeholder": "Search by name, creator or share ID",
+  "admin.shares.empty": "No shares found",
+  "admin.shares.search.empty": "No shares match your search query",
+  "admin.shares.search.clear": "Clear search",
+
   // END /admin/shares
 
   // /upload
@@ -317,8 +323,6 @@ export default {
   "upload.modal.link.error.s3-etag-missing": "V odpovědi S3 chybí hlavička ETag. Ujistěte se, že CORS vystavuje hlavičku ETag.",
   "upload.modal.not-signed-in": "Nejste přihlášeni",
   "upload.modal.not-signed-in-description": "Nebudete moci ručně odstranit své sdílení a zobrazit počet návštěvníků.",
-  "upload.modal.expires.never": "nikdy",
-  "upload.modal.expires.never-long": "Trvalé sdílení",
   "upload.modal.expires.error.too-long": "Datum vypršení platnosti překračuje maximum {max}.",
   "upload.modal.link.label": "Odkaz",
   "upload.modal.expires.label": "Expirace",
@@ -347,7 +351,6 @@ export default {
   "upload.modal.accordion.security.max-views.label": "Maximální počet zobrazení",
   "upload.modal.accordion.security.max-views.placeholder": "Bez omezení",
   // showCompletedUploadModal.tsx
-  "upload.modal.completed.never-expires": "Toto sdílení nikdy nevyprší.",
   "upload.modal.completed.expires-on": "Toto sdílení vyprší {expiration}.",
   "upload.modal.completed.share-ready": "Sdílení připraveno",
   "upload.modal.completed.notified-reverse-share-creator": "Upozornili jsme tvůrce opačného sdílení. Můžete s nimi také ručně sdílet tento odkaz jiným způsobem.",
@@ -613,6 +616,9 @@ export default {
   "admin.config.oauth.oidc-client-id.description": "ID klienta OpenID Connect OAuth aplikace",
   "admin.config.oauth.oidc-client-secret": "OpenID Connect secret klienta",
   "admin.config.oauth.oidc-client-secret.description": "Secret klienta OpenID Connect OAuth aplikace",
+  "admin.config.oauth.allowed-hosts": "Allowed OAuth Hosts",
+  "admin.config.oauth.allowed-hosts.description":
+    "Comma-separated list of additional hostnames allowed for OAuth sign-in (e.g. share.internal.example.com).",
   "admin.config.category.ldap": "LDAP",
   "admin.config.ldap.enabled": "Povolit LDAP",
   "admin.config.ldap.enabled.description": "Použít LDAP ověření pro přihlášení uživatele",

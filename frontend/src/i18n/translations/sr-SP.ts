@@ -17,16 +17,16 @@ export default {
   // END footer
 
   // /
-  "home.title": "<h>Само-хостована</h> платформа за дељење фајлова.",
-  "home.description": "Да ли заиста желите да дате своје личне датотеке у руке трећих страна као што је WeTransfer?",
-  "home.bullet.a.name": "Само-хостовано",
-  "home.bullet.a.description": "Хостујте Pingvin Share на својој машини.",
-  "home.bullet.b.name": "Privatnost",
-  "home.bullet.b.description": "Ваше датотеке су ваше и никада неће бити доступне трећим странама.",
-  "home.bullet.c.name": "Нема досадног ограничења величине датотеке",
-  "home.bullet.c.description": "Отпремите онолико великих датотека колико желите. Само ваш чврсти диск је граница.",
-  "home.button.start": "Започни",
-  "home.button.source": "Изворни код",
+  "home.title": "<h>{siteName}</h> a free file-sharing platform.",
+  "home.description": "Our platform allows you to generate a link for any file you wish to share, ensuring a hassle-free transfer experience.",
+  "home.bullet.a.name": "Custom Expiration & Download Limits",
+  "home.bullet.a.description": "You have the option to set expiration dates on your shared files, customize download limits, or provide password protection.",
+  "home.bullet.b.name": "Sharing via Email",
+  "home.bullet.b.description": "An integrated email feature allows you to send files directly to recipients' inboxes.",
+  "home.bullet.c.name": "Contact Us",
+  "home.bullet.c.description": "For any inquiries, takedown requests, or other concerns, please reach out to us directly at {contactEmail}.",
+  "home.button.start": "New upload",
+  "home.button.source": "About",
   // END /
 
   // /auth/signin
@@ -203,7 +203,6 @@ export default {
   "account.reverseShares.modal.public-access.description": "Учини да дељења креирана овим реверзним линком за дељење буду јавна. Ако је онемогућено, само ви и креатор дељења ћете имати приступ за преглед.",
   "account.reverseShares.modal.max-use.label": "Максималан број коришћења",
   "account.reverseShares.modal.max-use.description": "Максималан број пута који овај URL може да се користи за прављење дељења.",
-  "account.reverseShare.never-expires": "Ово обрнуто дељење никада неће истећи.",
   "account.reverseShare.expires-on": "Ово обрнуто дељење ће истећи {expiration}.",
   "account.reverseShares.table.no-shares": "Још нема креираних дељења",
   "account.reverseShares.table.count.singular": "дељење",
@@ -282,6 +281,13 @@ export default {
   "admin.shares.table.deletes": "Брише се",
   "admin.shares.edit.delete.title": "Обриши дељење: {id}",
   "admin.shares.edit.delete.description": "Да ли заиста желите да обришете ово дељење?",
+  "admin.shares.notify.deleted": "Share deleted successfully",
+
+  "admin.shares.search.placeholder": "Search by name, creator or share ID",
+  "admin.shares.empty": "No shares found",
+  "admin.shares.search.empty": "No shares match your search query",
+  "admin.shares.search.clear": "Clear search",
+
   // END /admin/shares
 
   // /upload
@@ -317,8 +323,6 @@ export default {
   "upload.modal.link.error.s3-etag-missing": "Недостаје ETag заглавље у S3 одговору. Уверите се да CORS излаже ETag заглавље.",
   "upload.modal.not-signed-in": "Нисте пријављени",
   "upload.modal.not-signed-in-description": "Нећете моћи ручно да избришете своје дељење и видите број посетилаца.",
-  "upload.modal.expires.never": "никад",
-  "upload.modal.expires.never-long": "Трајно дељење",
   "upload.modal.expires.error.too-long": "Датум истека превазилази максималну вредност од {max}.",
   "upload.modal.link.label": "Линк",
   "upload.modal.expires.label": "Истиче",
@@ -347,7 +351,6 @@ export default {
   "upload.modal.accordion.security.max-views.label": "Максималан број прегледа",
   "upload.modal.accordion.security.max-views.placeholder": "Без лимита",
   // showCompletedUploadModal.tsx
-  "upload.modal.completed.never-expires": "Ово дељење никада неће истећи.",
   "upload.modal.completed.expires-on": "Ово дељење ће истећи {expiration}.",
   "upload.modal.completed.share-ready": "Дељење је спремно",
   "upload.modal.completed.notified-reverse-share-creator": "Обавестили смо креатора реверзног дељења. Такође можете ручно поделити овај линк са њима на друге начине.",
@@ -613,6 +616,9 @@ export default {
   "admin.config.oauth.oidc-client-id.description": "ID клијента OpenID Connect OAuth апликације",
   "admin.config.oauth.oidc-client-secret": "OpenID Connect тајна клијента",
   "admin.config.oauth.oidc-client-secret.description": "Тајна клијента OpenID Connect OAuth апликације",
+  "admin.config.oauth.allowed-hosts": "Allowed OAuth Hosts",
+  "admin.config.oauth.allowed-hosts.description":
+    "Comma-separated list of additional hostnames allowed for OAuth sign-in (e.g. share.internal.example.com).",
   "admin.config.category.ldap": "LDAP",
   "admin.config.ldap.enabled": "Омогући LDAP",
   "admin.config.ldap.enabled.description": "Користи LDAP аутентификацију за пријаву корисника",

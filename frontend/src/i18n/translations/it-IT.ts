@@ -17,16 +17,16 @@ export default {
   // END footer
 
   // /
-  "home.title": "Una piattaforma di condivisione file <h>self-hosted</h>.",
-  "home.description": "Vuoi davvero dare i tuoi file personali in mano a terze parti come WeTransfer?",
-  "home.bullet.a.name": "Self-Hosted",
-  "home.bullet.a.description": "Configura Pingvin Share sul tuo server.",
-  "home.bullet.b.name": "Privacy",
-  "home.bullet.b.description": "I tuoi file sono tuoi e non saranno mai accessibili da terze parti.",
-  "home.bullet.c.name": "Nessun fastidioso limite alle dimensioni dei files",
-  "home.bullet.c.description": "Carica file grandi quanto vuoi. Solo il tuo disco rigido sarà il tuo limite.",
-  "home.button.start": "Inizia adesso",
-  "home.button.source": "Codice sorgente",
+  "home.title": "<h>{siteName}</h> a free file-sharing platform.",
+  "home.description": "Our platform allows you to generate a link for any file you wish to share, ensuring a hassle-free transfer experience.",
+  "home.bullet.a.name": "Custom Expiration & Download Limits",
+  "home.bullet.a.description": "You have the option to set expiration dates on your shared files, customize download limits, or provide password protection.",
+  "home.bullet.b.name": "Sharing via Email",
+  "home.bullet.b.description": "An integrated email feature allows you to send files directly to recipients' inboxes.",
+  "home.bullet.c.name": "Contact Us",
+  "home.bullet.c.description": "For any inquiries, takedown requests, or other concerns, please reach out to us directly at {contactEmail}.",
+  "home.button.start": "New upload",
+  "home.button.source": "About",
   // END /
 
   // /auth/signin
@@ -203,7 +203,6 @@ export default {
   "account.reverseShares.modal.public-access.description": "Rendi pubbliche le condivisioni create con questa condivisione inversa. Se disabilitata, solo tu e il creatore della condivisione potrete vederlo.",
   "account.reverseShares.modal.max-use.label": "Utilizzo massimo",
   "account.reverseShares.modal.max-use.description": "La quantità massima di volte che questo URL può essere usato per creare una condivisione.",
-  "account.reverseShare.never-expires": "Questa condivisione inversa non scadrà mai.",
   "account.reverseShare.expires-on": "Questa condivisione inversa scadrà il {expiration}.",
   "account.reverseShares.table.no-shares": "Nessuna condivisione è stata creata",
   "account.reverseShares.table.count.singular": "condivisione",
@@ -282,6 +281,13 @@ export default {
   "admin.shares.table.deletes": "Elimina il",
   "admin.shares.edit.delete.title": "Elimina condivisione {id}",
   "admin.shares.edit.delete.description": "Vuoi davvero cancellare questa condivisione?",
+  "admin.shares.notify.deleted": "Share deleted successfully",
+
+  "admin.shares.search.placeholder": "Search by name, creator or share ID",
+  "admin.shares.empty": "No shares found",
+  "admin.shares.search.empty": "No shares match your search query",
+  "admin.shares.search.clear": "Clear search",
+
   // END /admin/shares
 
   // /upload
@@ -317,8 +323,6 @@ export default {
   "upload.modal.link.error.s3-etag-missing": "Intestazione ETag mancante nella risposta S3. Assicurati che CORS esponga l'intestazione ETag.",
   "upload.modal.not-signed-in": "Non sei loggato",
   "upload.modal.not-signed-in-description": "Non sarai in grado di eliminare la tua condivisione manualmente e visualizzare il numero dei visitatori.",
-  "upload.modal.expires.never": "mai",
-  "upload.modal.expires.never-long": "Condivisione permanente",
   "upload.modal.expires.error.too-long": "La data di scadenza supera il massimo di {max}.",
   "upload.modal.link.label": "Collegamento",
   "upload.modal.expires.label": "Valido fino a",
@@ -347,7 +351,6 @@ export default {
   "upload.modal.accordion.security.max-views.label": "Visualizzazioni massime",
   "upload.modal.accordion.security.max-views.placeholder": "Nessun limite",
   // showCompletedUploadModal.tsx
-  "upload.modal.completed.never-expires": "Questa condivisione non scadrà mai.",
   "upload.modal.completed.expires-on": "Questa condivisione scadrà il {expiration}.",
   "upload.modal.completed.share-ready": "Condivisione pronta",
   "upload.modal.completed.notified-reverse-share-creator": "Abbiamo avvisato il creatore della condivisione inversa. Puoi anche condividere manualmente questo link tramite altri mezzi.",
@@ -613,6 +616,9 @@ export default {
   "admin.config.oauth.oidc-client-id.description": "Client ID dell'app OAuth di OpenID Connect",
   "admin.config.oauth.oidc-client-secret": "Client secret OpenID Connect",
   "admin.config.oauth.oidc-client-secret.description": "Client secret dell'app OAuth OpenID Connect",
+  "admin.config.oauth.allowed-hosts": "Allowed OAuth Hosts",
+  "admin.config.oauth.allowed-hosts.description":
+    "Comma-separated list of additional hostnames allowed for OAuth sign-in (e.g. share.internal.example.com).",
   "admin.config.category.ldap": "LDAP",
   "admin.config.ldap.enabled": "Abilita LDAP",
   "admin.config.ldap.enabled.description": "Usa autenticazione LDAP per l'accesso utente",

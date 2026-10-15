@@ -203,7 +203,6 @@ export default {
   "account.reverseShares.modal.public-access.description": "Feu públiques les comparticions creades amb aquesta compartició inversa. Si està desactivat, només vosaltres i el creador de la compartició hi tindreu accés.",
   "account.reverseShares.modal.max-use.label": "Usos màxims",
   "account.reverseShares.modal.max-use.description": "La quantitat màxima de vegades que es pot utilitzar aquesta URL per crear una compartició.",
-  "account.reverseShare.never-expires": "Aquesta compartició inversa no caducarà mai.",
   "account.reverseShare.expires-on": "Aquesta compartició inversa caducarà el {expiration}.",
   "account.reverseShares.table.no-shares": "Encara no s'ha creat cap compartició",
   "account.reverseShares.table.count.singular": "compartició",
@@ -282,6 +281,13 @@ export default {
   "admin.shares.table.deletes": "S'elimina el",
   "admin.shares.edit.delete.title": "Suprimir compartició: {id}",
   "admin.shares.edit.delete.description": "Realment voleu suprimir aquesta compartició?",
+  "admin.shares.notify.deleted": "Share deleted successfully",
+
+  "admin.shares.search.placeholder": "Search by name, creator or share ID",
+  "admin.shares.empty": "No shares found",
+  "admin.shares.search.empty": "No shares match your search query",
+  "admin.shares.search.clear": "Clear search",
+
   // END /admin/shares
 
   // /upload
@@ -317,8 +323,6 @@ export default {
   "upload.modal.link.error.s3-etag-missing": "Falta la capçalera ETag a la resposta de S3. Assegureu-vos que CORS exposa la capçalera ETag.",
   "upload.modal.not-signed-in": "No heu iniciat sessió",
   "upload.modal.not-signed-in-description": "No podreu suprimir la compartició manualment ni veure el recompte de visitants.",
-  "upload.modal.expires.never": "mai",
-  "upload.modal.expires.never-long": "Compartició permanent",
   "upload.modal.expires.error.too-long": "La data de caducitat supera el màxim de {max}.",
   "upload.modal.link.label": "Enllaç",
   "upload.modal.expires.label": "Caducitat",
@@ -347,7 +351,6 @@ export default {
   "upload.modal.accordion.security.max-views.label": "Visualitzacions màximes",
   "upload.modal.accordion.security.max-views.placeholder": "Sense límit",
   // showCompletedUploadModal.tsx
-  "upload.modal.completed.never-expires": "Aquesta compartició no caducarà mai.",
   "upload.modal.completed.expires-on": "Aquesta compartició caducarà el {expiration}.",
   "upload.modal.completed.share-ready": "Compartició llesta",
   "upload.modal.completed.notified-reverse-share-creator": "Hem notificat al creador de la compartició inversa. També podeu compartir manualment aquest enllaç amb ell per altres mitjans.",
@@ -613,6 +616,9 @@ export default {
   "admin.config.oauth.oidc-client-id.description": "ID de client de l'aplicació OAuth d'OpenID Connect",
   "admin.config.oauth.oidc-client-secret": "Secret de client d'OpenID Connect",
   "admin.config.oauth.oidc-client-secret.description": "Secret de client de l'aplicació OAuth d'OpenID Connect",
+  "admin.config.oauth.allowed-hosts": "Allowed OAuth Hosts",
+  "admin.config.oauth.allowed-hosts.description":
+    "Comma-separated list of additional hostnames allowed for OAuth sign-in (e.g. share.internal.example.com).",
   "admin.config.category.ldap": "LDAP",
   "admin.config.ldap.enabled": "Activar LDAP",
   "admin.config.ldap.enabled.description": "Utilitzar l'autenticació LDAP per a l'inici de sessió dels usuaris",

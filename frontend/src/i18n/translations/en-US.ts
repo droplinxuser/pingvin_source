@@ -19,21 +19,16 @@ export default {
   // END footer
 
   // /
-  "home.title": "A <h>self-hosted</h> file sharing platform.",
-
-  "home.description":
-    "Do you really want to put your personal files in the hands of third parties like WeTransfer?",
-  "home.bullet.a.name": "Self-Hosted",
-  "home.bullet.a.description": "Host Pingvin Share on your own machine.",
-  "home.bullet.b.name": "Privacy",
-  "home.bullet.b.description":
-    "Your files are yours and will never be accessed by third parties.",
-  "home.bullet.c.name": "No annoying file size limit",
-  "home.bullet.c.description":
-    "Upload files as large as you want. Your available storage is the only limit.",
-
-  "home.button.start": "Get started",
-  "home.button.source": "Source code",
+  "home.title": "<h>{siteName}</h> a free file-sharing platform.",
+  "home.description": "Our platform allows you to generate a link for any file you wish to share, ensuring a hassle-free transfer experience.",
+  "home.bullet.a.name": "Custom Expiration & Download Limits",
+  "home.bullet.a.description": "You have the option to set expiration dates on your shared files, customize download limits, or provide password protection.",
+  "home.bullet.b.name": "Sharing via Email",
+  "home.bullet.b.description": "An integrated email feature allows you to send files directly to recipients' inboxes.",
+  "home.bullet.c.name": "Contact Us",
+  "home.bullet.c.description": "For any inquiries, takedown requests, or other concerns, please reach out to us directly at {contactEmail}.",
+  "home.button.start": "New upload",
+  "home.button.source": "About",
   // END /
 
   // /auth/signin
@@ -256,7 +251,6 @@ export default {
   "account.reverseShares.modal.max-use.label": "Max uses",
   "account.reverseShares.modal.max-use.description":
     "The maximum number of times this URL can be used.",
-  "account.reverseShare.never-expires": "This reverse share will never expire.",
   "account.reverseShare.expires-on":
     "This reverse share will expire on {expiration}.",
 
@@ -362,6 +356,13 @@ export default {
   "admin.shares.edit.delete.description":
     "Do you really want to delete this share?",
 
+  "admin.shares.notify.deleted": "Share deleted successfully",
+
+  "admin.shares.search.placeholder": "Search by name, creator or share ID",
+  "admin.shares.empty": "No shares found",
+  "admin.shares.search.empty": "No shares match your search query",
+  "admin.shares.search.clear": "Clear search",
+
   // END /admin/shares
 
   // /upload
@@ -414,8 +415,6 @@ export default {
   "upload.modal.not-signed-in-description":
     "You will not be able to delete your share or view its visitor count.",
 
-  "upload.modal.expires.never": "never",
-  "upload.modal.expires.never-long": "Permanent share",
   "upload.modal.expires.error.too-long":
     "Expiration date exceeds the maximum of {max}.",
 
@@ -452,7 +451,6 @@ export default {
   "upload.modal.accordion.security.max-views.placeholder": "No limit",
 
   // showCompletedUploadModal.tsx
-  "upload.modal.completed.never-expires": "This share will never expire.",
   "upload.modal.completed.expires-on":
     "This share will expire on {expiration}.",
   "upload.modal.completed.share-ready": "Share ready",
@@ -495,7 +493,7 @@ export default {
   "share.notify.copied-contents": "File contents copied to clipboard",
   "share.notify.copy-too-big-error": "File is too big to copy to clipboard",
   "share.notify.copy-not-supported-error":
-    "Copying to clipboard requires a HTTPS connection",
+    "Copying to clipboard requires an HTTPS connection",
 
   "share.modal.file-link": "File link",
   "share.table.name": "Name",
@@ -702,7 +700,7 @@ export default {
     "The default expiration time selected when creating a new share.",
   "admin.config.share.max-expiration": "Max expiration",
   "admin.config.share.max-expiration.description":
-    "Maximum share expiration. Set to 0 to allow unlimited expiration.",
+    "Maximum share expiration, hard capped at 5 years. Set to 0 to allow the maximum of 5 years.",
   "admin.config.share.share-id-length": "Default share ID length",
   "admin.config.share.share-id-length.description":
     "Default length for the generated ID of a share. This value is also used to generate links for reverse shares. A value below 8 is not considered secure.",
@@ -878,10 +876,10 @@ export default {
     "LDAP attribute containing the groups a user belongs to. This is used when checking for the admin group.",
   "admin.config.ldap.field-name-email": "User email attribute name",
   "admin.config.ldap.field-name-email.description":
-    "LDAP attribute name for the email of an user.",
+    "LDAP attribute name for the email of a user.",
   "admin.config.ldap.field-name-display-name": "User display name attribute name",
   "admin.config.ldap.field-name-display-name.description":
-    "LDAP attribute name for the display name of an user.",
+    "LDAP attribute name for the display name of a user.",
   "admin.config.notify.success": "Configuration updated successfully.",
   "admin.config.notify.logo-success":
     "Logo updated successfully. It may take a few minutes to update on the website.",

@@ -17,16 +17,16 @@ export default {
   // END footer
 
   // /
-  "home.title": "Kendi sunucunuzda <h>barındırabileceğiniz</h> bir dosya paylaşım platformu.",
-  "home.description": "Kişisel dosyalarınızı gerçekten WeTransfer gibi üçüncü taraf hizmetlere emanet etmek istiyor musunuz?",
-  "home.bullet.a.name": "Kendi Sunucunda Barındır",
-  "home.bullet.a.description": "Pingvin Share'i kendi sunucunuzda barındırın.",
-  "home.bullet.b.name": "Gizlilik",
-  "home.bullet.b.description": "Dosyalarınız size aittir ve asla üçüncü taraflarca erişilemez.",
-  "home.bullet.c.name": "Can Sıkıcı Dosya Boyutu Limiti Yok",
-  "home.bullet.c.description": "İstediğiniz kadar büyük dosyalar yükleyin. Tek limitiniz sabit diskiniz olacak.",
-  "home.button.start": "Hemen Başlayın",
-  "home.button.source": "Kaynak Kodu",
+  "home.title": "<h>{siteName}</h> a free file-sharing platform.",
+  "home.description": "Our platform allows you to generate a link for any file you wish to share, ensuring a hassle-free transfer experience.",
+  "home.bullet.a.name": "Custom Expiration & Download Limits",
+  "home.bullet.a.description": "You have the option to set expiration dates on your shared files, customize download limits, or provide password protection.",
+  "home.bullet.b.name": "Sharing via Email",
+  "home.bullet.b.description": "An integrated email feature allows you to send files directly to recipients' inboxes.",
+  "home.bullet.c.name": "Contact Us",
+  "home.bullet.c.description": "For any inquiries, takedown requests, or other concerns, please reach out to us directly at {contactEmail}.",
+  "home.button.start": "New upload",
+  "home.button.source": "About",
   // END /
 
   // /auth/signin
@@ -203,7 +203,6 @@ export default {
   "account.reverseShares.modal.public-access.description": "Bu karşı paylaşım bağlantısıyla oluşturulan paylaşımları herkese açık yapın. Devre dışı bırakılırsa, yalnızca siz ve paylaşımı oluşturan kişi görüntüleyebilir.",
   "account.reverseShares.modal.max-use.label": "Maksimum kullanım sayısı",
   "account.reverseShares.modal.max-use.description": "Bu URL'nin bir paylaşım oluşturmak için kullanılabileceği maksimum sayı.",
-  "account.reverseShare.never-expires": "Bu karşı paylaşımın süresi asla dolmayacak.",
   "account.reverseShare.expires-on": "Bu karşı paylaşımın süresi {expiration} tarihinde dolacak.",
   "account.reverseShares.table.no-shares": "Henüz paylaşım oluşturulmadı",
   "account.reverseShares.table.count.singular": "paylaşım",
@@ -282,6 +281,13 @@ export default {
   "admin.shares.table.deletes": "Silinme tarihi",
   "admin.shares.edit.delete.title": "Paylaşımı sil: {id}",
   "admin.shares.edit.delete.description": "Bu paylaşımı gerçekten silmek istiyor musunuz?",
+  "admin.shares.notify.deleted": "Share deleted successfully",
+
+  "admin.shares.search.placeholder": "Search by name, creator or share ID",
+  "admin.shares.empty": "No shares found",
+  "admin.shares.search.empty": "No shares match your search query",
+  "admin.shares.search.clear": "Clear search",
+
   // END /admin/shares
 
   // /upload
@@ -317,8 +323,6 @@ export default {
   "upload.modal.link.error.s3-etag-missing": "S3 yanıtında ETag başlığı eksik. CORS'un ETag başlığını sunduğundan emin olun.",
   "upload.modal.not-signed-in": "Giriş yapmadınız",
   "upload.modal.not-signed-in-description": "Paylaşımınızı manuel olarak silemez ve ziyaretçi sayısını göremezsiniz.",
-  "upload.modal.expires.never": "asla",
-  "upload.modal.expires.never-long": "Kalıcı paylaşım",
   "upload.modal.expires.error.too-long": "Geçerlilik süresi maksimum {max} değerini aşıyor.",
   "upload.modal.link.label": "Bağlantı",
   "upload.modal.expires.label": "Geçerlilik Süresi",
@@ -347,7 +351,6 @@ export default {
   "upload.modal.accordion.security.max-views.label": "Maksimum görüntüleme sayısı",
   "upload.modal.accordion.security.max-views.placeholder": "Limit yok",
   // showCompletedUploadModal.tsx
-  "upload.modal.completed.never-expires": "Bu paylaşımın süresi asla dolmayacak.",
   "upload.modal.completed.expires-on": "Bu paylaşımın süresi {expiration} tarihinde dolacak.",
   "upload.modal.completed.share-ready": "Paylaşım hazır",
   "upload.modal.completed.notified-reverse-share-creator": "Karşı paylaşımı oluşturan kişiyi bilgilendirdik. Bu bağlantıyı onlarla başka yollarla da manuel olarak paylaşabilirsiniz.",
@@ -613,6 +616,9 @@ export default {
   "admin.config.oauth.oidc-client-id.description": "OpenID Connect OAuth uygulamasının İstemci ID'si",
   "admin.config.oauth.oidc-client-secret": "OpenID Connect İstemci Sırrı",
   "admin.config.oauth.oidc-client-secret.description": "OpenID Connect OAuth uygulamasının İstemci Sırrı",
+  "admin.config.oauth.allowed-hosts": "Allowed OAuth Hosts",
+  "admin.config.oauth.allowed-hosts.description":
+    "Comma-separated list of additional hostnames allowed for OAuth sign-in (e.g. share.internal.example.com).",
   "admin.config.category.ldap": "LDAP",
   "admin.config.ldap.enabled": "LDAP'ı Etkinleştir",
   "admin.config.ldap.enabled.description": "Kullanıcı girişi için LDAP kimlik doğrulamasını kullan",

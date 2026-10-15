@@ -203,7 +203,6 @@ export default {
   "account.reverseShares.modal.public-access.description": "اشتراک‌هایی که با این لینک معکوس ساخته می‌شوند را عمومی کنید. اگر غیرفعال باشد، تنها شما و سازنده اشتراک به مشاهده آن دسترسی خواهید داشت.",
   "account.reverseShares.modal.max-use.label": "حداکثر استفاده",
   "account.reverseShares.modal.max-use.description": "حداکثر تعداد دفعاتی که این URL می‌تواند برای ایجاد اشتراک استفاده شود.",
-  "account.reverseShare.never-expires": "این اشتراک معکوس هرگز منقضی نخواهد شد.",
   "account.reverseShare.expires-on": "این اشتراک معکوس در {expiration} منقضی خواهد شد.",
   "account.reverseShares.table.no-shares": "هنوز هیچ اشتراکی ایجاد نشده است",
   "account.reverseShares.table.count.singular": "اشتراک",
@@ -282,6 +281,13 @@ export default {
   "admin.shares.table.deletes": "حذف می‌شود در",
   "admin.shares.edit.delete.title": "حذف اشتراک: {id}",
   "admin.shares.edit.delete.description": "آیا واقعاً می‌خواهید این اشتراک را حذف کنید؟",
+  "admin.shares.notify.deleted": "Share deleted successfully",
+
+  "admin.shares.search.placeholder": "Search by name, creator or share ID",
+  "admin.shares.empty": "No shares found",
+  "admin.shares.search.empty": "No shares match your search query",
+  "admin.shares.search.clear": "Clear search",
+
   // END /admin/shares
 
   // /upload
@@ -317,8 +323,6 @@ export default {
   "upload.modal.link.error.s3-etag-missing": "هدر ETag در پاسخ S3 وجود ندارد. اطمینان حاصل کنید که CORS هدر ETag را در دسترس قرار می‌دهد.",
   "upload.modal.not-signed-in": "شما وارد نشده‌اید",
   "upload.modal.not-signed-in-description": "نمی‌توانید اشتراک خود را به صورت دستی حذف کنید و تعداد بازدیدکنندگان را مشاهده کنید.",
-  "upload.modal.expires.never": "هرگز",
-  "upload.modal.expires.never-long": "اشتراک دائمی",
   "upload.modal.expires.error.too-long": "تاریخ انقضا از حداکثر {max} فراتر رفته است.",
   "upload.modal.link.label": "لینک",
   "upload.modal.expires.label": "انقضا",
@@ -347,7 +351,6 @@ export default {
   "upload.modal.accordion.security.max-views.label": "حداکثر بازدیدها",
   "upload.modal.accordion.security.max-views.placeholder": "بدون محدودیت",
   // showCompletedUploadModal.tsx
-  "upload.modal.completed.never-expires": "این اشتراک هرگز منقضی نخواهد شد.",
   "upload.modal.completed.expires-on": "این اشتراک در {expiration} منقضی خواهد شد.",
   "upload.modal.completed.share-ready": "اشتراک آماده است",
   "upload.modal.completed.notified-reverse-share-creator": "ما به سازنده اشتراک معکوس اطلاع دادیم. شما همچنین می‌توانید این لینک را به صورت دستی از طریق روش‌های دیگر با او به اشتراک بگذارید.",
@@ -613,6 +616,9 @@ export default {
   "admin.config.oauth.oidc-client-id.description": "شناسه مشتری برنامه OAuth OpenID Connect",
   "admin.config.oauth.oidc-client-secret": "رمز مشتری OpenID Connect",
   "admin.config.oauth.oidc-client-secret.description": "رمز مشتری برنامه OAuth OpenID Connect",
+  "admin.config.oauth.allowed-hosts": "Allowed OAuth Hosts",
+  "admin.config.oauth.allowed-hosts.description":
+    "Comma-separated list of additional hostnames allowed for OAuth sign-in (e.g. share.internal.example.com).",
   "admin.config.category.ldap": "LDAP",
   "admin.config.ldap.enabled": "فعال کردن LDAP",
   "admin.config.ldap.enabled.description": "استفاده از احراز هویت LDAP برای ورود کاربران",
