@@ -164,7 +164,7 @@ const FileList = ({
                           </ActionIcon>
                         </HoverTip>
                       )}
-                      {shareService.doesFileSupportPreview(file.name) && (
+                      {shareService.doesFileSupportPreview(file.name) && parseInt(file.size) <= 100000000 && (
                         <HoverTip label={t("common.button.preview")}>
                           <ActionIcon
                             color="green"
@@ -178,7 +178,7 @@ const FileList = ({
                           </ActionIcon>
                         </HoverTip>
                       )}
-                      {!share.hasPassword && (
+                      {!share.hasPassword && parseInt(file.size) <= 1 && (
                         <HoverTip label={t("common.button.copy-link")}>
                           <ActionIcon
                             color="victoria"

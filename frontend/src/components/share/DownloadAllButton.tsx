@@ -44,6 +44,7 @@ const DownloadAllButton = ({
   }, []);
 
   return (
+    isZipReady && (
     <Button
       variant="light"
       color="cyan"
@@ -58,6 +59,7 @@ const DownloadAllButton = ({
     >
       <FormattedMessage id="share.button.download-all" />
     </Button>
+  )
   );
 };
 
