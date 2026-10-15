@@ -23,6 +23,7 @@ import shareService from "../../services/share.service";
 import { MyShare, UpdateShare } from "../../types/share.type";
 import { Timespan } from "../../types/timespan.type";
 import { byteToHumanSizeString } from "../../utils/fileSize.util";
+import { getMaxExpirationDate } from "../../utils/date.util";
 import toast from "../../utils/toast.util";
 import CopyTextField from "../upload/CopyTextField";
 import QRCode from "./QRCode";
@@ -267,12 +268,7 @@ const EditShareBody = ({
       return;
     }
 
-    const fiveYears = moment().add(5, "years");
-    const configMax =
-      maxExpiration && maxExpiration.value !== 0
-        ? moment().add(maxExpiration.value, maxExpiration.unit)
-        : fiveYears;
-    const maxDate = configMax.isBefore(fiveYears) ? configMax : fiveYears;
+    const maxDate = getMaxExpirationDate(maxExpiration);
     if (expirationDate.isAfter(maxDate)) {
       form.setFieldError(
         "expiration",

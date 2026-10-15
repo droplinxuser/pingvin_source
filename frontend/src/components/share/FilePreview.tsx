@@ -12,7 +12,7 @@ import { FormattedMessage } from "react-intl";
 import api from "../../services/api.service";
 import shareService from "../../services/share.service";
 
-const FilePreviewContext = React.createContext<{
+export const FilePreviewContext = React.createContext<{
   shareId: string;
   fileId: string;
   mimeType: string;
@@ -75,7 +75,9 @@ const FileDecider = () => {
   }
 };
 
-const AudioPreview = () => {
+// The context and media preview components are exported so the inline media
+// gallery can reuse them instead of duplicating the playback logic.
+export const AudioPreview = () => {
   const { shareId, fileId, setIsNotSupported } =
     React.useContext(FilePreviewContext);
   return (
@@ -92,11 +94,11 @@ const AudioPreview = () => {
   );
 };
 
-const VideoPreview = () => {
+export const VideoPreview = () => {
   const { shareId, fileId, mimeType, setIsNotSupported } =
     React.useContext(FilePreviewContext);
   return (
-    <video width="100%" controls>
+    <video width="100%" controls playsInline preload="metadata">
       <source
         src={`/api/shares/${shareId}/files/${fileId}?download=false`}
         // QuickTime (.mov) files are served as video/mp4 so browsers can play
@@ -110,7 +112,7 @@ const VideoPreview = () => {
   );
 };
 
-const ImagePreview = () => {
+export const ImagePreview = () => {
   const { shareId, fileId, setIsNotSupported } =
     React.useContext(FilePreviewContext);
   return (

@@ -55,7 +55,10 @@ export class EmailService {
     };
     return template
       .replaceAll("\\n", "\n")
-      .replace(/\{([a-zA-Z0-9_-]+)\}/g, (match, key) => templateVars[key] ?? match);
+      .replace(
+        /\{([a-zA-Z0-9_-]+)\}/g,
+        (match, key) => templateVars[key] ?? match,
+      );
   }
 
   private async sendMail(

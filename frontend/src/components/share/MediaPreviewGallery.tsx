@@ -20,6 +20,12 @@ import {
   MAX_INLINE_FILE_SIZE,
 } from "../../utils/fileSize.util";
 import { HoverTip } from "../core/HoverTip";
+import {
+  AudioPreview,
+  FilePreviewContext,
+  ImagePreview,
+  VideoPreview,
+} from "./FilePreview";
 
 const renderFileName = (name: string) => {
   const separator = name.lastIndexOf("/");
@@ -71,72 +77,41 @@ const useMediaFrameStyle = () => {
 
 const EmbeddedMedia = ({
   kind,
-  fileUrl,
-  fileName,
+  shareId,
+  fileId,
   mimeType,
   onError,
 }: {
   kind: InlinePreviewKind;
-  fileUrl: string;
-  fileName: string;
+  shareId: string;
+  fileId: string;
   mimeType: string;
   onError: () => void;
 }) => {
   const frameStyle = useMediaFrameStyle();
 
-  if (kind == "image")
-    return (
-      <Box sx={frameStyle}>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={fileUrl}
-          alt={fileName}
-          decoding="async"
-          style={{ display: "block", maxWidth: "100%", maxHeight: "70vh" }}
-          onError={onError}
-        />
-      </Box>
-    );
+  // Reuse the preview components from the file preview modal so the playback
+  // logic lives in a single place.
+  const preview = (
+    <FilePreviewContext.Provider
+      value={{ shareId, fileId, mimeType, setIsNotSupported: onError }}
+    >
+      {kind == "image" ? (
+        <ImagePreview />
+      ) : kind == "video" ? (
+        <VideoPreview />
+      ) : (
+        <AudioPreview />
+      )}
+    </FilePreviewContext.Provider>
+  );
 
-  if (kind == "video")
-    return (
-      <Box sx={frameStyle}>
-        <video
-          controls
-          preload="metadata"
-          playsInline
-          style={{
-            display: "block",
-            width: "100%",
-            maxHeight: "70vh",
-            objectFit: "contain",
-          }}
-          onError={onError}
-        >
-          {/* QuickTime files are advertised as video/mp4 (see share.service.ts) */}
-          <source
-            src={fileUrl}
-            type={
-              shareService.getInlinePlaybackMimeType(mimeType) ||
-              mimeType ||
-              undefined
-            }
-            onError={onError}
-          />
-        </video>
-      </Box>
-    );
+  if (kind == "audio")
+    return <Box sx={{ ...frameStyle, padding: "1rem" }}>{preview}</Box>;
 
   return (
-    <Box sx={{ ...frameStyle, padding: "1rem" }}>
-      <audio
-        controls
-        preload="metadata"
-        style={{ display: "block", width: "100%" }}
-        onError={onError}
-      >
-        <source src={fileUrl} type={mimeType || undefined} onError={onError} />
-      </audio>
+    <Box sx={{ ...frameStyle, "& img, & video": { maxHeight: "70vh" } }}>
+      {preview}
     </Box>
   );
 };
@@ -185,8 +160,8 @@ const MediaPreviewCard = ({
       ) : (
         <EmbeddedMedia
           kind={kind}
-          fileUrl={fileUrl}
-          fileName={file.name}
+          shareId={shareId}
+          fileId={file.id}
           mimeType={shareService.getFileMimeType(file.name)}
           onError={() => setIsNotSupported(true)}
         />

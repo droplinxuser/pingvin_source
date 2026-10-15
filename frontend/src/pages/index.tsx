@@ -98,14 +98,9 @@ export default function Home() {
     return signupEnabled ? "/upload" : "/auth/signIn";
   };
 
-  // config.get throws until the config has been loaded from the API
-  const getConfig = (key: string, fallback: string) => {
-    try {
-      return config.get(key) as string;
-    } catch {
-      return fallback;
-    }
-  };
+  // config.get returns null until the config has been loaded from the API
+  const getConfig = (key: string, fallback: string) =>
+    (config.get(key) as string) || fallback;
 
   const getContactEmail = () => {
     try {

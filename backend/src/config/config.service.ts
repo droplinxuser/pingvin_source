@@ -78,21 +78,17 @@ export class ConfigService extends EventEmitter {
   }
 
   private applyEnvOverrides() {
-    // Environment variables that override config values (see .env.example)
-    const envOverrides: Record<string, string> = {
-      SITE_NAME: "general.appName",
-    };
+    // Environment variables take precedence over config.yaml and database
+    // values (see .env.example)
+    const siteName = process.env.SITE_NAME?.trim();
+    if (!siteName) return;
 
-    for (const [envName, key] of Object.entries(envOverrides)) {
-      const value = process.env[envName]?.trim();
-      const configVariable = this.configVariables.find(
-        (variable) => `${variable.category}.${variable.name}` === key,
-      );
-
-      if (configVariable && value) {
-        configVariable.value = value;
-        this.emit("update", key, value);
-      }
+    const variable = this.configVariables.find(
+      (v) => `${v.category}.${v.name}` == "general.appName",
+    );
+    if (variable) {
+      variable.value = siteName;
+      this.emit("update", "general.appName", siteName);
     }
   }
 

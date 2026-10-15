@@ -32,6 +32,7 @@ import { CreateShare } from "../../../types/share.type";
 import {
   stringToTimespan,
   getExpirationPreview,
+  getMaxExpirationDate,
 } from "../../../utils/date.util";
 import toast from "../../../utils/toast.util";
 import { Timespan } from "../../../types/timespan.type";
@@ -197,15 +198,7 @@ const CreateUploadModalBody = ({
         ) as moment.unitOfTime.DurationConstructor,
       );
 
-      const fiveYears = moment().add(5, "years");
-      const configMax =
-        options.maxExpiration.value != 0
-          ? moment().add(
-              options.maxExpiration.value,
-              options.maxExpiration.unit,
-            )
-          : fiveYears;
-      const maxDate = configMax.isBefore(fiveYears) ? configMax : fiveYears;
+      const maxDate = getMaxExpirationDate(options.maxExpiration);
       if (expirationDate.isAfter(maxDate)) {
         form.setFieldError(
           "expiration_num",
