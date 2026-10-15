@@ -55,6 +55,11 @@ export class AuthController {
     if (!this.config.get("security.allowRegistration"))
       throw new ForbiddenException(this.i18n.t("auth.registrationNotAllowed"));
 
+    if (this.config.get("oauth.disablePassword"))
+      throw new ForbiddenException(
+        this.i18n.t("auth.passwordRegistrationDisabled"),
+      );
+
     const result = await this.authService.signUp(dto, ip);
 
     this.authService.addTokensToResponse(
