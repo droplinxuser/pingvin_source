@@ -25,6 +25,9 @@ import { FileSecurityGuard } from "./guard/fileSecurity.guard";
 
 const VALID_ID_REGEX = /^[a-zA-Z0-9-]*={0,2}$/;
 
+// How long Cloudflare and browsers may cache successful download responses
+const DOWNLOAD_CACHE_MAX_AGE = 3600;
+
 function getValidRecipientId(recipientId?: string): string | undefined {
   if (!recipientId) return undefined;
   return VALID_ID_REGEX.test(recipientId) ? recipientId : undefined;
@@ -76,6 +79,31 @@ export class FileController {
       "",
     );
     return `${appUrl}/share/${shareId}`;
+  }
+
+  /**
+   * Redirects to the share page with a 302 status. Unlike 301, Cloudflare
+   * does not cache 302 by default; the explicit no-store headers make sure
+   * neither Cloudflare nor the browser stores the redirect.
+   */
+  private redirectToSharePage(res: Response, shareId: string) {
+    res.status(HttpStatus.FOUND).set({
+      Location: this.getSharePageUrl(shareId),
+      "Cache-Control": "no-store",
+      "CDN-Cache-Control": "no-store",
+    });
+  }
+
+  /**
+   * Cloudflare's default cache key ignores cookies, so responses for
+   * authenticated access must not carry public cache headers - otherwise
+   * password protected or recipient restricted files would be served from
+   * the edge cache to anyone.
+   */
+  private isAuthenticatedRequest(req: Request, shareId: string): boolean {
+    return !!(
+      req.cookies.access_token || req.cookies[`share_${shareId}_token`]
+    );
   }
 
   @Post("upload-init")
@@ -171,7 +199,7 @@ export class FileController {
     @Query("recipient") recipientId?: string,
   ) {
     if (!this.isRequestFromApp(req)) {
-      res.redirect(this.getSharePageUrl(shareId));
+      this.redirectToSharePage(res, shareId);
       return;
     }
 
@@ -181,6 +209,18 @@ export class FileController {
       "Content-Type": "application/zip",
       "Content-Disposition": contentDisposition(`${shareId}.zip`),
     });
+
+    // Successful, unauthenticated zip downloads may be cached on Cloudflare
+    // edge servers; authenticated downloads stay out of shared caches because
+    // the cache key ignores cookies
+    if (this.isAuthenticatedRequest(req, shareId)) {
+      res.set({ "Cache-Control": "private" });
+    } else {
+      res.set({
+        "Cache-Control": `public, max-age=${DOWNLOAD_CACHE_MAX_AGE}`,
+        "CDN-Cache-Control": `public, max-age=${DOWNLOAD_CACHE_MAX_AGE}`,
+      });
+    }
 
     void this.fileService.notifyRecipientDownload(
       shareId,
@@ -208,7 +248,7 @@ export class FileController {
     @Query("recipient") recipientId?: string,
   ) {
     if (!this.isRequestFromApp(req)) {
-      res.redirect(this.getSharePageUrl(shareId));
+      this.redirectToSharePage(res, shareId);
       return;
     }
 
@@ -229,7 +269,13 @@ export class FileController {
           getValidRecipientId(recipientId),
         );
       }
-      res.status(302).setHeader("Location", url);
+      // The pre-signed URL expires after 5 minutes, so the redirect must
+      // never be cached
+      res.status(302).set({
+        Location: url,
+        "Cache-Control": "no-store",
+        "CDN-Cache-Control": "no-store",
+      });
       return;
     }
 
@@ -242,6 +288,8 @@ export class FileController {
       res.set({
         "Content-Range": `bytes */${totalSize}`,
         "Accept-Ranges": "bytes",
+        "Cache-Control": "no-store",
+        "CDN-Cache-Control": "no-store",
       });
       return;
     }
@@ -275,6 +323,20 @@ export class FileController {
 
     if (!isPassiveMedia) {
       headers["Content-Security-Policy"] = "sandbox";
+    }
+
+    if (isDownload && !file.range) {
+      if (this.isAuthenticatedRequest(req, shareId)) {
+        // Shared caches (e.g. Cloudflare) must never store authenticated
+        // downloads, because the cache key ignores cookies
+        headers["Cache-Control"] = "private";
+      } else {
+        // Successful (full 200), unauthenticated downloads may be cached on
+        // Cloudflare edge servers
+        headers["Cache-Control"] = `public, max-age=${DOWNLOAD_CACHE_MAX_AGE}`;
+        headers["CDN-Cache-Control"] =
+          `public, max-age=${DOWNLOAD_CACHE_MAX_AGE}`;
+      }
     }
 
     res.set(headers);
