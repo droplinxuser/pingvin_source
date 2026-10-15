@@ -106,8 +106,12 @@ const isShareIdAvailable = async (id: string): Promise<boolean> => {
   return (await api.get(`/shares/isShareIdAvailable/${id}`)).data.isAvailable;
 };
 
+const getFileMimeType = (fileName: string) => {
+  return (mime.contentType(fileName) || "").split(";")[0];
+};
+
 const doesFileSupportPreview = (fileName: string) => {
-  const mimeType = (mime.contentType(fileName) || "").split(";")[0];
+  const mimeType = getFileMimeType(fileName);
 
   if (!mimeType) return false;
 
@@ -123,11 +127,27 @@ const doesFileSupportPreview = (fileName: string) => {
 };
 
 const isShareTextFile = (fileName: string) => {
-  const mimeType = (mime.contentType(fileName) || "").split(";")[0];
+  const mimeType = getFileMimeType(fileName);
 
   if (!mimeType) return false;
 
   return mimeType.startsWith("text/");
+};
+
+export type InlinePreviewKind = "image" | "video" | "audio";
+
+const getInlinePreviewKind = (
+  fileName: string,
+): InlinePreviewKind | undefined => {
+  const mimeType = getFileMimeType(fileName);
+
+  if (!mimeType) return undefined;
+
+  if (mimeType.startsWith("image/")) return "image";
+  if (mimeType.startsWith("video/")) return "video";
+  if (mimeType.startsWith("audio/")) return "audio";
+
+  return undefined;
 };
 
 const downloadFile = async (
@@ -436,6 +456,8 @@ export default {
   getMetaData,
   doesFileSupportPreview,
   isShareTextFile,
+  getFileMimeType,
+  getInlinePreviewKind,
   getMyShares,
   getReceivedShares,
   isShareIdAvailable,

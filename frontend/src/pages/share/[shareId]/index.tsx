@@ -18,6 +18,7 @@ import { TbEdit, TbPlusMinus, TbTrash } from "react-icons/tb";
 import Meta from "../../../components/Meta";
 import DownloadAllButton from "../../../components/share/DownloadAllButton";
 import FileList from "../../../components/share/FileList";
+import MediaPreviewGallery from "../../../components/share/MediaPreviewGallery";
 import Ads from "../../../components/Ads";
 import showEnterPasswordModal from "../../../components/share/showEnterPasswordModal";
 import showErrorModal from "../../../components/share/showErrorModal";
@@ -284,6 +285,12 @@ const Share = ({ shareId }: { shareId: string }) => {
           )}
         </Group>
       </Group>
+
+      <MediaPreviewGallery
+        shareId={shareId}
+        files={share?.files}
+        recipientId={recipientId}
+      />
 
       <FileList
         files={share?.files}
