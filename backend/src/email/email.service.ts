@@ -291,7 +291,12 @@ export class EmailService {
     reason: string,
     message?: string,
   ) {
-    const adminEmail = this.config.get("smtp.email") as string;
+    // Report notifications are sent to REPORT_EMAIL when it is set in the
+    // backend environment, otherwise to the SMTP sender address (smtp.email)
+    // configured in the admin UI.
+    const adminEmail =
+      process.env.REPORT_EMAIL?.trim() ||
+      (this.config.get("smtp.email") as string);
     if (!adminEmail) {
       throw new InternalServerErrorException(
         this.i18n.t("email.reportEmailNotConfigured"),
