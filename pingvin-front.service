@@ -1,0 +1,20 @@
+[Unit]
+Description=Pingvin Frontend
+After=network.target
+StartLimitIntervalSec=30
+StartLimitBurst=5
+
+[Service]
+Type=simple
+User=root
+Restart=always
+RestartSec=5s
+LimitNOFILE=524288
+
+Environment=PORT=3030
+
+WorkingDirectory=/var/www/pingvin_source/frontend
+ExecStart=/usr/bin/node .next/standalone/server.js
+
+[Install]
+WantedBy=multi-user.target

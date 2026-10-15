@@ -1,0 +1,25 @@
+[Unit]
+Description=Pingvin Backend
+After=network.target
+StartLimitIntervalSec=30
+StartLimitBurst=5
+
+[Service]
+Type=simple
+User=root
+Restart=always
+RestartSec=5s
+LimitNOFILE=524288
+
+Environment=DATABASE_URL="file:/var/www/pingvin_data/pingvin-share.db?connection_limit=1"
+Environment=DATA_DIRECTORY="/var/www/pingvin_data"
+Environment=SITE_NAME=SiteName
+
+Environment=TRUST_PROXY=true
+Environment=THROTTLE_LIMIT=300
+
+WorkingDirectory=/var/www/pingvin_source/backend
+ExecStart=/usr/bin/npm -- run prod
+
+[Install]
+WantedBy=multi-user.target
