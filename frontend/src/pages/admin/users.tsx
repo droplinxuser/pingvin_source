@@ -1,4 +1,4 @@
-import { Button, Group, Space, Text, Title } from "@mantine/core";
+import { Button, Group, Pagination, Space, Text, Title } from "@mantine/core";
 import { useModals } from "@mantine/modals";
 import { useEffect, useState } from "react";
 import { TbPlus } from "react-icons/tb";
@@ -15,6 +15,9 @@ import toast from "../../utils/toast.util";
 
 const Users = () => {
   const [users, setUsers] = useState<User[]>([]);
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const pageSize = 20;
   const [customPasswordPolicy, setCustomPasswordPolicy] =
     useState<CustomPasswordPolicy>({
       minLength: 8,
@@ -29,12 +32,20 @@ const Users = () => {
   const modals = useModals();
   const t = useTranslate();
 
-  const getUsers = () => {
+  const getUsers = (targetPage = page) => {
     setIsLoading(true);
-    userService.list().then((users) => {
-      setUsers(users);
-      setIsLoading(false);
-    });
+    userService
+      .list(targetPage, pageSize)
+      .then(({ users, total }) => {
+        setUsers(users);
+        setTotal(total);
+        setPage(targetPage);
+        setIsLoading(false);
+      })
+      .catch((e) => {
+        setIsLoading(false);
+        toast.axiosError(e);
+      });
   };
 
   const deleteUser = (user: User) => {
@@ -53,9 +64,10 @@ const Users = () => {
       },
       confirmProps: { color: "red" },
       onConfirm: async () => {
+        const nextPage = users.length === 1 && page > 1 ? page - 1 : page;
         userService
           .remove(user.id)
-          .then(() => setUsers(users.filter((v) => v.id != user.id)))
+          .then(() => getUsers(nextPage))
           .catch(toast.axiosError);
       },
     });
@@ -106,6 +118,15 @@ const Users = () => {
         isLoading={isLoading}
         customPasswordPolicy={customPasswordPolicy}
       />
+      {total > pageSize && (
+        <Group position="center" mt="lg">
+          <Pagination
+            value={page}
+            onChange={(nextPage) => getUsers(nextPage)}
+            total={Math.ceil(total / pageSize)}
+          />
+        </Group>
+      )}
       <Space h="xl" />
     </>
   );

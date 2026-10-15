@@ -7,8 +7,8 @@ import {
 import api from "./api.service";
 import authService from "./auth.service";
 
-const list = async () => {
-  return (await api.get("/users")).data;
+const list = async (page = 1, pageSize = 20) => {
+  return (await api.get("/users", { params: { page, pageSize } })).data;
 };
 
 const create = async (user: CreateUser) => {

@@ -25,8 +25,16 @@ export class UserSevice {
     private readonly i18n: I18nService,
   ) {}
 
-  async list() {
-    return await this.prisma.user.findMany();
+  async list(take?: number, skip?: number) {
+    return await this.prisma.user.findMany({
+      take,
+      skip,
+      orderBy: { createdAt: "desc" },
+    });
+  }
+
+  async count() {
+    return await this.prisma.user.count();
   }
 
   async get(id: string) {

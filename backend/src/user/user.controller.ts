@@ -7,6 +7,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   Res,
   UseGuards,
 } from "@nestjs/common";
@@ -74,8 +75,22 @@ export class UserController {
   // Global user operations
   @Get()
   @UseGuards(JwtGuard, AdministratorGuard)
-  async list() {
-    return new UserDTO().fromList(await this.userService.list());
+  async list(
+    @Query("page") page = "1",
+    @Query("pageSize") pageSize = "20",
+  ) {
+    const pageNum = Math.max(parseInt(page) || 1, 1);
+    const size = Math.min(Math.max(parseInt(pageSize) || 20, 1), 100);
+    const [users, total] = await Promise.all([
+      this.userService.list(size, (pageNum - 1) * size),
+      this.userService.count(),
+    ]);
+    return {
+      users: new UserDTO().fromList(users),
+      total,
+      page: pageNum,
+      pageSize: size,
+    };
   }
 
   @Post()
