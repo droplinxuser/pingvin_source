@@ -21,9 +21,7 @@ import * as yup from "yup";
 import { translateOutsideContext } from "../../hooks/useTranslate.hook";
 import shareService from "../../services/share.service";
 import { MyShare, UpdateShare } from "../../types/share.type";
-import { Timespan } from "../../types/timespan.type";
 import { byteToHumanSizeString } from "../../utils/fileSize.util";
-import { getMaxExpirationDate } from "../../utils/date.util";
 import toast from "../../utils/toast.util";
 import CopyTextField from "../upload/CopyTextField";
 import QRCode from "./QRCode";
@@ -35,7 +33,6 @@ const showShareInformationsModal = (
   maxShareSize: number,
   appUrl: string,
   defaultAppUrl: string,
-  maxExpiration?: Timespan,
   onShareUpdated?: (share: MyShare) => void,
   initiallyEditing = false,
 ) => {
@@ -49,7 +46,6 @@ const showShareInformationsModal = (
         maxShareSize={maxShareSize}
         appUrl={appUrl}
         defaultAppUrl={defaultAppUrl}
-        maxExpiration={maxExpiration}
         onShareUpdated={onShareUpdated}
         initiallyEditing={initiallyEditing}
       />
@@ -62,7 +58,6 @@ const Body = ({
   maxShareSize,
   appUrl,
   defaultAppUrl,
-  maxExpiration,
   onShareUpdated,
   initiallyEditing,
 }: {
@@ -70,7 +65,6 @@ const Body = ({
   maxShareSize: number;
   appUrl: string;
   defaultAppUrl: string;
-  maxExpiration?: Timespan;
   onShareUpdated?: (share: MyShare) => void;
   initiallyEditing: boolean;
 }) => {
@@ -97,16 +91,11 @@ const Body = ({
   const shareSizeProgress = shareSizeRatio * 100;
 
   const formattedCreatedAt = moment(currentShare.createdAt).format("LLL");
-  const formattedExpiration =
-    moment(currentShare.expiration).unix() === 0
-      ? "Never"
-      : moment(currentShare.expiration).format("LLL");
 
   if (isEditing) {
     return (
       <EditShareBody
         share={currentShare}
-        maxExpiration={maxExpiration}
         onCancel={() => setIsEditing(false)}
         onShareUpdated={(updatedShare) => {
           setCurrentShare(updatedShare);
@@ -155,12 +144,6 @@ const Body = ({
         {formattedCreatedAt}
       </Text>
 
-      <Text size="sm">
-        <b>
-          <FormattedMessage id="account.shares.table.expiresAt" />:{" "}
-        </b>
-        {formattedExpiration}
-      </Text>
       <Divider />
       <CopyTextField link={link} toggleQR={handleToggleQR} />
       <Collapse in={showQR}>
@@ -201,24 +184,17 @@ const Body = ({
   );
 };
 
-const formatDateTimeLocal = (date: Date) => {
-  return moment(date).format("YYYY-MM-DDTHH:mm");
-};
-
 const EditShareBody = ({
   share,
-  maxExpiration,
   onCancel,
   onShareUpdated,
 }: {
   share: MyShare;
-  maxExpiration?: Timespan;
   onCancel: () => void;
   onShareUpdated: (share: MyShare) => void;
 }) => {
   const t = translateOutsideContext();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const isPermanentShare = moment(share.expiration).unix() === 0;
   const security = share.security ?? {
     passwordProtected: false,
     maxViews: undefined,
@@ -250,9 +226,6 @@ const EditShareBody = ({
     initialValues: {
       name: share.name || "",
       description: share.description || "",
-      expiration: isPermanentShare
-        ? formatDateTimeLocal(moment().add(1, "day").toDate())
-        : formatDateTimeLocal(share.expiration),
       password: "",
       removePassword: false,
       maxViews: security.maxViews || undefined,
@@ -261,28 +234,9 @@ const EditShareBody = ({
   });
 
   const onSubmit = form.onSubmit(async (values) => {
-    const expirationDate = moment(values.expiration);
-
-    if (!expirationDate.isValid()) {
-      form.setFieldError("expiration", t("common.error.field-required"));
-      return;
-    }
-
-    const maxDate = getMaxExpirationDate(maxExpiration);
-    if (expirationDate.isAfter(maxDate)) {
-      form.setFieldError(
-        "expiration",
-        t("upload.modal.expires.error.too-long", {
-          max: moment.duration(maxDate.diff(moment())).humanize(),
-        }),
-      );
-      return;
-    }
-
     const updateShare: UpdateShare = {
       name: values.name || null,
       description: values.description || null,
-      expiration: expirationDate.toISOString(),
       security: {
         password: values.password || undefined,
         removePassword: values.removePassword,
@@ -320,12 +274,6 @@ const EditShareBody = ({
             "upload.modal.accordion.name-and-description.description.placeholder",
           )}
           {...form.getInputProps("description")}
-        />
-        <TextInput
-          variant="filled"
-          type="datetime-local"
-          label={t("account.shares.table.expiresAt")}
-          {...form.getInputProps("expiration")}
         />
         <Divider />
         <PasswordInput

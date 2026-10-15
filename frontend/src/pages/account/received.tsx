@@ -9,7 +9,6 @@ import {
   Text,
   Title,
 } from "@mantine/core";
-import moment from "moment";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
@@ -68,9 +67,6 @@ const ReceivedShares = () => {
                 <th>
                   <FormattedMessage id="account.received-shares.table.from" />
                 </th>
-                <th>
-                  <FormattedMessage id="account.shares.table.expiresAt" />
-                </th>
                 <th></th>
               </tr>
             </thead>
@@ -80,13 +76,6 @@ const ReceivedShares = () => {
                   <td>{share.id}</td>
                   <td>{share.name}</td>
                   <td>{share.creator?.username ?? "—"}</td>
-                  <td>
-                    {moment(share.expiration).unix() === 0 ? (
-                      <FormattedMessage id="account.shares.table.expiry-never" />
-                    ) : (
-                      moment(share.expiration).format("LLL")
-                    )}
-                  </td>
                   <td>
                     <Group position="right">
                       <Button

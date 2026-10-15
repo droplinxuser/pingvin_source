@@ -3,22 +3,17 @@ import {
   Alert,
   Button,
   Checkbox,
-  Col,
-  Grid,
   Group,
   MultiSelect,
   NumberInput,
   PasswordInput,
-  Select,
   Stack,
-  Text,
   Textarea,
   TextInput,
 } from "@mantine/core";
 import { useForm, yupResolver } from "@mantine/form";
 import { useModals } from "@mantine/modals";
 import { ModalsContextProps } from "@mantine/modals/lib/context";
-import moment from "moment";
 import React, { useState } from "react";
 import { TbAlertCircle } from "react-icons/tb";
 import { FormattedMessage } from "react-intl";
@@ -29,13 +24,7 @@ import useTranslate, {
 import shareService from "../../../services/share.service";
 import { FileUpload } from "../../../types/File.type";
 import { CreateShare } from "../../../types/share.type";
-import {
-  stringToTimespan,
-  getExpirationPreview,
-  getMaxExpirationDate,
-} from "../../../utils/date.util";
 import toast from "../../../utils/toast.util";
-import { Timespan } from "../../../types/timespan.type";
 import { generateShareId } from "../../../utils/share.util";
 import CustomUrlInput from "../../share/CustomUrlInput";
 
@@ -49,8 +38,6 @@ const showCreateUploadModal = (
     allowUnauthenticatedShares: boolean;
     enableEmailRecepients: boolean;
     enableUserRecipients: boolean;
-    maxExpiration: Timespan;
-    defaultExpiration: Timespan;
     shareIdLength: number;
     simplified: boolean;
   },
@@ -114,8 +101,6 @@ const CreateUploadModalBody = ({
     allowUnauthenticatedShares: boolean;
     enableEmailRecepients: boolean;
     enableUserRecipients: boolean;
-    maxExpiration: Timespan;
-    defaultExpiration: Timespan;
     shareIdLength: number;
   };
 }) => {
@@ -156,10 +141,6 @@ const CreateUploadModalBody = ({
       .max(512, t("common.error.too-long", { length: 512 })),
   });
 
-  const defaultTimespan = options.defaultExpiration
-    ? options.defaultExpiration
-    : { value: 7, unit: "days" };
-
   const form = useForm({
     initialValues: {
       name: undefined,
@@ -168,8 +149,6 @@ const CreateUploadModalBody = ({
       password: undefined,
       maxViews: undefined,
       description: undefined,
-      expiration_num: defaultTimespan.value,
-      expiration_unit: `-${defaultTimespan.unit}` as string,
       restrictToRecipients: false,
     },
     validate: yupResolver(validationSchema),
@@ -187,33 +166,10 @@ const CreateUploadModalBody = ({
     if (!(await shareService.isShareIdAvailable(values.link))) {
       form.setFieldError("link", t("upload.modal.link.error.taken"));
     } else {
-      const expirationString =
-        form.values.expiration_num + form.values.expiration_unit;
-
-      const expirationDate = moment().add(
-        form.values.expiration_num,
-        form.values.expiration_unit.replace(
-          "-",
-          "",
-        ) as moment.unitOfTime.DurationConstructor,
-      );
-
-      const maxDate = getMaxExpirationDate(options.maxExpiration);
-      if (expirationDate.isAfter(maxDate)) {
-        form.setFieldError(
-          "expiration_num",
-          t("upload.modal.expires.error.too-long", {
-            max: moment.duration(maxDate.diff(moment())).humanize(),
-          }),
-        );
-        return;
-      }
-
       uploadCallback(
         {
           id: values.link,
           name: values.name,
-          expiration: expirationString,
           recipients: values.recipients,
           description: values.description,
           security: {
@@ -253,85 +209,6 @@ const CreateUploadModalBody = ({
             defaultAppUrl={options.defaultAppUrl}
             pathPrefix="/s/"
           />
-          {!options.isReverseShare && (
-            <>
-              <Grid align={form.errors.expiration_num ? "center" : "flex-end"}>
-                <Col xs={6}>
-                  <NumberInput
-                    min={1}
-                    max={99999}
-                    precision={0}
-                    variant="filled"
-                    label={t("upload.modal.expires.label")}
-                    {...form.getInputProps("expiration_num")}
-                  />
-                </Col>
-                <Col xs={6}>
-                  <Select
-                    {...form.getInputProps("expiration_unit")}
-                    data={[
-                      {
-                        value: "-minutes",
-                        label:
-                          form.values.expiration_num == 1
-                            ? t("upload.modal.expires.minute-singular")
-                            : t("upload.modal.expires.minute-plural"),
-                      },
-                      {
-                        value: "-hours",
-                        label:
-                          form.values.expiration_num == 1
-                            ? t("upload.modal.expires.hour-singular")
-                            : t("upload.modal.expires.hour-plural"),
-                      },
-                      {
-                        value: "-days",
-                        label:
-                          form.values.expiration_num == 1
-                            ? t("upload.modal.expires.day-singular")
-                            : t("upload.modal.expires.day-plural"),
-                      },
-                      {
-                        value: "-weeks",
-                        label:
-                          form.values.expiration_num == 1
-                            ? t("upload.modal.expires.week-singular")
-                            : t("upload.modal.expires.week-plural"),
-                      },
-                      {
-                        value: "-months",
-                        label:
-                          form.values.expiration_num == 1
-                            ? t("upload.modal.expires.month-singular")
-                            : t("upload.modal.expires.month-plural"),
-                      },
-                      {
-                        value: "-years",
-                        label:
-                          form.values.expiration_num == 1
-                            ? t("upload.modal.expires.year-singular")
-                            : t("upload.modal.expires.year-plural"),
-                      },
-                    ]}
-                  />
-                </Col>
-              </Grid>
-              <Text
-                italic
-                size="xs"
-                sx={(theme) => ({
-                  color: theme.colors.gray[6],
-                })}
-              >
-                {getExpirationPreview(
-                  {
-                    expiresOn: t("upload.modal.completed.expires-on"),
-                  },
-                  form,
-                )}
-              </Text>
-            </>
-          )}
           <Accordion>
             <Accordion.Item value="description" sx={{ borderBottom: "none" }}>
               <Accordion.Control>
@@ -481,10 +358,8 @@ const SimplifiedCreateUploadModalModal = ({
   uploadCallback: (createShare: CreateShare, files: FileUpload[]) => void;
   options: {
     isUserSignedIn: boolean;
-    isReverseShare: boolean;
     allowUnauthenticatedShares: boolean;
     enableEmailRecepients: boolean;
-    maxExpiration: Timespan;
     shareIdLength: number;
   };
 }) => {
@@ -525,7 +400,6 @@ const SimplifiedCreateUploadModalModal = ({
       {
         id: link,
         name: values.name,
-        expiration: "7-days",
         recipients: [],
         description: values.description,
         security: {

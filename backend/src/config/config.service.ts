@@ -57,6 +57,13 @@ export class ConfigService extends EventEmitter {
   yamlConfig?: YamlConfig;
   logger = new Logger(ConfigService.name);
 
+  // Expiration is automatic and immutable: these variables are no longer
+  // exposed to the UI, but the rows may still exist in the database.
+  private static readonly HIDDEN_VARIABLES = [
+    "share.maxExpiration",
+    "share.defaultExpiration",
+  ];
+
   constructor(
     @Inject("CONFIG_VARIABLES") private configVariables: Config[],
     private prisma: PrismaService,
@@ -187,6 +194,10 @@ export class ConfigService extends EventEmitter {
   async getByCategory(category: string) {
     const configVariables = this.configVariables
       .filter((c) => !c.locked && category == c.category)
+      .filter(
+        (c) =>
+          !ConfigService.HIDDEN_VARIABLES.includes(`${c.category}.${c.name}`),
+      )
       .sort((a, b) => a.order - b.order);
 
     return configVariables.map((variable) => {
@@ -200,7 +211,12 @@ export class ConfigService extends EventEmitter {
   }
 
   async list() {
-    const configVariables = this.configVariables.filter((c) => !c.secret);
+    const configVariables = this.configVariables
+      .filter((c) => !c.secret)
+      .filter(
+        (c) =>
+          !ConfigService.HIDDEN_VARIABLES.includes(`${c.category}.${c.name}`),
+      );
 
     return configVariables.map((variable) => {
       return {

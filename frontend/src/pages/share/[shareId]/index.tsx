@@ -32,9 +32,12 @@ import { MyShare, Share as ShareType } from "../../../types/share.type";
 import toast from "../../../utils/toast.util";
 import { byteToHumanSizeString } from "../../../utils/fileSize.util";
 import { getQueryString } from "../../../utils/router.util";
+import { setNoStoreCacheHeaders } from "../../../utils/antiCache.util";
 import { HoverTip } from "../../../components/core/HoverTip";
 
 export function getServerSideProps(context: GetServerSidePropsContext) {
+  // Share pages must never be cached by browsers, origin servers or CDN edges
+  setNoStoreCacheHeaders(context.res);
   return {
     props: { shareId: context.params!.shareId },
   };
@@ -66,9 +69,6 @@ const Share = ({ shareId }: { shareId: string }) => {
         parseInt(config.get("share.maxSize")),
         config.get("general.appUrl"),
         config.get("general.appUrl", true),
-        user?.isAdmin
-          ? { value: 0, unit: "days" }
-          : config.get("share.maxExpiration"),
         (updatedShare: MyShare) => {
           setShare((prev) =>
             prev

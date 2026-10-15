@@ -25,7 +25,6 @@ export type CreateShare = {
   name?: string;
   description?: string;
   recipients: string[];
-  expiration: string;
   security: ShareSecurity;
   size?: number;
 };
@@ -33,7 +32,6 @@ export type CreateShare = {
 export type UpdateShare = {
   name?: string | null;
   description?: string | null;
-  expiration?: string;
   security?: {
     password?: string;
     removePassword?: boolean;

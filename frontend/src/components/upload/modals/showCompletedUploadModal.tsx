@@ -2,7 +2,6 @@ import { Button, Stack, Text, Collapse } from "@mantine/core";
 import { useModals } from "@mantine/modals";
 import { ModalsContextProps } from "@mantine/modals/lib/context";
 import { useState } from "react";
-import moment from "moment";
 import { useRouter } from "next/router";
 import { FormattedMessage } from "react-intl";
 import useTranslate, {
@@ -72,16 +71,6 @@ const Body = ({
           {t("upload.modal.completed.notified-reverse-share-creator")}
         </Text>
       )}
-      <Text
-        size="xs"
-        sx={(theme) => ({
-          color: theme.colors.gray[6],
-        })}
-      >
-        {t("upload.modal.completed.expires-on", {
-          expiration: moment(share.expiration).format("LLL"),
-        })}
-      </Text>
 
       <Button
         onClick={() => {

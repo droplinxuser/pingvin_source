@@ -13,7 +13,6 @@ import {
 } from "@mantine/core";
 import { useClipboard } from "@mantine/hooks";
 import { useModals } from "@mantine/modals";
-import moment from "moment";
 import { useEffect, useState } from "react";
 import { TbInfoCircle, TbLink, TbPlus, TbTrash } from "react-icons/tb";
 import { FormattedMessage } from "react-intl";
@@ -78,10 +77,6 @@ const MyShares = () => {
               showCreateReverseShareModal(
                 modals,
                 config.get("smtp.enabled"),
-                user?.isAdmin
-                  ? { value: 0, unit: "days" }
-                  : config.get("share.maxExpiration"),
-                config.get("share.defaultExpiration"),
                 config.get("share.reverseShareSimpleOnly"),
                 appUrl,
                 defaultAppUrl,
@@ -131,9 +126,6 @@ const MyShares = () => {
                 </th>
                 <th>
                   <FormattedMessage id="account.reverseShares.table.max-size" />
-                </th>
-                <th>
-                  <FormattedMessage id="account.reverseShares.table.expires" />
                 </th>
                 <th></th>
               </tr>
@@ -210,11 +202,6 @@ const MyShares = () => {
                   <td>{reverseShare.remainingUses}</td>
                   <td>
                     {byteToHumanSizeString(parseInt(reverseShare.maxShareSize))}
-                  </td>
-                  <td>
-                    {moment(reverseShare.shareExpiration).unix() === 0
-                      ? "Never"
-                      : moment(reverseShare.shareExpiration).format("LLL")}
                   </td>
                   <td>
                     <Group position="right">

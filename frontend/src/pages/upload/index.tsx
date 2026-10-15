@@ -183,10 +183,6 @@ const Upload = ({
         ),
         enableEmailRecepients: config.get("share.enableShareEmailRecipients"),
         enableUserRecipients: config.get("share.enableUserRecipients"),
-        maxExpiration: user?.isAdmin
-          ? { value: 0, unit: "days" }
-          : config.get("share.maxExpiration"),
-        defaultExpiration: config.get("share.defaultExpiration"),
         shareIdLength: config.get("share.shareIdLength"),
         simplified,
       },

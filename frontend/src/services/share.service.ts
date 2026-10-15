@@ -451,7 +451,6 @@ const isReverseShareTokenAvailable = async (
 };
 
 const createReverseShare = async (
-  shareExpiration: string,
   maxShareSize: number,
   maxUseCount: number,
   sendEmailNotification: boolean,
@@ -461,7 +460,6 @@ const createReverseShare = async (
 ) => {
   return (
     await api.post("reverseShares", {
-      shareExpiration,
       maxShareSize: maxShareSize.toString(),
       maxUseCount,
       sendEmailNotification,

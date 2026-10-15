@@ -9,8 +9,11 @@ import useConfirmLeave from "../../../hooks/confirm-leave.hook";
 import useTranslate from "../../../hooks/useTranslate.hook";
 import shareService from "../../../services/share.service";
 import { Share as ShareType } from "../../../types/share.type";
+import { setNoStoreCacheHeaders } from "../../../utils/antiCache.util";
 
 export function getServerSideProps(context: GetServerSidePropsContext) {
+  // Share pages must never be cached by browsers, origin servers or CDN edges
+  setNoStoreCacheHeaders(context.res);
   return {
     props: { shareId: context.params!.shareId },
   };

@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  Header,
   HttpCode,
   Param,
   Patch,
@@ -93,8 +94,18 @@ export class ShareController {
     );
   }
 
+  // Share page endpoints must never be cached by browsers, origin servers or
+  // CDN edges (e.g. Cloudflare): the share data changes on every visit.
   @Get(":id")
   @UseGuards(IdValidation, ShareSecurityGuard)
+  @Header(
+    "Cache-Control",
+    "no-store, no-cache, must-revalidate, proxy-revalidate",
+  )
+  @Header("CDN-Cache-Control", "no-store")
+  @Header("Cloudflare-CDN-Cache-Control", "no-store")
+  @Header("Pragma", "no-cache")
+  @Header("Expires", "0")
   async get(@Param("id") id: string) {
     return new ShareDTO().from(await this.shareService.get(id));
   }
@@ -107,6 +118,14 @@ export class ShareController {
 
   @Get(":id/metaData")
   @UseGuards(IdValidation, ShareSecurityGuard)
+  @Header(
+    "Cache-Control",
+    "no-store, no-cache, must-revalidate, proxy-revalidate",
+  )
+  @Header("CDN-Cache-Control", "no-store")
+  @Header("Cloudflare-CDN-Cache-Control", "no-store")
+  @Header("Pragma", "no-cache")
+  @Header("Expires", "0")
   async getMetaData(@Param("id") id: string) {
     return new ShareMetaDataDTO().from(await this.shareService.getMetaData(id));
   }

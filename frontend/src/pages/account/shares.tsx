@@ -13,7 +13,6 @@ import {
 } from "@mantine/core";
 import { useClipboard } from "@mantine/hooks";
 import { useModals } from "@mantine/modals";
-import moment from "moment";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import {
@@ -94,9 +93,6 @@ const MyShares = () => {
                 <th>
                   <FormattedMessage id="account.shares.table.visitors" />
                 </th>
-                <th>
-                  <FormattedMessage id="account.shares.table.expiresAt" />
-                </th>
                 <th></th>
               </tr>
             </thead>
@@ -160,13 +156,6 @@ const MyShares = () => {
                       )}
                     </td>
                     <td>
-                      {moment(share.expiration).unix() === 0 ? (
-                        <FormattedMessage id="account.shares.table.expiry-never" />
-                      ) : (
-                        moment(share.expiration).format("LLL")
-                      )}
-                    </td>
-                    <td>
                       <Group position="right">
                         <Link href={`/share/${share.id}/edit`}>
                           <HoverTip label={t("account.shares.button.edit")}>
@@ -191,9 +180,6 @@ const MyShares = () => {
                                 parseInt(config.get("share.maxSize")),
                                 config.get("general.appUrl"),
                                 config.get("general.appUrl", true),
-                                user?.isAdmin
-                                  ? { value: 0, unit: "days" }
-                                  : config.get("share.maxExpiration"),
                                 (updatedShare) =>
                                   setShares(
                                     shares.map((item) =>

@@ -21,10 +21,7 @@ import { FileService } from "src/file/file.service";
 import { PrismaService } from "src/prisma/prisma.service";
 import { ReverseShareService } from "src/reverseShare/reverseShare.service";
 import { SystemService } from "src/system/system.service";
-import {
-  isExpirationAllowed,
-  parseRelativeDateToAbsolute,
-} from "src/utils/date.util";
+import { getDefaultShareExpiration } from "src/utils/date.util";
 import { byteToHumanSizeString } from "src/utils/fileSize.util";
 import { getUserActiveStorageUsage } from "src/utils/storageQuota.util";
 import { SHARE_DIRECTORY } from "../constants";
@@ -142,16 +139,9 @@ export class ShareService {
       // can't access it.
     }
 
-    let expirationDate: Date;
-
-    // If share is created by a reverse share token override the expiration date
-    if (reverseShare) {
-      expirationDate = reverseShare.shareExpiration;
-    } else {
-      expirationDate = this.parseExpiration(share.expiration);
-    }
-
-    this.validateExpiration(expirationDate);
+    // Expiration is automatic and immutable: every share starts with a rolling
+    // expiration of 100 days, which is extended on every visit of the share page.
+    const expirationDate = getDefaultShareExpiration();
 
     fs.mkdirSync(`${SHARE_DIRECTORY}/${share.id}`, {
       recursive: true,
@@ -614,17 +604,11 @@ export class ShareService {
       throw new ForbiddenException(this.i18n.t("share.anonymousNoUpdate"));
     }
 
-    let expirationDate: Date | undefined;
-    if (body.expiration !== undefined) {
-      expirationDate = this.parseExpiration(body.expiration);
-      this.validateExpiration(expirationDate);
-    }
-
+    // Expiration is automatic and immutable, so it can't be changed via update
     const data: Prisma.ShareUpdateInput = {
       name: body.name !== undefined ? body.name || null : undefined,
       description:
         body.description !== undefined ? body.description || null : undefined,
-      expiration: expirationDate,
     };
 
     await this.prisma.share.update({
@@ -720,29 +704,17 @@ export class ShareService {
     };
   }
 
-  private parseExpiration(expiration: string) {
-    if (
-      /^\d+-(minute|hour|day|week|month|year|minutes|hours|days|weeks|months|years)$/.test(
-        expiration,
-      )
-    ) {
-      return parseRelativeDateToAbsolute(expiration);
-    }
-
-    const absoluteExpiration = moment(expiration, moment.ISO_8601, true);
-    if (absoluteExpiration.isValid()) return absoluteExpiration.toDate();
-
-    throw new BadRequestException(this.i18n.t("share.invalidExpiration"));
-  }
-
-  private validateExpiration(expiration: Date) {
-    // isExpirationAllowed rejects permanent (epoch 0) shares, applies the
-    // configurable share.maxExpiration and the 5 year hard cap
-    if (
-      !isExpirationAllowed(expiration, this.config.get("share.maxExpiration"))
-    ) {
-      throw new BadRequestException(this.i18n.t("share.maxExpirationExceeded"));
-    }
+  /**
+   * Rolling expiration: extends the share's expiration to 100 days from now.
+   * Called whenever the share page is visited. Returns the new expiration date.
+   */
+  async extendExpirationOnVisit(shareId: string) {
+    const expiration = getDefaultShareExpiration();
+    await this.prisma.share.update({
+      where: { id: shareId },
+      data: { expiration },
+    });
+    return expiration;
   }
 
   async isShareIdAvailable(id: string) {

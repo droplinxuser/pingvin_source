@@ -1,27 +1,14 @@
-import {
-  Button,
-  Col,
-  Grid,
-  Group,
-  NumberInput,
-  Select,
-  Stack,
-  Switch,
-  Text,
-} from "@mantine/core";
+import { Button, Group, NumberInput, Stack, Switch } from "@mantine/core";
 import { useForm, yupResolver } from "@mantine/form";
 import { useModals } from "@mantine/modals";
 import { ModalsContextProps } from "@mantine/modals/lib/context";
 import { getCookie, setCookie } from "cookies-next";
-import moment from "moment";
 import { FormattedMessage } from "react-intl";
 import * as yup from "yup";
 import useTranslate, {
   translateOutsideContext,
 } from "../../../hooks/useTranslate.hook";
 import shareService from "../../../services/share.service";
-import { Timespan } from "../../../types/timespan.type";
-import { getExpirationPreview } from "../../../utils/date.util";
 import { byteToHumanSizeString } from "../../../utils/fileSize.util";
 import { generateShareId } from "../../../utils/share.util";
 import toast from "../../../utils/toast.util";
@@ -32,8 +19,6 @@ import showCompletedReverseShareModal from "./showCompletedReverseShareModal";
 const showCreateReverseShareModal = (
   modals: ModalsContextProps,
   showSendEmailNotificationOption: boolean,
-  maxExpiration: Timespan,
-  defaultExpiration: Timespan,
   reverseShareSimpleOnly: boolean,
   appUrl: string,
   defaultAppUrl: string,
@@ -49,8 +34,6 @@ const showCreateReverseShareModal = (
       <Body
         showSendEmailNotificationOption={showSendEmailNotificationOption}
         getReverseShares={getReverseShares}
-        maxExpiration={maxExpiration}
-        defaultExpiration={defaultExpiration}
         reverseShareSimpleOnly={reverseShareSimpleOnly}
         appUrl={appUrl}
         defaultAppUrl={defaultAppUrl}
@@ -64,8 +47,6 @@ const showCreateReverseShareModal = (
 const Body = ({
   getReverseShares,
   showSendEmailNotificationOption,
-  maxExpiration,
-  defaultExpiration,
   reverseShareSimpleOnly,
   appUrl,
   defaultAppUrl,
@@ -74,8 +55,6 @@ const Body = ({
 }: {
   getReverseShares: () => void;
   showSendEmailNotificationOption: boolean;
-  maxExpiration: Timespan;
-  defaultExpiration: Timespan;
   reverseShareSimpleOnly: boolean;
   appUrl: string;
   defaultAppUrl: string;
@@ -88,18 +67,12 @@ const Body = ({
   const userMaxShareSize = maxShareSize;
   const generatedToken = generateShareId(shareIdLength);
 
-  const defaultTimespan = defaultExpiration
-    ? defaultExpiration
-    : { value: 7, unit: "days" };
-
   const form = useForm({
     initialValues: {
       token: generatedToken,
       maxShareSize: userMaxShareSize,
       maxUseCount: 1,
       sendEmailNotification: false,
-      expiration_num: defaultTimespan.value,
-      expiration_unit: `-${defaultTimespan.unit}` as string,
       simplified: !reverseShareSimpleOnly
         ? false
         : !!(getCookie("reverse-share.simplified") ?? false),
@@ -145,33 +118,8 @@ const Body = ({
     setCookie("reverse-share.simplified", values.simplified);
     setCookie("reverse-share.public-access", values.publicAccess);
 
-    const expirationDate = moment().add(
-      form.values.expiration_num,
-      form.values.expiration_unit.replace(
-        "-",
-        "",
-      ) as moment.unitOfTime.DurationConstructor,
-    );
-    if (
-      maxExpiration.value != 0 &&
-      expirationDate.isAfter(
-        moment().add(maxExpiration.value, maxExpiration.unit),
-      )
-    ) {
-      form.setFieldError(
-        "expiration_num",
-        t("upload.modal.expires.error.too-long", {
-          max: moment
-            .duration(maxExpiration.value, maxExpiration.unit)
-            .humanize(),
-        }),
-      );
-      return;
-    }
-
     shareService
       .createReverseShare(
-        values.expiration_num + values.expiration_unit,
         values.maxShareSize,
         values.maxUseCount,
         values.sendEmailNotification,
@@ -199,85 +147,6 @@ const Body = ({
             defaultAppUrl={defaultAppUrl}
             pathPrefix="/upload/"
           />
-          <div>
-            <Grid align={form.errors.expiration_num ? "center" : "flex-end"}>
-              <Col xs={6}>
-                <NumberInput
-                  min={1}
-                  max={99999}
-                  precision={0}
-                  variant="filled"
-                  label={t("account.reverseShares.modal.expiration.label")}
-                  {...form.getInputProps("expiration_num")}
-                />
-              </Col>
-              <Col xs={6}>
-                <Select
-                  {...form.getInputProps("expiration_unit")}
-                  data={[
-                    // Set the label to singular if the number is 1, else plural
-                    {
-                      value: "-minutes",
-                      label:
-                        form.values.expiration_num == 1
-                          ? t("upload.modal.expires.minute-singular")
-                          : t("upload.modal.expires.minute-plural"),
-                    },
-                    {
-                      value: "-hours",
-                      label:
-                        form.values.expiration_num == 1
-                          ? t("upload.modal.expires.hour-singular")
-                          : t("upload.modal.expires.hour-plural"),
-                    },
-                    {
-                      value: "-days",
-                      label:
-                        form.values.expiration_num == 1
-                          ? t("upload.modal.expires.day-singular")
-                          : t("upload.modal.expires.day-plural"),
-                    },
-                    {
-                      value: "-weeks",
-                      label:
-                        form.values.expiration_num == 1
-                          ? t("upload.modal.expires.week-singular")
-                          : t("upload.modal.expires.week-plural"),
-                    },
-                    {
-                      value: "-months",
-                      label:
-                        form.values.expiration_num == 1
-                          ? t("upload.modal.expires.month-singular")
-                          : t("upload.modal.expires.month-plural"),
-                    },
-                    {
-                      value: "-years",
-                      label:
-                        form.values.expiration_num == 1
-                          ? t("upload.modal.expires.year-singular")
-                          : t("upload.modal.expires.year-plural"),
-                    },
-                  ]}
-                />
-              </Col>
-            </Grid>
-            <Text
-              mt="sm"
-              italic
-              size="xs"
-              sx={(theme) => ({
-                color: theme.colors.gray[6],
-              })}
-            >
-              {getExpirationPreview(
-                {
-                  expiresOn: t("account.reverseShare.expires-on"),
-                },
-                form,
-              )}
-            </Text>
-          </div>
           <FileSizeInput
             label={t("account.reverseShares.modal.max-size.label")}
             {...form.getInputProps("maxShareSize")}

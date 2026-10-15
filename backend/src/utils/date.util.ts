@@ -1,5 +1,13 @@
 import * as moment from "moment";
 
+// Every share is assigned a rolling expiration of 100 days. It is set when the
+// share is created and reset to 100 days from now whenever the share is visited.
+export const SHARE_EXPIRATION_DAYS = 100;
+
+export function getDefaultShareExpiration() {
+  return moment().add(SHARE_EXPIRATION_DAYS, "days").toDate();
+}
+
 // Hard cap for every share expiration, even when share.maxExpiration is set
 // to 0 ("unlimited"). Permanent shares (unix epoch 0) are rejected.
 export const MAX_SHARE_EXPIRATION_YEARS = 5;

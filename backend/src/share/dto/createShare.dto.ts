@@ -24,8 +24,10 @@ export class CreateShareDTO {
   @IsOptional()
   name: string;
 
+  // Expiration is automatic (100-day rolling); ignored if provided by clients
   @IsString()
-  expiration: string;
+  @IsOptional()
+  expiration?: string;
 
   @MaxLength(512)
   @IsOptional()

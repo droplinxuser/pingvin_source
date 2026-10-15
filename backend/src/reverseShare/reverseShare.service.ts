@@ -4,15 +4,11 @@ import {
   Injectable,
 } from "@nestjs/common";
 import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library";
-import * as moment from "moment";
 import { I18nService } from "nestjs-i18n";
 import { ConfigService } from "src/config/config.service";
 import { FileService } from "src/file/file.service";
 import { PrismaService } from "src/prisma/prisma.service";
-import {
-  isExpirationAllowed,
-  parseRelativeDateToAbsolute,
-} from "src/utils/date.util";
+import { getDefaultShareExpiration } from "src/utils/date.util";
 import { CreateReverseShareDTO } from "./dto/createReverseShare.dto";
 
 @Injectable()
@@ -25,15 +21,8 @@ export class ReverseShareService {
   ) {}
 
   async create(data: CreateReverseShareDTO, creatorId: string) {
-    // Parse date string to date
-    const expirationDate = moment()
-      .add(
-        data.shareExpiration.split("-")[0],
-        data.shareExpiration.split(
-          "-",
-        )[1] as moment.unitOfTime.DurationConstructor,
-      )
-      .toDate();
+    // Expiration is automatic and immutable: reverse shares default to 100 days
+    const expirationDate = getDefaultShareExpiration();
 
     const creator = await this.prisma.user.findUnique({
       where: { id: creatorId },
@@ -63,15 +52,6 @@ export class ReverseShareService {
       }
     }
 
-    const parsedExpiration = parseRelativeDateToAbsolute(data.shareExpiration);
-    if (
-      !isExpirationAllowed(
-        parsedExpiration,
-        this.config.get("share.maxExpiration"),
-      )
-    ) {
-      throw new BadRequestException(this.i18n.t("share.maxExpirationExceeded"));
-    }
     const userMaxShareSize = creator?.shareSizeLimit
       ? parseInt(creator.shareSizeLimit)
       : parseInt(this.config.get("share.maxSize"));
