@@ -2,6 +2,7 @@ import { Button, Container, createStyles, Group, Title } from "@mantine/core";
 import Link from "next/link";
 import { FormattedMessage } from "react-intl";
 import Meta from "../components/Meta";
+import Ads from "../components/Ads";
 
 const useStyles = createStyles((theme) => ({
   root: {
@@ -40,6 +41,7 @@ const ErrorNotFound = () => {
           </Button>
         </Group>
       </Container>
+      <Ads />
     </>
   );
 };
