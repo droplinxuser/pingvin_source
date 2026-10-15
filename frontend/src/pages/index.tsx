@@ -95,8 +95,37 @@ export default function Home() {
   }, [config]);
 
   const getButtonHref = () => {
-    return signupEnabled ? "/auth/signUp" : "/auth/signIn";
+    return signupEnabled ? "/upload" : "/auth/signIn";
   };
+
+  const getSiteName = () => {
+    try {
+      return config.get("general.appName");
+    } catch (error) {
+      return "SiteName";
+    }
+  };
+
+  const getContactEmail = () => {
+    try {
+      return `admin@${new URL(config.get("general.appUrl")).hostname}`;
+    } catch (error) {
+      return "admin@localhost";
+    }
+  };
+
+  const getAboutHref = () => {
+    try {
+      const imprintUrl = config.get("legal.imprintUrl");
+      if (imprintUrl) return imprintUrl;
+    } catch (error) {
+      // Fall back to the internal imprint page
+    }
+    return "/imprint";
+  };
+
+  const aboutHref = getAboutHref();
+  const aboutIsExternal = /^https?:\/\//i.test(aboutHref);
 
   return (
     <>
@@ -108,6 +137,7 @@ export default function Home() {
               <FormattedMessage
                 id="home.title"
                 values={{
+                  siteName: getSiteName(),
                   h: (chunks) => (
                     <span className={classes.highlight}>{chunks}</span>
                   ),
@@ -149,7 +179,11 @@ export default function Home() {
                   <b>
                     <FormattedMessage id="home.bullet.c.name" />
                   </b>{" "}
-                  - <FormattedMessage id="home.bullet.c.description" />
+                  -{" "}
+                  <FormattedMessage
+                    id="home.bullet.c.description"
+                    values={{ contactEmail: getContactEmail() }}
+                  />
                 </div>
               </List.Item>
             </List>
@@ -164,17 +198,30 @@ export default function Home() {
               >
                 <FormattedMessage id="home.button.start" />
               </Button>
-              <Button
-                component={Link}
-                href="https://github.com/smp46/pingvin-share-x"
-                target="_blank"
-                variant="default"
-                radius="xl"
-                size="md"
-                className={classes.control}
-              >
-                <FormattedMessage id="home.button.source" />
-              </Button>
+              {aboutIsExternal ? (
+                <Button
+                  component="a"
+                  href={aboutHref}
+                  target="_blank"
+                  variant="default"
+                  radius="xl"
+                  size="md"
+                  className={classes.control}
+                >
+                  <FormattedMessage id="home.button.source" />
+                </Button>
+              ) : (
+                <Button
+                  component={Link}
+                  href={aboutHref}
+                  variant="default"
+                  radius="xl"
+                  size="md"
+                  className={classes.control}
+                >
+                  <FormattedMessage id="home.button.source" />
+                </Button>
+              )}
             </Group>
           </div>
           <Group className={classes.image} align="center">
