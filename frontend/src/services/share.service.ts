@@ -106,8 +106,34 @@ const isShareIdAvailable = async (id: string): Promise<boolean> => {
   return (await api.get(`/shares/isShareIdAvailable/${id}`)).data.isAvailable;
 };
 
+const getFileExtension = (fileName: string) => {
+  const lastDotIndex = fileName.lastIndexOf(".");
+  return lastDotIndex === -1
+    ? ""
+    : fileName.slice(lastDotIndex + 1).toLowerCase();
+};
+
+// Media extensions that browsers can render but that the installed mime-db
+// version misses or misclassifies. This keeps the frontend detection working
+// independently of the mime-db version (the backend ships a newer one).
+const mimeTypeOverrides: Record<string, string> = {
+  jfif: "image/jpeg", // JPEG File Interchange Format
+  jfi: "image/jpeg", // legacy JPEG extensions
+  jif: "image/jpeg",
+  jxl: "image/jxl", // JPEG XL
+  j2k: "image/jp2", // JPEG 2000 codestream
+  ogx: "video/ogg", // Ogg media container
+  ogm: "video/ogg", // Ogg Media
+  m2ts: "video/mp2t", // MPEG-2 transport streams
+  mts: "video/mp2t",
+  "3gpp2": "video/3gpp2", // 3GPP2 media
+};
+
 const getFileMimeType = (fileName: string) => {
-  return (mime.contentType(fileName) || "").split(";")[0];
+  return (
+    mimeTypeOverrides[getFileExtension(fileName)] ||
+    (mime.contentType(fileName) || "").split(";")[0]
+  );
 };
 
 const doesFileSupportPreview = (fileName: string) => {
