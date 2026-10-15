@@ -1,6 +1,6 @@
 {
-  "name": "SiteName",
-  "short_name": "SiteName",
+  "name": "Pingvin Share",
+  "short_name": "Pingvin Share",
   "theme_color": "#46509e",
   "background_color": "#ffffff",
   "display": "standalone",
