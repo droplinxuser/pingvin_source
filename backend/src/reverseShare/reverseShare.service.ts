@@ -63,10 +63,11 @@ export class ReverseShareService {
     const parsedExpiration = parseRelativeDateToAbsolute(data.shareExpiration);
     const maxExpiration = this.config.get("share.maxExpiration");
     if (
-      !creator?.isAdmin &&
-      maxExpiration.value !== 0 &&
-      parsedExpiration >
-        moment().add(maxExpiration.value, maxExpiration.unit).toDate()
+      moment(parsedExpiration).isSame(0) ||
+      parsedExpiration > moment().add(5, "years").toDate() ||
+      (maxExpiration.value !== 0 &&
+        parsedExpiration >
+          moment().add(maxExpiration.value, maxExpiration.unit).toDate())
     ) {
       throw new BadRequestException(this.i18n.t("share.maxExpirationExceeded"));
     }

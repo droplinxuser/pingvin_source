@@ -62,7 +62,7 @@ share:
   autoOpenShareModal: "false"
   #Force reverse shares to be created in simple mode. If disabled, the creator of the reverse share can choose between simple and advanced mode.
   reverseShareSimpleOnly: "false"
-  #Maximum share expiration. Set to 0 to allow unlimited expiration.
+  #Maximum share expiration, hard capped at 5 years. Set to 0 to allow the maximum of 5 years.
   maxExpiration: 0 days
   #The default expiration time selected when creating a new share.
   defaultExpiration: 7 days

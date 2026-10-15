@@ -252,7 +252,6 @@ const EditShareBody = ({
       expiration: isPermanentShare
         ? formatDateTimeLocal(moment().add(1, "day").toDate())
         : formatDateTimeLocal(share.expiration),
-      never_expires: isPermanentShare,
       password: "",
       removePassword: false,
       maxViews: security.maxViews || undefined,
@@ -263,25 +262,22 @@ const EditShareBody = ({
   const onSubmit = form.onSubmit(async (values) => {
     const expirationDate = moment(values.expiration);
 
-    if (!values.never_expires && !expirationDate.isValid()) {
+    if (!expirationDate.isValid()) {
       form.setFieldError("expiration", t("common.error.field-required"));
       return;
     }
 
-    if (
-      !values.never_expires &&
-      maxExpiration &&
-      maxExpiration.value !== 0 &&
-      expirationDate.isAfter(
-        moment().add(maxExpiration.value, maxExpiration.unit),
-      )
-    ) {
+    const fiveYears = moment().add(5, "years");
+    const configMax =
+      maxExpiration && maxExpiration.value !== 0
+        ? moment().add(maxExpiration.value, maxExpiration.unit)
+        : fiveYears;
+    const maxDate = configMax.isBefore(fiveYears) ? configMax : fiveYears;
+    if (expirationDate.isAfter(maxDate)) {
       form.setFieldError(
         "expiration",
         t("upload.modal.expires.error.too-long", {
-          max: moment
-            .duration(maxExpiration.value, maxExpiration.unit)
-            .humanize(),
+          max: moment.duration(maxDate.diff(moment())).humanize(),
         }),
       );
       return;
@@ -290,7 +286,7 @@ const EditShareBody = ({
     const updateShare: UpdateShare = {
       name: values.name || null,
       description: values.description || null,
-      expiration: values.never_expires ? "never" : expirationDate.toISOString(),
+      expiration: expirationDate.toISOString(),
       security: {
         password: values.password || undefined,
         removePassword: values.removePassword,
@@ -333,15 +329,8 @@ const EditShareBody = ({
           variant="filled"
           type="datetime-local"
           label={t("account.shares.table.expiresAt")}
-          disabled={form.values.never_expires}
           {...form.getInputProps("expiration")}
         />
-        {(!maxExpiration || maxExpiration.value === 0) && (
-          <Checkbox
-            label={t("upload.modal.expires.never-long")}
-            {...form.getInputProps("never_expires", { type: "checkbox" })}
-          />
-        )}
         <Divider />
         <PasswordInput
           variant="filled"

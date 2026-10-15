@@ -145,10 +145,9 @@ export class ShareService {
       expirationDate = reverseShare.shareExpiration;
     } else {
       expirationDate = this.parseExpiration(share.expiration);
-      if (!user?.isAdmin) {
-        this.validateExpiration(expirationDate);
-      }
     }
+
+    this.validateExpiration(expirationDate);
 
     fs.mkdirSync(`${SHARE_DIRECTORY}/${share.id}`, {
       recursive: true,
@@ -543,9 +542,7 @@ export class ShareService {
     let expirationDate: Date | undefined;
     if (body.expiration !== undefined) {
       expirationDate = this.parseExpiration(body.expiration);
-      if (!user?.isAdmin) {
-        this.validateExpiration(expirationDate);
-      }
+      this.validateExpiration(expirationDate);
     }
 
     const data: Prisma.ShareUpdateInput = {
@@ -649,8 +646,6 @@ export class ShareService {
   }
 
   private parseExpiration(expiration: string) {
-    if (expiration === "never") return moment(0).toDate();
-
     if (
       /^\d+-(minute|hour|day|week|month|year|minutes|hours|days|weeks|months|years)$/.test(
         expiration,
@@ -666,14 +661,22 @@ export class ShareService {
   }
 
   private validateExpiration(expiration: Date) {
-    const expiresNever = moment(expiration).isSame(0);
     const maxExpiration = this.config.get("share.maxExpiration");
 
+    // "Permanent" shares (stored as unix epoch 0) are no longer allowed
+    if (moment(expiration).isSame(0)) {
+      throw new BadRequestException(this.i18n.t("share.invalidExpiration"));
+    }
+
+    // Hard cap: no share may live longer than 5 years
+    if (expiration > moment().add(5, "years").toDate()) {
+      throw new BadRequestException(this.i18n.t("share.maxExpirationExceeded"));
+    }
+
+    // Configurable cap (0 = fall back to the 5 year hard cap)
     if (
       maxExpiration.value !== 0 &&
-      (expiresNever ||
-        expiration >
-          moment().add(maxExpiration.value, maxExpiration.unit).toDate())
+      expiration > moment().add(maxExpiration.value, maxExpiration.unit).toDate()
     ) {
       throw new BadRequestException(this.i18n.t("share.maxExpirationExceeded"));
     }

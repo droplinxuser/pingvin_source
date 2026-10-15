@@ -169,7 +169,6 @@ const CreateUploadModalBody = ({
       description: undefined,
       expiration_num: defaultTimespan.value,
       expiration_unit: `-${defaultTimespan.unit}` as string,
-      never_expires: false,
       restrictToRecipients: false,
     },
     validate: yupResolver(validationSchema),
@@ -187,9 +186,8 @@ const CreateUploadModalBody = ({
     if (!(await shareService.isShareIdAvailable(values.link))) {
       form.setFieldError("link", t("upload.modal.link.error.taken"));
     } else {
-      const expirationString = form.values.never_expires
-        ? "never"
-        : form.values.expiration_num + form.values.expiration_unit;
+      const expirationString =
+        form.values.expiration_num + form.values.expiration_unit;
 
       const expirationDate = moment().add(
         form.values.expiration_num,
@@ -199,22 +197,20 @@ const CreateUploadModalBody = ({
         ) as moment.unitOfTime.DurationConstructor,
       );
 
-      if (
-        options.maxExpiration.value != 0 &&
-        (form.values.never_expires ||
-          expirationDate.isAfter(
-            moment().add(
+      const fiveYears = moment().add(5, "years");
+      const configMax =
+        options.maxExpiration.value != 0
+          ? moment().add(
               options.maxExpiration.value,
               options.maxExpiration.unit,
-            ),
-          ))
-      ) {
+            )
+          : fiveYears;
+      const maxDate = configMax.isBefore(fiveYears) ? configMax : fiveYears;
+      if (expirationDate.isAfter(maxDate)) {
         form.setFieldError(
           "expiration_num",
           t("upload.modal.expires.error.too-long", {
-            max: moment
-              .duration(options.maxExpiration.value, options.maxExpiration.unit)
-              .humanize(),
+            max: moment.duration(maxDate.diff(moment())).humanize(),
           }),
         );
         return;
@@ -274,13 +270,11 @@ const CreateUploadModalBody = ({
                     precision={0}
                     variant="filled"
                     label={t("upload.modal.expires.label")}
-                    disabled={form.values.never_expires}
                     {...form.getInputProps("expiration_num")}
                   />
                 </Col>
                 <Col xs={6}>
                   <Select
-                    disabled={form.values.never_expires}
                     {...form.getInputProps("expiration_unit")}
                     data={[
                       {
@@ -329,12 +323,6 @@ const CreateUploadModalBody = ({
                   />
                 </Col>
               </Grid>
-              {options.maxExpiration.value == 0 && (
-                <Checkbox
-                  label={t("upload.modal.expires.never-long")}
-                  {...form.getInputProps("never_expires")}
-                />
-              )}
               <Text
                 italic
                 size="xs"
@@ -344,7 +332,6 @@ const CreateUploadModalBody = ({
               >
                 {getExpirationPreview(
                   {
-                    neverExpires: t("upload.modal.completed.never-expires"),
                     expiresOn: t("upload.modal.completed.expires-on"),
                   },
                   form,
@@ -545,7 +532,7 @@ const SimplifiedCreateUploadModalModal = ({
       {
         id: link,
         name: values.name,
-        expiration: "never",
+        expiration: "7-days",
         recipients: [],
         description: values.description,
         security: {
