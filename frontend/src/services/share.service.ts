@@ -127,6 +127,8 @@ const mimeTypeOverrides: Record<string, string> = {
   m2ts: "video/mp2t", // MPEG-2 transport streams
   mts: "video/mp2t",
   "3gpp2": "video/3gpp2", // 3GPP2 media
+  mov: "video/quicktime", // QuickTime movie
+  qt: "video/quicktime", // QuickTime movie
 };
 
 const getFileMimeType = (fileName: string) => {
@@ -175,6 +177,17 @@ const getInlinePreviewKind = (
 
   return undefined;
 };
+
+// Browsers refuse to play the QuickTime container when it is advertised as
+// "video/quicktime": canPlayType("video/quicktime") returns an empty string in
+// Chrome, Edge and Firefox, so a <source> element with that type is skipped
+// without the file even being fetched. QuickTime files share the ISO base
+// media file format with MP4 and can be demuxed by the browser's MP4 media
+// pipeline, so inline players should advertise them as "video/mp4" instead.
+// See https://developer.mozilla.org/en-US/docs/Web/Media/Guides/Formats/Containers#quicktime
+// Returns the replacement MIME type, or undefined when no replacement is needed.
+const getInlinePlaybackMimeType = (mimeType: string): string | undefined =>
+  mimeType == "video/quicktime" ? "video/mp4" : undefined;
 
 const downloadFile = async (
   shareId: string,
@@ -484,6 +497,7 @@ export default {
   isShareTextFile,
   getFileMimeType,
   getInlinePreviewKind,
+  getInlinePlaybackMimeType,
   getMyShares,
   getReceivedShares,
   isShareIdAvailable,

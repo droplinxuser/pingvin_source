@@ -85,6 +85,12 @@ const EmbeddedMedia = ({
 }) => {
   const mediaFrameStyle = useMediaFrameStyle();
 
+  // QuickTime (.mov) files have to be advertised as video/mp4, otherwise
+  // browsers refuse to play them before the file is even fetched.
+  // See share.service.ts -> getInlinePlaybackMimeType for details.
+  const playbackMimeType =
+    shareService.getInlinePlaybackMimeType(mimeType) || mimeType || undefined;
+
   if (kind == "image") {
     return (
       <Box sx={mediaFrameStyle}>
@@ -121,7 +127,7 @@ const EmbeddedMedia = ({
         >
           <source
             src={fileUrl}
-            type={mimeType || undefined}
+            type={playbackMimeType}
             onError={onError}
           />
         </video>

@@ -190,8 +190,20 @@ export class FileController {
       return;
     }
 
-    const mimeType =
+    const detectedMimeType =
       mime?.lookup?.(file.metaData.name) || "application/octet-stream";
+
+    // QuickTime (.mov) files share the ISO base media file format with MP4, but
+    // browsers refuse inline playback when they are advertised as
+    // "video/quicktime" (canPlayType() returns an empty string in Chrome, Edge
+    // and Firefox), which breaks the preview player.
+    // See https://developer.mozilla.org/en-US/docs/Web/Media/Guides/Formats/Containers#quicktime
+    // Serve inline QuickTime files as video/mp4 so the browser's MP4 media
+    // pipeline demuxes the container. Downloads keep the real MIME type.
+    const mimeType =
+      !isDownload && detectedMimeType == "video/quicktime"
+        ? "video/mp4"
+        : detectedMimeType;
 
     const isPassiveMedia =
       mimeType.startsWith("video/") ||

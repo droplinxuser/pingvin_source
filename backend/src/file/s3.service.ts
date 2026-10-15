@@ -588,6 +588,12 @@ export class S3FileService {
     const bucketName = this.config.get("s3.bucketName");
     const s3Instance = this.getS3Instance();
 
+    // Serve inline QuickTime files as video/mp4 so browsers can preview them
+    // (see file.controller.ts for details). Downloads keep the real MIME type.
+    const mimeType = mime.lookup(fileRecord.name) || "application/octet-stream";
+    const responseContentType =
+      !isDownload && mimeType == "video/quicktime" ? "video/mp4" : undefined;
+
     const getObjectCommand = new GetObjectCommand({
       Bucket: bucketName,
       Key: key,
@@ -595,6 +601,7 @@ export class S3FileService {
         fileRecord.name,
         isDownload ? undefined : { type: "inline" },
       ),
+      ResponseContentType: responseContentType,
     });
 
     return await getSignedUrl(s3Instance, getObjectCommand, { expiresIn: 300 });
