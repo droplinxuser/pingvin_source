@@ -21,6 +21,7 @@ import { GetUser } from "src/auth/decorator/getUser.decorator";
 import { AdministratorGuard } from "src/auth/guard/isAdmin.guard";
 import { JwtGuard } from "src/auth/guard/jwt.guard";
 import { ConfigService } from "src/config/config.service";
+import { parsePagination } from "src/utils/pagination.util";
 import { AdminShareDTO } from "./dto/adminShare.dto";
 import { CreateShareDTO } from "./dto/createShare.dto";
 import { MyShareDTO } from "./dto/myShare.dto";
@@ -55,21 +56,16 @@ export class ShareController {
     @Query("pageSize") pageSize = "20",
     @Query("search") search = "",
   ) {
-    const pageNum = Math.max(parseInt(page) || 1, 1);
-    const size = Math.min(Math.max(parseInt(pageSize) || 20, 1), 100);
+    const { page: pageNum, pageSize: size, skip } = parsePagination(
+      page,
+      pageSize,
+    );
     const searchTerm = typeof search === "string" ? search.trim() : "";
 
     // The admin share list is capped at the 5,000 most recent shares
     const maxShares = 5000;
-    const skip = (pageNum - 1) * size;
-
     if (skip >= maxShares) {
-      return {
-        shares: [],
-        total: maxShares,
-        page: pageNum,
-        pageSize: size,
-      };
+      return { shares: [], total: maxShares, page: pageNum, pageSize: size };
     }
 
     const take = Math.min(size, maxShares - skip);

@@ -15,12 +15,13 @@ import {
 import { SkipThrottle, Throttle } from "@nestjs/throttler";
 import * as contentDisposition from "content-disposition";
 import { Request, Response } from "express";
+import { ConfigService } from "src/config/config.service";
 import { CreateShareGuard } from "src/share/guard/createShare.guard";
 import { StrictShareOwnerGuard } from "src/share/guard/strictShareOwner.guard";
 import { IdValidation } from "src/share/guard/shareIdValidation.guard";
+import { getFileMimeType } from "src/utils/mime.util";
 import { FileService } from "./file.service";
 import { FileSecurityGuard } from "./guard/fileSecurity.guard";
-import * as mime from "mime-types";
 
 const VALID_ID_REGEX = /^[a-zA-Z0-9-]*={0,2}$/;
 
@@ -31,7 +32,51 @@ function getValidRecipientId(recipientId?: string): string | undefined {
 
 @Controller("shares/:shareId/files")
 export class FileController {
-  constructor(private fileService: FileService) {}
+  constructor(
+    private fileService: FileService,
+    private config: ConfigService,
+  ) {}
+
+  /**
+   * File downloads are only served when the request's Referer header belongs
+   * to the configured app URL, so files cannot be hotlinked from other sites.
+   * Requests with a missing or foreign referrer are redirected to the share
+   * page instead.
+   */
+  private isRequestFromApp(req: Request): boolean {
+    const referrer = req.headers.referer ?? req.headers["referrer"];
+    if (!referrer || Array.isArray(referrer)) return false;
+
+    try {
+      const referrerUrl = new URL(referrer);
+      const appUrl = new URL(this.config.get("general.appUrl"));
+
+      // http and https are treated as equal (TLS is usually terminated by a
+      // reverse proxy); the URL parser already ignores trailing slashes
+      const protocolMatches =
+        referrerUrl.protocol == appUrl.protocol ||
+        (["http:", "https:"].includes(referrerUrl.protocol) &&
+          ["http:", "https:"].includes(appUrl.protocol));
+
+      const appUrlPath = appUrl.pathname.replace(/\/+$/, "");
+      const pathMatches =
+        !appUrlPath ||
+        referrerUrl.pathname == appUrlPath ||
+        referrerUrl.pathname.startsWith(`${appUrlPath}/`);
+
+      return protocolMatches && referrerUrl.host == appUrl.host && pathMatches;
+    } catch {
+      return false;
+    }
+  }
+
+  private getSharePageUrl(shareId: string): string {
+    const appUrl = String(this.config.get("general.appUrl")).replace(
+      /\/+$/,
+      "",
+    );
+    return `${appUrl}/share/${shareId}`;
+  }
 
   @Post("upload-init")
   @SkipThrottle()
@@ -120,10 +165,16 @@ export class FileController {
   @Get("zip")
   @UseGuards(FileSecurityGuard)
   async getZip(
+    @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
     @Param("shareId") shareId: string,
     @Query("recipient") recipientId?: string,
   ) {
+    if (!this.isRequestFromApp(req)) {
+      res.redirect(this.getSharePageUrl(shareId));
+      return;
+    }
+
     const zipStream = await this.fileService.getZip(shareId);
 
     res.set({
@@ -156,6 +207,11 @@ export class FileController {
     @Query("download") download = "true",
     @Query("recipient") recipientId?: string,
   ) {
+    if (!this.isRequestFromApp(req)) {
+      res.redirect(this.getSharePageUrl(shareId));
+      return;
+    }
+
     const isDownload = download === "true";
     const storageProvider = await this.fileService.getStorageProvider(shareId);
 
@@ -190,20 +246,7 @@ export class FileController {
       return;
     }
 
-    const detectedMimeType =
-      mime?.lookup?.(file.metaData.name) || "application/octet-stream";
-
-    // QuickTime (.mov) files share the ISO base media file format with MP4, but
-    // browsers refuse inline playback when they are advertised as
-    // "video/quicktime" (canPlayType() returns an empty string in Chrome, Edge
-    // and Firefox), which breaks the preview player.
-    // See https://developer.mozilla.org/en-US/docs/Web/Media/Guides/Formats/Containers#quicktime
-    // Serve inline QuickTime files as video/mp4 so the browser's MP4 media
-    // pipeline demuxes the container. Downloads keep the real MIME type.
-    const mimeType =
-      !isDownload && detectedMimeType == "video/quicktime"
-        ? "video/mp4"
-        : detectedMimeType;
+    const mimeType = getFileMimeType(file.metaData.name, isDownload);
 
     const isPassiveMedia =
       mimeType.startsWith("video/") ||

@@ -27,6 +27,7 @@ import * as crypto from "crypto";
 import * as mime from "mime-types";
 import { byteToHumanSizeString } from "src/utils/fileSize.util";
 import { getUserActiveStorageUsage } from "src/utils/storageQuota.util";
+import { getFileMimeType } from "src/utils/mime.util";
 import { File } from "./file.service";
 import { Readable } from "stream";
 import { validate as isValidUUID } from "uuid";
@@ -589,10 +590,10 @@ export class S3FileService {
     const s3Instance = this.getS3Instance();
 
     // Serve inline QuickTime files as video/mp4 so browsers can preview them
-    // (see file.controller.ts for details). Downloads keep the real MIME type.
-    const mimeType = mime.lookup(fileRecord.name) || "application/octet-stream";
-    const responseContentType =
-      !isDownload && mimeType == "video/quicktime" ? "video/mp4" : undefined;
+    // (see mime.util.ts). Downloads keep the stored MIME type.
+    const responseContentType = isDownload
+      ? undefined
+      : getFileMimeType(fileRecord.name, false);
 
     const getObjectCommand = new GetObjectCommand({
       Bucket: bucketName,

@@ -664,12 +664,8 @@ export class ShareService {
   }
 
   private validateExpiration(expiration: Date) {
-    // "Permanent" shares (stored as unix epoch 0) are no longer allowed
-    if (moment(expiration).isSame(0)) {
-      throw new BadRequestException(this.i18n.t("share.invalidExpiration"));
-    }
-
-    // Hard cap (5 years) and the configurable share.maxExpiration
+    // isExpirationAllowed rejects permanent (epoch 0) shares, applies the
+    // configurable share.maxExpiration and the 5 year hard cap
     if (
       !isExpirationAllowed(expiration, this.config.get("share.maxExpiration"))
     ) {

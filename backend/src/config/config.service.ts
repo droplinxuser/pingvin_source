@@ -68,8 +68,6 @@ export class ConfigService extends EventEmitter {
   async initialize() {
     await this.loadYamlConfig();
 
-    // Environment variable overrides take precedence over config.yaml and
-    // the database values (see .env.example)
     this.applyEnvOverrides();
 
     if (this.yamlConfig) {
@@ -78,8 +76,7 @@ export class ConfigService extends EventEmitter {
   }
 
   private applyEnvOverrides() {
-    // Environment variables take precedence over config.yaml and database
-    // values (see .env.example)
+    // Environment variables take precedence over config.yaml and the database
     const siteName = process.env.SITE_NAME?.trim();
     if (!siteName) return;
 

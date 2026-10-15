@@ -5,29 +5,9 @@ const { PHASE_PRODUCTION_BUILD } = require("next/constants");
 const { version } = require("./package.json");
 
 // next-pwa serves public/manifest.json as-is, so the PWA manifest is rewritten
-// during `next build` with the configured site name (see frontend/.env.example).
-// Resolution order: the SITE_NAME env var (Next.js loads .env automatically),
-// Environment=SITE_NAME=... in the backend systemd unit, then the fallback.
+// during `next build` with the site name configured in SITE_NAME (see
+// frontend/.env.example; update.sh exports it from the backend systemd unit).
 const DEFAULT_SITE_NAME = "Pingvin Share";
-
-function resolveSiteName() {
-  const fromEnvironment = process.env.SITE_NAME?.trim();
-  if (fromEnvironment) return fromEnvironment;
-
-  const serviceFile =
-    process.env.PINGVIN_SERVICE_FILE ||
-    "/etc/systemd/system/pingvin-back.service";
-  const unit = fs.existsSync(serviceFile)
-    ? fs.readFileSync(serviceFile, "utf8")
-    : "";
-  // The last assignment wins, matching systemd behaviour.
-  const assignments = [
-    ...unit.matchAll(/^\s*Environment=['"]?SITE_NAME=(.*?)['"]?\s*$/gm),
-  ];
-  const fromServiceFile = assignments.at(-1)?.[1].replace(/^["']|["']$/g, "");
-
-  return fromServiceFile || DEFAULT_SITE_NAME;
-}
 
 function updateManifest(siteName) {
   const manifestPath = path.join(process.cwd(), "public", "manifest.json");
@@ -65,7 +45,7 @@ module.exports = (phase) => {
   // Only update the manifest during `next build`, not on `next start` or in
   // development.
   if (phase === PHASE_PRODUCTION_BUILD) {
-    const siteName = resolveSiteName();
+    const siteName = process.env.SITE_NAME?.trim() || DEFAULT_SITE_NAME;
     console.log(`[SiteName] PWA manifest name resolved to "${siteName}".`);
     updateManifest(siteName);
   }

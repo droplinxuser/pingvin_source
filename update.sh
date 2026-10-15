@@ -38,6 +38,12 @@ npm run build
 echo "==> Installing and building the frontend"
 cd "$SRC_DIR/frontend"
 npm ci --no-audit --no-fund
+# Export the site name from the backend systemd unit (where it is configured)
+# so the frontend build can use it for the PWA manifest.
+if [ -z "${SITE_NAME:-}" ]; then
+  SITE_NAME="$(sed -n 's/^Environment=SITE_NAME="\?\([^"]*\)"\?$/\1/p' /etc/systemd/system/pingvin-back.service 2>/dev/null | tail -n1 || true)"
+  [ -n "$SITE_NAME" ] && export SITE_NAME
+fi
 npm run build
 # The standalone server serves public/ and .next/static from its own folder.
 rm -rf .next/standalone/public .next/standalone/.next/static

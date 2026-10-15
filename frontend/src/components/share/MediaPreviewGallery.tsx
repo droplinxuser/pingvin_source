@@ -39,9 +39,8 @@ const renderFileName = (name: string) => {
 };
 
 // Images are fully fetched by the browser as soon as they are rendered, so
-// they are only embedded when they are reasonably small. Videos and audio are
-// streamed on demand (the file endpoint supports range requests), so they can
-// be embedded regardless of their size.
+// they are only embedded when reasonably small; videos and audio are streamed
+// on demand and can be embedded regardless of their size.
 type MediaFile = {
   file: FileMetaData;
   kind: InlinePreviewKind;

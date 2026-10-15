@@ -17,6 +17,7 @@ import { GetUser } from "src/auth/decorator/getUser.decorator";
 import { AdministratorGuard } from "src/auth/guard/isAdmin.guard";
 import { JwtGuard } from "src/auth/guard/jwt.guard";
 import { ConfigService } from "../config/config.service";
+import { parsePagination } from "src/utils/pagination.util";
 import { CreateUserDTO } from "./dto/createUser.dto";
 import { UpdateOwnUserDTO } from "./dto/updateOwnUser.dto";
 import { UpdateUserDto } from "./dto/updateUser.dto";
@@ -76,10 +77,12 @@ export class UserController {
   @Get()
   @UseGuards(JwtGuard, AdministratorGuard)
   async list(@Query("page") page = "1", @Query("pageSize") pageSize = "20") {
-    const pageNum = Math.max(parseInt(page) || 1, 1);
-    const size = Math.min(Math.max(parseInt(pageSize) || 20, 1), 100);
+    const { page: pageNum, pageSize: size, skip } = parsePagination(
+      page,
+      pageSize,
+    );
     const [users, total] = await Promise.all([
-      this.userService.list(size, (pageNum - 1) * size),
+      this.userService.list(size, skip),
       this.userService.count(),
     ]);
     return {
