@@ -4,9 +4,10 @@ export const CONFIG_FILE = process.env.CONFIG_FILE || "../config.yaml";
 
 export const DATA_DIRECTORY = process.env.DATA_DIRECTORY || "./data";
 export const SHARE_DIRECTORY = `${DATA_DIRECTORY}/uploads/shares`;
+// Defaults to the production deployment path; set DATABASE_URL to override
 export const DATABASE_URL =
   process.env.DATABASE_URL ||
-  "file:../data/pingvin-share.db?connection_limit=1";
+  "file:/var/www/pingvin_data/pingvin-share.db?connection_limit=1";
 export const CLAMAV_HOST =
   process.env.CLAMAV_HOST ||
   (process.env.NODE_ENV == "docker" ? "clamav" : "127.0.0.1");
