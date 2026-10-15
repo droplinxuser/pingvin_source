@@ -1,6 +1,6 @@
 {
-  "name": "SiteName",
-  "short_name": "SiteName",
+  "name": "DropMB",
+  "short_name": "DropMB",
   "theme_color": "#46509e",
   "background_color": "#ffffff",
   "display": "standalone",
