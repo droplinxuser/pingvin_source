@@ -45,7 +45,7 @@ const i18nPath = existsSync(join(__dirname, "../i18n"))
     ThrottlerModule.forRoot([
       {
         ttl: 60 * 1000,
-        limit: 100,
+        limit: parseInt(process.env.THROTTLE_LIMIT || "100"),
       },
     ]),
     ScheduleModule.forRoot(),
