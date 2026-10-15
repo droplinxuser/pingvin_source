@@ -9,7 +9,10 @@ import { I18nService } from "nestjs-i18n";
 import { ConfigService } from "src/config/config.service";
 import { FileService } from "src/file/file.service";
 import { PrismaService } from "src/prisma/prisma.service";
-import { parseRelativeDateToAbsolute } from "src/utils/date.util";
+import {
+  isExpirationAllowed,
+  parseRelativeDateToAbsolute,
+} from "src/utils/date.util";
 import { CreateReverseShareDTO } from "./dto/createReverseShare.dto";
 
 @Injectable()
@@ -61,13 +64,11 @@ export class ReverseShareService {
     }
 
     const parsedExpiration = parseRelativeDateToAbsolute(data.shareExpiration);
-    const maxExpiration = this.config.get("share.maxExpiration");
     if (
-      moment(parsedExpiration).isSame(0) ||
-      parsedExpiration > moment().add(5, "years").toDate() ||
-      (maxExpiration.value !== 0 &&
-        parsedExpiration >
-          moment().add(maxExpiration.value, maxExpiration.unit).toDate())
+      !isExpirationAllowed(
+        parsedExpiration,
+        this.config.get("share.maxExpiration"),
+      )
     ) {
       throw new BadRequestException(this.i18n.t("share.maxExpirationExceeded"));
     }

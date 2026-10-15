@@ -78,23 +78,20 @@ export class ConfigService extends EventEmitter {
   }
 
   private applyEnvOverrides() {
-    const envOverrides: Record<string, { category: string; name: string }> = {
-      SITE_NAME: { category: "general", name: "appName" },
+    // Environment variables that override config values (see .env.example)
+    const envOverrides: Record<string, string> = {
+      SITE_NAME: "general.appName",
     };
 
-    for (const [envName, variable] of Object.entries(envOverrides)) {
+    for (const [envName, key] of Object.entries(envOverrides)) {
       const value = process.env[envName]?.trim();
-      if (!value) continue;
-
       const configVariable = this.configVariables.find(
-        (configVariable) =>
-          configVariable.category === variable.category &&
-          configVariable.name === variable.name,
+        (variable) => `${variable.category}.${variable.name}` === key,
       );
 
-      if (configVariable) {
+      if (configVariable && value) {
         configVariable.value = value;
-        this.emit("update", `${variable.category}.${variable.name}`, value);
+        this.emit("update", key, value);
       }
     }
   }

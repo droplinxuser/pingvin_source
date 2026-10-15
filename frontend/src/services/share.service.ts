@@ -179,13 +179,10 @@ const getInlinePreviewKind = (
 };
 
 // Browsers refuse to play the QuickTime container when it is advertised as
-// "video/quicktime": canPlayType("video/quicktime") returns an empty string in
-// Chrome, Edge and Firefox, so a <source> element with that type is skipped
-// without the file even being fetched. QuickTime files share the ISO base
-// media file format with MP4 and can be demuxed by the browser's MP4 media
-// pipeline, so inline players should advertise them as "video/mp4" instead.
-// See https://developer.mozilla.org/en-US/docs/Web/Media/Guides/Formats/Containers#quicktime
-// Returns the replacement MIME type, or undefined when no replacement is needed.
+// "video/quicktime" (canPlayType returns an empty string in Chrome, Edge and
+// Firefox), so inline players advertise it as "video/mp4" instead. QuickTime
+// shares the ISO base media file format with MP4 and can be demuxed by the
+// browser's MP4 pipeline. Returns undefined when no replacement is needed.
 const getInlinePlaybackMimeType = (mimeType: string): string | undefined =>
   mimeType == "video/quicktime" ? "video/mp4" : undefined;
 

@@ -17,7 +17,10 @@ import useTranslate from "../../hooks/useTranslate.hook";
 import shareService from "../../services/share.service";
 import { FileMetaData } from "../../types/File.type";
 import { Share } from "../../types/share.type";
-import { byteToHumanSizeString } from "../../utils/fileSize.util";
+import {
+  byteToHumanSizeString,
+  MAX_INLINE_FILE_SIZE,
+} from "../../utils/fileSize.util";
 import toast from "../../utils/toast.util";
 import TableSortIcon, { TableSort } from "../core/SortIcon";
 import showFilePreviewModal from "./modals/showFilePreviewModal";
@@ -164,7 +167,8 @@ const FileList = ({
                           </ActionIcon>
                         </HoverTip>
                       )}
-                      {shareService.doesFileSupportPreview(file.name) && parseInt(file.size) <= 100000000 && (
+                      {shareService.doesFileSupportPreview(file.name) &&
+                        parseInt(file.size) <= MAX_INLINE_FILE_SIZE && (
                         <HoverTip label={t("common.button.preview")}>
                           <ActionIcon
                             color="green"
@@ -178,7 +182,7 @@ const FileList = ({
                           </ActionIcon>
                         </HoverTip>
                       )}
-                      {!share.hasPassword && parseInt(file.size) <= 1 && (
+                      {!share.hasPassword && (
                         <HoverTip label={t("common.button.copy-link")}>
                           <ActionIcon
                             color="victoria"

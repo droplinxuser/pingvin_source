@@ -48,9 +48,14 @@ export class EmailService {
     template: string,
     vars: Record<string, string | undefined>,
   ): string {
+    // {appName} is available to every email template
+    const templateVars = {
+      appName: this.config.get("general.appName"),
+      ...vars,
+    };
     return template
       .replaceAll("\\n", "\n")
-      .replace(/\{([a-zA-Z0-9_-]+)\}/g, (match, key) => vars[key] ?? match);
+      .replace(/\{([a-zA-Z0-9_-]+)\}/g, (match, key) => templateVars[key] ?? match);
   }
 
   private async sendMail(
@@ -125,7 +130,6 @@ export class EmailService {
       recipient: recipientName ?? "",
       recipientEmail,
       email: recipientEmail,
-      appName: this.config.get("general.appName"),
     };
 
     await this.sendMail(
@@ -163,7 +167,6 @@ export class EmailService {
       shareUrl,
       creator: creatorName ?? "",
       name: creatorName ?? "",
-      appName: this.config.get("general.appName"),
     };
 
     await this.sendMail(
@@ -193,7 +196,6 @@ export class EmailService {
       creator: recipientName ?? "",
       recipient: recipientName ?? "",
       email: recipientEmail,
-      appName: this.config.get("general.appName"),
     };
 
     await this.sendMail(
@@ -219,7 +221,6 @@ export class EmailService {
       username: recipientName ?? "",
       displayName: recipientName ?? "",
       email: recipientEmail,
-      appName: this.config.get("general.appName"),
     };
 
     await this.sendMail(
@@ -244,7 +245,6 @@ export class EmailService {
       name: recipientName ?? "",
       username: recipientName ?? "",
       displayName: recipientName ?? "",
-      appName: this.config.get("general.appName"),
     };
 
     await this.sendMail(
@@ -270,7 +270,6 @@ export class EmailService {
       username: recipientName ?? "",
       displayName: recipientName ?? "",
       email: recipientEmail,
-      appName: this.config.get("general.appName"),
     };
 
     await this.sendMail(

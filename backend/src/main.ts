@@ -1,8 +1,12 @@
-import { config as loadEnvConfig } from "dotenv";
-
-// Load .env files (backend/.env first, then the repository root .env)
-// before any other module reads process.env.
-loadEnvConfig({ path: [".env", "../.env"] });
+// Load .env files (backend/.env first, then the repository root .env) before
+// any other module reads process.env. Existing environment variables win.
+for (const file of [".env", "../.env"]) {
+  try {
+    process.loadEnvFile(file);
+  } catch {
+    // File not present, ignore
+  }
+}
 
 import { ClassSerializerInterceptor, Logger, LogLevel } from "@nestjs/common";
 import { NestFactory, Reflector } from "@nestjs/core";

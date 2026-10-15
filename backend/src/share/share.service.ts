@@ -21,7 +21,10 @@ import { FileService } from "src/file/file.service";
 import { PrismaService } from "src/prisma/prisma.service";
 import { ReverseShareService } from "src/reverseShare/reverseShare.service";
 import { SystemService } from "src/system/system.service";
-import { parseRelativeDateToAbsolute } from "src/utils/date.util";
+import {
+  isExpirationAllowed,
+  parseRelativeDateToAbsolute,
+} from "src/utils/date.util";
 import { byteToHumanSizeString } from "src/utils/fileSize.util";
 import { getUserActiveStorageUsage } from "src/utils/storageQuota.util";
 import { SHARE_DIRECTORY } from "../constants";
@@ -661,22 +664,14 @@ export class ShareService {
   }
 
   private validateExpiration(expiration: Date) {
-    const maxExpiration = this.config.get("share.maxExpiration");
-
     // "Permanent" shares (stored as unix epoch 0) are no longer allowed
     if (moment(expiration).isSame(0)) {
       throw new BadRequestException(this.i18n.t("share.invalidExpiration"));
     }
 
-    // Hard cap: no share may live longer than 5 years
-    if (expiration > moment().add(5, "years").toDate()) {
-      throw new BadRequestException(this.i18n.t("share.maxExpirationExceeded"));
-    }
-
-    // Configurable cap (0 = fall back to the 5 year hard cap)
+    // Hard cap (5 years) and the configurable share.maxExpiration
     if (
-      maxExpiration.value !== 0 &&
-      expiration > moment().add(maxExpiration.value, maxExpiration.unit).toDate()
+      !isExpirationAllowed(expiration, this.config.get("share.maxExpiration"))
     ) {
       throw new BadRequestException(this.i18n.t("share.maxExpirationExceeded"));
     }

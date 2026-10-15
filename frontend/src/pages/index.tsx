@@ -98,33 +98,24 @@ export default function Home() {
     return signupEnabled ? "/upload" : "/auth/signIn";
   };
 
-  const getSiteName = () => {
+  // config.get throws until the config has been loaded from the API
+  const getConfig = (key: string, fallback: string) => {
     try {
-      return config.get("general.appName");
-    } catch (error) {
-      return "SiteName";
+      return config.get(key) as string;
+    } catch {
+      return fallback;
     }
   };
 
   const getContactEmail = () => {
     try {
-      return `admin@${new URL(config.get("general.appUrl")).hostname}`;
-    } catch (error) {
+      return `admin@${new URL(getConfig("general.appUrl", "")).hostname}`;
+    } catch {
       return "admin@localhost";
     }
   };
 
-  const getAboutHref = () => {
-    try {
-      const imprintUrl = config.get("legal.imprintUrl");
-      if (imprintUrl) return imprintUrl;
-    } catch (error) {
-      // Fall back to the internal imprint page
-    }
-    return "/imprint";
-  };
-
-  const aboutHref = getAboutHref();
+  const aboutHref = getConfig("legal.imprintUrl", "") || "/imprint";
   const aboutIsExternal = /^https?:\/\//i.test(aboutHref);
 
   return (
@@ -137,7 +128,7 @@ export default function Home() {
               <FormattedMessage
                 id="home.title"
                 values={{
-                  siteName: getSiteName(),
+                  siteName: getConfig("general.appName", "SiteName"),
                   h: (chunks) => (
                     <span className={classes.highlight}>{chunks}</span>
                   ),
@@ -198,30 +189,17 @@ export default function Home() {
               >
                 <FormattedMessage id="home.button.start" />
               </Button>
-              {aboutIsExternal ? (
-                <Button
-                  component="a"
-                  href={aboutHref}
-                  target="_blank"
-                  variant="default"
-                  radius="xl"
-                  size="md"
-                  className={classes.control}
-                >
-                  <FormattedMessage id="home.button.source" />
-                </Button>
-              ) : (
-                <Button
-                  component={Link}
-                  href={aboutHref}
-                  variant="default"
-                  radius="xl"
-                  size="md"
-                  className={classes.control}
-                >
-                  <FormattedMessage id="home.button.source" />
-                </Button>
-              )}
+              <Button
+                component={aboutIsExternal ? "a" : (Link as any)}
+                href={aboutHref}
+                target={aboutIsExternal ? "_blank" : undefined}
+                variant="default"
+                radius="xl"
+                size="md"
+                className={classes.control}
+              >
+                <FormattedMessage id="home.button.source" />
+              </Button>
             </Group>
           </div>
           <Group className={classes.image} align="center">

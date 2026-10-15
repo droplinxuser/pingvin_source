@@ -15,18 +15,19 @@ import { TbDownload, TbExternalLink } from "react-icons/tb";
 import useTranslate from "../../hooks/useTranslate.hook";
 import shareService, { InlinePreviewKind } from "../../services/share.service";
 import { FileMetaData } from "../../types/File.type";
-import { byteToHumanSizeString } from "../../utils/fileSize.util";
+import {
+  byteToHumanSizeString,
+  MAX_INLINE_FILE_SIZE,
+} from "../../utils/fileSize.util";
 import { HoverTip } from "../core/HoverTip";
 
 const renderFileName = (name: string) => {
-  const parts = name.split("/");
-  if (parts.length === 1) return name;
-  const fileName = parts.pop();
-  const folderPath = parts.join("/");
+  const separator = name.lastIndexOf("/");
+  if (separator == -1) return name;
   return (
     <span>
-      <span style={{ opacity: 0.5 }}>{folderPath}/</span>
-      <span style={{ fontWeight: 600 }}>{fileName}</span>
+      <span style={{ opacity: 0.5 }}>{name.slice(0, separator + 1)}</span>
+      <span style={{ fontWeight: 600 }}>{name.slice(separator + 1)}</span>
     </span>
   );
 };
@@ -35,8 +36,6 @@ const renderFileName = (name: string) => {
 // they are only embedded when they are reasonably small. Videos and audio are
 // streamed on demand (the file endpoint supports range requests), so they can
 // be embedded regardless of their size.
-const MAX_INLINE_IMAGE_SIZE = 100000000;
-
 type MediaFile = {
   file: FileMetaData;
   kind: InlinePreviewKind;
@@ -52,7 +51,7 @@ const getMediaFiles = (files?: FileMetaData[]): MediaFile[] =>
       (mediaFile): mediaFile is MediaFile =>
         mediaFile.kind != undefined &&
         (mediaFile.kind != "image" ||
-          parseInt(mediaFile.file.size) <= MAX_INLINE_IMAGE_SIZE),
+          parseInt(mediaFile.file.size) <= MAX_INLINE_FILE_SIZE),
     );
 
 const useMediaFrameStyle = () => {
@@ -62,7 +61,7 @@ const useMediaFrameStyle = () => {
     alignItems: "center",
     justifyContent: "center",
     flex: 1,
-    minHeight: "120px",
+    minHeight: 120,
     borderRadius: theme.radius.sm,
     overflow: "hidden",
     backgroundColor:
@@ -83,36 +82,25 @@ const EmbeddedMedia = ({
   mimeType: string;
   onError: () => void;
 }) => {
-  const mediaFrameStyle = useMediaFrameStyle();
+  const frameStyle = useMediaFrameStyle();
 
-  // QuickTime (.mov) files have to be advertised as video/mp4, otherwise
-  // browsers refuse to play them before the file is even fetched.
-  // See share.service.ts -> getInlinePlaybackMimeType for details.
-  const playbackMimeType =
-    shareService.getInlinePlaybackMimeType(mimeType) || mimeType || undefined;
-
-  if (kind == "image") {
+  if (kind == "image")
     return (
-      <Box sx={mediaFrameStyle}>
+      <Box sx={frameStyle}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={fileUrl}
           alt={fileName}
           decoding="async"
-          style={{
-            display: "block",
-            maxWidth: "100%",
-            maxHeight: "70vh",
-          }}
+          style={{ display: "block", maxWidth: "100%", maxHeight: "70vh" }}
           onError={onError}
         />
       </Box>
     );
-  }
 
-  if (kind == "video") {
+  if (kind == "video")
     return (
-      <Box sx={mediaFrameStyle}>
+      <Box sx={frameStyle}>
         <video
           controls
           preload="metadata"
@@ -125,18 +113,22 @@ const EmbeddedMedia = ({
           }}
           onError={onError}
         >
+          {/* QuickTime files are advertised as video/mp4 (see share.service.ts) */}
           <source
             src={fileUrl}
-            type={playbackMimeType}
+            type={
+              shareService.getInlinePlaybackMimeType(mimeType) ||
+              mimeType ||
+              undefined
+            }
             onError={onError}
           />
         </video>
       </Box>
     );
-  }
 
   return (
-    <Box sx={{ ...mediaFrameStyle, padding: "1rem" }}>
+    <Box sx={{ ...frameStyle, padding: "1rem" }}>
       <audio
         controls
         preload="metadata"
@@ -150,9 +142,9 @@ const EmbeddedMedia = ({
 };
 
 const MediaNotSupported = () => {
-  const mediaFrameStyle = useMediaFrameStyle();
+  const frameStyle = useMediaFrameStyle();
   return (
-    <Center p="md" sx={{ ...mediaFrameStyle, minHeight: "150px" }}>
+    <Center p="md" sx={{ ...frameStyle, minHeight: 150 }}>
       <Stack align="center" spacing={4}>
         <Text size="sm" weight={500}>
           <FormattedMessage id="share.modal.file-preview.error.not-supported.title" />
@@ -180,7 +172,6 @@ const MediaPreviewCard = ({
   const t = useTranslate();
 
   const fileUrl = `/api/shares/${shareId}/files/${file.id}?download=false`;
-  const mimeType = shareService.getFileMimeType(file.name);
 
   return (
     <Card
@@ -196,7 +187,7 @@ const MediaPreviewCard = ({
           kind={kind}
           fileUrl={fileUrl}
           fileName={file.name}
-          mimeType={mimeType}
+          mimeType={shareService.getFileMimeType(file.name)}
           onError={() => setIsNotSupported(true)}
         />
       )}
