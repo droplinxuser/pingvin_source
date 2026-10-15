@@ -1,11 +1,23 @@
 import { Anchor, Footer as MFooter, SimpleGrid, Text } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
+import { useEffect, useState } from "react";
 import useConfig from "../../hooks/config.hook";
 import useTranslate from "../../hooks/useTranslate.hook";
+import systemService, { SystemStats } from "../../services/system.service";
+import { byteToHumanSizeString } from "../../utils/fileSize.util";
 
 const Footer = () => {
   const t = useTranslate();
   const config = useConfig();
+  const [stats, setStats] = useState<SystemStats | null>(null);
+
+  useEffect(() => {
+    systemService
+      .getSystemStats()
+      .then(setStats)
+      .catch(() => {});
+  }, []);
+
   const hasImprint = !!(
     config.get("legal.imprintUrl") || config.get("legal.imprintText")
   );
@@ -25,6 +37,18 @@ const Footer = () => {
 
   return (
     <MFooter height="auto" py={6} px="xl" zIndex={100}>
+      {stats && (
+        <Text size="xs" color="dimmed" align="center" mb={2}>
+          {[
+            t("footer.stats.users", { count: stats.userCount }),
+            t("footer.stats.shares", { count: stats.shareCount }),
+            t("footer.stats.files", { count: stats.fileCount }),
+            t("footer.stats.storage", {
+              size: byteToHumanSizeString(stats.storageSizeBytes),
+            }),
+          ].join(" • ")}
+        </Text>
+      )}
       {!config.get("legal.enabled") && (
         <Text size="xs" color="dimmed" align="center">
           Contact{" "}

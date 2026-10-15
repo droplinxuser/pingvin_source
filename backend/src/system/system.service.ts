@@ -1,15 +1,63 @@
-import { Injectable, Logger } from "@nestjs/common";
+import { Inject, Injectable, Logger } from "@nestjs/common";
+import { CACHE_MANAGER } from "@nestjs/cache-manager";
+import { Cache } from "cache-manager";
 import checkDiskSpace from "check-disk-space";
+import * as moment from "moment";
 import { DATA_DIRECTORY } from "src/constants";
+import { PrismaService } from "src/prisma/prisma.service";
 import { SystemInfoDTO } from "./dto/systemInfo.dto";
+import { SystemStatsDTO } from "./dto/systemStats.dto";
 import { ConfigService } from "src/config/config.service";
 import * as path from "path";
+
+const SYSTEM_STATS_CACHE_KEY = "system:stats";
+const SYSTEM_STATS_CACHE_TTL = 60 * 1000;
 
 @Injectable()
 export class SystemService {
   private readonly logger = new Logger(SystemService.name);
 
-  constructor(private configService: ConfigService) {}
+  constructor(
+    private configService: ConfigService,
+    private prisma: PrismaService,
+    @Inject(CACHE_MANAGER) private cache: Cache,
+  ) {}
+
+  async getSystemStats(): Promise<SystemStatsDTO> {
+    const cached = await this.cache.get<SystemStatsDTO>(SYSTEM_STATS_CACHE_KEY);
+    if (cached) return cached;
+
+    const [userCount, shareCount, activeShareCount, fileCount] =
+      await Promise.all([
+        this.prisma.user.count(),
+        this.prisma.share.count(),
+        this.prisma.share.count({
+          where: {
+            removedReason: null,
+            OR: [
+              { expiration: { gt: new Date() } },
+              { expiration: { equals: moment(0).toDate() } },
+            ],
+          },
+        }),
+        this.prisma.file.count(),
+      ]);
+
+    const sizeRows = await this.prisma.$queryRaw<{ total: number | bigint }[]>`
+      SELECT COALESCE(SUM(CAST(size AS INTEGER)), 0) AS total FROM "File"
+    `;
+
+    const stats: SystemStatsDTO = {
+      userCount,
+      shareCount,
+      activeShareCount,
+      fileCount,
+      storageSizeBytes: Number(sizeRows[0]?.total ?? 0),
+    };
+
+    await this.cache.set(SYSTEM_STATS_CACHE_KEY, stats, SYSTEM_STATS_CACHE_TTL);
+    return stats;
+  }
 
   async getSystemInfo(): Promise<SystemInfoDTO | null> {
     if (this.configService.get("s3.enabled")) {

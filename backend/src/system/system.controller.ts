@@ -3,6 +3,7 @@ import { AdministratorGuard } from "src/auth/guard/isAdmin.guard";
 import { JwtGuard } from "src/auth/guard/jwt.guard";
 import { SystemService } from "./system.service";
 import { SystemInfoDTO } from "./dto/systemInfo.dto";
+import { SystemStatsDTO } from "./dto/systemStats.dto";
 
 @Controller("system")
 export class SystemController {
@@ -12,5 +13,10 @@ export class SystemController {
   @UseGuards(JwtGuard, AdministratorGuard)
   async getSystemInfo(): Promise<SystemInfoDTO | null> {
     return await this.systemService.getSystemInfo();
+  }
+
+  @Get("stats")
+  async getSystemStats(): Promise<SystemStatsDTO> {
+    return await this.systemService.getSystemStats();
   }
 }

@@ -5,8 +5,20 @@ export interface SystemInfo {
   total: number;
 }
 
+export interface SystemStats {
+  userCount: number;
+  shareCount: number;
+  activeShareCount: number;
+  fileCount: number;
+  storageSizeBytes: number;
+}
+
 const getSystemInfo = async (): Promise<SystemInfo | null> => {
   return (await api.get("system/info")).data;
 };
 
-export default { getSystemInfo };
+const getSystemStats = async (): Promise<SystemStats> => {
+  return (await api.get("system/stats")).data;
+};
+
+export default { getSystemInfo, getSystemStats };

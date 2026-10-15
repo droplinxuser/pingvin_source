@@ -14,6 +14,11 @@ export default {
 
   // Footer
   "footer.poweredBy": "Powered by",
+  "footer.stats.users": "{count, number} users",
+  "footer.stats.shares": "{count, number} shares",
+  "footer.stats.files": "{count, number} files",
+  "footer.stats.storage": "{size} storage used",
+
   // END footer
 
   // /
