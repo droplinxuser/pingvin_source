@@ -14,7 +14,7 @@ import Link from "next/link";
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 import { FormattedMessage } from "react-intl";
-import { TbEdit, TbPlusMinus, TbTrash } from "react-icons/tb";
+import { TbEdit, TbFlag, TbPlusMinus, TbTrash } from "react-icons/tb";
 import Meta from "../../../components/Meta";
 import DownloadAllButton from "../../../components/share/DownloadAllButton";
 import FileList from "../../../components/share/FileList";
@@ -22,6 +22,7 @@ import MediaPreviewGallery from "../../../components/share/MediaPreviewGallery";
 import Ads from "../../../components/Ads";
 import showEnterPasswordModal from "../../../components/share/showEnterPasswordModal";
 import showErrorModal from "../../../components/share/showErrorModal";
+import showReportShareModal from "../../../components/share/showReportShareModal";
 import showShareInformationsModal from "../../../components/share/showShareInformationsModal";
 import useConfig from "../../../hooks/config.hook";
 import useTranslate from "../../../hooks/useTranslate.hook";
@@ -247,6 +248,16 @@ const Share = ({ shareId }: { shareId: string }) => {
         </Box>
 
         <Group spacing="xs">
+          <HoverTip label={t("share.report.button")}>
+            <Button
+              variant="light"
+              color="red"
+              leftIcon={<TbFlag />}
+              onClick={() => showReportShareModal(modals, shareId)}
+            >
+              <FormattedMessage id="share.report.button" />
+            </Button>
+          </HoverTip>
           {isOwner && (
             <HoverTip label={t("account.shares.button.edit")}>
               <Link href={`/share/${shareId}/edit`}>

@@ -1021,4 +1021,23 @@ export default {
   "admin.notice.modal.docsLink": "View Documentation",
   "admin.notice.modal.globalNoticeFooter":
     "Note: Once acknowledged, this notice will be permanently dismissed for all administrators across all devices.",
+
+  // Share report feature
+  "share.report.button": "Report",
+  "share.report.modal.title": "Report share",
+  "share.report.modal.description":
+    "If this share contains content that violates the law or our policies, you can report it. The administrator will be notified.",
+  "share.report.modal.reason": "Reason",
+  "share.report.modal.custom-reason": "Additional details",
+  "share.report.modal.error.no-reason": "Please select a reason",
+  "share.report.modal.error.no-message":
+    "Please describe why you are reporting this share",
+  "share.report.notify.success": "Thank you. Your report has been submitted.",
+  "share.report.reason.dmca": "DMCA / Copyright infringement",
+  "share.report.reason.csam": "Child sexual abuse material (CSAM)",
+  "share.report.reason.gore": "Gore / Violent content",
+  "share.report.reason.malware": "Malware / Phishing",
+  "share.report.reason.spam": "Spam",
+  "share.report.reason.personal-information": "Personal information / Doxxing",
+  "share.report.reason.other": "Other",
 };

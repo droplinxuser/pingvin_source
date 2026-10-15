@@ -747,5 +747,22 @@ export default {
   "admin.notice.modal.button.acknowledge": "Bevestigen en sluiten",
   "admin.notice.modal.button.acknowledging": "Bevestigen...",
   "admin.notice.modal.docsLink": "Documentatie bekijken",
-  "admin.notice.modal.globalNoticeFooter": "Opmerking: Zodra dit is bevestigd, wordt deze melding permanent verborgen voor alle beheerders op alle apparaten."
+  "admin.notice.modal.globalNoticeFooter": "Opmerking: Zodra dit is bevestigd, wordt deze melding permanent verborgen voor alle beheerders op alle apparaten.",
+
+  // Share report feature
+  "share.report.button": "Melden",
+  "share.report.modal.title": "Share melden",
+  "share.report.modal.description": "Als deze share inhoud bevat die in strijd is met de wet of ons beleid, kun je dit melden. De beheerder wordt op de hoogte gebracht.",
+  "share.report.modal.reason": "Reden",
+  "share.report.modal.custom-reason": "Aanvullende details",
+  "share.report.modal.error.no-reason": "Selecteer een reden",
+  "share.report.modal.error.no-message": "Beschrijf waarom je deze share meldt",
+  "share.report.notify.success": "Bedankt. Je melding is verzonden.",
+  "share.report.reason.dmca": "DMCA / Inbreuk op auteursrecht",
+  "share.report.reason.csam": "Materiaal van seksueel kindermisbruik (CSAM)",
+  "share.report.reason.gore": "Schokkende / Gewelddadige inhoud",
+  "share.report.reason.malware": "Malware / Phishing",
+  "share.report.reason.spam": "Spam",
+  "share.report.reason.personal-information": "Persoonlijke gegevens / Doxxing",
+  "share.report.reason.other": "Overig"
 };

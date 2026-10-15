@@ -747,5 +747,22 @@ export default {
   "admin.notice.modal.button.acknowledge": "Bekräfta och stäng",
   "admin.notice.modal.button.acknowledging": "Bekräftar...",
   "admin.notice.modal.docsLink": "Visa dokumentation",
-  "admin.notice.modal.globalNoticeFooter": "Obs: När det har bekräftats kommer detta meddelande att tas bort permanent för alla administratörer på alla enheter."
+  "admin.notice.modal.globalNoticeFooter": "Obs: När det har bekräftats kommer detta meddelande att tas bort permanent för alla administratörer på alla enheter.",
+
+  // Share report feature
+  "share.report.button": "Rapportera",
+  "share.report.modal.title": "Rapportera delning",
+  "share.report.modal.description": "Om den här delningen innehåller innehåll som bryter mot lagen eller våra policyer kan du rapportera den. Administratören meddelas.",
+  "share.report.modal.reason": "Anledning",
+  "share.report.modal.custom-reason": "Ytterligare information",
+  "share.report.modal.error.no-reason": "Välj en anledning",
+  "share.report.modal.error.no-message": "Beskriv varför du rapporterar den här delningen",
+  "share.report.notify.success": "Tack. Din rapport har skickats in.",
+  "share.report.reason.dmca": "DMCA / Upphovsrättsintrång",
+  "share.report.reason.csam": "Material med sexuella övergrepp mot barn (CSAM)",
+  "share.report.reason.gore": "Våldsamt / Stötande innehåll",
+  "share.report.reason.malware": "Skadlig kod / Nätfiske",
+  "share.report.reason.spam": "Spam",
+  "share.report.reason.personal-information": "Personuppgifter / Doxxing",
+  "share.report.reason.other": "Övrigt"
 };

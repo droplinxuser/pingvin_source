@@ -747,5 +747,22 @@ export default {
   "admin.notice.modal.button.acknowledge": "확인 및 닫기",
   "admin.notice.modal.button.acknowledging": "확인 중...",
   "admin.notice.modal.docsLink": "문서 보기",
-  "admin.notice.modal.globalNoticeFooter": "참고: 일단 확인하면 이 공지 사항은 모든 기기의 모든 관리자에 대해 영구적으로 닫힙니다."
+  "admin.notice.modal.globalNoticeFooter": "참고: 일단 확인하면 이 공지 사항은 모든 기기의 모든 관리자에 대해 영구적으로 닫힙니다.",
+
+  // Share report feature
+  "share.report.button": "신고",
+  "share.report.modal.title": "공유 신고",
+  "share.report.modal.description": "이 공유에 법률이나 정책을 위반하는 콘텐츠가 포함된 경우 신고할 수 있습니다. 관리자에게 알림이 전송됩니다.",
+  "share.report.modal.reason": "사유",
+  "share.report.modal.custom-reason": "추가 세부 정보",
+  "share.report.modal.error.no-reason": "사유를 선택하세요",
+  "share.report.modal.error.no-message": "이 공유를 신고하는 이유를 설명해 주세요",
+  "share.report.notify.success": "감사합니다. 신고가 접수되었습니다.",
+  "share.report.reason.dmca": "DMCA / 저작권 침해",
+  "share.report.reason.csam": "아동 성착취물 (CSAM)",
+  "share.report.reason.gore": "유혈 / 폭력적인 콘텐츠",
+  "share.report.reason.malware": "악성코드 / 피싱",
+  "share.report.reason.spam": "스팸",
+  "share.report.reason.personal-information": "개인정보 / 신상 털기",
+  "share.report.reason.other": "기타"
 };

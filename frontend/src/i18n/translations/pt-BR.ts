@@ -747,5 +747,22 @@ export default {
   "admin.notice.modal.button.acknowledge": "Confirmar e dispensar",
   "admin.notice.modal.button.acknowledging": "Confirmando...",
   "admin.notice.modal.docsLink": "Ver documentação",
-  "admin.notice.modal.globalNoticeFooter": "Nota: Uma vez confirmado, este aviso será permanentemente dispensado para todos os administradores em todos os dispositivos."
+  "admin.notice.modal.globalNoticeFooter": "Nota: Uma vez confirmado, este aviso será permanentemente dispensado para todos os administradores em todos os dispositivos.",
+
+  // Share report feature
+  "share.report.button": "Denunciar",
+  "share.report.modal.title": "Denunciar compartilhamento",
+  "share.report.modal.description": "Se este compartilhamento contiver conteúdo que viole a lei ou nossas políticas, você pode denunciá-lo. O administrador será notificado.",
+  "share.report.modal.reason": "Motivo",
+  "share.report.modal.custom-reason": "Detalhes adicionais",
+  "share.report.modal.error.no-reason": "Selecione um motivo",
+  "share.report.modal.error.no-message": "Descreva por que você está denunciando este compartilhamento",
+  "share.report.notify.success": "Obrigado. Sua denúncia foi enviada.",
+  "share.report.reason.dmca": "DMCA / Violação de direitos autorais",
+  "share.report.reason.csam": "Material de abuso sexual infantil (CSAM)",
+  "share.report.reason.gore": "Conteúdo sangrento / Violento",
+  "share.report.reason.malware": "Malware / Phishing",
+  "share.report.reason.spam": "Spam",
+  "share.report.reason.personal-information": "Informações pessoais / Doxxing",
+  "share.report.reason.other": "Outro"
 };

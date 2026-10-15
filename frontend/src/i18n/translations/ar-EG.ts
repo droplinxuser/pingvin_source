@@ -747,5 +747,22 @@ export default {
   "admin.notice.modal.button.acknowledge": "إقرار وتجاهل",
   "admin.notice.modal.button.acknowledging": "جاري الإقرار...",
   "admin.notice.modal.docsLink": "عرض الوثائق",
-  "admin.notice.modal.globalNoticeFooter": "ملاحظة: بمجرد الإقرار، سيتم إغلاق هذا الإشعار نهائيًا لجميع المسؤولين عبر جميع الأجهزة."
+  "admin.notice.modal.globalNoticeFooter": "ملاحظة: بمجرد الإقرار، سيتم إغلاق هذا الإشعار نهائيًا لجميع المسؤولين عبر جميع الأجهزة.",
+
+  // Share report feature
+  "share.report.button": "إبلاغ",
+  "share.report.modal.title": "الإبلاغ عن المشاركة",
+  "share.report.modal.description": "إذا كانت هذه المشاركة تحتوي على محتوى يخالف القانون أو سياساتنا، يمكنك الإبلاغ عنها. سيتم إخطار المسؤول.",
+  "share.report.modal.reason": "السبب",
+  "share.report.modal.custom-reason": "تفاصيل إضافية",
+  "share.report.modal.error.no-reason": "يرجى اختيار سبب",
+  "share.report.modal.error.no-message": "يرجى وصف سبب الإبلاغ عن هذه المشاركة",
+  "share.report.notify.success": "شكرًا لك. تم إرسال بلاغك.",
+  "share.report.reason.dmca": "DMCA / انتهاك حقوق النشر",
+  "share.report.reason.csam": "مواد اعتداء جنسي على الأطفال (CSAM)",
+  "share.report.reason.gore": "محتوى دموي / عنيف",
+  "share.report.reason.malware": "برمجيات خبيثة / تصيد احتيالي",
+  "share.report.reason.spam": "رسائل مزعجة",
+  "share.report.reason.personal-information": "معلومات شخصية / دوكسينغ",
+  "share.report.reason.other": "أخرى"
 };

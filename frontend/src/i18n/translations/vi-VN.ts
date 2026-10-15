@@ -747,5 +747,22 @@ export default {
   "admin.notice.modal.button.acknowledge": "Xác nhận & Đóng",
   "admin.notice.modal.button.acknowledging": "Đang xác nhận...",
   "admin.notice.modal.docsLink": "Xem tài liệu hướng dẫn",
-  "admin.notice.modal.globalNoticeFooter": "Lưu ý: Sau khi xác nhận, thông báo này sẽ bị ẩn vĩnh viễn đối với tất cả quản trị viên trên mọi thiết bị."
+  "admin.notice.modal.globalNoticeFooter": "Lưu ý: Sau khi xác nhận, thông báo này sẽ bị ẩn vĩnh viễn đối với tất cả quản trị viên trên mọi thiết bị.",
+
+  // Share report feature
+  "share.report.button": "Báo cáo",
+  "share.report.modal.title": "Báo cáo chia sẻ",
+  "share.report.modal.description": "Nếu chia sẻ này chứa nội dung vi phạm pháp luật hoặc chính sách của chúng tôi, bạn có thể báo cáo. Quản trị viên sẽ được thông báo.",
+  "share.report.modal.reason": "Lý do",
+  "share.report.modal.custom-reason": "Chi tiết bổ sung",
+  "share.report.modal.error.no-reason": "Vui lòng chọn lý do",
+  "share.report.modal.error.no-message": "Vui lòng mô tả lý do bạn báo cáo chia sẻ này",
+  "share.report.notify.success": "Cảm ơn bạn. Báo cáo của bạn đã được gửi.",
+  "share.report.reason.dmca": "DMCA / Vi phạm bản quyền",
+  "share.report.reason.csam": "Tài liệu lạm dụng tình dục trẻ em (CSAM)",
+  "share.report.reason.gore": "Nội dung máu me / Bạo lực",
+  "share.report.reason.malware": "Phần mềm độc hại / Lừa đảo",
+  "share.report.reason.spam": "Thư rác",
+  "share.report.reason.personal-information": "Thông tin cá nhân / Doxxing",
+  "share.report.reason.other": "Khác"
 };

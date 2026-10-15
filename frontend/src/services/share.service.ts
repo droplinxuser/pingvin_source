@@ -78,6 +78,11 @@ const remove = async (id: string) => {
   await api.delete(`shares/${id}`);
 };
 
+const report = async (id: string, reason: string, message?: string) => {
+  if (!isValidId(id)) throw new Error("Invalid ID");
+  await api.post(`shares/${id}/report`, { reason, message });
+};
+
 const update = async (id: string, share: UpdateShare): Promise<MyShare> => {
   if (!isValidId(id)) throw new Error("Invalid ID");
   return (await api.patch(`shares/${id}`, share)).data;
@@ -488,6 +493,7 @@ export default {
   getFromOwner,
   update,
   remove,
+  report,
   expire,
   getMetaData,
   doesFileSupportPreview,

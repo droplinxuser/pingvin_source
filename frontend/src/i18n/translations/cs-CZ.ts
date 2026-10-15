@@ -747,5 +747,22 @@ export default {
   "admin.notice.modal.button.acknowledge": "Potvrdit a skrýt",
   "admin.notice.modal.button.acknowledging": "Potvrzování...",
   "admin.notice.modal.docsLink": "Zobrazit dokumentaci",
-  "admin.notice.modal.globalNoticeFooter": "Poznámka: Po potvrzení bude toto upozornění trvale skryto všem administrátorům na všech zařízeních."
+  "admin.notice.modal.globalNoticeFooter": "Poznámka: Po potvrzení bude toto upozornění trvale skryto všem administrátorům na všech zařízeních.",
+
+  // Share report feature
+  "share.report.button": "Nahlásit",
+  "share.report.modal.title": "Nahlásit sdílení",
+  "share.report.modal.description": "Pokud toto sdílení obsahuje obsah porušující zákon nebo naše pravidla, můžete ho nahlásit. Správce bude upozorněn.",
+  "share.report.modal.reason": "Důvod",
+  "share.report.modal.custom-reason": "Další podrobnosti",
+  "share.report.modal.error.no-reason": "Vyberte důvod",
+  "share.report.modal.error.no-message": "Popište, proč toto sdílení nahlašujete",
+  "share.report.notify.success": "Děkujeme. Vaše hlášení bylo odesláno.",
+  "share.report.reason.dmca": "DMCA / Porušení autorských práv",
+  "share.report.reason.csam": "Materiál zneužívání dětí (CSAM)",
+  "share.report.reason.gore": "Násilný / Šokující obsah",
+  "share.report.reason.malware": "Malware / Phishing",
+  "share.report.reason.spam": "Spam",
+  "share.report.reason.personal-information": "Osobní údaje / Doxxing",
+  "share.report.reason.other": "Jiné"
 };

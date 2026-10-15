@@ -747,5 +747,22 @@ export default {
   "admin.notice.modal.button.acknowledge": "Kinnita ja sulge",
   "admin.notice.modal.button.acknowledging": "Kinnitamine...",
   "admin.notice.modal.docsLink": "Vaata dokumentatsiooni",
-  "admin.notice.modal.globalNoticeFooter": "Märkus: Pärast kinnitamist eemaldatakse see teavitus jäädavalt kõigi administraatorite jaoks kõigis seadmetes."
+  "admin.notice.modal.globalNoticeFooter": "Märkus: Pärast kinnitamist eemaldatakse see teavitus jäädavalt kõigi administraatorite jaoks kõigis seadmetes.",
+
+  // Share report feature
+  "share.report.button": "Teavita",
+  "share.report.modal.title": "Teavita jagamisest",
+  "share.report.modal.description": "Kui see jagamine sisaldab seadust või meie eeskirju rikkuvat sisu, saate sellest teavitada. Administraatorit teavitatakse.",
+  "share.report.modal.reason": "Põhjus",
+  "share.report.modal.custom-reason": "Lisainfo",
+  "share.report.modal.error.no-reason": "Valige põhjus",
+  "share.report.modal.error.no-message": "Kirjeldage, miks te sellest jagamisest teavitate",
+  "share.report.notify.success": "Täname. Teie teade on saadetud.",
+  "share.report.reason.dmca": "DMCA / Autoriõiguse rikkumine",
+  "share.report.reason.csam": "Laste seksuaalset väärkohtlemist kujutav materjal (CSAM)",
+  "share.report.reason.gore": "Vägivaldne / Šokeeriv sisu",
+  "share.report.reason.malware": "Pahavara / Õngitsus",
+  "share.report.reason.spam": "Rämpspost",
+  "share.report.reason.personal-information": "Isikuandmed / Doxxing",
+  "share.report.reason.other": "Muu"
 };

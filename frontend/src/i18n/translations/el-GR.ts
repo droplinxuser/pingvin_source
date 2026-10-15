@@ -747,5 +747,22 @@ export default {
   "admin.notice.modal.button.acknowledge": "Επιβεβαίωση & Απόρριψη",
   "admin.notice.modal.button.acknowledging": "Επιβεβαίωση...",
   "admin.notice.modal.docsLink": "Προβολή τεκμηρίωσης",
-  "admin.notice.modal.globalNoticeFooter": "Σημείωση: Μόλις επιβεβαιωθεί, αυτή η ειδοποίηση θα απορριφθεί οριστικά για όλους τους διαχειριστές σε όλες τις συσκευές."
+  "admin.notice.modal.globalNoticeFooter": "Σημείωση: Μόλις επιβεβαιωθεί, αυτή η ειδοποίηση θα απορριφθεί οριστικά για όλους τους διαχειριστές σε όλες τις συσκευές.",
+
+  // Share report feature
+  "share.report.button": "Αναφορά",
+  "share.report.modal.title": "Αναφορά κοινόχρηστου",
+  "share.report.modal.description": "Εάν αυτό το κοινόχρηστο περιέχει περιεχόμενο που παραβιάζει τον νόμο ή τις πολιτικές μας, μπορείτε να το αναφέρετε. Ο διαχειριστής θα ειδοποιηθεί.",
+  "share.report.modal.reason": "Λόγος",
+  "share.report.modal.custom-reason": "Πρόσθετες λεπτομέρειες",
+  "share.report.modal.error.no-reason": "Επιλέξτε έναν λόγο",
+  "share.report.modal.error.no-message": "Περιγράψτε γιατί αναφέρετε αυτό το κοινόχρηστο",
+  "share.report.notify.success": "Ευχαριστούμε. Η αναφορά σας υποβλήθηκε.",
+  "share.report.reason.dmca": "DMCA / Παραβίαση πνευματικών δικαιωμάτων",
+  "share.report.reason.csam": "Υλικό σεξουαλικής κακοποίησης παιδιών (CSAM)",
+  "share.report.reason.gore": "Βίαιο / Σκληρό περιεχόμενο",
+  "share.report.reason.malware": "Κακόβουλο λογισμικό / Phishing",
+  "share.report.reason.spam": "Ανεπιθύμητη αλληλογραφία",
+  "share.report.reason.personal-information": "Προσωπικές πληροφορίες / Doxxing",
+  "share.report.reason.other": "Άλλο"
 };

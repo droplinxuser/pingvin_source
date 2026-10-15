@@ -747,5 +747,22 @@ export default {
   "admin.notice.modal.button.acknowledge": "Подтвердить и закрыть",
   "admin.notice.modal.button.acknowledging": "Подтверждение...",
   "admin.notice.modal.docsLink": "Просмотреть документацию",
-  "admin.notice.modal.globalNoticeFooter": "Примечание: После подтверждения это уведомление будет навсегда скрыто для всех администраторов на всех устройствах."
+  "admin.notice.modal.globalNoticeFooter": "Примечание: После подтверждения это уведомление будет навсегда скрыто для всех администраторов на всех устройствах.",
+
+  // Share report feature
+  "share.report.button": "Пожаловаться",
+  "share.report.modal.title": "Пожаловаться на публикацию",
+  "share.report.modal.description": "Если эта публикация содержит контент, нарушающий закон или наши правила, вы можете сообщить об этом. Администратор будет уведомлён.",
+  "share.report.modal.reason": "Причина",
+  "share.report.modal.custom-reason": "Дополнительные сведения",
+  "share.report.modal.error.no-reason": "Выберите причину",
+  "share.report.modal.error.no-message": "Опишите, почему вы сообщаете об этой публикации",
+  "share.report.notify.success": "Спасибо. Ваша жалоба отправлена.",
+  "share.report.reason.dmca": "DMCA / Нарушение авторских прав",
+  "share.report.reason.csam": "Материалы сексуального насилия над детьми (CSAM)",
+  "share.report.reason.gore": "Шокирующий / Жестокий контент",
+  "share.report.reason.malware": "Вредоносное ПО / Фишинг",
+  "share.report.reason.spam": "Спам",
+  "share.report.reason.personal-information": "Личные данные / Доксинг",
+  "share.report.reason.other": "Другое"
 };

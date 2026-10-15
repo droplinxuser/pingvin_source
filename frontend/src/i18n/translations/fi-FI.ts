@@ -747,5 +747,22 @@ export default {
   "admin.notice.modal.button.acknowledge": "Vahvista ja sulje",
   "admin.notice.modal.button.acknowledging": "Vahvistetaan...",
   "admin.notice.modal.docsLink": "Näytä dokumentaatio",
-  "admin.notice.modal.globalNoticeFooter": "Huomautus: Kun tämä ilmoitus on vahvistettu, se poistetaan pysyvästi kaikilta ylläpitäjiltä kaikilla laitteilla."
+  "admin.notice.modal.globalNoticeFooter": "Huomautus: Kun tämä ilmoitus on vahvistettu, se poistetaan pysyvästi kaikilta ylläpitäjiltä kaikilla laitteilla.",
+
+  // Share report feature
+  "share.report.button": "Ilmianna",
+  "share.report.modal.title": "Ilmianna jako",
+  "share.report.modal.description": "Jos tämä jako sisältää lain tai käytäntöjemme vastaista sisältöä, voit ilmiantaa sen. Ylläpitäjälle ilmoitetaan.",
+  "share.report.modal.reason": "Syy",
+  "share.report.modal.custom-reason": "Lisätiedot",
+  "share.report.modal.error.no-reason": "Valitse syy",
+  "share.report.modal.error.no-message": "Kuvaile, miksi ilmiannat tämän jaon",
+  "share.report.notify.success": "Kiitos. Ilmiantosi on lähetetty.",
+  "share.report.reason.dmca": "DMCA / Tekijänoikeusrikkomus",
+  "share.report.reason.csam": "Lapsiin kohdistuvaa seksuaaliväkivaltaa sisältävä materiaali (CSAM)",
+  "share.report.reason.gore": "Väkivaltainen / Järkyttävä sisältö",
+  "share.report.reason.malware": "Haittaohjelma / Tietojenkalastelu",
+  "share.report.reason.spam": "Roskaposti",
+  "share.report.reason.personal-information": "Henkilötiedot / Doxxaus",
+  "share.report.reason.other": "Muu"
 };

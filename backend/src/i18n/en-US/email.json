@@ -7,5 +7,9 @@
   "testSubject": "Test email",
   "testText": "This is a test email",
   "sendFailed": "Failed to send email",
+  "reportSubject": "Share reported: {shareName}",
+  "reportText": "A share on {appName} was reported.\n\nShare: {shareName}\nShare ID: {shareId}\nLink: {shareUrl}\n\nFiles:\n{fileList}\n\nReason: {reason}\n\nAdditional details:\n{message}",
+  "reportMessageFallback": "None",
+  "reportEmailNotConfigured": "No email address is configured for report notifications",
   "locale": "en-US"
 }

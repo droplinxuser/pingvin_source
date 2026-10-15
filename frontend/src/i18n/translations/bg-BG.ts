@@ -747,5 +747,22 @@ export default {
   "admin.notice.modal.button.acknowledge": "Потвърди и затвори",
   "admin.notice.modal.button.acknowledging": "Потвърждаване...",
   "admin.notice.modal.docsLink": "Преглед на документацията",
-  "admin.notice.modal.globalNoticeFooter": "Забележка: След като бъде потвърдено, това известие ще бъде премахнато завинаги за всички администратори на всички устройства."
+  "admin.notice.modal.globalNoticeFooter": "Забележка: След като бъде потвърдено, това известие ще бъде премахнато завинаги за всички администратори на всички устройства.",
+
+  // Share report feature
+  "share.report.button": "Докладване",
+  "share.report.modal.title": "Докладване на споделянето",
+  "share.report.modal.description": "Ако това споделяне съдържа съдържание, което нарушава закона или нашите правила, можете да го докладвате. Администраторът ще бъде уведомен.",
+  "share.report.modal.reason": "Причина",
+  "share.report.modal.custom-reason": "Допълнителни подробности",
+  "share.report.modal.error.no-reason": "Изберете причина",
+  "share.report.modal.error.no-message": "Опишете защо докладвате това споделяне",
+  "share.report.notify.success": "Благодарим. Вашият сигнал е изпратен.",
+  "share.report.reason.dmca": "DMCA / Нарушаване на авторски права",
+  "share.report.reason.csam": "Материали със сексуално насилие над деца (CSAM)",
+  "share.report.reason.gore": "Кърваво / Насилствено съдържание",
+  "share.report.reason.malware": "Зловреден софтуер / Фишинг",
+  "share.report.reason.spam": "Спам",
+  "share.report.reason.personal-information": "Лични данни / Доксинг",
+  "share.report.reason.other": "Друго"
 };

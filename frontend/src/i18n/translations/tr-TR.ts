@@ -747,5 +747,22 @@ export default {
   "admin.notice.modal.button.acknowledge": "Onayla ve Kapat",
   "admin.notice.modal.button.acknowledging": "Onaylanıyor...",
   "admin.notice.modal.docsLink": "Dokümantasyonu Görüntüle",
-  "admin.notice.modal.globalNoticeFooter": "Not: Onaylandıktan sonra bu bildirim, tüm cihazlardaki tüm yöneticiler için kalıcı olarak kapatılacaktır."
+  "admin.notice.modal.globalNoticeFooter": "Not: Onaylandıktan sonra bu bildirim, tüm cihazlardaki tüm yöneticiler için kalıcı olarak kapatılacaktır.",
+
+  // Share report feature
+  "share.report.button": "Bildir",
+  "share.report.modal.title": "Paylaşımı bildir",
+  "share.report.modal.description": "Bu paylaşım yasalara veya politikalarımıza aykırı içerik barındırıyorsa bildirebilirsiniz. Yönetici bilgilendirilecektir.",
+  "share.report.modal.reason": "Neden",
+  "share.report.modal.custom-reason": "Ek ayrıntılar",
+  "share.report.modal.error.no-reason": "Bir neden seçin",
+  "share.report.modal.error.no-message": "Bu paylaşımı neden bildirdiğinizi açıklayın",
+  "share.report.notify.success": "Teşekkürler. Bildiriminiz gönderildi.",
+  "share.report.reason.dmca": "DMCA / Telif hakkı ihlali",
+  "share.report.reason.csam": "Çocuk istismarı materyali (CSAM)",
+  "share.report.reason.gore": "Kanlı / Şiddet içeren içerik",
+  "share.report.reason.malware": "Kötü amaçlı yazılım / Kimlik avı",
+  "share.report.reason.spam": "Spam",
+  "share.report.reason.personal-information": "Kişisel bilgiler / Doxxing",
+  "share.report.reason.other": "Diğer"
 };

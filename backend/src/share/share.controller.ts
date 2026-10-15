@@ -26,6 +26,7 @@ import { AdminShareDTO } from "./dto/adminShare.dto";
 import { CreateShareDTO } from "./dto/createShare.dto";
 import { MyShareDTO } from "./dto/myShare.dto";
 import { ReceivedShareDTO } from "./dto/receivedShare.dto";
+import { ReportShareDTO } from "./dto/reportShare.dto";
 import { ShareDTO } from "./dto/share.dto";
 import { ShareMetaDataDTO } from "./dto/shareMetaData.dto";
 import { SharePasswordDto } from "./dto/sharePassword.dto";
@@ -169,6 +170,19 @@ export class ShareController {
   @UseGuards(IdValidation, ShareOwnerGuard)
   async expire(@Param("id") id: string) {
     await this.shareService.expire(id);
+  }
+
+  @Throttle({
+    default: {
+      limit: 5,
+      ttl: 60 * 1000,
+    },
+  })
+  @HttpCode(200)
+  @UseGuards(IdValidation)
+  @Post(":id/report")
+  async report(@Param("id") id: string, @Body() body: ReportShareDTO) {
+    await this.shareService.report(id, body);
   }
 
   @Throttle({

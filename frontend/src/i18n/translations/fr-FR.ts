@@ -747,5 +747,22 @@ export default {
   "admin.notice.modal.button.acknowledge": "Confirmer et ignorer",
   "admin.notice.modal.button.acknowledging": "Confirmation...",
   "admin.notice.modal.docsLink": "Voir la documentation",
-  "admin.notice.modal.globalNoticeFooter": "Remarque : Une fois confirmé, cet avertissement sera définitivement masqué pour tous les administrateurs sur tous les appareils."
+  "admin.notice.modal.globalNoticeFooter": "Remarque : Une fois confirmé, cet avertissement sera définitivement masqué pour tous les administrateurs sur tous les appareils.",
+
+  // Share report feature
+  "share.report.button": "Signaler",
+  "share.report.modal.title": "Signaler le partage",
+  "share.report.modal.description": "Si ce partage contient du contenu qui enfreint la loi ou nos règles, vous pouvez le signaler. L'administrateur sera averti.",
+  "share.report.modal.reason": "Motif",
+  "share.report.modal.custom-reason": "Détails supplémentaires",
+  "share.report.modal.error.no-reason": "Veuillez sélectionner un motif",
+  "share.report.modal.error.no-message": "Veuillez décrire pourquoi vous signalez ce partage",
+  "share.report.notify.success": "Merci. Votre signalement a été envoyé.",
+  "share.report.reason.dmca": "DMCA / Violation du droit d'auteur",
+  "share.report.reason.csam": "Matériel d'abus sexuel sur mineur (CSAM)",
+  "share.report.reason.gore": "Contenu sanglant / Violent",
+  "share.report.reason.malware": "Logiciel malveillant / Hameçonnage",
+  "share.report.reason.spam": "Spam",
+  "share.report.reason.personal-information": "Informations personnelles / Doxxing",
+  "share.report.reason.other": "Autre"
 };

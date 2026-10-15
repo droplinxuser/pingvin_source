@@ -747,5 +747,22 @@ export default {
   "admin.notice.modal.button.acknowledge": "Bekreft og lukk",
   "admin.notice.modal.button.acknowledging": "Bekrefter...",
   "admin.notice.modal.docsLink": "Se dokumentasjon",
-  "admin.notice.modal.globalNoticeFooter": "Merk: Når den er bekræftet, vil denne meldingen bli permanent fjernet for alle administratorer på tvers av alle enheter."
+  "admin.notice.modal.globalNoticeFooter": "Merk: Når den er bekræftet, vil denne meldingen bli permanent fjernet for alle administratorer på tvers av alle enheter.",
+
+  // Share report feature
+  "share.report.button": "Rapporter",
+  "share.report.modal.title": "Rapporter deling",
+  "share.report.modal.description": "Hvis denne delingen inneholder innhold som bryter loven eller retningslinjene våre, kan du rapportere den. Administratoren blir varslet.",
+  "share.report.modal.reason": "Årsak",
+  "share.report.modal.custom-reason": "Flere detaljer",
+  "share.report.modal.error.no-reason": "Velg en årsak",
+  "share.report.modal.error.no-message": "Beskriv hvorfor du rapporterer denne delingen",
+  "share.report.notify.success": "Takk. Rapporten din er sendt inn.",
+  "share.report.reason.dmca": "DMCA / Brudd på opphavsrett",
+  "share.report.reason.csam": "Materiale med seksuelt misbruk av barn (CSAM)",
+  "share.report.reason.gore": "Voldelig / Støtende innhold",
+  "share.report.reason.malware": "Skadelig programvare / Phishing",
+  "share.report.reason.spam": "Søppelpost",
+  "share.report.reason.personal-information": "Personopplysninger / Doxxing",
+  "share.report.reason.other": "Annet"
 };

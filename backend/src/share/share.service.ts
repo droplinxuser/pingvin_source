@@ -29,6 +29,7 @@ import { byteToHumanSizeString } from "src/utils/fileSize.util";
 import { getUserActiveStorageUsage } from "src/utils/storageQuota.util";
 import { SHARE_DIRECTORY } from "../constants";
 import { CreateShareDTO } from "./dto/createShare.dto";
+import { ReportShareDTO } from "./dto/reportShare.dto";
 import { UpdateShareDTO } from "./dto/updateShare.dto";
 
 @Injectable()
@@ -491,6 +492,30 @@ export class ShareService {
     }
 
     return share;
+  }
+
+  async report(id: string, report: ReportShareDTO) {
+    const share = await this.prisma.share.findUnique({
+      where: { id },
+      include: {
+        files: {
+          orderBy: {
+            name: "asc",
+          },
+        },
+      },
+    });
+
+    if (!share || !share.uploadLocked)
+      throw new NotFoundException(this.i18n.t("share.notFound"));
+
+    await this.emailService.sendShareReportEmail(
+      share.id,
+      share.name,
+      share.files.map((file) => file.name),
+      report.reason,
+      report.message,
+    );
   }
 
   async remove(shareId: string, isDeleterAdmin = false) {

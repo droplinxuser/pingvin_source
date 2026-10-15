@@ -747,5 +747,22 @@ export default {
   "admin.notice.modal.button.acknowledge": "Potrdi in zapri",
   "admin.notice.modal.button.acknowledging": "Potrjevanje...",
   "admin.notice.modal.docsLink": "Ogled dokumentacije",
-  "admin.notice.modal.globalNoticeFooter": "Opomba: Ko je obvestilo potrjeno, bo trajno odstranjeno za vse administratorje na vseh napravah."
+  "admin.notice.modal.globalNoticeFooter": "Opomba: Ko je obvestilo potrjeno, bo trajno odstranjeno za vse administratorje na vseh napravah.",
+
+  // Share report feature
+  "share.report.button": "Prijavi",
+  "share.report.modal.title": "Prijavi deljenje",
+  "share.report.modal.description": "Če to deljenje vsebuje vsebino, ki krši zakon ali naša pravila, jo lahko prijavite. Skrbnik bo obveščen.",
+  "share.report.modal.reason": "Razlog",
+  "share.report.modal.custom-reason": "Dodatne podrobnosti",
+  "share.report.modal.error.no-reason": "Izberite razlog",
+  "share.report.modal.error.no-message": "Opišite, zakaj prijavljate to deljenje",
+  "share.report.notify.success": "Hvala. Vaša prijava je bila poslana.",
+  "share.report.reason.dmca": "DMCA / Kršitev avtorskih pravic",
+  "share.report.reason.csam": "Gradivo spolne zlorabe otrok (CSAM)",
+  "share.report.reason.gore": "Krvava / Nasilna vsebina",
+  "share.report.reason.malware": "Zlonamerna programska oprema / Lažno predstavljanje",
+  "share.report.reason.spam": "Vsiljena pošta",
+  "share.report.reason.personal-information": "Osebni podatki / Doxxing",
+  "share.report.reason.other": "Drugo"
 };

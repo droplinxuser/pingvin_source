@@ -747,5 +747,22 @@ export default {
   "admin.notice.modal.button.acknowledge": "Confirmar y descartar",
   "admin.notice.modal.button.acknowledging": "Confirmando...",
   "admin.notice.modal.docsLink": "Ver documentación",
-  "admin.notice.modal.globalNoticeFooter": "Nota: Una vez confirmado, este aviso se descartará permanentemente para todos los administradores en todos los dispositivos."
+  "admin.notice.modal.globalNoticeFooter": "Nota: Una vez confirmado, este aviso se descartará permanentemente para todos los administradores en todos los dispositivos.",
+
+  // Share report feature
+  "share.report.button": "Denunciar",
+  "share.report.modal.title": "Denunciar compartición",
+  "share.report.modal.description": "Si esta compartición contiene contenido que infringe la ley o nuestras políticas, puedes denunciarla. Se notificará al administrador.",
+  "share.report.modal.reason": "Motivo",
+  "share.report.modal.custom-reason": "Detalles adicionales",
+  "share.report.modal.error.no-reason": "Selecciona un motivo",
+  "share.report.modal.error.no-message": "Describe por qué denuncias esta compartición",
+  "share.report.notify.success": "Gracias. Tu denuncia ha sido enviada.",
+  "share.report.reason.dmca": "DMCA / Infracción de derechos de autor",
+  "share.report.reason.csam": "Material de abuso sexual infantil (CSAM)",
+  "share.report.reason.gore": "Contenido sangriento / Violento",
+  "share.report.reason.malware": "Malware / Phishing",
+  "share.report.reason.spam": "Spam",
+  "share.report.reason.personal-information": "Información personal / Doxxing",
+  "share.report.reason.other": "Otro"
 };

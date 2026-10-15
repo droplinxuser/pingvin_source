@@ -747,5 +747,22 @@ export default {
   "admin.notice.modal.button.acknowledge": "Reconèixer i descartar",
   "admin.notice.modal.button.acknowledging": "Reconeixent...",
   "admin.notice.modal.docsLink": "Veure la documentació",
-  "admin.notice.modal.globalNoticeFooter": "Nota: Un cop reconegut, aquest avís es descartarà permanentment per a tots els administradors en tots els dispositius."
+  "admin.notice.modal.globalNoticeFooter": "Nota: Un cop reconegut, aquest avís es descartarà permanentment per a tots els administradors en tots els dispositius.",
+
+  // Share report feature
+  "share.report.button": "Denuncia",
+  "share.report.modal.title": "Denuncia la compartició",
+  "share.report.modal.description": "Si aquesta compartició conté contingut que infringeix la llei o les nostres polítiques, pots denunciar-la. S'avisarà l'administrador.",
+  "share.report.modal.reason": "Motiu",
+  "share.report.modal.custom-reason": "Detalls addicionals",
+  "share.report.modal.error.no-reason": "Selecciona un motiu",
+  "share.report.modal.error.no-message": "Descriu per què denuncies aquesta compartició",
+  "share.report.notify.success": "Gràcies. La teva denúncia s'ha enviat.",
+  "share.report.reason.dmca": "DMCA / Infracció de drets d'autor",
+  "share.report.reason.csam": "Material d'abús sexual infantil (CSAM)",
+  "share.report.reason.gore": "Contingut sagnant / Violent",
+  "share.report.reason.malware": "Programari maliciós / Phishing",
+  "share.report.reason.spam": "Correu brossa",
+  "share.report.reason.personal-information": "Informació personal / Doxxing",
+  "share.report.reason.other": "Un altre"
 };

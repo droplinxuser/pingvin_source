@@ -747,5 +747,22 @@ export default {
   "admin.notice.modal.button.acknowledge": "Bekræft og luk",
   "admin.notice.modal.button.acknowledging": "Bekræfter...",
   "admin.notice.modal.docsLink": "Se dokumentation",
-  "admin.notice.modal.globalNoticeFooter": "Bemærk: Når den er bekræftet, vil denne meddelelse blive fjernet permanent for alle administratorer på tværs af alle enheder."
+  "admin.notice.modal.globalNoticeFooter": "Bemærk: Når den er bekræftet, vil denne meddelelse blive fjernet permanent for alle administratorer på tværs af alle enheder.",
+
+  // Share report feature
+  "share.report.button": "Anmeld",
+  "share.report.modal.title": "Anmeld deling",
+  "share.report.modal.description": "Hvis denne deling indeholder indhold, der overtræder loven eller vores politikker, kan du anmelde den. Administratoren får besked.",
+  "share.report.modal.reason": "Årsag",
+  "share.report.modal.custom-reason": "Yderligere detaljer",
+  "share.report.modal.error.no-reason": "Vælg en årsag",
+  "share.report.modal.error.no-message": "Beskriv hvorfor du anmelder denne deling",
+  "share.report.notify.success": "Tak. Din anmeldelse er blevet indsendt.",
+  "share.report.reason.dmca": "DMCA / Krænkelse af ophavsret",
+  "share.report.reason.csam": "Materiale med seksuelt misbrug af børn (CSAM)",
+  "share.report.reason.gore": "Voldeligt / Chokerende indhold",
+  "share.report.reason.malware": "Malware / Phishing",
+  "share.report.reason.spam": "Spam",
+  "share.report.reason.personal-information": "Personlige oplysninger / Doxxing",
+  "share.report.reason.other": "Andet"
 };

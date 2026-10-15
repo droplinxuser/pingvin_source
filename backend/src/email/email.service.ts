@@ -284,6 +284,38 @@ export class EmailService {
     );
   }
 
+  async sendShareReportEmail(
+    shareId: string,
+    shareName: string | null,
+    fileNames: string[],
+    reason: string,
+    message?: string,
+  ) {
+    const adminEmail = this.config.get("smtp.email") as string;
+    if (!adminEmail) {
+      throw new InternalServerErrorException(
+        this.i18n.t("email.reportEmailNotConfigured"),
+      );
+    }
+
+    const shareUrl = `${this.config.get("general.appUrl")}/s/${shareId}`;
+    const vars = {
+      appName: this.config.get("general.appName"),
+      shareId,
+      shareName: shareName?.trim() || shareId,
+      shareUrl,
+      fileList: fileNames.map((name) => `- ${name}`).join("\n"),
+      reason,
+      message: message?.trim() || this.i18n.t("email.reportMessageFallback"),
+    };
+
+    await this.sendMail(
+      adminEmail,
+      this.i18n.t("email.reportSubject", { args: vars }),
+      this.i18n.t("email.reportText", { args: vars }),
+    );
+  }
+
   async sendTestMail(recipientEmail: string) {
     const subject = this.i18n.t("email.testSubject");
     const text = this.i18n.t("email.testText");

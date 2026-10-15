@@ -19,8 +19,9 @@ DATA_DIR="/var/www/pingvin_data"
 
 echo "==> Pulling latest code"
 git checkout main
-# The frontend build rewrites public/manifest.json with the configured site
-# name; restore it first so the pull below can never conflict.
+# Older builds rewrote public/manifest.json with the configured site name;
+# restore it so the pull below can never conflict (the file was replaced by
+# a dynamic route in pages/manifest.json.tsx).
 git checkout -- frontend/public/manifest.json 2>/dev/null || true
 git pull --ff-only
 
@@ -38,18 +39,13 @@ npm run build
 echo "==> Installing and building the frontend"
 cd "$SRC_DIR/frontend"
 npm ci --no-audit --no-fund
-# Export the site name from the backend systemd unit (where it is configured)
-# so the frontend build can use it for the PWA manifest.
-if [ -z "${SITE_NAME:-}" ]; then
-  SITE_NAME="$(sed -n 's/^Environment=SITE_NAME="\?\([^"]*\)"\?$/\1/p' /etc/systemd/system/pingvin-back.service 2>/dev/null | tail -n1 || true)"
-  [ -n "$SITE_NAME" ] && export SITE_NAME
-fi
+# The PWA manifest is served dynamically at /manifest.json with the site name
+# configured on the backend, so no build-time SITE_NAME handling is needed.
 npm run build
 # The standalone server serves public/ and .next/static from its own folder.
 rm -rf .next/standalone/public .next/standalone/.next/static
 cp -r public .next/standalone/public
 cp -r .next/static .next/standalone/.next/static
-git checkout -- public/manifest.json # keep the working tree clean
 
 echo "==> Preparing data directory and backend/.env"
 mkdir -p "$DATA_DIR"

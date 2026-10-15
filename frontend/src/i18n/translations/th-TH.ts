@@ -747,5 +747,22 @@ export default {
   "admin.notice.modal.button.acknowledge": "รับทราบและปิด",
   "admin.notice.modal.button.acknowledging": "กำลังรับทราบ...",
   "admin.notice.modal.docsLink": "ดูเอกสารประกอบ",
-  "admin.notice.modal.globalNoticeFooter": "หมายเหตุ: เมื่อรับทราบแล้ว ประกาศนี้จะถูกปิดอย่างถาวรสำหรับผู้ดูแลระบบทุกคนในทุกอุปกรณ์"
+  "admin.notice.modal.globalNoticeFooter": "หมายเหตุ: เมื่อรับทราบแล้ว ประกาศนี้จะถูกปิดอย่างถาวรสำหรับผู้ดูแลระบบทุกคนในทุกอุปกรณ์",
+
+  // Share report feature
+  "share.report.button": "รายงาน",
+  "share.report.modal.title": "รายงานการแชร์",
+  "share.report.modal.description": "หากการแชร์นี้มีเนื้อหาที่ละเมิดกฎหมายหรือนโยบายของเรา คุณสามารถรายงานได้ ผู้ดูแลระบบจะได้รับแจ้ง",
+  "share.report.modal.reason": "เหตุผล",
+  "share.report.modal.custom-reason": "รายละเอียดเพิ่มเติม",
+  "share.report.modal.error.no-reason": "กรุณาเลือกเหตุผล",
+  "share.report.modal.error.no-message": "กรุณาอธิบายว่าทำไมคุณจึงรายงานการแชร์นี้",
+  "share.report.notify.success": "ขอบคุณ รายงานของคุณถูกส่งแล้ว",
+  "share.report.reason.dmca": "DMCA / การละเมิดลิขสิทธิ์",
+  "share.report.reason.csam": "สื่อล่วงละเมิดทางเพศเด็ก (CSAM)",
+  "share.report.reason.gore": "เนื้อหารุนแรง / นองเลือด",
+  "share.report.reason.malware": "มัลแวร์ / ฟิชชิ่ง",
+  "share.report.reason.spam": "สแปม",
+  "share.report.reason.personal-information": "ข้อมูลส่วนบุคคล / การเปิดเผยข้อมูลส่วนตัว",
+  "share.report.reason.other": "อื่น ๆ"
 };

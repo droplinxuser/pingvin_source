@@ -747,5 +747,22 @@ export default {
   "admin.notice.modal.button.acknowledge": "确认并关闭",
   "admin.notice.modal.button.acknowledging": "正在确认...",
   "admin.notice.modal.docsLink": "查看文档",
-  "admin.notice.modal.globalNoticeFooter": "注意：一旦确认，此通知将在所有设备上对所有管理员永久关闭。"
+  "admin.notice.modal.globalNoticeFooter": "注意：一旦确认，此通知将在所有设备上对所有管理员永久关闭。",
+
+  // Share report feature
+  "share.report.button": "举报",
+  "share.report.modal.title": "举报分享",
+  "share.report.modal.description": "如果此分享包含违反法律或我们政策的内容，您可以举报。管理员将收到通知。",
+  "share.report.modal.reason": "原因",
+  "share.report.modal.custom-reason": "补充说明",
+  "share.report.modal.error.no-reason": "请选择原因",
+  "share.report.modal.error.no-message": "请描述您举报此分享的原因",
+  "share.report.notify.success": "谢谢。您的举报已提交。",
+  "share.report.reason.dmca": "DMCA / 侵犯版权",
+  "share.report.reason.csam": "儿童性虐待材料 (CSAM)",
+  "share.report.reason.gore": "血腥 / 暴力内容",
+  "share.report.reason.malware": "恶意软件 / 钓鱼",
+  "share.report.reason.spam": "垃圾信息",
+  "share.report.reason.personal-information": "个人信息 / 人肉搜索",
+  "share.report.reason.other": "其他"
 };

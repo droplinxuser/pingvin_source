@@ -747,5 +747,22 @@ export default {
   "admin.notice.modal.button.acknowledge": "Tudomásul veszem és bezárom",
   "admin.notice.modal.button.acknowledging": "Feldolgozás...",
   "admin.notice.modal.docsLink": "Dokumentáció megtekintése",
-  "admin.notice.modal.globalNoticeFooter": "Megjegyzés: A tudomásulvételt követően ez az értesítés minden adminisztrátor számára véglegesen elrejtésre kerül az összes eszközön."
+  "admin.notice.modal.globalNoticeFooter": "Megjegyzés: A tudomásulvételt követően ez az értesítés minden adminisztrátor számára véglegesen elrejtésre kerül az összes eszközön.",
+
+  // Share report feature
+  "share.report.button": "Jelentés",
+  "share.report.modal.title": "Megosztás jelentése",
+  "share.report.modal.description": "Ha ez a megosztás jogszabályba vagy irányelveinkbe ütköző tartalmat tartalmaz, jelentheti. A rendszergazda értesítést kap.",
+  "share.report.modal.reason": "Ok",
+  "share.report.modal.custom-reason": "További részletek",
+  "share.report.modal.error.no-reason": "Válasszon okot",
+  "share.report.modal.error.no-message": "Írja le, miért jelenti ezt a megosztást",
+  "share.report.notify.success": "Köszönjük. A jelentése be lett küldve.",
+  "share.report.reason.dmca": "DMCA / Szerzői jog megsértése",
+  "share.report.reason.csam": "Gyermekek szexuális bántalmazását ábrázoló anyag (CSAM)",
+  "share.report.reason.gore": "Véres / Erőszakos tartalom",
+  "share.report.reason.malware": "Kártevő / Adathalászat",
+  "share.report.reason.spam": "Spam",
+  "share.report.reason.personal-information": "Személyes adatok / Doxxing",
+  "share.report.reason.other": "Egyéb"
 };

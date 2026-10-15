@@ -747,5 +747,22 @@ export default {
   "admin.notice.modal.button.acknowledge": "Stadfest og lukk",
   "admin.notice.modal.button.acknowledging": "Stadfestar...",
   "admin.notice.modal.docsLink": "Sjå dokumentasjon",
-  "admin.notice.modal.globalNoticeFooter": "Merk: Når ho er stadfesta, vil denne meldinga verte permanent fjerna for alle administratorar på tvers av alle einingar."
+  "admin.notice.modal.globalNoticeFooter": "Merk: Når ho er stadfesta, vil denne meldinga verte permanent fjerna for alle administratorar på tvers av alle einingar.",
+
+  // Share report feature
+  "share.report.button": "Rapporter",
+  "share.report.modal.title": "Rapporter deling",
+  "share.report.modal.description": "Viss denne delinga inneheld innhald som bryt lova eller retningslinjene våre, kan du rapportere ho. Administratoren blir varsla.",
+  "share.report.modal.reason": "Årsak",
+  "share.report.modal.custom-reason": "Fleire detaljar",
+  "share.report.modal.error.no-reason": "Vel ei årsak",
+  "share.report.modal.error.no-message": "Skildr kvifor du rapporterer denne delinga",
+  "share.report.notify.success": "Takk. Rapporten din er sendt inn.",
+  "share.report.reason.dmca": "DMCA / Brot på opphavsrett",
+  "share.report.reason.csam": "Materiale med seksuelt misbruk av barn (CSAM)",
+  "share.report.reason.gore": "Valdeleg / Støytande innhald",
+  "share.report.reason.malware": "Skadeleg programvare / Phishing",
+  "share.report.reason.spam": "Søppelpost",
+  "share.report.reason.personal-information": "Personopplysningar / Doxxing",
+  "share.report.reason.other": "Anna"
 };

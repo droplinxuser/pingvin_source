@@ -747,5 +747,22 @@ export default {
   "admin.notice.modal.button.acknowledge": "Bestätigen & Schließen",
   "admin.notice.modal.button.acknowledging": "Wird bestätigt...",
   "admin.notice.modal.docsLink": "Dokumentation anzeigen",
-  "admin.notice.modal.globalNoticeFooter": "Hinweis: Nach der Bestätigung wird dieser Hinweis für alle Administratoren auf allen Geräten dauerhaft ausgeblendet."
+  "admin.notice.modal.globalNoticeFooter": "Hinweis: Nach der Bestätigung wird dieser Hinweis für alle Administratoren auf allen Geräten dauerhaft ausgeblendet.",
+
+  // Share report feature
+  "share.report.button": "Melden",
+  "share.report.modal.title": "Freigabe melden",
+  "share.report.modal.description": "Wenn diese Freigabe Inhalte enthält, die gegen das Gesetz oder unsere Richtlinien verstoßen, kannst du sie melden. Der Administrator wird benachrichtigt.",
+  "share.report.modal.reason": "Grund",
+  "share.report.modal.custom-reason": "Weitere Details",
+  "share.report.modal.error.no-reason": "Bitte wähle einen Grund aus",
+  "share.report.modal.error.no-message": "Bitte beschreibe, warum du diese Freigabe meldest",
+  "share.report.notify.success": "Vielen Dank. Deine Meldung wurde übermittelt.",
+  "share.report.reason.dmca": "DMCA / Urheberrechtsverletzung",
+  "share.report.reason.csam": "Material über sexuellen Kindesmissbrauch (CSAM)",
+  "share.report.reason.gore": "Gewaltdarstellung / Brutale Inhalte",
+  "share.report.reason.malware": "Malware / Phishing",
+  "share.report.reason.spam": "Spam",
+  "share.report.reason.personal-information": "Persönliche Daten / Doxxing",
+  "share.report.reason.other": "Sonstiges"
 };

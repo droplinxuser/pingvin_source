@@ -747,5 +747,22 @@ export default {
   "admin.notice.modal.button.acknowledge": "確認並關閉",
   "admin.notice.modal.button.acknowledging": "正在確認...",
   "admin.notice.modal.docsLink": "檢視文件",
-  "admin.notice.modal.globalNoticeFooter": "注意：一旦確認，此通知將在所有裝置上對所有管理員永久關閉。"
+  "admin.notice.modal.globalNoticeFooter": "注意：一旦確認，此通知將在所有裝置上對所有管理員永久關閉。",
+
+  // Share report feature
+  "share.report.button": "檢舉",
+  "share.report.modal.title": "檢舉分享",
+  "share.report.modal.description": "如果此分享包含違反法律或我們政策的內容，您可以檢舉。管理員將收到通知。",
+  "share.report.modal.reason": "原因",
+  "share.report.modal.custom-reason": "補充說明",
+  "share.report.modal.error.no-reason": "請選擇原因",
+  "share.report.modal.error.no-message": "請描述您檢舉此分享的原因",
+  "share.report.notify.success": "謝謝。您的檢舉已提交。",
+  "share.report.reason.dmca": "DMCA / 侵犯版權",
+  "share.report.reason.csam": "兒童性虐待素材 (CSAM)",
+  "share.report.reason.gore": "血腥 / 暴力內容",
+  "share.report.reason.malware": "惡意軟體 / 釣魚",
+  "share.report.reason.spam": "垃圾訊息",
+  "share.report.reason.personal-information": "個人資訊 / 肉搜",
+  "share.report.reason.other": "其他"
 };

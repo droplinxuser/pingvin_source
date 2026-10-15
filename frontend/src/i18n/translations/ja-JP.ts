@@ -747,5 +747,22 @@ export default {
   "admin.notice.modal.button.acknowledge": "確認して閉じる",
   "admin.notice.modal.button.acknowledging": "確認中...",
   "admin.notice.modal.docsLink": "ドキュメントを表示",
-  "admin.notice.modal.globalNoticeFooter": "注: 一度確認すると、この通知はすべてのデバイスのすべての管理者に対して永久に非表示になります。"
+  "admin.notice.modal.globalNoticeFooter": "注: 一度確認すると、この通知はすべてのデバイスのすべての管理者に対して永久に非表示になります。",
+
+  // Share report feature
+  "share.report.button": "報告",
+  "share.report.modal.title": "共有を報告",
+  "share.report.modal.description": "この共有に法律やポリシーに違反するコンテンツが含まれている場合は、報告できます。管理者に通知されます。",
+  "share.report.modal.reason": "理由",
+  "share.report.modal.custom-reason": "追加の詳細",
+  "share.report.modal.error.no-reason": "理由を選択してください",
+  "share.report.modal.error.no-message": "この共有を報告する理由を記入してください",
+  "share.report.notify.success": "ありがとうございます。報告を送信しました。",
+  "share.report.reason.dmca": "DMCA / 著作権侵害",
+  "share.report.reason.csam": "児童の性的虐待素材 (CSAM)",
+  "share.report.reason.gore": "残虐 / 暴力的なコンテンツ",
+  "share.report.reason.malware": "マルウェア / フィッシング",
+  "share.report.reason.spam": "スパム",
+  "share.report.reason.personal-information": "個人情報 / 晒し行為",
+  "share.report.reason.other": "その他"
 };

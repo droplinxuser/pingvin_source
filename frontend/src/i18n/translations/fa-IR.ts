@@ -747,5 +747,22 @@ export default {
   "admin.notice.modal.button.acknowledge": "تایید و بستن",
   "admin.notice.modal.button.acknowledging": "در حال تایید...",
   "admin.notice.modal.docsLink": "مشاهده مستندات",
-  "admin.notice.modal.globalNoticeFooter": "توجه: پس از تایید، این اطلاعیه برای همه مدیران در تمام دستگاه‌ها به طور دائمی بسته خواهد شد."
+  "admin.notice.modal.globalNoticeFooter": "توجه: پس از تایید، این اطلاعیه برای همه مدیران در تمام دستگاه‌ها به طور دائمی بسته خواهد شد.",
+
+  // Share report feature
+  "share.report.button": "گزارش",
+  "share.report.modal.title": "گزارش اشتراک‌گذاری",
+  "share.report.modal.description": "اگر این اشتراک‌گذاری حاوی محتوایی است که قانون یا خط‌مشی‌های ما را نقض می‌کند، می‌توانید آن را گزارش دهید. به مدیر اطلاع داده خواهد شد.",
+  "share.report.modal.reason": "دلیل",
+  "share.report.modal.custom-reason": "جزئیات بیشتر",
+  "share.report.modal.error.no-reason": "لطفاً یک دلیل انتخاب کنید",
+  "share.report.modal.error.no-message": "لطفاً توضیح دهید چرا این اشتراک‌گذاری را گزارش می‌دهید",
+  "share.report.notify.success": "متشکریم. گزارش شما ارسال شد.",
+  "share.report.reason.dmca": "DMCA / نقض حق نشر",
+  "share.report.reason.csam": "مطالب سوءاستفاده جنسی از کودکان (CSAM)",
+  "share.report.reason.gore": "محتوای خونین / خشونت‌آمیز",
+  "share.report.reason.malware": "بدافزار / فیشینگ",
+  "share.report.reason.spam": "هرزنامه",
+  "share.report.reason.personal-information": "اطلاعات شخصی / داکسینگ",
+  "share.report.reason.other": "سایر"
 };

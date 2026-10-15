@@ -747,5 +747,22 @@ export default {
   "admin.notice.modal.button.acknowledge": "Potwierdź i odrzuć",
   "admin.notice.modal.button.acknowledging": "Potwierdzanie...",
   "admin.notice.modal.docsLink": "Zobacz dokumentację",
-  "admin.notice.modal.globalNoticeFooter": "Uwaga: Po potwierdzeniu to powiadomienie zostanie trwale usunięte dla wszystkich administratorów na wszystkich urządzeniach."
+  "admin.notice.modal.globalNoticeFooter": "Uwaga: Po potwierdzeniu to powiadomienie zostanie trwale usunięte dla wszystkich administratorów na wszystkich urządzeniach.",
+
+  // Share report feature
+  "share.report.button": "Zgłoś",
+  "share.report.modal.title": "Zgłoś udostępnienie",
+  "share.report.modal.description": "Jeśli to udostępnienie zawiera treści naruszające prawo lub nasze zasady, możesz je zgłosić. Administrator zostanie powiadomiony.",
+  "share.report.modal.reason": "Powód",
+  "share.report.modal.custom-reason": "Dodatkowe szczegóły",
+  "share.report.modal.error.no-reason": "Wybierz powód",
+  "share.report.modal.error.no-message": "Opisz, dlaczego zgłaszasz to udostępnienie",
+  "share.report.notify.success": "Dziękujemy. Twoje zgłoszenie zostało wysłane.",
+  "share.report.reason.dmca": "DMCA / Naruszenie praw autorskich",
+  "share.report.reason.csam": "Materiały przedstawiające wykorzystywanie seksualne dzieci (CSAM)",
+  "share.report.reason.gore": "Drastyczne / Brutalne treści",
+  "share.report.reason.malware": "Złośliwe oprogramowanie / Phishing",
+  "share.report.reason.spam": "Spam",
+  "share.report.reason.personal-information": "Dane osobowe / Doxxing",
+  "share.report.reason.other": "Inne"
 };

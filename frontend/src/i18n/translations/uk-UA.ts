@@ -747,5 +747,22 @@ export default {
   "admin.notice.modal.button.acknowledge": "Підтвердити та закрити",
   "admin.notice.modal.button.acknowledging": "Підтвердження...",
   "admin.notice.modal.docsLink": "Переглянути документацію",
-  "admin.notice.modal.globalNoticeFooter": "Примітка: Після підтвердження це сповіщення буде назавжди приховано для всіх адміністраторів на всіх пристроях."
+  "admin.notice.modal.globalNoticeFooter": "Примітка: Після підтвердження це сповіщення буде назавжди приховано для всіх адміністраторів на всіх пристроях.",
+
+  // Share report feature
+  "share.report.button": "Поскаржитися",
+  "share.report.modal.title": "Поскаржитися на публікацію",
+  "share.report.modal.description": "Якщо ця публікація містить контент, що порушує закон або наші правила, ви можете повідомити про це. Адміністратор буде повідомлений.",
+  "share.report.modal.reason": "Причина",
+  "share.report.modal.custom-reason": "Додаткові відомості",
+  "share.report.modal.error.no-reason": "Виберіть причину",
+  "share.report.modal.error.no-message": "Опишіть, чому ви скаржитеся на цю публікацію",
+  "share.report.notify.success": "Дякуємо. Вашу скаргу надіслано.",
+  "share.report.reason.dmca": "DMCA / Порушення авторських прав",
+  "share.report.reason.csam": "Матеріали сексуального насильства над дітьми (CSAM)",
+  "share.report.reason.gore": "Шокуючий / Жорстокий контент",
+  "share.report.reason.malware": "Шкідливе ПЗ / Фішинг",
+  "share.report.reason.spam": "Спам",
+  "share.report.reason.personal-information": "Особисті дані / Доксинг",
+  "share.report.reason.other": "Інше"
 };
