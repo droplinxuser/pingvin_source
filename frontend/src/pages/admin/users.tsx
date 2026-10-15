@@ -12,6 +12,7 @@ import userService from "../../services/user.service";
 import User from "../../types/user.type";
 import { CustomPasswordPolicy } from "../../types/config.type";
 import toast from "../../utils/toast.util";
+import { TableSort } from "../../components/core/SortIcon";
 
 const Users = () => {
   const [users, setUsers] = useState<User[]>([]);
@@ -19,6 +20,7 @@ const Users = () => {
   const [total, setTotal] = useState(0);
   const pageSize = 20;
   const [isLoading, setIsLoading] = useState(true);
+  const [sort, setSort] = useState<TableSort>({ direction: "desc" });
 
   const config = useConfig();
   const modals = useModals();
@@ -49,7 +51,7 @@ const Users = () => {
   const getUsers = (targetPage = page) => {
     setIsLoading(true);
     userService
-      .list(targetPage, pageSize)
+      .list(targetPage, pageSize, sort.property, sort.direction)
       .then(({ users, total }) => {
         setUsers(users);
         setTotal(total);
@@ -88,8 +90,8 @@ const Users = () => {
   };
 
   useEffect(() => {
-    getUsers();
-  }, []);
+    getUsers(1);
+  }, [sort]);
 
   return (
     <>
@@ -119,6 +121,8 @@ const Users = () => {
         deleteUser={deleteUser}
         isLoading={isLoading}
         customPasswordPolicy={customPasswordPolicy}
+        sort={sort}
+        setSort={setSort}
       />
       {total > pageSize && (
         <Group position="center" mt="lg">

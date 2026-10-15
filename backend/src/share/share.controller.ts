@@ -56,6 +56,8 @@ export class ShareController {
     @Query("page") page = "1",
     @Query("pageSize") pageSize = "20",
     @Query("search") search = "",
+    @Query("sortBy") sortBy?: string,
+    @Query("sortDirection") sortDirection?: string,
   ) {
     const { page: pageNum, pageSize: size, skip } = parsePagination(
       page,
@@ -63,20 +65,13 @@ export class ShareController {
     );
     const searchTerm = typeof search === "string" ? search.trim() : "";
 
-    // The admin share list is capped at the 5,000 most recent shares
-    const maxShares = 5000;
-    if (skip >= maxShares) {
-      return { shares: [], total: maxShares, page: pageNum, pageSize: size };
-    }
-
-    const take = Math.min(size, maxShares - skip);
     const [shares, count] = await Promise.all([
-      this.shareService.getShares(take, skip, searchTerm),
+      this.shareService.getShares(size, skip, searchTerm, sortBy, sortDirection),
       this.shareService.countShares(searchTerm),
     ]);
     return {
       shares: new AdminShareDTO().fromList(shares),
-      total: Math.min(count, maxShares),
+      total: count,
       page: pageNum,
       pageSize: size,
     };

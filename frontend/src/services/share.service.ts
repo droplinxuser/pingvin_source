@@ -26,6 +26,8 @@ const list = async (
   page = 1,
   pageSize = 20,
   search?: string,
+  sortBy?: string,
+  sortDirection?: string,
 ): Promise<{
   shares: MyShare[];
   total: number;
@@ -34,7 +36,13 @@ const list = async (
 }> => {
   return (
     await api.get(`shares/all`, {
-      params: { page, pageSize, search: search || undefined },
+      params: {
+        page,
+        pageSize,
+        search: search || undefined,
+        sortBy,
+        sortDirection,
+      },
     })
   ).data;
 };

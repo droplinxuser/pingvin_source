@@ -110,7 +110,8 @@ const Share = ({ shareId }: { shareId: string }) => {
         try {
           await shareService.remove(shareId);
           toast.success(t("admin.shares.notify.deleted"));
-          router.push("/admin/shares");
+          // Re-fetch the share to show the standard "Share not found" state
+          getFiles();
         } catch (e) {
           toast.axiosError(e);
         }

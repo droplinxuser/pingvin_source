@@ -391,18 +391,65 @@ export class ShareService {
     });
   }
 
-  async getShares(take?: number, skip?: number, search?: string) {
+  async getShares(
+    take?: number,
+    skip?: number,
+    search?: string,
+    sortBy?: string,
+    sortDirection?: string,
+  ) {
+    const include = {
+      files: true,
+      creator: true,
+      security: true,
+      recipients: true,
+    } as const;
+    const where = this.buildSearchWhere(search);
+
+    // The size of a share is computed from its files, so it can't be sorted
+    // with a Prisma orderBy clause. Fetch all matching shares and sort them in
+    // memory instead.
+    if (sortBy === "size") {
+      const direction = sortDirection === "asc" ? 1 : -1;
+      const shares = await this.prisma.share.findMany({ where, include });
+      return shares
+        .map((share) => this.transformShare(share))
+        .sort((a, b) => (a.size - b.size) * direction)
+        .slice(skip ?? 0, (skip ?? 0) + (take ?? 20));
+    }
+
     const shares = await this.prisma.share.findMany({
-      where: this.buildSearchWhere(search),
-      orderBy: {
+      where,
+      orderBy: this.getSharesOrderBy(sortBy, sortDirection) ?? {
         expiration: "desc",
       },
       take,
       skip,
-      include: { files: true, creator: true, security: true, recipients: true },
+      include,
     });
 
     return shares.map((share) => this.transformShare(share));
+  }
+
+  private getSharesOrderBy(
+    sortBy?: string,
+    sortDirection?: string,
+  ): Prisma.ShareOrderByWithRelationInput | undefined {
+    const direction = sortDirection === "asc" ? "asc" : "desc";
+    switch (sortBy) {
+      case "id":
+        return { id: direction };
+      case "name":
+        return { name: direction };
+      case "views":
+        return { views: direction };
+      case "expiration":
+        return { expiration: direction };
+      case "username":
+        return { creator: { username: direction } };
+      default:
+        return undefined;
+    }
   }
 
   async countShares(search?: string) {

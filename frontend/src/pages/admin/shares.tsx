@@ -21,6 +21,7 @@ import useTranslate from "../../hooks/useTranslate.hook";
 import shareService from "../../services/share.service";
 import { MyShare } from "../../types/share.type";
 import toast from "../../utils/toast.util";
+import { TableSort } from "../../components/core/SortIcon";
 
 const Shares = () => {
   const [shares, setShares] = useState<MyShare[]>([]);
@@ -31,6 +32,10 @@ const Shares = () => {
   const [search, setSearch] = useState("");
   const [debouncedSearch] = useDebouncedValue(search, 300);
   const requestIdRef = useRef(0);
+  const [sort, setSort] = useState<TableSort>({
+    property: "expiration",
+    direction: "desc",
+  });
 
   const modals = useModals();
   const t = useTranslate();
@@ -39,7 +44,7 @@ const Shares = () => {
     const requestId = ++requestIdRef.current;
     setIsLoading(true);
     shareService
-      .list(targetPage, pageSize, searchTerm)
+      .list(targetPage, pageSize, searchTerm, sort.property, sort.direction)
       .then(({ shares, total }) => {
         if (requestId !== requestIdRef.current) return;
         setShares(shares);
@@ -81,7 +86,7 @@ const Shares = () => {
 
   useEffect(() => {
     getShares(1, debouncedSearch);
-  }, [debouncedSearch]);
+  }, [debouncedSearch, sort]);
 
   return (
     <>
@@ -141,6 +146,8 @@ const Shares = () => {
           }
           deleteShare={deleteShare}
           isLoading={isLoading}
+          sort={sort}
+          setSort={setSort}
         />
       )}
       {total > pageSize && (

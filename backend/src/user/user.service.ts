@@ -1,4 +1,5 @@
 import { BadRequestException, Injectable, Logger } from "@nestjs/common";
+import { Prisma } from "@prisma/client";
 import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library";
 import * as argon from "argon2";
 import * as crypto from "crypto";
@@ -25,12 +26,59 @@ export class UserSevice {
     private readonly i18n: I18nService,
   ) {}
 
-  async list(take?: number, skip?: number) {
+  async list(
+    take?: number,
+    skip?: number,
+    sortBy?: string,
+    sortDirection?: string,
+  ) {
+    // Storage quota and max share size are stored as strings, so they can't be
+    // sorted numerically with a Prisma orderBy clause. Fetch all users and sort
+    // them in memory instead.
+    if (sortBy === "storageQuotaLimit" || sortBy === "shareSizeLimit") {
+      const property = sortBy as "storageQuotaLimit" | "shareSizeLimit";
+      const direction = sortDirection === "asc" ? 1 : -1;
+      const users = await this.prisma.user.findMany();
+      return users
+        .sort((a, b) => {
+          const aValue = a[property] == null ? null : parseInt(a[property]);
+          const bValue = b[property] == null ? null : parseInt(b[property]);
+          if (aValue == null && bValue == null) return 0;
+          if (aValue == null) return 1;
+          if (bValue == null) return -1;
+          return (aValue - bValue) * direction;
+        })
+        .slice(skip ?? 0, (skip ?? 0) + (take ?? 20));
+    }
+
     return await this.prisma.user.findMany({
       take,
       skip,
-      orderBy: { createdAt: "desc" },
+      orderBy: this.getUsersOrderBy(sortBy, sortDirection) ?? {
+        createdAt: "desc",
+      },
     });
+  }
+
+  private getUsersOrderBy(
+    sortBy?: string,
+    sortDirection?: string,
+  ): Prisma.UserOrderByWithRelationInput | undefined {
+    const direction = sortDirection === "asc" ? "asc" : "desc";
+    switch (sortBy) {
+      case "displayName":
+        return { displayName: direction };
+      case "username":
+        return { username: direction };
+      case "email":
+        return { email: direction };
+      case "isAdmin":
+        return { isAdmin: direction };
+      case "createdAt":
+        return { createdAt: direction };
+      default:
+        return undefined;
+    }
   }
 
   async count() {

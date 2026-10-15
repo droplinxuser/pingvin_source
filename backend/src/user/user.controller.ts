@@ -76,13 +76,18 @@ export class UserController {
   // Global user operations
   @Get()
   @UseGuards(JwtGuard, AdministratorGuard)
-  async list(@Query("page") page = "1", @Query("pageSize") pageSize = "20") {
+  async list(
+    @Query("page") page = "1",
+    @Query("pageSize") pageSize = "20",
+    @Query("sortBy") sortBy?: string,
+    @Query("sortDirection") sortDirection?: string,
+  ) {
     const { page: pageNum, pageSize: size, skip } = parsePagination(
       page,
       pageSize,
     );
     const [users, total] = await Promise.all([
-      this.userService.list(size, skip),
+      this.userService.list(size, skip, sortBy, sortDirection),
       this.userService.count(),
     ]);
     return {

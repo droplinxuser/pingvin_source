@@ -7,8 +7,17 @@ import {
 import api from "./api.service";
 import authService from "./auth.service";
 
-const list = async (page = 1, pageSize = 20) => {
-  return (await api.get("/users", { params: { page, pageSize } })).data;
+const list = async (
+  page = 1,
+  pageSize = 20,
+  sortBy?: string,
+  sortDirection?: string,
+) => {
+  return (
+    await api.get("/users", {
+      params: { page, pageSize, sortBy, sortDirection },
+    })
+  ).data;
 };
 
 const create = async (user: CreateUser) => {

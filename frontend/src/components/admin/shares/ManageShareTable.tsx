@@ -10,6 +10,7 @@ import {
 import { useClipboard } from "@mantine/hooks";
 import { useModals } from "@mantine/modals";
 import moment from "moment";
+import { Dispatch, SetStateAction } from "react";
 import { TbInfoCircle, TbLink, TbTrash } from "react-icons/tb";
 import { FormattedMessage } from "react-intl";
 import useConfig from "../../../hooks/config.hook";
@@ -17,6 +18,7 @@ import useTranslate from "../../../hooks/useTranslate.hook";
 import { MyShare } from "../../../types/share.type";
 import { byteToHumanSizeString } from "../../../utils/fileSize.util";
 import toast from "../../../utils/toast.util";
+import TableSortIcon, { TableSort } from "../../core/SortIcon";
 import showShareInformationsModal from "../../share/showShareInformationsModal";
 import showShareLinkModal from "../../account/showShareLinkModal";
 import { HoverTip } from "../../core/HoverTip";
@@ -26,11 +28,15 @@ const ManageShareTable = ({
   updateShare,
   deleteShare,
   isLoading,
+  sort,
+  setSort,
 }: {
   shares: MyShare[];
   updateShare: (share: MyShare) => void;
   deleteShare: (share: MyShare) => void;
   isLoading: boolean;
+  sort: TableSort;
+  setSort: Dispatch<SetStateAction<TableSort>>;
 }) => {
   const modals = useModals();
   const clipboard = useClipboard();
@@ -47,22 +53,48 @@ const ManageShareTable = ({
         <thead>
           <tr>
             <th>
-              <FormattedMessage id="account.shares.table.id" />
+              <Group spacing="xs">
+                <FormattedMessage id="account.shares.table.id" />
+                <TableSortIcon sort={sort} setSort={setSort} property="id" />
+              </Group>
             </th>
             <th>
-              <FormattedMessage id="account.shares.table.name" />
+              <Group spacing="xs">
+                <FormattedMessage id="account.shares.table.name" />
+                <TableSortIcon sort={sort} setSort={setSort} property="name" />
+              </Group>
             </th>
             <th>
-              <FormattedMessage id="admin.shares.table.username" />
+              <Group spacing="xs">
+                <FormattedMessage id="admin.shares.table.username" />
+                <TableSortIcon
+                  sort={sort}
+                  setSort={setSort}
+                  property="username"
+                />
+              </Group>
             </th>
             <th>
-              <FormattedMessage id="account.shares.table.visitors" />
+              <Group spacing="xs">
+                <FormattedMessage id="account.shares.table.visitors" />
+                <TableSortIcon sort={sort} setSort={setSort} property="views" />
+              </Group>
             </th>
             <th>
-              <FormattedMessage id="account.shares.table.size" />
+              <Group spacing="xs">
+                <FormattedMessage id="account.shares.table.size" />
+                <TableSortIcon sort={sort} setSort={setSort} property="size" />
+              </Group>
             </th>
             <th>
-              <FormattedMessage id="account.shares.table.expiresAt" />
+              <Group spacing="xs">
+                <FormattedMessage id="account.shares.table.expiresAt" />
+                <TableSortIcon
+                  sort={sort}
+                  setSort={setSort}
+                  property="expiration"
+                />
+              </Group>
             </th>
             {fileRetentionEnabled ? (
               <th>

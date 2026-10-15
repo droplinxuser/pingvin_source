@@ -1,11 +1,13 @@
 import { ActionIcon, Badge, Box, Group, Skeleton, Table } from "@mantine/core";
 import { useModals } from "@mantine/modals";
+import { Dispatch, SetStateAction } from "react";
 import { TbCheck, TbEdit, TbTrash } from "react-icons/tb";
 import User from "../../../types/user.type";
 import showUpdateUserModal from "./showUpdateUserModal";
 import { FormattedMessage } from "react-intl";
 import useTranslate from "../../../hooks/useTranslate.hook";
 import { HoverTip } from "../../core/HoverTip";
+import TableSortIcon, { TableSort } from "../../core/SortIcon";
 import { byteToHumanSizeString } from "../../../utils/fileSize.util";
 import { CustomPasswordPolicy } from "../../../types/config.type";
 
@@ -15,12 +17,16 @@ const ManageUserTable = ({
   deleteUser,
   isLoading,
   customPasswordPolicy,
+  sort,
+  setSort,
 }: {
   users: User[];
   getUsers: () => void;
   deleteUser: (user: User) => void;
   isLoading: boolean;
   customPasswordPolicy: CustomPasswordPolicy;
+  sort: TableSort;
+  setSort: Dispatch<SetStateAction<TableSort>>;
 }) => {
   const modals = useModals();
   const t = useTranslate();
@@ -36,26 +42,64 @@ const ManageUserTable = ({
           <tr>
             {showDisplayName && (
               <th>
-                <FormattedMessage id="admin.users.table.displayName" />
+                <Group spacing="xs">
+                  <FormattedMessage id="admin.users.table.displayName" />
+                  <TableSortIcon
+                    sort={sort}
+                    setSort={setSort}
+                    property="displayName"
+                  />
+                </Group>
               </th>
             )}
             <th>
-              <FormattedMessage id="admin.users.table.username" />
+              <Group spacing="xs">
+                <FormattedMessage id="admin.users.table.username" />
+                <TableSortIcon
+                  sort={sort}
+                  setSort={setSort}
+                  property="username"
+                />
+              </Group>
             </th>
             <th>
-              <FormattedMessage id="admin.users.table.email" />
+              <Group spacing="xs">
+                <FormattedMessage id="admin.users.table.email" />
+                <TableSortIcon sort={sort} setSort={setSort} property="email" />
+              </Group>
             </th>
             <th>
-              <FormattedMessage id="admin.users.table.admin" />
+              <Group spacing="xs">
+                <FormattedMessage id="admin.users.table.admin" />
+                <TableSortIcon
+                  sort={sort}
+                  setSort={setSort}
+                  property="isAdmin"
+                />
+              </Group>
             </th>
             {showStorageQuota && (
               <th>
-                <FormattedMessage id="admin.users.table.storageQuota" />
+                <Group spacing="xs">
+                  <FormattedMessage id="admin.users.table.storageQuota" />
+                  <TableSortIcon
+                    sort={sort}
+                    setSort={setSort}
+                    property="storageQuotaLimit"
+                  />
+                </Group>
               </th>
             )}
             {showMaxShareSize && (
               <th>
-                <FormattedMessage id="admin.users.table.maxShareSize" />
+                <Group spacing="xs">
+                  <FormattedMessage id="admin.users.table.maxShareSize" />
+                  <TableSortIcon
+                    sort={sort}
+                    setSort={setSort}
+                    property="shareSizeLimit"
+                  />
+                </Group>
               </th>
             )}
             <th></th>
