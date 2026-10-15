@@ -388,15 +388,38 @@ export class ShareService {
     });
   }
 
-  async getShares() {
+  async getShares(take?: number, skip?: number, search?: string) {
     const shares = await this.prisma.share.findMany({
+      where: this.buildSearchWhere(search),
       orderBy: {
         expiration: "desc",
       },
+      take,
+      skip,
       include: { files: true, creator: true, security: true, recipients: true },
     });
 
     return shares.map((share) => this.transformShare(share));
+  }
+
+  async countShares(search?: string) {
+    return await this.prisma.share.count({
+      where: this.buildSearchWhere(search),
+    });
+  }
+
+  private buildSearchWhere(search?: string) {
+    const term = search?.trim();
+    if (!term) return undefined;
+
+    return {
+      OR: [
+        { id: { contains: term } },
+        { name: { contains: term } },
+        { description: { contains: term } },
+        { creator: { username: { contains: term } } },
+      ],
+    };
   }
 
   async getSharesByUser(userId: string) {

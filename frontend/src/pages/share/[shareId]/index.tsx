@@ -14,7 +14,7 @@ import Link from "next/link";
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 import { FormattedMessage } from "react-intl";
-import { TbEdit, TbPlusMinus } from "react-icons/tb";
+import { TbEdit, TbPlusMinus, TbTrash } from "react-icons/tb";
 import Meta from "../../../components/Meta";
 import DownloadAllButton from "../../../components/share/DownloadAllButton";
 import FileList from "../../../components/share/FileList";
@@ -86,6 +86,33 @@ const Share = ({ shareId }: { shareId: string }) => {
     } catch (e) {
       toast.axiosError(e);
     }
+  };
+
+  const handleDeleteClick = () => {
+    modals.openConfirmModal({
+      title: t("admin.shares.edit.delete.title", {
+        id: shareId,
+      }),
+      children: (
+        <Text size="sm">
+          <FormattedMessage id="admin.shares.edit.delete.description" />
+        </Text>
+      ),
+      labels: {
+        confirm: t("common.button.delete"),
+        cancel: t("common.button.cancel"),
+      },
+      confirmProps: { color: "red" },
+      onConfirm: async () => {
+        try {
+          await shareService.remove(shareId);
+          toast.success(t("admin.shares.notify.deleted"));
+          router.push("/admin/shares");
+        } catch (e) {
+          toast.axiosError(e);
+        }
+      },
+    });
   };
 
   const getShareToken = async (password?: string) => {
@@ -236,6 +263,18 @@ const Share = ({ shareId }: { shareId: string }) => {
                 onClick={handleEditClick}
               >
                 <TbEdit />
+              </ActionIcon>
+            </HoverTip>
+          )}
+          {user?.isAdmin && (
+            <HoverTip label={t("common.button.delete")}>
+              <ActionIcon
+                variant="light"
+                color="red"
+                size="lg"
+                onClick={handleDeleteClick}
+              >
+                <TbTrash />
               </ActionIcon>
             </HoverTip>
           )}

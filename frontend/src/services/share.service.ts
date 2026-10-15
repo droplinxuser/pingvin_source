@@ -22,8 +22,21 @@ const isValidId = (id: string) => {
   return /^[a-zA-Z0-9_-]+$/.test(id);
 };
 
-const list = async (): Promise<MyShare[]> => {
-  return (await api.get(`shares/all`)).data;
+const list = async (
+  page = 1,
+  pageSize = 20,
+  search?: string,
+): Promise<{
+  shares: MyShare[];
+  total: number;
+  page: number;
+  pageSize: number;
+}> => {
+  return (
+    await api.get(`shares/all`, {
+      params: { page, pageSize, search: search || undefined },
+    })
+  ).data;
 };
 
 const create = async (share: CreateShare, isReverseShare = false) => {

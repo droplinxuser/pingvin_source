@@ -7,6 +7,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   Req,
   Res,
   UseGuards,
@@ -49,8 +50,39 @@ export class ShareController {
 
   @Get("all")
   @UseGuards(JwtGuard, AdministratorGuard)
-  async getAllShares() {
-    return new AdminShareDTO().fromList(await this.shareService.getShares());
+  async getAllShares(
+    @Query("page") page = "1",
+    @Query("pageSize") pageSize = "20",
+    @Query("search") search = "",
+  ) {
+    const pageNum = Math.max(parseInt(page) || 1, 1);
+    const size = Math.min(Math.max(parseInt(pageSize) || 20, 1), 100);
+    const searchTerm = typeof search === "string" ? search.trim() : "";
+
+    // The admin share list is capped at the 5,000 most recent shares
+    const maxShares = 5000;
+    const skip = (pageNum - 1) * size;
+
+    if (skip >= maxShares) {
+      return {
+        shares: [],
+        total: maxShares,
+        page: pageNum,
+        pageSize: size,
+      };
+    }
+
+    const take = Math.min(size, maxShares - skip);
+    const [shares, count] = await Promise.all([
+      this.shareService.getShares(take, skip, searchTerm),
+      this.shareService.countShares(searchTerm),
+    ]);
+    return {
+      shares: new AdminShareDTO().fromList(shares),
+      total: Math.min(count, maxShares),
+      page: pageNum,
+      pageSize: size,
+    };
   }
 
   @Get()
