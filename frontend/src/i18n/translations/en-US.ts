@@ -469,6 +469,7 @@ export default {
   "share.description": "Take a look at what I’ve shared with you!",
   "share.fileCount":
     "{count, plural, =1 {# file} other {# files}} · {size} (zip file may be smaller due to compression)",
+  "share.viewCount": "{count, plural, =1 {# view} other {# views}}",
   "share.copy-text-contents": "Copy file contents to clipboard",
   "share.error.visitor-limit-exceeded.title": "Visitor limit exceeded",
   "share.error.visitor-limit-exceeded.description":

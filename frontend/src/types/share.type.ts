@@ -7,6 +7,7 @@ export type Share = {
   creator?: User;
   description?: string;
   expiration: Date;
+  views: number;
   size: number;
   hasPassword: boolean;
 };

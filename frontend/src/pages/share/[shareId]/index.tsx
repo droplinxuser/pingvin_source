@@ -246,6 +246,15 @@ const Share = ({ shareId }: { shareId: string }) => {
               />
             </Text>
           )}
+          {share && (
+            <Text size="sm" color="dimmed" mt={5}>
+              <FormattedMessage
+                id="share.viewCount"
+                defaultMessage="{count, plural, =1 {# view} other {# views}}"
+                values={{ count: share.views }}
+              />
+            </Text>
+          )}
         </Box>
 
         <Group spacing="xs">

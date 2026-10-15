@@ -13,6 +13,9 @@ export class ShareDTO {
   expiration: Date;
 
   @Expose()
+  views: number;
+
+  @Expose()
   @Type(() => FileDTO)
   files: FileDTO[];
 
