@@ -218,8 +218,7 @@ oauth:
   allowRegistration: "true"
   #Whether to ignore TOTP when user using social login
   ignoreTotp: "true"
-  #Whether to disable password registration, restricting sign up to social providers only.
-  #Existing users can still sign in with their email/username and password and reset their password.
+  #Whether to disable password login
   #Make sure that an OAuth provider is properly configured before activating this configuration to avoid being locked out.
   disablePassword: "false"
   #Comma-separated list of additional hostnames allowed for OAuth sign-in (e.g. share.internal.example.com).
