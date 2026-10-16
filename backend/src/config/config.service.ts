@@ -280,6 +280,7 @@ export class ConfigService extends EventEmitter {
     });
 
     this.configVariables = await this.prisma.config.findMany();
+    this.applyEnvOverrides();
 
     this.emit("update", key, value);
 
