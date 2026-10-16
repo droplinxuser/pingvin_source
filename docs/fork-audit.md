@@ -277,5 +277,5 @@ Until the templates are entered, e-mails use upstream's default texts ("Pingvin 
 
 ### Phase D — Push
 - [x] `git status` clean; `git diff --stat upstream/main..HEAD` = 86 files, +2,128 / −619 (see Outcome)
-- [ ] `git push -u origin refactor/minimize-fork-diff` (no force push, never to `main`)
-- [ ] Final summary
+- [x] `git push -u origin refactor/minimize-fork-diff` (no force push, never to `main`) — PR: https://github.com/droplinxuser/pingvin_source/pull/new/refactor/minimize-fork-diff
+- [x] Final summary delivered in the session
