@@ -155,16 +155,6 @@ export const configVariables = {
       defaultValue: "false",
       secret: false,
     },
-    maxExpiration: {
-      type: "timespan",
-      defaultValue: "0 days",
-      secret: false,
-    },
-    defaultExpiration: {
-      type: "timespan",
-      defaultValue: "7 days",
-      secret: false,
-    },
     shareIdLength: {
       type: "number",
       defaultValue: "8",

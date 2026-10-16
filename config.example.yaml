@@ -62,10 +62,6 @@ share:
   autoOpenShareModal: "false"
   #Force reverse shares to be created in simple mode. If disabled, the creator of the reverse share can choose between simple and advanced mode.
   reverseShareSimpleOnly: "false"
-  #Deprecated in this fork: share expiration is automatic (100 days, extended on every visit of the share page).
-  maxExpiration: 0 days
-  #Deprecated in this fork: share expiration is automatic (100 days, extended on every visit of the share page).
-  defaultExpiration: 7 days
   #Default length for the generated ID of a share. This value is also used to generate links for reverse shares. A value below 8 is not considered secure.
   shareIdLength: "8"
   #Maximum share size
