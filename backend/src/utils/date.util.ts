@@ -8,27 +8,6 @@ export function getDefaultShareExpiration() {
   return moment().add(SHARE_EXPIRATION_DAYS, "days").toDate();
 }
 
-// Hard cap for every share expiration, even when share.maxExpiration is set
-// to 0 ("unlimited"). Permanent shares (unix epoch 0) are rejected.
-export const MAX_SHARE_EXPIRATION_YEARS = 5;
-
-export function isExpirationAllowed(expiration: Date, maxExpiration: Timespan) {
-  if (moment(expiration).isSame(0)) return false;
-  if (
-    moment(expiration).isAfter(
-      moment().add(MAX_SHARE_EXPIRATION_YEARS, "years"),
-    )
-  )
-    return false;
-
-  return (
-    maxExpiration.value === 0 ||
-    moment(expiration).isSameOrBefore(
-      moment().add(maxExpiration.value, maxExpiration.unit),
-    )
-  );
-}
-
 export function parseRelativeDateToAbsolute(relativeDate: string) {
   if (relativeDate == "never") return moment(0).toDate();
 
