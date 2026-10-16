@@ -23,7 +23,21 @@ git checkout main
 # restore it so the pull below can never conflict (the file was replaced by
 # a dynamic route in pages/manifest.json.tsx).
 git checkout -- frontend/public/manifest.json 2>/dev/null || true
+# backend/.env used to be tracked and is now ignored. Keep the server copy
+# (which may contain local values) safe across the pull that removes it from
+# the index: back it up, drop local modifications so the pull cannot refuse,
+# and restore it afterwards.
+ENV_BACKUP=""
+if [ -f backend/.env ]; then
+  ENV_BACKUP="$(mktemp)"
+  cp backend/.env "$ENV_BACKUP"
+  git checkout -- backend/.env 2>/dev/null || true
+fi
 git pull --ff-only
+if [ -n "$ENV_BACKUP" ]; then
+  cp "$ENV_BACKUP" backend/.env
+  rm -f "$ENV_BACKUP"
+fi
 
 # Re-exec the freshly pulled version of this script so the remainder always
 # runs the up-to-date code (the pull may have updated this file itself).
