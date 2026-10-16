@@ -163,13 +163,36 @@ If you prefer the current UX exactly, the group can only shrink marginally (≈3
 - **`constants.ts` env loader, `applyEnvOverrides`, `THROTTLE_LIMIT`** — required by the "configured through `backend/.env`" requirement.
 - **Migrations** — already created; whether they can be squashed depends on production state (G6b).
 
-## Estimated outcome
+## Outcome (measured on branch `refactor/minimize-fork-diff`)
 
-| | Before | After (recommended set) | After (all options) |
+| | Before (`main`) | Estimated | **Actual** |
 |---|---|---|---|
-| Changed lines (`+`/`−`) | 4,863 | **≈ 3,150** (−35 %) | ≈ 2,500 (−48 %) |
-| Files touched | 130 | ≈ 118 (34 locale files remain only for `share.report.*`) | ≈ 85 |
-| Upstream files with H conflict risk | ~12 | ~5 (`share.service.ts`, the two create modals, `showShareInformationsModal.tsx`, `share/[shareId]/index.tsx`) | ~5 |
+| Changed lines (`+`/`−`) vs `upstream/main` | 4,863 (+3,488 / −1,375) | ≈ 2,500 | **2,747 (+2,128 / −619)**, of which 253 are this document → **2,494 code lines (−49 %)** |
+| Files touched | 130 | ≈ 85 | **86** (21 added, 64 modified, 1 deleted) — i18n: 34 → 1 file |
+| Upstream files with H conflict risk | ~12 | ~5 | 5 (`share.service.ts`, `showCreateUploadModal.tsx`, `showCreateReverseShareModal.tsx`, `showShareInformationsModal.tsx`, `share/[shareId]/index.tsx`) |
+
+Commits on the branch (one per group): `docs` → `chore: revert cosmetic no-op changes` → `refactor(home)` → `refactor(i18n)` → `refactor(auth)` → `refactor(share)` (expiration) → `refactor(branding)` → `refactor(file)` (cache/referrer helpers) → `refactor(share)` (DownloadAllButton) → `chore(deploy)` → `fix(config)`.
+
+## Findings during the runtime test (Phase C)
+
+Both fixed on the branch (approved by the user, commit `fix(config)`), both **pre-existing** on `main`:
+
+1. **`backend/.env` was not honoured for `DATABASE_URL` at runtime.** `@prisma/client` runs dotenv on `prisma/.env` when it is first imported, and in `prisma.service.ts` that import runs before the fork's `constants.ts` loader; since existing variables win, the runtime silently used `prisma/.env`'s default database whenever no real `DATABASE_URL` variable was set (production was unaffected because the systemd unit exports it). Fix: `main.ts` imports `./constants` first. Verified: `node dist/src/main` with no environment variables now starts against the `.env` database.
+2. **`SITE_NAME` was lost after any admin config change** until the next restart, because upstream's `ConfigService.update()` reloads all variables from the database. Fix: re-apply the env override after the reload. Verified via a config `PATCH`.
+
+Not caused by the fork (left untouched):
+- `backend` lint reports 1 pre-existing error in upstream's `adminNotice.service.ts` (unused import) and 16 warnings in upstream code; the `npm run lint` script itself does not run on Windows because of POSIX quoting (`eslint 'src/**/*.ts'`) — `npx eslint "src/**/*.ts"` was used instead.
+- Upstream's midnight cron `deleteTemporaryFiles` logs `ENOENT` once on a fresh data directory (before the first upload).
+- Node 24 only: `util._extend` deprecation warning from a frontend dependency at startup.
+
+## Next upstream merge — suggestions
+
+1. `git fetch upstream && git merge upstream/main` on a branch; expect conflicts mainly in `backend/src/share/share.service.ts`, the two create modals, `showShareInformationsModal.tsx` and `frontend/src/pages/share/[shareId]/index.tsx`.
+2. For the 13 branding binaries add a `.gitattributes` with `merge=ours` (e.g. `frontend/public/img/logo*.png merge=ours`, `frontend/public/img/icons/* merge=ours`, `frontend/public/*favicon.ico merge=ours`) and `git config merge.ours.driver true`, so upstream logo changes never need manual resolution.
+3. New fork UI strings go to `en-US.ts` only (other locales fall back to English); never append at the end of the locale files (Crowdin appends there).
+4. If upstream touches `FileController.getFile`/`getZip`, only the four short call-site hunks need re-applying — the logic lives in `src/utils/cache.util.ts` and `src/utils/referrer.util.ts`.
+5. Re-run `docs/fork-audit.md`'s "Production settings" check after the merge (seed changes upstream could re-introduce defaults).
+6. Consider upstreaming: `{appName}` e-mail template variable, `X-Forwarded-For` passthrough in `pages/api/[...all].tsx`, `THROTTLE_LIMIT`, the English i18n fallback, and the two `fix(config)` changes.
 
 ## Decisions (approved by the user, 2026-10-16)
 
@@ -224,30 +247,35 @@ Until the templates are entered, e-mails use upstream's default texts ("Pingvin 
 - [x] Merge base and fork-only commit list collected
 - [x] Every hunk read (code diff 4,839 patch lines; i18n diff 3,770 patch lines)
 - [x] Groups and refactor proposals written (this document)
-- [ ] **User approval of the proposals / answers to the decisions above**
+- [x] User approval of the proposals / answers to the decisions above
 
 ### Phase B — Refactor (branch `refactor/minimize-fork-diff`, one commit per group)
-- [ ] G13/R1–R5: revert churn (package.json `allowScripts`, prisma/.env, ldap.json, grammar, next.config comment, restore unused keys & `getExpirationPreview`)
-- [ ] G4: English fallback in `i18n.util.ts`; move `share.report.*` blocks mid-file; strip English duplicates from 33 locales
-- [ ] G3: fork-specific home keys; fix `(Link as any)`; footer label/URL
-- [ ] G5: revert auth files to upstream (if approved) + document the three config switches
-- [ ] G6: seed deletion instead of `HIDDEN_VARIABLES`; yaml lines; migrations per decision
-- [ ] G2: revert placeholder defaults; e-mail templates per decision
-- [ ] G9: relocate download/cache helpers and `NoStore()` decorator
-- [ ] G10c: `DownloadAllButton` early return
-- [ ] G1: untrack `backend/.env` per decision; protect it in `update.sh`; fix `.env.example` wording
-- [ ] Backend: `npm ci`, `npx prisma generate`, `npm run build`, `npm run lint`
-- [ ] Frontend: `npm ci`, `npm run build`, `npm run lint`
+- [x] R1–R4: revert churn (package.json `allowScripts`, prisma/.env, ldap.json, next.config comment)
+- [x] G3: fork-specific home keys; `/upload` start button; typed `Link` instead of `(Link as any)`
+- [x] G4: English fallback in `i18n.util.ts`; 33 locales restored to upstream; en-US cleaned (unused keys restored, grammar edits reverted, report block moved mid-file)
+- [x] G5: auth files reverted to upstream; config switches documented
+- [x] G6: seed deletion instead of `HIDDEN_VARIABLES`; yaml lines removed; read-only expiry displays + `getExpirationPreview` restored; migrations kept
+- [x] G2: placeholder defaults and e-mail template defaults reverted; `{appName}` support kept
+- [x] G9: `cache.util.ts` / `referrer.util.ts` + `NoStore()` decorator; controllers keep call sites only
+- [x] G10c: `DownloadAllButton` early return
+- [x] G1: `backend/.env` untracked; `update.sh` backup/restore; `.env.example` wording
+- [x] `fix(config)`: `.env` loaded before `@prisma/client`; `SITE_NAME` re-applied after config edits
+- [x] Backend: `npm ci`, `npx prisma generate`, `npm run build` ✔, eslint ✔ (only the pre-existing upstream error, see Findings)
+- [x] Frontend: `npm ci`, `tsc --noEmit` ✔, `next lint` ✔, `next build` ✔
 
-### Phase C — Local runtime test (temporary DB `file:./data/local-test.db`)
-- [ ] Home page shows `SITE_NAME` from `backend/.env`
-- [ ] Sign up / sign in (password; OAuth not testable locally)
-- [ ] Create share → upload → open link → download; report modal; media gallery; view count
-- [ ] Admin pages: users/shares pagination, search, sorting; config page without expiration settings
-- [ ] No browser-console or backend-log errors
-- [ ] Temporary DB deleted, temporary `.env` edits restored
+### Phase C — Local runtime test (temporary DB `backend/data/local-test.db`, production-like standalone frontend)
+- [x] Home page shows `SITE_NAME` ("Fork Test Site") in title, header, hero and dynamic `/manifest.json`; fork copy via `home.custom.*`
+- [x] Sign up (first user = admin), sign out, password sign-in with upstream form; `/auth/signUp` disabled and "Sign up" links hidden with `security.allowRegistration=false`
+- [x] Create share (no expiration controls) → 2 files uploaded → `/s/:id` → share page: view counter, media gallery (image), Report modal, Download all after zip ready, admin delete button
+- [x] Downloads: 200 with `Cache-Control: private` (authenticated) / `public, max-age=3600` + `CDN-Cache-Control` (anonymous); no-referrer request redirected (hotlink protection); share API `no-store` headers; rolling expiration extended on visit
+- [x] Report endpoint wired (`500 "No email address is configured…"` without SMTP, as designed)
+- [x] Account shares / reverse shares / share info modal show the restored read-only expiry (100-day date); reverse share created without `shareExpiration`
+- [x] Admin: users + shares tables (search, sort, pagination API), share config category without expiration settings, 404 page with ad units
+- [x] Browser console: no errors except upstream's normal 403 token handshake; backend log clean except upstream's fresh-install cron `ENOENT`
+- [x] Temporary DB/uploads deleted, `backend/.env` restored (untracked, production content)
+- Not testable locally: OAuth provider sign-in/auto-registration, SMTP delivery (report + templates), S3 storage path, Cloudflare edge caching, `update.sh` on the server, production migration state
 
 ### Phase D — Push
-- [ ] `git status`, `git diff --stat upstream/main..HEAD` compared with this audit
+- [x] `git status` clean; `git diff --stat upstream/main..HEAD` = 86 files, +2,128 / −619 (see Outcome)
 - [ ] `git push -u origin refactor/minimize-fork-diff` (no force push, never to `main`)
-- [ ] Final summary + next-merge recommendations
+- [ ] Final summary
