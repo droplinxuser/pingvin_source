@@ -19,14 +19,16 @@ import { ConfigService } from "src/config/config.service";
 import { CreateShareGuard } from "src/share/guard/createShare.guard";
 import { StrictShareOwnerGuard } from "src/share/guard/strictShareOwner.guard";
 import { IdValidation } from "src/share/guard/shareIdValidation.guard";
+import {
+  getDownloadCacheHeaders,
+  NO_STORE_HEADERS,
+} from "src/utils/cache.util";
 import { getFileMimeType } from "src/utils/mime.util";
+import { isRequestFromApp, redirectToSharePage } from "src/utils/referrer.util";
 import { FileService } from "./file.service";
 import { FileSecurityGuard } from "./guard/fileSecurity.guard";
 
 const VALID_ID_REGEX = /^[a-zA-Z0-9-]*={0,2}$/;
-
-// How long Cloudflare and browsers may cache successful download responses
-const DOWNLOAD_CACHE_MAX_AGE = 3600;
 
 function getValidRecipientId(recipientId?: string): string | undefined {
   if (!recipientId) return undefined;
@@ -39,72 +41,6 @@ export class FileController {
     private fileService: FileService,
     private config: ConfigService,
   ) {}
-
-  /**
-   * File downloads are only served when the request's Referer header belongs
-   * to the configured app URL, so files cannot be hotlinked from other sites.
-   * Requests with a missing or foreign referrer are redirected to the share
-   * page instead.
-   */
-  private isRequestFromApp(req: Request): boolean {
-    const referrer = req.headers.referer ?? req.headers["referrer"];
-    if (!referrer || Array.isArray(referrer)) return false;
-
-    try {
-      const referrerUrl = new URL(referrer);
-      const appUrl = new URL(this.config.get("general.appUrl"));
-
-      // http and https are treated as equal (TLS is usually terminated by a
-      // reverse proxy); the URL parser already ignores trailing slashes
-      const protocolMatches =
-        referrerUrl.protocol == appUrl.protocol ||
-        (["http:", "https:"].includes(referrerUrl.protocol) &&
-          ["http:", "https:"].includes(appUrl.protocol));
-
-      const appUrlPath = appUrl.pathname.replace(/\/+$/, "");
-      const pathMatches =
-        !appUrlPath ||
-        referrerUrl.pathname == appUrlPath ||
-        referrerUrl.pathname.startsWith(`${appUrlPath}/`);
-
-      return protocolMatches && referrerUrl.host == appUrl.host && pathMatches;
-    } catch {
-      return false;
-    }
-  }
-
-  private getSharePageUrl(shareId: string): string {
-    const appUrl = String(this.config.get("general.appUrl")).replace(
-      /\/+$/,
-      "",
-    );
-    return `${appUrl}/share/${shareId}`;
-  }
-
-  /**
-   * Redirects to the share page with a 302 status. Unlike 301, Cloudflare
-   * does not cache 302 by default; the explicit no-store headers make sure
-   * neither Cloudflare nor the browser stores the redirect.
-   */
-  private redirectToSharePage(res: Response, shareId: string) {
-    res.status(HttpStatus.FOUND).set({
-      Location: this.getSharePageUrl(shareId),
-      "Cache-Control": "no-store",
-      "CDN-Cache-Control": "no-store",
-    });
-  }
-
-  /**
-   * Cloudflare's default cache key ignores cookies, so responses for
-   * authenticated access must not carry public cache headers - otherwise
-   * password protected or recipient restricted files would be served from
-   * the edge cache to anyone.
-   */
-  private isAuthenticatedRequest(req: Request, shareId: string): boolean {
-    return !!(
-      req.cookies.access_token || req.cookies[`share_${shareId}_token`]
-    );
-  }
 
   @Post("upload-init")
   @SkipThrottle()
@@ -198,8 +134,9 @@ export class FileController {
     @Param("shareId") shareId: string,
     @Query("recipient") recipientId?: string,
   ) {
-    if (!this.isRequestFromApp(req)) {
-      this.redirectToSharePage(res, shareId);
+    const appUrl = this.config.get("general.appUrl");
+    if (!isRequestFromApp(req, appUrl)) {
+      redirectToSharePage(res, appUrl, shareId);
       return;
     }
 
@@ -209,18 +146,7 @@ export class FileController {
       "Content-Type": "application/zip",
       "Content-Disposition": contentDisposition(`${shareId}.zip`),
     });
-
-    // Successful, unauthenticated zip downloads may be cached on Cloudflare
-    // edge servers; authenticated downloads stay out of shared caches because
-    // the cache key ignores cookies
-    if (this.isAuthenticatedRequest(req, shareId)) {
-      res.set({ "Cache-Control": "private" });
-    } else {
-      res.set({
-        "Cache-Control": `public, max-age=${DOWNLOAD_CACHE_MAX_AGE}`,
-        "CDN-Cache-Control": `public, max-age=${DOWNLOAD_CACHE_MAX_AGE}`,
-      });
-    }
+    res.set(getDownloadCacheHeaders(req, shareId));
 
     void this.fileService.notifyRecipientDownload(
       shareId,
@@ -247,8 +173,9 @@ export class FileController {
     @Query("download") download = "true",
     @Query("recipient") recipientId?: string,
   ) {
-    if (!this.isRequestFromApp(req)) {
-      this.redirectToSharePage(res, shareId);
+    const appUrl = this.config.get("general.appUrl");
+    if (!isRequestFromApp(req, appUrl)) {
+      redirectToSharePage(res, appUrl, shareId);
       return;
     }
 
@@ -271,11 +198,8 @@ export class FileController {
       }
       // The pre-signed URL expires after 5 minutes, so the redirect must
       // never be cached
-      res.status(302).set({
-        Location: url,
-        "Cache-Control": "no-store",
-        "CDN-Cache-Control": "no-store",
-      });
+      res.set(NO_STORE_HEADERS);
+      res.status(302).setHeader("Location", url);
       return;
     }
 
@@ -288,9 +212,8 @@ export class FileController {
       res.set({
         "Content-Range": `bytes */${totalSize}`,
         "Accept-Ranges": "bytes",
-        "Cache-Control": "no-store",
-        "CDN-Cache-Control": "no-store",
       });
+      res.set(NO_STORE_HEADERS);
       return;
     }
 
@@ -326,17 +249,7 @@ export class FileController {
     }
 
     if (isDownload && !file.range) {
-      if (this.isAuthenticatedRequest(req, shareId)) {
-        // Shared caches (e.g. Cloudflare) must never store authenticated
-        // downloads, because the cache key ignores cookies
-        headers["Cache-Control"] = "private";
-      } else {
-        // Successful (full 200), unauthenticated downloads may be cached on
-        // Cloudflare edge servers
-        headers["Cache-Control"] = `public, max-age=${DOWNLOAD_CACHE_MAX_AGE}`;
-        headers["CDN-Cache-Control"] =
-          `public, max-age=${DOWNLOAD_CACHE_MAX_AGE}`;
-      }
+      Object.assign(headers, getDownloadCacheHeaders(req, shareId));
     }
 
     res.set(headers);
