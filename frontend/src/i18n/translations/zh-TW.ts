@@ -14,24 +14,19 @@ export default {
 
   // Footer
   "footer.poweredBy": "Powered by",
-  "footer.stats.users": "{count, number} users",
-  "footer.stats.shares": "{count, number} shares",
-  "footer.stats.files": "{count, number} files",
-  "footer.stats.storage": "{size} storage used",
-
   // END footer
 
   // /
-  "home.title": "<h>{siteName}</h> a free file-sharing platform.",
-  "home.description": "Our platform allows you to generate a link for any file you wish to share, ensuring a hassle-free transfer experience.",
-  "home.bullet.a.name": "Custom Expiration & Download Limits",
-  "home.bullet.a.description": "You have the option to set expiration dates on your shared files, customize download limits, or provide password protection.",
-  "home.bullet.b.name": "Sharing via Email",
-  "home.bullet.b.description": "An integrated email feature allows you to send files directly to recipients' inboxes.",
-  "home.bullet.c.name": "Contact Us",
-  "home.bullet.c.description": "For any inquiries, takedown requests, or other concerns, please reach out to us directly at {contactEmail}.",
-  "home.button.start": "New upload",
-  "home.button.source": "About",
+  "home.title": "<h>自建</h> 檔案分享平台！",
+  "home.description": "您真的放心把檔案交到第三方檔案平台手中嗎？",
+  "home.bullet.a.name": "完全自建",
+  "home.bullet.a.description": "輕松使用私有伺服器搭建檔案分享平台",
+  "home.bullet.b.name": "完全隱私",
+  "home.bullet.b.description": "您的檔案永遠不會被第三方存取",
+  "home.bullet.c.name": "完全無限",
+  "home.bullet.c.description": "想上傳多大都可以，更需要擔心的是您的存儲空間容量",
+  "home.button.start": "開始使用",
+  "home.button.source": "原始碼",
   // END /
 
   // /auth/signin
@@ -208,6 +203,7 @@ export default {
   "account.reverseShares.modal.public-access.description": "公開此檔案請求。若停用此設定將只有您與上傳者可以存取檔案。",
   "account.reverseShares.modal.max-use.label": "最大使用次數",
   "account.reverseShares.modal.max-use.description": "這個回傳分享連結可被用於建立分享的最大使用次數。",
+  "account.reverseShare.never-expires": "這個回傳分享永不過期。",
   "account.reverseShare.expires-on": "這個回傳分享將於 {expiration} 過期。",
   "account.reverseShares.table.no-shares": "當前沒有建立任何分享",
   "account.reverseShares.table.count.singular": "分享",
@@ -286,13 +282,6 @@ export default {
   "admin.shares.table.deletes": "刪除時機",
   "admin.shares.edit.delete.title": "刪除： {id}",
   "admin.shares.edit.delete.description": "您真的想刪除這個檔案嗎？",
-  "admin.shares.notify.deleted": "Share deleted successfully",
-
-  "admin.shares.search.placeholder": "Search by name, creator or share ID",
-  "admin.shares.empty": "No shares found",
-  "admin.shares.search.empty": "No shares match your search query",
-  "admin.shares.search.clear": "Clear search",
-
   // END /admin/shares
 
   // /upload
@@ -328,6 +317,8 @@ export default {
   "upload.modal.link.error.s3-etag-missing": "S3 回應中缺少 ETag 標頭。請確認 CORS 已公開 ETag 標頭。",
   "upload.modal.not-signed-in": "當前沒有登入",
   "upload.modal.not-signed-in-description": "您將不能刪除您的分享或查看查看次數",
+  "upload.modal.expires.never": "永不",
+  "upload.modal.expires.never-long": "永久分享",
   "upload.modal.expires.error.too-long": "過期時間最大限制為 {max}",
   "upload.modal.link.label": "分享連結",
   "upload.modal.expires.label": "過期時間",
@@ -356,6 +347,7 @@ export default {
   "upload.modal.accordion.security.max-views.label": "最大查看次數",
   "upload.modal.accordion.security.max-views.placeholder": "無限",
   // showCompletedUploadModal.tsx
+  "upload.modal.completed.never-expires": "這個分享永不過期",
   "upload.modal.completed.expires-on": "這個分享將於 {expiration} 過期。",
   "upload.modal.completed.share-ready": "分享建立完畢",
   "upload.modal.completed.notified-reverse-share-creator": "我們已經通知回傳分享連結的擁有者，你也可以手動分享此連結給他們。",
@@ -621,9 +613,6 @@ export default {
   "admin.config.oauth.oidc-client-id.description": "OpenID Connect OAuth 應用程式的用戶端 ID",
   "admin.config.oauth.oidc-client-secret": "OpenID Connect 的用戶端密鑰",
   "admin.config.oauth.oidc-client-secret.description": "OpenID Connect OAuth 應用程式的用戶端密鑰",
-  "admin.config.oauth.allowed-hosts": "Allowed OAuth Hosts",
-  "admin.config.oauth.allowed-hosts.description":
-    "Comma-separated list of additional hostnames allowed for OAuth sign-in (e.g. share.internal.example.com).",
   "admin.config.category.ldap": "LDAP",
   "admin.config.ldap.enabled": "啟用 LDAP",
   "admin.config.ldap.enabled.description": "使用 LDAP 進行使用者登入",
@@ -752,22 +741,5 @@ export default {
   "admin.notice.modal.button.acknowledge": "確認並關閉",
   "admin.notice.modal.button.acknowledging": "正在確認...",
   "admin.notice.modal.docsLink": "檢視文件",
-  "admin.notice.modal.globalNoticeFooter": "注意：一旦確認，此通知將在所有裝置上對所有管理員永久關閉。",
-
-  // Share report feature
-  "share.report.button": "檢舉",
-  "share.report.modal.title": "檢舉分享",
-  "share.report.modal.description": "如果此分享包含違反法律或我們政策的內容，您可以檢舉。管理員將收到通知。",
-  "share.report.modal.reason": "原因",
-  "share.report.modal.custom-reason": "補充說明",
-  "share.report.modal.error.no-reason": "請選擇原因",
-  "share.report.modal.error.no-message": "請描述您檢舉此分享的原因",
-  "share.report.notify.success": "謝謝。您的檢舉已提交。",
-  "share.report.reason.dmca": "DMCA / 侵犯版權",
-  "share.report.reason.csam": "兒童性虐待素材 (CSAM)",
-  "share.report.reason.gore": "血腥 / 暴力內容",
-  "share.report.reason.malware": "惡意軟體 / 釣魚",
-  "share.report.reason.spam": "垃圾訊息",
-  "share.report.reason.personal-information": "個人資訊 / 肉搜",
-  "share.report.reason.other": "其他"
+  "admin.notice.modal.globalNoticeFooter": "注意：一旦確認，此通知將在所有裝置上對所有管理員永久關閉。"
 };

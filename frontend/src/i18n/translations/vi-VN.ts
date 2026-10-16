@@ -14,24 +14,19 @@ export default {
 
   // Footer
   "footer.poweredBy": "Powered by",
-  "footer.stats.users": "{count, number} users",
-  "footer.stats.shares": "{count, number} shares",
-  "footer.stats.files": "{count, number} files",
-  "footer.stats.storage": "{size} storage used",
-
   // END footer
 
   // /
-  "home.title": "<h>{siteName}</h> a free file-sharing platform.",
-  "home.description": "Our platform allows you to generate a link for any file you wish to share, ensuring a hassle-free transfer experience.",
-  "home.bullet.a.name": "Custom Expiration & Download Limits",
-  "home.bullet.a.description": "You have the option to set expiration dates on your shared files, customize download limits, or provide password protection.",
-  "home.bullet.b.name": "Sharing via Email",
-  "home.bullet.b.description": "An integrated email feature allows you to send files directly to recipients' inboxes.",
-  "home.bullet.c.name": "Contact Us",
-  "home.bullet.c.description": "For any inquiries, takedown requests, or other concerns, please reach out to us directly at {contactEmail}.",
-  "home.button.start": "New upload",
-  "home.button.source": "About",
+  "home.title": "Một nền tảng <h>seft-hosted</h> chi sẻ tệp tin.",
+  "home.description": "Bạn có thực sự muốn giao các tệp cá nhân của mình vào tay bên thứ ba như WeTransfer không?",
+  "home.bullet.a.name": "Tự lưu trữ",
+  "home.bullet.a.description": "Tự lưu trữ Pingvin Share trên máy chủ của riêng bạn.",
+  "home.bullet.b.name": "Quyền riêng tư",
+  "home.bullet.b.description": "Tệp của bạn là của bạn và sẽ không bao giờ bị bên thứ ba truy cập.",
+  "home.bullet.c.name": "Không có giới hạn dung lượng tệp",
+  "home.bullet.c.description": "Tải lên các tệp có dung lượng bao nhiêu tùy thích. Dung lượng ổ cứng là giới hạn duy nhất của bạn.",
+  "home.button.start": "Bắt đầu",
+  "home.button.source": "Mã nguồn",
   // END /
 
   // /auth/signin
@@ -208,6 +203,7 @@ export default {
   "account.reverseShares.modal.public-access.description": "Cho phép bất kỳ ai cũng có thể xem các tệp được gửi qua liên kết chia sẻ ngược này. Nếu tắt, chỉ bạn với người gửi mới có thể xem được.",
   "account.reverseShares.modal.max-use.label": "Số lần sử dụng tối đa",
   "account.reverseShares.modal.max-use.description": "Số lần tối đa URL này có thể được sử dụng để tạo một lượt chia sẻ.",
+  "account.reverseShare.never-expires": "Liên kết chia sẻ ngược này sẽ không bao giờ hết hạn.",
   "account.reverseShare.expires-on": "Liên kết chia sẻ ngược này sẽ hết hạn vào {expiration}.",
   "account.reverseShares.table.no-shares": "Chưa tạo chia sẻ nào",
   "account.reverseShares.table.count.singular": "lượt chia sẻ",
@@ -286,13 +282,6 @@ export default {
   "admin.shares.table.deletes": "Xóa vào",
   "admin.shares.edit.delete.title": "Xóa chia sẻ: {id}",
   "admin.shares.edit.delete.description": "Bạn có thực sự muốn xóa lượt chia sẻ này không?",
-  "admin.shares.notify.deleted": "Share deleted successfully",
-
-  "admin.shares.search.placeholder": "Search by name, creator or share ID",
-  "admin.shares.empty": "No shares found",
-  "admin.shares.search.empty": "No shares match your search query",
-  "admin.shares.search.clear": "Clear search",
-
   // END /admin/shares
 
   // /upload
@@ -328,6 +317,8 @@ export default {
   "upload.modal.link.error.s3-etag-missing": "Thiếu tiêu đề ETag trong phản hồi từ S3. Hãy đảm bảo CORS hiển thị tiêu đề ETag.",
   "upload.modal.not-signed-in": "Bạn chưa đăng nhập",
   "upload.modal.not-signed-in-description": "Bạn sẽ không thể xóa chia sẻ của mình theo cách thủ công và xem số lượng khách truy cập.",
+  "upload.modal.expires.never": "không bao giờ",
+  "upload.modal.expires.never-long": "Chia sẻ vĩnh viễn",
   "upload.modal.expires.error.too-long": "Ngày hết hạn vượt quá mức tối đa {max}.",
   "upload.modal.link.label": "Liên kết",
   "upload.modal.expires.label": "Thời hạn",
@@ -356,6 +347,7 @@ export default {
   "upload.modal.accordion.security.max-views.label": "Lượt xem tối đa",
   "upload.modal.accordion.security.max-views.placeholder": "Không giới hạn",
   // showCompletedUploadModal.tsx
+  "upload.modal.completed.never-expires": "Chia sẻ này sẽ không bao giờ hết hạn.",
   "upload.modal.completed.expires-on": "Chia sẻ này sẽ hết hạn vào {expiration}.",
   "upload.modal.completed.share-ready": "Chia sẻ đã sẵn sàng",
   "upload.modal.completed.notified-reverse-share-creator": "Chúng tôi đã thông báo cho người tạo chia sẻ ngược. Bạn cũng có thể chia sẻ liên kết này với họ qua các phương thức khác.",
@@ -621,9 +613,6 @@ export default {
   "admin.config.oauth.oidc-client-id.description": "Client ID của ứng dụng OAuth OpenID Connect",
   "admin.config.oauth.oidc-client-secret": "OpenID Connect Client secret",
   "admin.config.oauth.oidc-client-secret.description": "Client secret của ứng dụng OAuth OpenID Connect",
-  "admin.config.oauth.allowed-hosts": "Allowed OAuth Hosts",
-  "admin.config.oauth.allowed-hosts.description":
-    "Comma-separated list of additional hostnames allowed for OAuth sign-in (e.g. share.internal.example.com).",
   "admin.config.category.ldap": "LDAP",
   "admin.config.ldap.enabled": "Bật LDAP",
   "admin.config.ldap.enabled.description": "Sử dụng xác thực LDAP để đăng nhập người dùng",
@@ -752,22 +741,5 @@ export default {
   "admin.notice.modal.button.acknowledge": "Xác nhận & Đóng",
   "admin.notice.modal.button.acknowledging": "Đang xác nhận...",
   "admin.notice.modal.docsLink": "Xem tài liệu hướng dẫn",
-  "admin.notice.modal.globalNoticeFooter": "Lưu ý: Sau khi xác nhận, thông báo này sẽ bị ẩn vĩnh viễn đối với tất cả quản trị viên trên mọi thiết bị.",
-
-  // Share report feature
-  "share.report.button": "Báo cáo",
-  "share.report.modal.title": "Báo cáo chia sẻ",
-  "share.report.modal.description": "Nếu chia sẻ này chứa nội dung vi phạm pháp luật hoặc chính sách của chúng tôi, bạn có thể báo cáo. Quản trị viên sẽ được thông báo.",
-  "share.report.modal.reason": "Lý do",
-  "share.report.modal.custom-reason": "Chi tiết bổ sung",
-  "share.report.modal.error.no-reason": "Vui lòng chọn lý do",
-  "share.report.modal.error.no-message": "Vui lòng mô tả lý do bạn báo cáo chia sẻ này",
-  "share.report.notify.success": "Cảm ơn bạn. Báo cáo của bạn đã được gửi.",
-  "share.report.reason.dmca": "DMCA / Vi phạm bản quyền",
-  "share.report.reason.csam": "Tài liệu lạm dụng tình dục trẻ em (CSAM)",
-  "share.report.reason.gore": "Nội dung máu me / Bạo lực",
-  "share.report.reason.malware": "Phần mềm độc hại / Lừa đảo",
-  "share.report.reason.spam": "Thư rác",
-  "share.report.reason.personal-information": "Thông tin cá nhân / Doxxing",
-  "share.report.reason.other": "Khác"
+  "admin.notice.modal.globalNoticeFooter": "Lưu ý: Sau khi xác nhận, thông báo này sẽ bị ẩn vĩnh viễn đối với tất cả quản trị viên trên mọi thiết bị."
 };

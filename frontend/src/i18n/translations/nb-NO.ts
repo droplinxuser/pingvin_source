@@ -14,11 +14,6 @@ export default {
 
   // Footer
   "footer.poweredBy": "Powered by",
-  "footer.stats.users": "{count, number} users",
-  "footer.stats.shares": "{count, number} shares",
-  "footer.stats.files": "{count, number} files",
-  "footer.stats.storage": "{size} storage used",
-
   // END footer
 
   // /
@@ -208,6 +203,7 @@ export default {
   "account.reverseShares.modal.public-access.description": "Gjør delinger opprettet med denne omvendte delingen offentlige. Hvis deaktivert, vil bare du og den som opprettet delingen ha tilgang til å se den.",
   "account.reverseShares.modal.max-use.label": "Maks antall bruk",
   "account.reverseShares.modal.max-use.description": "Det maksimale antallet ganger denne URL-en kan brukes til å opprette en deling.",
+  "account.reverseShare.never-expires": "Denne omvendte delingen vil aldri utløpe.",
   "account.reverseShare.expires-on": "Denne omvendte delingen utløper den {expiration}.",
   "account.reverseShares.table.no-shares": "Ingen delinger opprettet ennå",
   "account.reverseShares.table.count.singular": "deling",
@@ -286,13 +282,6 @@ export default {
   "admin.shares.table.deletes": "Slettes den",
   "admin.shares.edit.delete.title": "Slett deling: {id}",
   "admin.shares.edit.delete.description": "Vil du virkelig slette denne delingen?",
-  "admin.shares.notify.deleted": "Share deleted successfully",
-
-  "admin.shares.search.placeholder": "Search by name, creator or share ID",
-  "admin.shares.empty": "No shares found",
-  "admin.shares.search.empty": "No shares match your search query",
-  "admin.shares.search.clear": "Clear search",
-
   // END /admin/shares
 
   // /upload
@@ -328,6 +317,8 @@ export default {
   "upload.modal.link.error.s3-etag-missing": "Mangler ETag-header i S3-respons. Sørg for at CORS eksponerer ETag-headeren.",
   "upload.modal.not-signed-in": "Du er ikke logget inn",
   "upload.modal.not-signed-in-description": "Du vil ikke kunne slette delingen din manuelt eller se antall besøkende.",
+  "upload.modal.expires.never": "aldri",
+  "upload.modal.expires.never-long": "Permanent deling",
   "upload.modal.expires.error.too-long": "Utløpsdatoen overskrider maksgrensen på {max}.",
   "upload.modal.link.label": "Lenke",
   "upload.modal.expires.label": "Utløp",
@@ -356,6 +347,7 @@ export default {
   "upload.modal.accordion.security.max-views.label": "Maksimalt antall visninger",
   "upload.modal.accordion.security.max-views.placeholder": "Ingen grense",
   // showCompletedUploadModal.tsx
+  "upload.modal.completed.never-expires": "Denne delingen vil never utløpe.",
   "upload.modal.completed.expires-on": "Denne delingen utløper den {expiration}.",
   "upload.modal.completed.share-ready": "Deling klar",
   "upload.modal.completed.notified-reverse-share-creator": "Vi har varslet oppretteren av den omvendte delingen. Du kan også manuelt dele denne lenken med dem på andre måter.",
@@ -621,9 +613,6 @@ export default {
   "admin.config.oauth.oidc-client-id.description": "Client ID for OpenID Connect OAuth-appen",
   "admin.config.oauth.oidc-client-secret": "OpenID Connect Client Secret",
   "admin.config.oauth.oidc-client-secret.description": "Client Secret for OpenID Connect OAuth-appen",
-  "admin.config.oauth.allowed-hosts": "Allowed OAuth Hosts",
-  "admin.config.oauth.allowed-hosts.description":
-    "Comma-separated list of additional hostnames allowed for OAuth sign-in (e.g. share.internal.example.com).",
   "admin.config.category.ldap": "LDAP",
   "admin.config.ldap.enabled": "Aktiver LDAP",
   "admin.config.ldap.enabled.description": "Bruk LDAP-autentisering for brukerinnlogging",
@@ -752,22 +741,5 @@ export default {
   "admin.notice.modal.button.acknowledge": "Bekreft og lukk",
   "admin.notice.modal.button.acknowledging": "Bekrefter...",
   "admin.notice.modal.docsLink": "Se dokumentasjon",
-  "admin.notice.modal.globalNoticeFooter": "Merk: Når den er bekræftet, vil denne meldingen bli permanent fjernet for alle administratorer på tvers av alle enheter.",
-
-  // Share report feature
-  "share.report.button": "Rapporter",
-  "share.report.modal.title": "Rapporter deling",
-  "share.report.modal.description": "Hvis denne delingen inneholder innhold som bryter loven eller retningslinjene våre, kan du rapportere den. Administratoren blir varslet.",
-  "share.report.modal.reason": "Årsak",
-  "share.report.modal.custom-reason": "Flere detaljer",
-  "share.report.modal.error.no-reason": "Velg en årsak",
-  "share.report.modal.error.no-message": "Beskriv hvorfor du rapporterer denne delingen",
-  "share.report.notify.success": "Takk. Rapporten din er sendt inn.",
-  "share.report.reason.dmca": "DMCA / Brudd på opphavsrett",
-  "share.report.reason.csam": "Materiale med seksuelt misbruk av barn (CSAM)",
-  "share.report.reason.gore": "Voldelig / Støtende innhold",
-  "share.report.reason.malware": "Skadelig programvare / Phishing",
-  "share.report.reason.spam": "Søppelpost",
-  "share.report.reason.personal-information": "Personopplysninger / Doxxing",
-  "share.report.reason.other": "Annet"
+  "admin.notice.modal.globalNoticeFooter": "Merk: Når den er bekræftet, vil denne meldingen bli permanent fjernet for alle administratorer på tvers av alle enheter."
 };

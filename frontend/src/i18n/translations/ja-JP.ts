@@ -14,24 +14,19 @@ export default {
 
   // Footer
   "footer.poweredBy": "Powered by",
-  "footer.stats.users": "{count, number} users",
-  "footer.stats.shares": "{count, number} shares",
-  "footer.stats.files": "{count, number} files",
-  "footer.stats.storage": "{size} storage used",
-
   // END footer
 
   // /
-  "home.title": "<h>{siteName}</h> a free file-sharing platform.",
-  "home.description": "Our platform allows you to generate a link for any file you wish to share, ensuring a hassle-free transfer experience.",
-  "home.bullet.a.name": "Custom Expiration & Download Limits",
-  "home.bullet.a.description": "You have the option to set expiration dates on your shared files, customize download limits, or provide password protection.",
-  "home.bullet.b.name": "Sharing via Email",
-  "home.bullet.b.description": "An integrated email feature allows you to send files directly to recipients' inboxes.",
-  "home.bullet.c.name": "Contact Us",
-  "home.bullet.c.description": "For any inquiries, takedown requests, or other concerns, please reach out to us directly at {contactEmail}.",
-  "home.button.start": "New upload",
-  "home.button.source": "About",
+  "home.title": "<h>セルフホスト</h>のファイル共有プラットフォーム。",
+  "home.description": "WeTransferのようなサードパーティーサービスに自分のファイルを渡したいですか？",
+  "home.bullet.a.name": "セルフホスト",
+  "home.bullet.a.description": "Pingvin Shareをあなたのマシンでホストしましょう。",
+  "home.bullet.b.name": "プライバシー",
+  "home.bullet.b.description": "あなたのファイルはあなたのものであり、第三者がアクセスすることは決してありません。",
+  "home.bullet.c.name": "ファイルサイズ制限に悩まされることはありません",
+  "home.bullet.c.description": "必要なだけ大きなファイルをアップロードできます。制限があるのはハードドライブのみです。",
+  "home.button.start": "始めましょう",
+  "home.button.source": "ソースコード",
   // END /
 
   // /auth/signin
@@ -208,6 +203,7 @@ export default {
   "account.reverseShares.modal.public-access.description": "このファイルリクエストで作成された共有を公開します。無効にするとあなたと共有作成者だけが共有を表示できます。",
   "account.reverseShares.modal.max-use.label": "最大回数",
   "account.reverseShares.modal.max-use.description": "このURLを使用してファイルをアップロードできる最大回数です。",
+  "account.reverseShare.never-expires": "このファイルリクエストリンクは期限切れになりません。",
   "account.reverseShare.expires-on": "このファイルリクエストリンクは、{expiration} に期限切れとなります。",
   "account.reverseShares.table.no-shares": "まだファイルがアップロードされていません",
   "account.reverseShares.table.count.singular": "共有",
@@ -286,13 +282,6 @@ export default {
   "admin.shares.table.deletes": "削除対象",
   "admin.shares.edit.delete.title": "共有を削除: {id}",
   "admin.shares.edit.delete.description": "この共有を削除してもよろしいですか？",
-  "admin.shares.notify.deleted": "Share deleted successfully",
-
-  "admin.shares.search.placeholder": "Search by name, creator or share ID",
-  "admin.shares.empty": "No shares found",
-  "admin.shares.search.empty": "No shares match your search query",
-  "admin.shares.search.clear": "Clear search",
-
   // END /admin/shares
 
   // /upload
@@ -328,6 +317,8 @@ export default {
   "upload.modal.link.error.s3-etag-missing": "S3 レスポンスに ETag ヘッダーがありません。CORS で ETag ヘッダーが公開されていることを確認してください。",
   "upload.modal.not-signed-in": "サインインしていません",
   "upload.modal.not-signed-in-description": "共有の手動削除と訪問者カウンターは表示できません。",
+  "upload.modal.expires.never": "永久",
+  "upload.modal.expires.never-long": "永久シェア",
   "upload.modal.expires.error.too-long": "有効期限が最大値{max}を超えています。",
   "upload.modal.link.label": "リンク",
   "upload.modal.expires.label": "有効期限",
@@ -356,6 +347,7 @@ export default {
   "upload.modal.accordion.security.max-views.label": "最大閲覧回数",
   "upload.modal.accordion.security.max-views.placeholder": "制限なし",
   // showCompletedUploadModal.tsx
+  "upload.modal.completed.never-expires": "この共有は期限切れになりません。",
   "upload.modal.completed.expires-on": "この共有は、{expiration} に期限切れとなります。",
   "upload.modal.completed.share-ready": "共有の準備ができました",
   "upload.modal.completed.notified-reverse-share-creator": "ファイルリクエストの作成者に通知しました。他の手段でこのリンクを手動で共有することもできます。",
@@ -621,9 +613,6 @@ export default {
   "admin.config.oauth.oidc-client-id.description": "OpenID Connect OAuth アプリのクライアント ID",
   "admin.config.oauth.oidc-client-secret": "OpenID Connect クライアントシークレット",
   "admin.config.oauth.oidc-client-secret.description": "OpenID Connect OAuthアプリのクライアントシークレット",
-  "admin.config.oauth.allowed-hosts": "Allowed OAuth Hosts",
-  "admin.config.oauth.allowed-hosts.description":
-    "Comma-separated list of additional hostnames allowed for OAuth sign-in (e.g. share.internal.example.com).",
   "admin.config.category.ldap": "LDAP",
   "admin.config.ldap.enabled": "LDAPを有効化",
   "admin.config.ldap.enabled.description": "ユーザーログインにLDAP認証を使用する",
@@ -752,22 +741,5 @@ export default {
   "admin.notice.modal.button.acknowledge": "確認して閉じる",
   "admin.notice.modal.button.acknowledging": "確認中...",
   "admin.notice.modal.docsLink": "ドキュメントを表示",
-  "admin.notice.modal.globalNoticeFooter": "注: 一度確認すると、この通知はすべてのデバイスのすべての管理者に対して永久に非表示になります。",
-
-  // Share report feature
-  "share.report.button": "報告",
-  "share.report.modal.title": "共有を報告",
-  "share.report.modal.description": "この共有に法律やポリシーに違反するコンテンツが含まれている場合は、報告できます。管理者に通知されます。",
-  "share.report.modal.reason": "理由",
-  "share.report.modal.custom-reason": "追加の詳細",
-  "share.report.modal.error.no-reason": "理由を選択してください",
-  "share.report.modal.error.no-message": "この共有を報告する理由を記入してください",
-  "share.report.notify.success": "ありがとうございます。報告を送信しました。",
-  "share.report.reason.dmca": "DMCA / 著作権侵害",
-  "share.report.reason.csam": "児童の性的虐待素材 (CSAM)",
-  "share.report.reason.gore": "残虐 / 暴力的なコンテンツ",
-  "share.report.reason.malware": "マルウェア / フィッシング",
-  "share.report.reason.spam": "スパム",
-  "share.report.reason.personal-information": "個人情報 / 晒し行為",
-  "share.report.reason.other": "その他"
+  "admin.notice.modal.globalNoticeFooter": "注: 一度確認すると、この通知はすべてのデバイスのすべての管理者に対して永久に非表示になります。"
 };

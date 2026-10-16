@@ -14,24 +14,19 @@ export default {
 
   // Footer
   "footer.poweredBy": "Powered by",
-  "footer.stats.users": "{count, number} users",
-  "footer.stats.shares": "{count, number} shares",
-  "footer.stats.files": "{count, number} files",
-  "footer.stats.storage": "{size} storage used",
-
   // END footer
 
   // /
-  "home.title": "<h>{siteName}</h> a free file-sharing platform.",
-  "home.description": "Our platform allows you to generate a link for any file you wish to share, ensuring a hassle-free transfer experience.",
-  "home.bullet.a.name": "Custom Expiration & Download Limits",
-  "home.bullet.a.description": "You have the option to set expiration dates on your shared files, customize download limits, or provide password protection.",
-  "home.bullet.b.name": "Sharing via Email",
-  "home.bullet.b.description": "An integrated email feature allows you to send files directly to recipients' inboxes.",
-  "home.bullet.c.name": "Contact Us",
-  "home.bullet.c.description": "For any inquiries, takedown requests, or other concerns, please reach out to us directly at {contactEmail}.",
-  "home.button.start": "New upload",
-  "home.button.source": "About",
+  "home.title": "Een <h>zelfgehost</h> platform voor het delen van bestanden.",
+  "home.description": "Wil je echt je persoonlijke bestanden geven aan derden zoals WeTransfer?",
+  "home.bullet.a.name": "Zelfgehost",
+  "home.bullet.a.description": "Host Pingvin Share op uw eigen machine.",
+  "home.bullet.b.name": "Privacy",
+  "home.bullet.b.description": "Je bestanden zijn van jou en zullen nooit toegankelijk zijn voor derden.",
+  "home.bullet.c.name": "Geen vervelende limiet voor bestandsgrootte",
+  "home.bullet.c.description": "Upload bestanden zo groot als je wilt. Je harde schijf is de enige limiet.",
+  "home.button.start": "Aan de slag",
+  "home.button.source": "Broncode",
   // END /
 
   // /auth/signin
@@ -208,6 +203,7 @@ export default {
   "account.reverseShares.modal.public-access.description": "Maak de shares gemaakt met deze omgekeerde deel link openbaar. Als uitgeschakeld, kunnen alleen jij en de share maker toegang hebben om het te zien.",
   "account.reverseShares.modal.max-use.label": "Maximaal gebruikte keren",
   "account.reverseShares.modal.max-use.description": "Maximale keren dat deze URL gebruikt kan worden om een share aan te maken.",
+  "account.reverseShare.never-expires": "Deze omgekeerde share zal nooit verlopen.",
   "account.reverseShare.expires-on": "Dit omgekeerde share verloopt op {expiration}.",
   "account.reverseShares.table.no-shares": "Nog geen omgekeerde share aangemaakt",
   "account.reverseShares.table.count.singular": "deel",
@@ -286,13 +282,6 @@ export default {
   "admin.shares.table.deletes": "Verwijdert op",
   "admin.shares.edit.delete.title": "Share verwijderd: {id}",
   "admin.shares.edit.delete.description": "Weet u zeker dat u deze share wilt verwijderen?",
-  "admin.shares.notify.deleted": "Share deleted successfully",
-
-  "admin.shares.search.placeholder": "Search by name, creator or share ID",
-  "admin.shares.empty": "No shares found",
-  "admin.shares.search.empty": "No shares match your search query",
-  "admin.shares.search.clear": "Clear search",
-
   // END /admin/shares
 
   // /upload
@@ -328,6 +317,8 @@ export default {
   "upload.modal.link.error.s3-etag-missing": "De ETag-header ontbreekt in het S3-antwoord. Zorg dat CORS de ETag-header beschikbaar stelt.",
   "upload.modal.not-signed-in": "U bent niet aangemeld",
   "upload.modal.not-signed-in-description": "Het is niet mogelijk uw gedeelde bestanden handmatig te verwijderen en het aantal bezoekers te bekijken.",
+  "upload.modal.expires.never": "nooit",
+  "upload.modal.expires.never-long": "Permanent delen",
   "upload.modal.expires.error.too-long": "De vervaldatum overschrijdt het maximum van {max}.",
   "upload.modal.link.label": "Koppeling",
   "upload.modal.expires.label": "Vervaldatum",
@@ -356,6 +347,7 @@ export default {
   "upload.modal.accordion.security.max-views.label": "Maximum aantal weergaven",
   "upload.modal.accordion.security.max-views.placeholder": "Onbeperkt",
   // showCompletedUploadModal.tsx
+  "upload.modal.completed.never-expires": "Deze omgekeerde share zal nooit verlopen.",
   "upload.modal.completed.expires-on": "Deze omgekeerde share verloopt op {expiration}.",
   "upload.modal.completed.share-ready": "Share is gereed",
   "upload.modal.completed.notified-reverse-share-creator": "We hebben de maker van de reverse share op de hoogte gesteld. U kunt deze link ook handmatig met hen delen via andere middelen.",
@@ -621,9 +613,6 @@ export default {
   "admin.config.oauth.oidc-client-id.description": "Client-ID van de OpenID Connect OAuth app",
   "admin.config.oauth.oidc-client-secret": "OpenID Connect client secret",
   "admin.config.oauth.oidc-client-secret.description": "Client secret van de OpenID Connect OAuth app",
-  "admin.config.oauth.allowed-hosts": "Allowed OAuth Hosts",
-  "admin.config.oauth.allowed-hosts.description":
-    "Comma-separated list of additional hostnames allowed for OAuth sign-in (e.g. share.internal.example.com).",
   "admin.config.category.ldap": "LDAP",
   "admin.config.ldap.enabled": "LDAP inschakelen",
   "admin.config.ldap.enabled.description": "Gebruik LDAP authentication voor gebruiker login",
@@ -752,22 +741,5 @@ export default {
   "admin.notice.modal.button.acknowledge": "Bevestigen en sluiten",
   "admin.notice.modal.button.acknowledging": "Bevestigen...",
   "admin.notice.modal.docsLink": "Documentatie bekijken",
-  "admin.notice.modal.globalNoticeFooter": "Opmerking: Zodra dit is bevestigd, wordt deze melding permanent verborgen voor alle beheerders op alle apparaten.",
-
-  // Share report feature
-  "share.report.button": "Melden",
-  "share.report.modal.title": "Share melden",
-  "share.report.modal.description": "Als deze share inhoud bevat die in strijd is met de wet of ons beleid, kun je dit melden. De beheerder wordt op de hoogte gebracht.",
-  "share.report.modal.reason": "Reden",
-  "share.report.modal.custom-reason": "Aanvullende details",
-  "share.report.modal.error.no-reason": "Selecteer een reden",
-  "share.report.modal.error.no-message": "Beschrijf waarom je deze share meldt",
-  "share.report.notify.success": "Bedankt. Je melding is verzonden.",
-  "share.report.reason.dmca": "DMCA / Inbreuk op auteursrecht",
-  "share.report.reason.csam": "Materiaal van seksueel kindermisbruik (CSAM)",
-  "share.report.reason.gore": "Schokkende / Gewelddadige inhoud",
-  "share.report.reason.malware": "Malware / Phishing",
-  "share.report.reason.spam": "Spam",
-  "share.report.reason.personal-information": "Persoonlijke gegevens / Doxxing",
-  "share.report.reason.other": "Overig"
+  "admin.notice.modal.globalNoticeFooter": "Opmerking: Zodra dit is bevestigd, wordt deze melding permanent verborgen voor alle beheerders op alle apparaten."
 };

@@ -14,24 +14,19 @@ export default {
 
   // Footer
   "footer.poweredBy": "Powered by",
-  "footer.stats.users": "{count, number} users",
-  "footer.stats.shares": "{count, number} shares",
-  "footer.stats.files": "{count, number} files",
-  "footer.stats.storage": "{size} storage used",
-
   // END footer
 
   // /
-  "home.title": "<h>{siteName}</h> a free file-sharing platform.",
-  "home.description": "Our platform allows you to generate a link for any file you wish to share, ensuring a hassle-free transfer experience.",
-  "home.bullet.a.name": "Custom Expiration & Download Limits",
-  "home.bullet.a.description": "You have the option to set expiration dates on your shared files, customize download limits, or provide password protection.",
-  "home.bullet.b.name": "Sharing via Email",
-  "home.bullet.b.description": "An integrated email feature allows you to send files directly to recipients' inboxes.",
-  "home.bullet.c.name": "Contact Us",
-  "home.bullet.c.description": "For any inquiries, takedown requests, or other concerns, please reach out to us directly at {contactEmail}.",
-  "home.button.start": "New upload",
-  "home.button.source": "About",
+  "home.title": "<h>Samodzielnie utrzymywana</h> platforma udostępniania plików.",
+  "home.description": "Czy na pewno chcesz przekazać swoje prywatne pliki w ręce osób trzecich, takich jak WeTransfer?",
+  "home.bullet.a.name": "Samodzielnie Utrzymywana",
+  "home.bullet.a.description": "Utrzymuj Pingvin Share na własnym serwerze.",
+  "home.bullet.b.name": "Prywatność",
+  "home.bullet.b.description": "Twoje pliki należą do Ciebie i nie będą dostępne dla osób trzecich.",
+  "home.bullet.c.name": "Brak irytującego ograniczenia rozmiaru pliku",
+  "home.bullet.c.description": "Przesyłaj pliki, jak duże tylko chcesz. Ograniczeniem jest tylko rozmiar Twojego dysku.",
+  "home.button.start": "Zaczynajmy",
+  "home.button.source": "Kod źródłowy",
   // END /
 
   // /auth/signin
@@ -208,6 +203,7 @@ export default {
   "account.reverseShares.modal.public-access.description": "Upublicznij udostępnione zasoby utworzone za pomocą tego odwrotnego udostępnienia. Jeśli ta opcja będzie wyłączona, tylko Ty i twórca udostępnienia będziecie mogli je przeglądać.",
   "account.reverseShares.modal.max-use.label": "Limit użyć",
   "account.reverseShares.modal.max-use.description": "Maksymalna ilość razy, kiedy ten adres URL może być użyty do utworzenia udostępniania.",
+  "account.reverseShare.never-expires": "To udostępnienie odwrotne nigdy nie wygasa.",
   "account.reverseShare.expires-on": "To udostępnienie odwrotne wygaśnie dnia {expiration}.",
   "account.reverseShares.table.no-shares": "Nie utworzono jeszcze udostępnień",
   "account.reverseShares.table.count.singular": "udostępnij",
@@ -286,13 +282,6 @@ export default {
   "admin.shares.table.deletes": "Zostanie usunięte",
   "admin.shares.edit.delete.title": "Usuń udostępnianie: {id}",
   "admin.shares.edit.delete.description": "Czy na pewno chcesz usunąć to udostępnienie?",
-  "admin.shares.notify.deleted": "Share deleted successfully",
-
-  "admin.shares.search.placeholder": "Search by name, creator or share ID",
-  "admin.shares.empty": "No shares found",
-  "admin.shares.search.empty": "No shares match your search query",
-  "admin.shares.search.clear": "Clear search",
-
   // END /admin/shares
 
   // /upload
@@ -328,6 +317,8 @@ export default {
   "upload.modal.link.error.s3-etag-missing": "Brak nagłówka ETag w odpowiedzi S3. Upewnij się, że CORS udostępnia nagłówek ETag.",
   "upload.modal.not-signed-in": "Nie jesteś zalogowany/a",
   "upload.modal.not-signed-in-description": "Nie możesz ręcznie usunąć swojego udziału ani wyświetlić licznika odwiedzających.",
+  "upload.modal.expires.never": "nigdy",
+  "upload.modal.expires.never-long": "Stałe udostępnianie",
   "upload.modal.expires.error.too-long": "Data ważności przekracza maksymalną wartość {max}.",
   "upload.modal.link.label": "Połącz",
   "upload.modal.expires.label": "Wygasanie",
@@ -356,6 +347,7 @@ export default {
   "upload.modal.accordion.security.max-views.label": "Maksymalna liczba wyświetleń",
   "upload.modal.accordion.security.max-views.placeholder": "Bez ograniczeń",
   // showCompletedUploadModal.tsx
+  "upload.modal.completed.never-expires": "To udostępnienie nigdy nie wygaśnie.",
   "upload.modal.completed.expires-on": "To udostępnienie wygaśnie dnia {expiration}.",
   "upload.modal.completed.share-ready": "Udostępnianie gotowe",
   "upload.modal.completed.notified-reverse-share-creator": "Powiadomiliśmy twórcę odwrotnego udostępnienia. Możesz również ręcznie udostępnić ten link w inny sposób.",
@@ -621,9 +613,6 @@ export default {
   "admin.config.oauth.oidc-client-id.description": "Identyfikator klienta OAuth aplikacji OpenID Connect",
   "admin.config.oauth.oidc-client-secret": "Sekret klienta OpenID Connect",
   "admin.config.oauth.oidc-client-secret.description": "Sekret klienta OAuth aplikacji OpenID Connect",
-  "admin.config.oauth.allowed-hosts": "Allowed OAuth Hosts",
-  "admin.config.oauth.allowed-hosts.description":
-    "Comma-separated list of additional hostnames allowed for OAuth sign-in (e.g. share.internal.example.com).",
   "admin.config.category.ldap": "LDAP",
   "admin.config.ldap.enabled": "Włącz LDAP",
   "admin.config.ldap.enabled.description": "Użyj uwierzytelniania LDAP do logowania użytkowników",
@@ -752,22 +741,5 @@ export default {
   "admin.notice.modal.button.acknowledge": "Potwierdź i odrzuć",
   "admin.notice.modal.button.acknowledging": "Potwierdzanie...",
   "admin.notice.modal.docsLink": "Zobacz dokumentację",
-  "admin.notice.modal.globalNoticeFooter": "Uwaga: Po potwierdzeniu to powiadomienie zostanie trwale usunięte dla wszystkich administratorów na wszystkich urządzeniach.",
-
-  // Share report feature
-  "share.report.button": "Zgłoś",
-  "share.report.modal.title": "Zgłoś udostępnienie",
-  "share.report.modal.description": "Jeśli to udostępnienie zawiera treści naruszające prawo lub nasze zasady, możesz je zgłosić. Administrator zostanie powiadomiony.",
-  "share.report.modal.reason": "Powód",
-  "share.report.modal.custom-reason": "Dodatkowe szczegóły",
-  "share.report.modal.error.no-reason": "Wybierz powód",
-  "share.report.modal.error.no-message": "Opisz, dlaczego zgłaszasz to udostępnienie",
-  "share.report.notify.success": "Dziękujemy. Twoje zgłoszenie zostało wysłane.",
-  "share.report.reason.dmca": "DMCA / Naruszenie praw autorskich",
-  "share.report.reason.csam": "Materiały przedstawiające wykorzystywanie seksualne dzieci (CSAM)",
-  "share.report.reason.gore": "Drastyczne / Brutalne treści",
-  "share.report.reason.malware": "Złośliwe oprogramowanie / Phishing",
-  "share.report.reason.spam": "Spam",
-  "share.report.reason.personal-information": "Dane osobowe / Doxxing",
-  "share.report.reason.other": "Inne"
+  "admin.notice.modal.globalNoticeFooter": "Uwaga: Po potwierdzeniu to powiadomienie zostanie trwale usunięte dla wszystkich administratorów na wszystkich urządzeniach."
 };

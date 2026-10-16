@@ -14,24 +14,19 @@ export default {
 
   // Footer
   "footer.poweredBy": "Powered by",
-  "footer.stats.users": "{count, number} users",
-  "footer.stats.shares": "{count, number} shares",
-  "footer.stats.files": "{count, number} files",
-  "footer.stats.storage": "{size} storage used",
-
   // END footer
 
   // /
-  "home.title": "<h>{siteName}</h> a free file-sharing platform.",
-  "home.description": "Our platform allows you to generate a link for any file you wish to share, ensuring a hassle-free transfer experience.",
-  "home.bullet.a.name": "Custom Expiration & Download Limits",
-  "home.bullet.a.description": "You have the option to set expiration dates on your shared files, customize download limits, or provide password protection.",
-  "home.bullet.b.name": "Sharing via Email",
-  "home.bullet.b.description": "An integrated email feature allows you to send files directly to recipients' inboxes.",
-  "home.bullet.c.name": "Contact Us",
-  "home.bullet.c.description": "For any inquiries, takedown requests, or other concerns, please reach out to us directly at {contactEmail}.",
-  "home.button.start": "New upload",
-  "home.button.source": "About",
+  "home.title": "<h>Samo-hostana</h> platforma za dijeljenje datoteka.",
+  "home.description": "Želite li zaista povjeriti svoje osobne datoteke trećim stranama poput WeTransfera?",
+  "home.bullet.a.name": "Samo-hostano",
+  "home.bullet.a.description": "Hostajte Pingvin Share na svom uređaju.",
+  "home.bullet.b.name": "Privatnost",
+  "home.bullet.b.description": "Vaše datoteke ostaju vaše i nikada neće biti dostupne trećim stranama.",
+  "home.bullet.c.name": "Bez dosadnog ograničenja veličine datoteka",
+  "home.bullet.c.description": "Otpremite datoteke bilo koje veličine koliko želite. Samo vaš tvrdi disk je granica.",
+  "home.button.start": "Započni",
+  "home.button.source": "Izvorni kod",
   // END /
 
   // /auth/signin
@@ -208,6 +203,7 @@ export default {
   "account.reverseShares.modal.public-access.description": "Omogućite da dijeljenja kreirana ovim obrnutim linkom budu javna. Ako je onemogućeno, samo vi i kreator dijeljenja ćete imati pristup pregledavanju.",
   "account.reverseShares.modal.max-use.label": "Maksimalan broj korištenja",
   "account.reverseShares.modal.max-use.description": "Maksimalan broj puta koji ovaj URL može biti korišten za kreiranje dijeljenja.",
+  "account.reverseShare.never-expires": "Ovo obrnuto dijeljenje nikada neće isteći.",
   "account.reverseShare.expires-on": "Ovo obrnuto dijeljenje će isteći {expiration}.",
   "account.reverseShares.table.no-shares": "Još nema kreiranih dijeljenja",
   "account.reverseShares.table.count.singular": "dijeljenje",
@@ -286,13 +282,6 @@ export default {
   "admin.shares.table.deletes": "Briše se dana",
   "admin.shares.edit.delete.title": "Obrišite dijeljenje: {id}",
   "admin.shares.edit.delete.description": "Jeste li sigurni da želite obrisati ovo dijeljenje?",
-  "admin.shares.notify.deleted": "Share deleted successfully",
-
-  "admin.shares.search.placeholder": "Search by name, creator or share ID",
-  "admin.shares.empty": "No shares found",
-  "admin.shares.search.empty": "No shares match your search query",
-  "admin.shares.search.clear": "Clear search",
-
   // END /admin/shares
 
   // /upload
@@ -328,6 +317,8 @@ export default {
   "upload.modal.link.error.s3-etag-missing": "Nedostaje ETag zaglavlje u S3 odgovoru. Provjerite izlaže li CORS ETag zaglavlje.",
   "upload.modal.not-signed-in": "Niste prijavljeni",
   "upload.modal.not-signed-in-description": "Nećete moći ručno obrisati svoje dijeljenje niti vidjeti broj posjetitelja.",
+  "upload.modal.expires.never": "nikad",
+  "upload.modal.expires.never-long": "Trajno dijeljenje",
   "upload.modal.expires.error.too-long": "Datum isteka premašuje maksimalnu vrijednost od {max}.",
   "upload.modal.link.label": "Poveznica",
   "upload.modal.expires.label": "Istječe",
@@ -356,6 +347,7 @@ export default {
   "upload.modal.accordion.security.max-views.label": "Maksimalan broj pregleda",
   "upload.modal.accordion.security.max-views.placeholder": "Bez ograničenja",
   // showCompletedUploadModal.tsx
+  "upload.modal.completed.never-expires": "Ovo dijeljenje nikada neće isteći.",
   "upload.modal.completed.expires-on": "Ovo dijeljenje će isteći {expiration}.",
   "upload.modal.completed.share-ready": "Dijeljenje je spremno",
   "upload.modal.completed.notified-reverse-share-creator": "Obavijestili smo kreatora obrnutog dijeljenja. Također možete ručno podijeliti ovu poveznicu s njima na druge načine.",
@@ -621,9 +613,6 @@ export default {
   "admin.config.oauth.oidc-client-id.description": "ID klijenta OpenID Connect OAuth aplikacije",
   "admin.config.oauth.oidc-client-secret": "OpenID Connect tajna klijenta",
   "admin.config.oauth.oidc-client-secret.description": "Tajna klijenta OpenID Connect OAuth aplikacije",
-  "admin.config.oauth.allowed-hosts": "Allowed OAuth Hosts",
-  "admin.config.oauth.allowed-hosts.description":
-    "Comma-separated list of additional hostnames allowed for OAuth sign-in (e.g. share.internal.example.com).",
   "admin.config.category.ldap": "LDAP",
   "admin.config.ldap.enabled": "Omogući LDAP",
   "admin.config.ldap.enabled.description": "Koristi LDAP autentifikaciju za prijavu korisnika",
@@ -752,22 +741,5 @@ export default {
   "admin.notice.modal.button.acknowledge": "Potvrdi i zatvori",
   "admin.notice.modal.button.acknowledging": "Potvrđivanje...",
   "admin.notice.modal.docsLink": "Prikaži dokumentaciju",
-  "admin.notice.modal.globalNoticeFooter": "Napomena: Nakon što se potvrdi, ova će obavijest biti trajno uklonjena za sve administratore na svim uređajima.",
-
-  // Share report feature
-  "share.report.button": "Prijavi",
-  "share.report.modal.title": "Prijavi dijeljenje",
-  "share.report.modal.description": "Ako ovo dijeljenje sadrži sadržaj koji krši zakon ili naša pravila, možete ga prijaviti. Administrator će biti obaviješten.",
-  "share.report.modal.reason": "Razlog",
-  "share.report.modal.custom-reason": "Dodatni detalji",
-  "share.report.modal.error.no-reason": "Odaberite razlog",
-  "share.report.modal.error.no-message": "Opišite zašto prijavljujete ovo dijeljenje",
-  "share.report.notify.success": "Hvala. Vaša prijava je poslana.",
-  "share.report.reason.dmca": "DMCA / Povreda autorskih prava",
-  "share.report.reason.csam": "Materijal seksualnog zlostavljanja djece (CSAM)",
-  "share.report.reason.gore": "Krvav / Nasilan sadržaj",
-  "share.report.reason.malware": "Zlonamjerni softver / Phishing",
-  "share.report.reason.spam": "Spam",
-  "share.report.reason.personal-information": "Osobni podaci / Doxxing",
-  "share.report.reason.other": "Ostalo"
+  "admin.notice.modal.globalNoticeFooter": "Napomena: Nakon što se potvrdi, ova će obavijest biti trajno uklonjena za sve administratore na svim uređajima."
 };

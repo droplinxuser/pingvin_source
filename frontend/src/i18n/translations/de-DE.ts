@@ -14,24 +14,19 @@ export default {
 
   // Footer
   "footer.poweredBy": "Powered by",
-  "footer.stats.users": "{count, number} users",
-  "footer.stats.shares": "{count, number} shares",
-  "footer.stats.files": "{count, number} files",
-  "footer.stats.storage": "{size} storage used",
-
   // END footer
 
   // /
-  "home.title": "<h>{siteName}</h> a free file-sharing platform.",
-  "home.description": "Our platform allows you to generate a link for any file you wish to share, ensuring a hassle-free transfer experience.",
-  "home.bullet.a.name": "Custom Expiration & Download Limits",
-  "home.bullet.a.description": "You have the option to set expiration dates on your shared files, customize download limits, or provide password protection.",
-  "home.bullet.b.name": "Sharing via Email",
-  "home.bullet.b.description": "An integrated email feature allows you to send files directly to recipients' inboxes.",
-  "home.bullet.c.name": "Contact Us",
-  "home.bullet.c.description": "For any inquiries, takedown requests, or other concerns, please reach out to us directly at {contactEmail}.",
-  "home.button.start": "New upload",
-  "home.button.source": "About",
+  "home.title": "Eine <h>selbst gehostete</h> Dateifreigabe-Plattform.",
+  "home.description": "Möchtest du wirklich deine persönlichen Dateien an Drittanbieter wie WeTransfer weitergeben?",
+  "home.bullet.a.name": "Selbst gehostet",
+  "home.bullet.a.description": "Betreibe Pingvin Share auf deinem eigenen Server.",
+  "home.bullet.b.name": "Privatsphäre",
+  "home.bullet.b.description": "Deine Dateien gehören dir und sind niemals durch Dritte zugänglich.",
+  "home.bullet.c.name": "Keine lästige Dateigrößenbegrenzung",
+  "home.bullet.c.description": "Lade so große Dateien hoch, wie du willst. Nur deine Festplatte ist dein Limit.",
+  "home.button.start": "Lege los",
+  "home.button.source": "Quellcode",
   // END /
 
   // /auth/signin
@@ -208,6 +203,7 @@ export default {
   "account.reverseShares.modal.public-access.description": "Mache die Freigaben die mit dieser externen Freigabe erstellt werden öffentlich. Wenn dies deaktiviert ist, haben nur du und der Ersteller der Freigabe Zugriff darauf.",
   "account.reverseShares.modal.max-use.label": "Maximale Nutzungen",
   "account.reverseShares.modal.max-use.description": "Die maximale Anzahl von Verwendungen der URL, um Dateien hochzuladen.",
+  "account.reverseShare.never-expires": "Diese externe Freigabe wird nicht ablaufen.",
   "account.reverseShare.expires-on": "Diese externe Freigabe wird am {expiration} ablaufen.",
   "account.reverseShares.table.no-shares": "Noch keine Freigaben erstellt",
   "account.reverseShares.table.count.singular": "Freigabe",
@@ -286,13 +282,6 @@ export default {
   "admin.shares.table.deletes": "Wird gelöscht am",
   "admin.shares.edit.delete.title": "Freigabe löschen: {id}",
   "admin.shares.edit.delete.description": "Möchtest du diese Freigabe wirklich löschen?",
-  "admin.shares.notify.deleted": "Share deleted successfully",
-
-  "admin.shares.search.placeholder": "Search by name, creator or share ID",
-  "admin.shares.empty": "No shares found",
-  "admin.shares.search.empty": "No shares match your search query",
-  "admin.shares.search.clear": "Clear search",
-
   // END /admin/shares
 
   // /upload
@@ -328,6 +317,8 @@ export default {
   "upload.modal.link.error.s3-etag-missing": "ETag-Header fehlt in der S3-Antwort. Stelle sicher, dass CORS den ETag-Header bereitstellt.",
   "upload.modal.not-signed-in": "Du bist nicht angemeldet",
   "upload.modal.not-signed-in-description": "Du wirst deine Freigabe nicht löschen können oder die Besucheranzahl sehen.",
+  "upload.modal.expires.never": "nie",
+  "upload.modal.expires.never-long": "Permanente Freigabe",
   "upload.modal.expires.error.too-long": "Das Ablaufdatum überschreitet das Maximum von {max}.",
   "upload.modal.link.label": "Verknüpfen",
   "upload.modal.expires.label": "Gültig bis",
@@ -356,6 +347,7 @@ export default {
   "upload.modal.accordion.security.max-views.label": "Maximale Aufrufe",
   "upload.modal.accordion.security.max-views.placeholder": "Unbegrenzt",
   // showCompletedUploadModal.tsx
+  "upload.modal.completed.never-expires": "Diese Freigabe läuft niemals ab.",
   "upload.modal.completed.expires-on": "Diese Freigabe wird am {expiration} ablaufen.",
   "upload.modal.completed.share-ready": "Freigabe bereit",
   "upload.modal.completed.notified-reverse-share-creator": "Wir haben den Ersteller der externen Freigabe benachrichtigt. Du kannst den Link auch auf andere Wege teilen.",
@@ -621,9 +613,6 @@ export default {
   "admin.config.oauth.oidc-client-id.description": "Client-ID der OpenID Connect OAuth-App",
   "admin.config.oauth.oidc-client-secret": "OpenID Connect Client-Secret",
   "admin.config.oauth.oidc-client-secret.description": "Client-Secret der OpenID Connect OAuth-App",
-  "admin.config.oauth.allowed-hosts": "Allowed OAuth Hosts",
-  "admin.config.oauth.allowed-hosts.description":
-    "Comma-separated list of additional hostnames allowed for OAuth sign-in (e.g. share.internal.example.com).",
   "admin.config.category.ldap": "LDAP",
   "admin.config.ldap.enabled": "LDAP aktivieren",
   "admin.config.ldap.enabled.description": "LDAP-Authentifizierung für die Benutzeranmeldung verwenden",
@@ -752,22 +741,5 @@ export default {
   "admin.notice.modal.button.acknowledge": "Bestätigen & Schließen",
   "admin.notice.modal.button.acknowledging": "Wird bestätigt...",
   "admin.notice.modal.docsLink": "Dokumentation anzeigen",
-  "admin.notice.modal.globalNoticeFooter": "Hinweis: Nach der Bestätigung wird dieser Hinweis für alle Administratoren auf allen Geräten dauerhaft ausgeblendet.",
-
-  // Share report feature
-  "share.report.button": "Melden",
-  "share.report.modal.title": "Freigabe melden",
-  "share.report.modal.description": "Wenn diese Freigabe Inhalte enthält, die gegen das Gesetz oder unsere Richtlinien verstoßen, kannst du sie melden. Der Administrator wird benachrichtigt.",
-  "share.report.modal.reason": "Grund",
-  "share.report.modal.custom-reason": "Weitere Details",
-  "share.report.modal.error.no-reason": "Bitte wähle einen Grund aus",
-  "share.report.modal.error.no-message": "Bitte beschreibe, warum du diese Freigabe meldest",
-  "share.report.notify.success": "Vielen Dank. Deine Meldung wurde übermittelt.",
-  "share.report.reason.dmca": "DMCA / Urheberrechtsverletzung",
-  "share.report.reason.csam": "Material über sexuellen Kindesmissbrauch (CSAM)",
-  "share.report.reason.gore": "Gewaltdarstellung / Brutale Inhalte",
-  "share.report.reason.malware": "Malware / Phishing",
-  "share.report.reason.spam": "Spam",
-  "share.report.reason.personal-information": "Persönliche Daten / Doxxing",
-  "share.report.reason.other": "Sonstiges"
+  "admin.notice.modal.globalNoticeFooter": "Hinweis: Nach der Bestätigung wird dieser Hinweis für alle Administratoren auf allen Geräten dauerhaft ausgeblendet."
 };

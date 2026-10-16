@@ -14,24 +14,19 @@ export default {
 
   // Footer
   "footer.poweredBy": "Powered by",
-  "footer.stats.users": "{count, number} users",
-  "footer.stats.shares": "{count, number} shares",
-  "footer.stats.files": "{count, number} files",
-  "footer.stats.storage": "{size} storage used",
-
   // END footer
 
   // /
-  "home.title": "<h>{siteName}</h> a free file-sharing platform.",
-  "home.description": "Our platform allows you to generate a link for any file you wish to share, ensuring a hassle-free transfer experience.",
-  "home.bullet.a.name": "Custom Expiration & Download Limits",
-  "home.bullet.a.description": "You have the option to set expiration dates on your shared files, customize download limits, or provide password protection.",
-  "home.bullet.b.name": "Sharing via Email",
-  "home.bullet.b.description": "An integrated email feature allows you to send files directly to recipients' inboxes.",
-  "home.bullet.c.name": "Contact Us",
-  "home.bullet.c.description": "For any inquiries, takedown requests, or other concerns, please reach out to us directly at {contactEmail}.",
-  "home.button.start": "New upload",
-  "home.button.source": "About",
+  "home.title": "Une plateforme de partage de fichiers <h>autohébergée</h>.",
+  "home.description": "Voulez-vous vraiment remettre vos fichiers personnels dans les mains de tiers comme WeTransfer ?",
+  "home.bullet.a.name": "Auto-hébergé",
+  "home.bullet.a.description": "Hébergez Pingvin Share sur votre propre machine.",
+  "home.bullet.b.name": "Confidentialité",
+  "home.bullet.b.description": "Vos fichiers sont les vôtres et ne seront jamais consultés par des tiers.",
+  "home.bullet.c.name": "Aucune rébarbative limite de taille",
+  "home.bullet.c.description": "Téléchargez des fichiers aussi volumineux que vous le souhaitez. Votre disque dur est votre limite.",
+  "home.button.start": "Commencer",
+  "home.button.source": "Code source",
   // END /
 
   // /auth/signin
@@ -208,6 +203,7 @@ export default {
   "account.reverseShares.modal.public-access.description": "Rendre les partages créés avec ce partage inversé public. Si désactivé, seul vous et le créateur du partage pourrez le voir.",
   "account.reverseShares.modal.max-use.label": "Nombre d'utilisations max",
   "account.reverseShares.modal.max-use.description": "Le nombre maximal de fois que cette URL peut être utilisée pour créer un partage.",
+  "account.reverseShare.never-expires": "Ce partage inversé n'expirera jamais.",
   "account.reverseShare.expires-on": "Ce partage inversé expirera le {expiration}.",
   "account.reverseShares.table.no-shares": "Aucun partage créé pour le moment",
   "account.reverseShares.table.count.singular": "partage",
@@ -286,13 +282,6 @@ export default {
   "admin.shares.table.deletes": "Sera supprimé le",
   "admin.shares.edit.delete.title": "Supprimer le partage : {id}",
   "admin.shares.edit.delete.description": "Voulez-vous vraiment supprimer ce partage ?",
-  "admin.shares.notify.deleted": "Share deleted successfully",
-
-  "admin.shares.search.placeholder": "Search by name, creator or share ID",
-  "admin.shares.empty": "No shares found",
-  "admin.shares.search.empty": "No shares match your search query",
-  "admin.shares.search.clear": "Clear search",
-
   // END /admin/shares
 
   // /upload
@@ -328,6 +317,8 @@ export default {
   "upload.modal.link.error.s3-etag-missing": "En-tête ETag manquant dans la réponse S3. Assurez-vous que CORS expose l'en-tête ETag.",
   "upload.modal.not-signed-in": "Vous n'êtes pas connecté",
   "upload.modal.not-signed-in-description": "Vous ne pourrez pas supprimer votre partage manuellement et afficher le nombre de visiteurs.",
+  "upload.modal.expires.never": "jamais",
+  "upload.modal.expires.never-long": "Partage permanent",
   "upload.modal.expires.error.too-long": "La date d'expiration dépasse le maximum de {max}.",
   "upload.modal.link.label": "Lien",
   "upload.modal.expires.label": "Expiration",
@@ -356,6 +347,7 @@ export default {
   "upload.modal.accordion.security.max-views.label": "Nombre de vues maximum",
   "upload.modal.accordion.security.max-views.placeholder": "Aucune limite",
   // showCompletedUploadModal.tsx
+  "upload.modal.completed.never-expires": "Ce partage n’expirera jamais.",
   "upload.modal.completed.expires-on": "Ce partage expirera le {expiration}.",
   "upload.modal.completed.share-ready": "Partage prêt",
   "upload.modal.completed.notified-reverse-share-creator": "Nous avons notifié le créateur du partage inverse. Vous pouvez également partager manuellement ce lien avec eux par d'autres moyens.",
@@ -621,9 +613,6 @@ export default {
   "admin.config.oauth.oidc-client-id.description": "L’ID du client de l’application OAuth OpenID Connect",
   "admin.config.oauth.oidc-client-secret": "Secret du client OpenID",
   "admin.config.oauth.oidc-client-secret.description": "Le secret du client de l’application OAuth OpenID Connect",
-  "admin.config.oauth.allowed-hosts": "Allowed OAuth Hosts",
-  "admin.config.oauth.allowed-hosts.description":
-    "Comma-separated list of additional hostnames allowed for OAuth sign-in (e.g. share.internal.example.com).",
   "admin.config.category.ldap": "LDAP",
   "admin.config.ldap.enabled": "Activer LDAP",
   "admin.config.ldap.enabled.description": "Utiliser l'authentification LDAP pour la connexion de l'utilisateur",
@@ -752,22 +741,5 @@ export default {
   "admin.notice.modal.button.acknowledge": "Confirmer et ignorer",
   "admin.notice.modal.button.acknowledging": "Confirmation...",
   "admin.notice.modal.docsLink": "Voir la documentation",
-  "admin.notice.modal.globalNoticeFooter": "Remarque : Une fois confirmé, cet avertissement sera définitivement masqué pour tous les administrateurs sur tous les appareils.",
-
-  // Share report feature
-  "share.report.button": "Signaler",
-  "share.report.modal.title": "Signaler le partage",
-  "share.report.modal.description": "Si ce partage contient du contenu qui enfreint la loi ou nos règles, vous pouvez le signaler. L'administrateur sera averti.",
-  "share.report.modal.reason": "Motif",
-  "share.report.modal.custom-reason": "Détails supplémentaires",
-  "share.report.modal.error.no-reason": "Veuillez sélectionner un motif",
-  "share.report.modal.error.no-message": "Veuillez décrire pourquoi vous signalez ce partage",
-  "share.report.notify.success": "Merci. Votre signalement a été envoyé.",
-  "share.report.reason.dmca": "DMCA / Violation du droit d'auteur",
-  "share.report.reason.csam": "Matériel d'abus sexuel sur mineur (CSAM)",
-  "share.report.reason.gore": "Contenu sanglant / Violent",
-  "share.report.reason.malware": "Logiciel malveillant / Hameçonnage",
-  "share.report.reason.spam": "Spam",
-  "share.report.reason.personal-information": "Informations personnelles / Doxxing",
-  "share.report.reason.other": "Autre"
+  "admin.notice.modal.globalNoticeFooter": "Remarque : Une fois confirmé, cet avertissement sera définitivement masqué pour tous les administrateurs sur tous les appareils."
 };

@@ -277,6 +277,7 @@ export default {
   "account.reverseShares.modal.max-use.label": "Max uses",
   "account.reverseShares.modal.max-use.description":
     "The maximum number of times this URL can be used.",
+  "account.reverseShare.never-expires": "This reverse share will never expire.",
   "account.reverseShare.expires-on":
     "This reverse share will expire on {expiration}.",
 
@@ -441,6 +442,8 @@ export default {
   "upload.modal.not-signed-in-description":
     "You will not be able to delete your share or view its visitor count.",
 
+  "upload.modal.expires.never": "never",
+  "upload.modal.expires.never-long": "Permanent share",
   "upload.modal.expires.error.too-long":
     "Expiration date exceeds the maximum of {max}.",
 
@@ -477,6 +480,7 @@ export default {
   "upload.modal.accordion.security.max-views.placeholder": "No limit",
 
   // showCompletedUploadModal.tsx
+  "upload.modal.completed.never-expires": "This share will never expire.",
   "upload.modal.completed.expires-on":
     "This share will expire on {expiration}.",
   "upload.modal.completed.share-ready": "Share ready",
@@ -491,6 +495,23 @@ export default {
   "share.fileCount":
     "{count, plural, =1 {# file} other {# files}} · {size} (zip file may be smaller due to compression)",
   "share.viewCount": "{count, plural, =1 {# view} other {# views}}",
+  "share.report.button": "Report",
+  "share.report.modal.title": "Report share",
+  "share.report.modal.description":
+    "If this share contains content that violates the law or our policies, you can report it. The administrator will be notified.",
+  "share.report.modal.reason": "Reason",
+  "share.report.modal.custom-reason": "Additional details",
+  "share.report.modal.error.no-reason": "Please select a reason",
+  "share.report.modal.error.no-message":
+    "Please describe why you are reporting this share",
+  "share.report.notify.success": "Thank you. Your report has been submitted.",
+  "share.report.reason.dmca": "DMCA / Copyright infringement",
+  "share.report.reason.csam": "Child sexual abuse material (CSAM)",
+  "share.report.reason.gore": "Gore / Violent content",
+  "share.report.reason.malware": "Malware / Phishing",
+  "share.report.reason.spam": "Spam",
+  "share.report.reason.personal-information": "Personal information / Doxxing",
+  "share.report.reason.other": "Other",
   "share.copy-text-contents": "Copy file contents to clipboard",
   "share.error.visitor-limit-exceeded.title": "Visitor limit exceeded",
   "share.error.visitor-limit-exceeded.description":
@@ -520,7 +541,7 @@ export default {
   "share.notify.copied-contents": "File contents copied to clipboard",
   "share.notify.copy-too-big-error": "File is too big to copy to clipboard",
   "share.notify.copy-not-supported-error":
-    "Copying to clipboard requires an HTTPS connection",
+    "Copying to clipboard requires a HTTPS connection",
 
   "share.modal.file-link": "File link",
   "share.table.name": "Name",
@@ -727,7 +748,7 @@ export default {
     "The default expiration time selected when creating a new share.",
   "admin.config.share.max-expiration": "Max expiration",
   "admin.config.share.max-expiration.description":
-    "Maximum share expiration, hard capped at 5 years. Set to 0 to allow the maximum of 5 years.",
+    "Maximum share expiration. Set to 0 to allow unlimited expiration.",
   "admin.config.share.share-id-length": "Default share ID length",
   "admin.config.share.share-id-length.description":
     "Default length for the generated ID of a share. This value is also used to generate links for reverse shares. A value below 8 is not considered secure.",
@@ -903,10 +924,10 @@ export default {
     "LDAP attribute containing the groups a user belongs to. This is used when checking for the admin group.",
   "admin.config.ldap.field-name-email": "User email attribute name",
   "admin.config.ldap.field-name-email.description":
-    "LDAP attribute name for the email of a user.",
+    "LDAP attribute name for the email of an user.",
   "admin.config.ldap.field-name-display-name": "User display name attribute name",
   "admin.config.ldap.field-name-display-name.description":
-    "LDAP attribute name for the display name of a user.",
+    "LDAP attribute name for the display name of an user.",
   "admin.config.notify.success": "Configuration updated successfully.",
   "admin.config.notify.logo-success":
     "Logo updated successfully. It may take a few minutes to update on the website.",
@@ -1048,23 +1069,4 @@ export default {
   "admin.notice.modal.docsLink": "View Documentation",
   "admin.notice.modal.globalNoticeFooter":
     "Note: Once acknowledged, this notice will be permanently dismissed for all administrators across all devices.",
-
-  // Share report feature
-  "share.report.button": "Report",
-  "share.report.modal.title": "Report share",
-  "share.report.modal.description":
-    "If this share contains content that violates the law or our policies, you can report it. The administrator will be notified.",
-  "share.report.modal.reason": "Reason",
-  "share.report.modal.custom-reason": "Additional details",
-  "share.report.modal.error.no-reason": "Please select a reason",
-  "share.report.modal.error.no-message":
-    "Please describe why you are reporting this share",
-  "share.report.notify.success": "Thank you. Your report has been submitted.",
-  "share.report.reason.dmca": "DMCA / Copyright infringement",
-  "share.report.reason.csam": "Child sexual abuse material (CSAM)",
-  "share.report.reason.gore": "Gore / Violent content",
-  "share.report.reason.malware": "Malware / Phishing",
-  "share.report.reason.spam": "Spam",
-  "share.report.reason.personal-information": "Personal information / Doxxing",
-  "share.report.reason.other": "Other",
 };

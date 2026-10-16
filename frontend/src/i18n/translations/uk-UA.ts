@@ -14,24 +14,19 @@ export default {
 
   // Footer
   "footer.poweredBy": "Powered by",
-  "footer.stats.users": "{count, number} users",
-  "footer.stats.shares": "{count, number} shares",
-  "footer.stats.files": "{count, number} files",
-  "footer.stats.storage": "{size} storage used",
-
   // END footer
 
   // /
-  "home.title": "<h>{siteName}</h> a free file-sharing platform.",
-  "home.description": "Our platform allows you to generate a link for any file you wish to share, ensuring a hassle-free transfer experience.",
-  "home.bullet.a.name": "Custom Expiration & Download Limits",
-  "home.bullet.a.description": "You have the option to set expiration dates on your shared files, customize download limits, or provide password protection.",
-  "home.bullet.b.name": "Sharing via Email",
-  "home.bullet.b.description": "An integrated email feature allows you to send files directly to recipients' inboxes.",
-  "home.bullet.c.name": "Contact Us",
-  "home.bullet.c.description": "For any inquiries, takedown requests, or other concerns, please reach out to us directly at {contactEmail}.",
-  "home.button.start": "New upload",
-  "home.button.source": "About",
+  "home.title": "Платформа для обміну файлами із <h>власного хостингу</h>.",
+  "home.description": "Ви дійсно ви хочете передати свої особисті файли в руки третіх осіб, таких як WeTransfer?",
+  "home.bullet.a.name": "На власному сервері",
+  "home.bullet.a.description": "Pingvin Share працює на вашій машині.",
+  "home.bullet.b.name": "Конфіденційність",
+  "home.bullet.b.description": "Ваші файли є вашими, і вони ніколи не будуть доступні третім особам.",
+  "home.bullet.c.name": "Без дратівливого обмеження розміру файлу",
+  "home.bullet.c.description": "Завантажуйте файли будь-якого розміру. Лише жорсткий диск буде вашим обмеженням.",
+  "home.button.start": "Почнемо",
+  "home.button.source": "Вихідний код",
   // END /
 
   // /auth/signin
@@ -208,6 +203,7 @@ export default {
   "account.reverseShares.modal.public-access.description": "Зробіть процес завантаження файлу легшим для користувача, який буде з вами ділитися. Вони зможуть налаштувати лише назву та опис завантаження.",
   "account.reverseShares.modal.max-use.label": "Максимум використань",
   "account.reverseShares.modal.max-use.description": "Максимальна кількість разів, коли URL може бути використаний для створення завантаження.",
+  "account.reverseShare.never-expires": "Це зворотне завантаження ніколи не застаріє.",
   "account.reverseShare.expires-on": "Це зворотне завантаження застаріє {expiration}.",
   "account.reverseShares.table.no-shares": "Немає створених завантажень",
   "account.reverseShares.table.count.singular": "завантаження",
@@ -286,13 +282,6 @@ export default {
   "admin.shares.table.deletes": "Видалиться",
   "admin.shares.edit.delete.title": "Видалити завантаження: {id}",
   "admin.shares.edit.delete.description": "Ви дійсно хочете видалити це завантаження?",
-  "admin.shares.notify.deleted": "Share deleted successfully",
-
-  "admin.shares.search.placeholder": "Search by name, creator or share ID",
-  "admin.shares.empty": "No shares found",
-  "admin.shares.search.empty": "No shares match your search query",
-  "admin.shares.search.clear": "Clear search",
-
   // END /admin/shares
 
   // /upload
@@ -328,6 +317,8 @@ export default {
   "upload.modal.link.error.s3-etag-missing": "Відсутній заголовок ETag у відповіді S3. Переконайтеся, що CORS надає доступ до заголовка ETag.",
   "upload.modal.not-signed-in": "Ви не авторизовані",
   "upload.modal.not-signed-in-description": "Ви не зможете видалити свої файли вручну і переглянути кількість відвідувачів.",
+  "upload.modal.expires.never": "ніколи",
+  "upload.modal.expires.never-long": "Постійне завантаження",
   "upload.modal.expires.error.too-long": "Термін дії перевищує ліміт по {max}.",
   "upload.modal.link.label": "Посилання",
   "upload.modal.expires.label": "Закінчується",
@@ -356,6 +347,7 @@ export default {
   "upload.modal.accordion.security.max-views.label": "Максимум переглядів",
   "upload.modal.accordion.security.max-views.placeholder": "Без обмеження",
   // showCompletedUploadModal.tsx
+  "upload.modal.completed.never-expires": "Це завантаження ніколи не застаріє.",
   "upload.modal.completed.expires-on": "Це завантаження застаріє {expiration}.",
   "upload.modal.completed.share-ready": "Готово",
   "upload.modal.completed.notified-reverse-share-creator": "Ми сповістили створювача зворотного завантаження. Ви також можете вручну поділитися цим посиланням з ними іншим способом.",
@@ -621,9 +613,6 @@ export default {
   "admin.config.oauth.oidc-client-id.description": "Клієнтський ідентифікатор додатка OpenID Connect OAuth",
   "admin.config.oauth.oidc-client-secret": "Секрет клієнта OpenID Connect",
   "admin.config.oauth.oidc-client-secret.description": "Клієнтський секрет програми OpenID Connect OAuth",
-  "admin.config.oauth.allowed-hosts": "Allowed OAuth Hosts",
-  "admin.config.oauth.allowed-hosts.description":
-    "Comma-separated list of additional hostnames allowed for OAuth sign-in (e.g. share.internal.example.com).",
   "admin.config.category.ldap": "LDAP",
   "admin.config.ldap.enabled": "Увімкнути LDAP",
   "admin.config.ldap.enabled.description": "Використовувати LDAP автентифікацію для входу користувача",
@@ -752,22 +741,5 @@ export default {
   "admin.notice.modal.button.acknowledge": "Підтвердити та закрити",
   "admin.notice.modal.button.acknowledging": "Підтвердження...",
   "admin.notice.modal.docsLink": "Переглянути документацію",
-  "admin.notice.modal.globalNoticeFooter": "Примітка: Після підтвердження це сповіщення буде назавжди приховано для всіх адміністраторів на всіх пристроях.",
-
-  // Share report feature
-  "share.report.button": "Поскаржитися",
-  "share.report.modal.title": "Поскаржитися на публікацію",
-  "share.report.modal.description": "Якщо ця публікація містить контент, що порушує закон або наші правила, ви можете повідомити про це. Адміністратор буде повідомлений.",
-  "share.report.modal.reason": "Причина",
-  "share.report.modal.custom-reason": "Додаткові відомості",
-  "share.report.modal.error.no-reason": "Виберіть причину",
-  "share.report.modal.error.no-message": "Опишіть, чому ви скаржитеся на цю публікацію",
-  "share.report.notify.success": "Дякуємо. Вашу скаргу надіслано.",
-  "share.report.reason.dmca": "DMCA / Порушення авторських прав",
-  "share.report.reason.csam": "Матеріали сексуального насильства над дітьми (CSAM)",
-  "share.report.reason.gore": "Шокуючий / Жорстокий контент",
-  "share.report.reason.malware": "Шкідливе ПЗ / Фішинг",
-  "share.report.reason.spam": "Спам",
-  "share.report.reason.personal-information": "Особисті дані / Доксинг",
-  "share.report.reason.other": "Інше"
+  "admin.notice.modal.globalNoticeFooter": "Примітка: Після підтвердження це сповіщення буде назавжди приховано для всіх адміністраторів на всіх пристроях."
 };

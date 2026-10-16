@@ -14,11 +14,6 @@ export default {
 
   // Footer
   "footer.poweredBy": "Powered by",
-  "footer.stats.users": "{count, number} users",
-  "footer.stats.shares": "{count, number} shares",
-  "footer.stats.files": "{count, number} files",
-  "footer.stats.storage": "{size} storage used",
-
   // END footer
 
   // /
@@ -208,6 +203,7 @@ export default {
   "account.reverseShares.modal.public-access.description": "Направете споделянията, създадени с тази реверсивна връзка, публични. Ако е деактивирано, само вие и създателят на споделянето ще имате достъп до него.",
   "account.reverseShares.modal.max-use.label": "Максимум използвания",
   "account.reverseShares.modal.max-use.description": "Максималният брой пъти, в които този URL адрес може да бъде използван за създаване на споделяне.",
+  "account.reverseShare.never-expires": "Това реверсивно споделяне никога няма да изтече.",
   "account.reverseShare.expires-on": "Това реверсивно споделяне ще изтече на {expiration}.",
   "account.reverseShares.table.no-shares": "Все още няма създадени споделяния",
   "account.reverseShares.table.count.singular": "споделяне",
@@ -286,13 +282,6 @@ export default {
   "admin.shares.table.deletes": "Изтрива се на",
   "admin.shares.edit.delete.title": "Изтриване на споделяне: {id}",
   "admin.shares.edit.delete.description": "Наистина ли искате да изтриете това споделяне?",
-  "admin.shares.notify.deleted": "Share deleted successfully",
-
-  "admin.shares.search.placeholder": "Search by name, creator or share ID",
-  "admin.shares.empty": "No shares found",
-  "admin.shares.search.empty": "No shares match your search query",
-  "admin.shares.search.clear": "Clear search",
-
   // END /admin/shares
 
   // /upload
@@ -328,6 +317,8 @@ export default {
   "upload.modal.link.error.s3-etag-missing": "Липсва ETag заглавка в отговора на S3. Уверете се, че CORS експонира ETag заглавката.",
   "upload.modal.not-signed-in": "Не сте влезли в акаунта си",
   "upload.modal.not-signed-in-description": "Няма да можете да изтриете споделянето си ръчно, нито да виждате броя на посетителите.",
+  "upload.modal.expires.never": "никога",
+  "upload.modal.expires.never-long": "Постоянно споделяне",
   "upload.modal.expires.error.too-long": "Датата на изтичане надвишава максимума от {max}.",
   "upload.modal.link.label": "Връзка",
   "upload.modal.expires.label": "Изтичане",
@@ -356,6 +347,7 @@ export default {
   "upload.modal.accordion.security.max-views.label": "Максимум прегледи",
   "upload.modal.accordion.security.max-views.placeholder": "Без ограничение",
   // showCompletedUploadModal.tsx
+  "upload.modal.completed.never-expires": "Това споделяне никога няма да изтече.",
   "upload.modal.completed.expires-on": "Това споделяне ще изтече на {expiration}.",
   "upload.modal.completed.share-ready": "Споделянето е готово",
   "upload.modal.completed.notified-reverse-share-creator": "Уведомихме създателя на реверсивното споделяне. Можете също така ръчно да споделите тази връзка с него.",
@@ -621,9 +613,6 @@ export default {
   "admin.config.oauth.oidc-client-id.description": "Client ID за OpenID Connect приложението",
   "admin.config.oauth.oidc-client-secret": "OpenID Connect Client secret",
   "admin.config.oauth.oidc-client-secret.description": "Client secret за OpenID Connect приложението",
-  "admin.config.oauth.allowed-hosts": "Allowed OAuth Hosts",
-  "admin.config.oauth.allowed-hosts.description":
-    "Comma-separated list of additional hostnames allowed for OAuth sign-in (e.g. share.internal.example.com).",
   "admin.config.category.ldap": "LDAP",
   "admin.config.ldap.enabled": "Активиране на LDAP",
   "admin.config.ldap.enabled.description": "Използване на LDAP автентикация за влизане",
@@ -752,22 +741,5 @@ export default {
   "admin.notice.modal.button.acknowledge": "Потвърди и затвори",
   "admin.notice.modal.button.acknowledging": "Потвърждаване...",
   "admin.notice.modal.docsLink": "Преглед на документацията",
-  "admin.notice.modal.globalNoticeFooter": "Забележка: След като бъде потвърдено, това известие ще бъде премахнато завинаги за всички администратори на всички устройства.",
-
-  // Share report feature
-  "share.report.button": "Докладване",
-  "share.report.modal.title": "Докладване на споделянето",
-  "share.report.modal.description": "Ако това споделяне съдържа съдържание, което нарушава закона или нашите правила, можете да го докладвате. Администраторът ще бъде уведомен.",
-  "share.report.modal.reason": "Причина",
-  "share.report.modal.custom-reason": "Допълнителни подробности",
-  "share.report.modal.error.no-reason": "Изберете причина",
-  "share.report.modal.error.no-message": "Опишете защо докладвате това споделяне",
-  "share.report.notify.success": "Благодарим. Вашият сигнал е изпратен.",
-  "share.report.reason.dmca": "DMCA / Нарушаване на авторски права",
-  "share.report.reason.csam": "Материали със сексуално насилие над деца (CSAM)",
-  "share.report.reason.gore": "Кърваво / Насилствено съдържание",
-  "share.report.reason.malware": "Зловреден софтуер / Фишинг",
-  "share.report.reason.spam": "Спам",
-  "share.report.reason.personal-information": "Лични данни / Доксинг",
-  "share.report.reason.other": "Друго"
+  "admin.notice.modal.globalNoticeFooter": "Забележка: След като бъде потвърдено, това известие ще бъде премахнато завинаги за всички администратори на всички устройства."
 };

@@ -14,24 +14,19 @@ export default {
 
   // Footer
   "footer.poweredBy": "Powered by",
-  "footer.stats.users": "{count, number} users",
-  "footer.stats.shares": "{count, number} shares",
-  "footer.stats.files": "{count, number} files",
-  "footer.stats.storage": "{size} storage used",
-
   // END footer
 
   // /
-  "home.title": "<h>{siteName}</h> a free file-sharing platform.",
-  "home.description": "Our platform allows you to generate a link for any file you wish to share, ensuring a hassle-free transfer experience.",
-  "home.bullet.a.name": "Custom Expiration & Download Limits",
-  "home.bullet.a.description": "You have the option to set expiration dates on your shared files, customize download limits, or provide password protection.",
-  "home.bullet.b.name": "Sharing via Email",
-  "home.bullet.b.description": "An integrated email feature allows you to send files directly to recipients' inboxes.",
-  "home.bullet.c.name": "Contact Us",
-  "home.bullet.c.description": "For any inquiries, takedown requests, or other concerns, please reach out to us directly at {contactEmail}.",
-  "home.button.start": "New upload",
-  "home.button.source": "About",
+  "home.title": "<h>\"Itse isännöitty\"</h> tiedostojen jakamisen alusta.",
+  "home.description": "Haluatko oikeasti jakaa yksityisiä tiedostojasi kolmannen osapuolen yhtiöille niin kuin WeTransfer?",
+  "home.bullet.a.name": "Itse-Isännöitty",
+  "home.bullet.a.description": "Isännöi \"Pingvin Share\" omalla palvelimellasi.",
+  "home.bullet.b.name": "Yksityisyys",
+  "home.bullet.b.description": "Tiedostosi ovat sinun, eivätkä kolmannet osapuolet pääse niihin koskaan käsiksi.",
+  "home.bullet.c.name": "Ei ärsyttävää tiedoston kokorajoitusta",
+  "home.bullet.c.description": "Lataa niin suuria tiedostoja kuin haluat. Vain kiintolevysi tila on rajana.",
+  "home.button.start": "Aloita",
+  "home.button.source": "Lähdekoodi",
   // END /
 
   // /auth/signin
@@ -208,6 +203,7 @@ export default {
   "account.reverseShares.modal.public-access.description": "Tee tällä käänteisellä jaolla luoduista jaoista julkisia. Jos poistettu käytöstä, vain sinulla ja jaon luojalla on katseluoikeus.",
   "account.reverseShares.modal.max-use.label": "Käyttökertoja enintään",
   "account.reverseShares.modal.max-use.description": "Enimmäismäärä kertoja, joilla tämä URL-osoite voidaan käyttää joita luomiseen.",
+  "account.reverseShare.never-expires": "Tämä käänteinen jako ei koskaan vanhene.",
   "account.reverseShare.expires-on": "Tämä käänteinen jako vanhenee kun on {expiration}.",
   "account.reverseShares.table.no-shares": "Ei vielä luotuja jakoja",
   "account.reverseShares.table.count.singular": "jaa",
@@ -286,13 +282,6 @@ export default {
   "admin.shares.table.deletes": "Poistuu",
   "admin.shares.edit.delete.title": "Poista jako: {id}",
   "admin.shares.edit.delete.description": "Haluatko todella poistaa tämän jaetun tiedoston/ot?",
-  "admin.shares.notify.deleted": "Share deleted successfully",
-
-  "admin.shares.search.placeholder": "Search by name, creator or share ID",
-  "admin.shares.empty": "No shares found",
-  "admin.shares.search.empty": "No shares match your search query",
-  "admin.shares.search.clear": "Clear search",
-
   // END /admin/shares
 
   // /upload
@@ -328,6 +317,8 @@ export default {
   "upload.modal.link.error.s3-etag-missing": "ETag-otsake puuttuu S3-vastauksesta. Varmista, että CORS paljastaa ETag-otsakkeen.",
   "upload.modal.not-signed-in": "Et ole kirjautunut sisään",
   "upload.modal.not-signed-in-description": "Et voi poistaa jakoasi manuaalisesti ja tarkastella kävijöiden määrää.",
+  "upload.modal.expires.never": "ei koskaan",
+  "upload.modal.expires.never-long": "Pysyvä jako",
   "upload.modal.expires.error.too-long": "Viimeinen voimassaolopäivä ylittää enimmäisarvon {max}.",
   "upload.modal.link.label": "Linkki",
   "upload.modal.expires.label": "Vanhentuminen",
@@ -356,6 +347,7 @@ export default {
   "upload.modal.accordion.security.max-views.label": "Näkymien enimmäismäärä",
   "upload.modal.accordion.security.max-views.placeholder": "Ei rajoitusta",
   // showCompletedUploadModal.tsx
+  "upload.modal.completed.never-expires": "Tämä käänteinen jako ei koskaan vanhene.",
   "upload.modal.completed.expires-on": "Tämä käänteinen jako vanhenee kun on {expiration}.",
   "upload.modal.completed.share-ready": "Jako valmiina",
   "upload.modal.completed.notified-reverse-share-creator": "Olemme ilmoittaneet käänteisen jaon luojalle. Voit myös jakaa tämän linkin hänelle manuaalisesti muilla tavoilla.",
@@ -621,9 +613,6 @@ export default {
   "admin.config.oauth.oidc-client-id.description": "OpenID Connect OAuth -sovelluksen Client ID",
   "admin.config.oauth.oidc-client-secret": "OpenID Connect Client secret",
   "admin.config.oauth.oidc-client-secret.description": "OpenID Connect OAuth -sovelluksen Client secret",
-  "admin.config.oauth.allowed-hosts": "Allowed OAuth Hosts",
-  "admin.config.oauth.allowed-hosts.description":
-    "Comma-separated list of additional hostnames allowed for OAuth sign-in (e.g. share.internal.example.com).",
   "admin.config.category.ldap": "LDAP",
   "admin.config.ldap.enabled": "Ota LDAP käyttöön",
   "admin.config.ldap.enabled.description": "Käytä LDAP-todennusta käyttäjän kirjautumiseen",
@@ -752,22 +741,5 @@ export default {
   "admin.notice.modal.button.acknowledge": "Vahvista ja sulje",
   "admin.notice.modal.button.acknowledging": "Vahvistetaan...",
   "admin.notice.modal.docsLink": "Näytä dokumentaatio",
-  "admin.notice.modal.globalNoticeFooter": "Huomautus: Kun tämä ilmoitus on vahvistettu, se poistetaan pysyvästi kaikilta ylläpitäjiltä kaikilla laitteilla.",
-
-  // Share report feature
-  "share.report.button": "Ilmianna",
-  "share.report.modal.title": "Ilmianna jako",
-  "share.report.modal.description": "Jos tämä jako sisältää lain tai käytäntöjemme vastaista sisältöä, voit ilmiantaa sen. Ylläpitäjälle ilmoitetaan.",
-  "share.report.modal.reason": "Syy",
-  "share.report.modal.custom-reason": "Lisätiedot",
-  "share.report.modal.error.no-reason": "Valitse syy",
-  "share.report.modal.error.no-message": "Kuvaile, miksi ilmiannat tämän jaon",
-  "share.report.notify.success": "Kiitos. Ilmiantosi on lähetetty.",
-  "share.report.reason.dmca": "DMCA / Tekijänoikeusrikkomus",
-  "share.report.reason.csam": "Lapsiin kohdistuvaa seksuaaliväkivaltaa sisältävä materiaali (CSAM)",
-  "share.report.reason.gore": "Väkivaltainen / Järkyttävä sisältö",
-  "share.report.reason.malware": "Haittaohjelma / Tietojenkalastelu",
-  "share.report.reason.spam": "Roskaposti",
-  "share.report.reason.personal-information": "Henkilötiedot / Doxxaus",
-  "share.report.reason.other": "Muu"
+  "admin.notice.modal.globalNoticeFooter": "Huomautus: Kun tämä ilmoitus on vahvistettu, se poistetaan pysyvästi kaikilta ylläpitäjiltä kaikilla laitteilla."
 };
