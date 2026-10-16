@@ -10,7 +10,7 @@ import {
 } from "@mantine/core";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { TbCheck } from "react-icons/tb";
 import { FormattedMessage } from "react-intl";
 import Logo from "../components/Logo";
@@ -75,7 +75,6 @@ export default function Home() {
   const { refreshUser } = useUser();
   const router = useRouter();
   const config = useConfig();
-  const [signupEnabled, setSignupEnabled] = useState(true);
 
   // If user is already authenticated, redirect to the upload page
   useEffect(() => {
@@ -84,19 +83,7 @@ export default function Home() {
         router.replace("/upload");
       }
     });
-
-    // If registration is disabled, get started button should redirect to the sign in page
-    try {
-      const allowRegistration = config.get("security.allowRegistration");
-      setSignupEnabled(allowRegistration !== false);
-    } catch (error) {
-      setSignupEnabled(true);
-    }
   }, [config]);
-
-  const getButtonHref = () => {
-    return signupEnabled ? "/upload" : "/auth/signIn";
-  };
 
   // config.get returns null until the config has been loaded from the API
   const getConfig = (key: string, fallback: string) =>
@@ -121,7 +108,7 @@ export default function Home() {
           <div className={classes.content}>
             <Title className={classes.title}>
               <FormattedMessage
-                id="home.title"
+                id="home.custom.title"
                 values={{
                   siteName: getConfig("general.appName", "SiteName"),
                   h: (chunks) => (
@@ -131,7 +118,7 @@ export default function Home() {
               />
             </Title>
             <Text color="dimmed" mt="md">
-              <FormattedMessage id="home.description" />
+              <FormattedMessage id="home.custom.description" />
             </Text>
 
             <List
@@ -147,27 +134,27 @@ export default function Home() {
               <List.Item>
                 <div>
                   <b>
-                    <FormattedMessage id="home.bullet.a.name" />
+                    <FormattedMessage id="home.custom.bullet.a.name" />
                   </b>{" "}
-                  - <FormattedMessage id="home.bullet.a.description" />
+                  - <FormattedMessage id="home.custom.bullet.a.description" />
                 </div>
               </List.Item>
               <List.Item>
                 <div>
                   <b>
-                    <FormattedMessage id="home.bullet.b.name" />
+                    <FormattedMessage id="home.custom.bullet.b.name" />
                   </b>{" "}
-                  - <FormattedMessage id="home.bullet.b.description" />
+                  - <FormattedMessage id="home.custom.bullet.b.description" />
                 </div>
               </List.Item>
               <List.Item>
                 <div>
                   <b>
-                    <FormattedMessage id="home.bullet.c.name" />
+                    <FormattedMessage id="home.custom.bullet.c.name" />
                   </b>{" "}
                   -{" "}
                   <FormattedMessage
-                    id="home.bullet.c.description"
+                    id="home.custom.bullet.c.description"
                     values={{ contactEmail: getContactEmail() }}
                   />
                 </div>
@@ -177,15 +164,15 @@ export default function Home() {
             <Group mt={30}>
               <Button
                 component={Link}
-                href={getButtonHref()}
+                href="/upload"
                 radius="xl"
                 size="md"
                 className={classes.control}
               >
-                <FormattedMessage id="home.button.start" />
+                <FormattedMessage id="home.custom.button.start" />
               </Button>
               <Button
-                component={aboutIsExternal ? "a" : (Link as any)}
+                component={Link}
                 href={aboutHref}
                 target={aboutIsExternal ? "_blank" : undefined}
                 variant="default"
@@ -193,7 +180,7 @@ export default function Home() {
                 size="md"
                 className={classes.control}
               >
-                <FormattedMessage id="home.button.source" />
+                <FormattedMessage id="home.custom.button.source" />
               </Button>
             </Group>
           </div>

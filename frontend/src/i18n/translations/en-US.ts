@@ -24,16 +24,37 @@ export default {
   // END footer
 
   // /
-  "home.title": "<h>{siteName}</h> a free file-sharing platform.",
-  "home.description": "Our platform allows you to generate a link for any file you wish to share, ensuring a hassle-free transfer experience.",
-  "home.bullet.a.name": "Custom Expiration & Download Limits",
-  "home.bullet.a.description": "You have the option to set expiration dates on your shared files, customize download limits, or provide password protection.",
-  "home.bullet.b.name": "Sharing via Email",
-  "home.bullet.b.description": "An integrated email feature allows you to send files directly to recipients' inboxes.",
-  "home.bullet.c.name": "Contact Us",
-  "home.bullet.c.description": "For any inquiries, takedown requests, or other concerns, please reach out to us directly at {contactEmail}.",
-  "home.button.start": "New upload",
-  "home.button.source": "About",
+  "home.title": "A <h>self-hosted</h> file sharing platform.",
+
+  "home.description":
+    "Do you really want to put your personal files in the hands of third parties like WeTransfer?",
+  "home.bullet.a.name": "Self-Hosted",
+  "home.bullet.a.description": "Host Pingvin Share on your own machine.",
+  "home.bullet.b.name": "Privacy",
+  "home.bullet.b.description":
+    "Your files are yours and will never be accessed by third parties.",
+  "home.bullet.c.name": "No annoying file size limit",
+  "home.bullet.c.description":
+    "Upload files as large as you want. Your available storage is the only limit.",
+
+  "home.button.start": "Get started",
+  "home.button.source": "Source code",
+
+  // Fork-specific home page copy (English only; other locales fall back to it)
+  "home.custom.title": "<h>{siteName}</h> a free file-sharing platform.",
+  "home.custom.description":
+    "Our platform allows you to generate a link for any file you wish to share, ensuring a hassle-free transfer experience.",
+  "home.custom.bullet.a.name": "Custom Expiration & Download Limits",
+  "home.custom.bullet.a.description":
+    "You have the option to set expiration dates on your shared files, customize download limits, or provide password protection.",
+  "home.custom.bullet.b.name": "Sharing via Email",
+  "home.custom.bullet.b.description":
+    "An integrated email feature allows you to send files directly to recipients' inboxes.",
+  "home.custom.bullet.c.name": "Contact Us",
+  "home.custom.bullet.c.description":
+    "For any inquiries, takedown requests, or other concerns, please reach out to us directly at {contactEmail}.",
+  "home.custom.button.start": "New upload",
+  "home.custom.button.source": "About",
   // END /
 
   // /auth/signin
