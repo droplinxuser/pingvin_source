@@ -77,7 +77,7 @@ export async function middleware(request: NextRequest) {
     routes.public.routes = ["*"];
   }
 
-  if (!getConfig("smtp.enabled") || getConfig("oauth.disablePassword")) {
+  if (!getConfig("smtp.enabled")) {
     routes.disabled.routes.push("/auth/resetPassword*");
   }
 

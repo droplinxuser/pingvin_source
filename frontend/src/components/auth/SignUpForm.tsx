@@ -2,8 +2,6 @@ import {
   Anchor,
   Button,
   Container,
-  createStyles,
-  Group,
   Paper,
   PasswordInput,
   Stack,
@@ -21,32 +19,17 @@ import useConfig from "../../hooks/config.hook";
 import useTranslate from "../../hooks/useTranslate.hook";
 import useUser from "../../hooks/user.hook";
 import authService from "../../services/auth.service";
-import { getOAuthIcon, getOAuthUrl } from "../../utils/oauth.util";
 import toast from "../../utils/toast.util";
-
-const useStyles = createStyles({
-  signInWith: {
-    fontWeight: 500,
-    "&:before": {
-      content: "''",
-      flex: 1,
-      display: "block",
-    },
-    "&:after": {
-      content: "''",
-      flex: 1,
-      display: "block",
-    },
-  },
-});
+import OAuthButtons from "./OAuthButtons";
 
 const SignUpForm = () => {
   const config = useConfig();
   const router = useRouter();
   const t = useTranslate();
   const { refreshUser } = useUser();
-  const { classes } = useStyles();
 
+  // When password registration is disabled (oauth.disablePassword), the sign
+  // up page only offers the configured OAuth providers.
   const disablePassword = config.get("oauth.disablePassword");
   const [oauthProviders, setOauthProviders] = useState<string[] | null>(null);
 
@@ -158,28 +141,12 @@ const SignUpForm = () => {
       )}
       <Paper withBorder shadow="md" p={30} mt={30} radius="md">
         {disablePassword ? (
-          oauthProviders && (
-            <Stack>
-              <Group align="center" className={classes.signInWith}>
-                <Text>{t("signIn.oauth.signInWith")}</Text>
-              </Group>
-              <Group position="center">
-                {oauthProviders.map((provider) => (
-                  <Button
-                    key={provider}
-                    component="a"
-                    title={t(`signIn.oauth.${provider}`)}
-                    href={getOAuthUrl(provider)}
-                    variant="light"
-                    fullWidth
-                  >
-                    {getOAuthIcon(provider)}
-                    {"\u2002" + t(`signIn.oauth.${provider}`)}
-                  </Button>
-                ))}
-              </Group>
-            </Stack>
-          )
+          <Stack>
+            <OAuthButtons
+              providers={oauthProviders ?? []}
+              divider="signInWith"
+            />
+          </Stack>
         ) : (
           <form
             onSubmit={form.onSubmit((values) =>

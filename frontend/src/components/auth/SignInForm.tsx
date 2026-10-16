@@ -2,9 +2,7 @@ import {
   Anchor,
   Button,
   Container,
-  createStyles,
   Group,
-  Loader,
   Paper,
   PasswordInput,
   Stack,
@@ -24,60 +22,20 @@ import useConfig from "../../hooks/config.hook";
 import useUser from "../../hooks/user.hook";
 import useTranslate from "../../hooks/useTranslate.hook";
 import authService from "../../services/auth.service";
-import { getOAuthIcon, getOAuthUrl } from "../../utils/oauth.util";
 import { safeRedirectPath } from "../../utils/router.util";
 import toast from "../../utils/toast.util";
-
-const useStyles = createStyles((theme) => ({
-  signInWith: {
-    fontWeight: 500,
-    "&:before": {
-      content: "''",
-      flex: 1,
-      display: "block",
-    },
-    "&:after": {
-      content: "''",
-      flex: 1,
-      display: "block",
-    },
-  },
-  or: {
-    "&:before": {
-      content: "''",
-      flex: 1,
-      display: "block",
-      borderTopWidth: 1,
-      borderTopStyle: "solid",
-      borderColor:
-        theme.colorScheme === "dark"
-          ? theme.colors.dark[3]
-          : theme.colors.gray[4],
-    },
-    "&:after": {
-      content: "''",
-      flex: 1,
-      display: "block",
-      borderTopWidth: 1,
-      borderTopStyle: "solid",
-      borderColor:
-        theme.colorScheme === "dark"
-          ? theme.colors.dark[3]
-          : theme.colors.gray[4],
-    },
-  },
-}));
+import OAuthButtons from "./OAuthButtons";
 
 const SignInForm = ({ redirectPath }: { redirectPath: string }) => {
   const config = useConfig();
   const router = useRouter();
   const t = useTranslate();
   const { refreshUser } = useUser();
-  const { classes } = useStyles();
 
+  // Existing users can always sign in with email/username + password; the
+  // OAuth providers of the instance are offered alongside (signing in with a
+  // provider also registers new users when allowed).
   const [oauthProviders, setOauthProviders] = useState<string[] | null>(null);
-  const [isRedirectingToOauthProvider, setIsRedirectingToOauthProvider] =
-    useState(false);
 
   const validationSchema = yup.object().shape({
     emailOrUsername: yup.string().required(t("common.error.field-required")),
@@ -123,28 +81,11 @@ const SignInForm = ({ redirectPath }: { redirectPath: string }) => {
       .getAvailableOAuth()
       .then((providers) => {
         setOauthProviders(providers.data);
-        if (
-          providers.data.length === 1 &&
-          config.get("oauth.disablePassword")
-        ) {
-          setIsRedirectingToOauthProvider(true);
-          window.location.href = getOAuthUrl(providers.data[0]);
-        }
       })
       .catch(toast.axiosError);
   }, []);
 
   if (!oauthProviders) return null;
-
-  if (isRedirectingToOauthProvider)
-    return (
-      <Group align="center" position="center">
-        <Loader size="sm" />
-        <Text align="center">
-          <FormattedMessage id="common.text.redirecting" />
-        </Text>
-      </Group>
-    );
 
   return (
     <Container size={420} my={40}>
@@ -160,61 +101,36 @@ const SignInForm = ({ redirectPath }: { redirectPath: string }) => {
         </Text>
       )}
       <Paper withBorder shadow="md" p={30} mt={30} radius="md">
-        {config.get("oauth.disablePassword") || (
-          <form
-            onSubmit={form.onSubmit((values) => {
-              signIn(values.emailOrUsername, values.password);
-            })}
-          >
-            <TextInput
-              label={t("signin.input.email-or-username")}
-              placeholder={t("signin.input.email-or-username.placeholder")}
-              {...form.getInputProps("emailOrUsername")}
-            />
-            <PasswordInput
-              label={t("signin.input.password")}
-              placeholder={t("signin.input.password.placeholder")}
-              mt="md"
-              {...form.getInputProps("password")}
-            />
-            {config.get("smtp.enabled") && (
-              <Group position="right" mt="xs">
-                <Anchor component={Link} href="/auth/resetPassword" size="xs">
-                  <FormattedMessage id="resetPassword.title" />
-                </Anchor>
-              </Group>
-            )}
-            <Button fullWidth mt="xl" type="submit">
-              <FormattedMessage id="signin.button.submit" />
-            </Button>
-          </form>
-        )}
-        {oauthProviders.length > 0 && (
-          <Stack mt={config.get("oauth.disablePassword") ? undefined : "xl"}>
-            {config.get("oauth.disablePassword") ? (
-              <Group align="center" className={classes.signInWith}>
-                <Text>{t("signIn.oauth.signInWith")}</Text>
-              </Group>
-            ) : (
-              <Group align="center" className={classes.or}>
-                <Text>{t("signIn.oauth.or")}</Text>
-              </Group>
-            )}
-            <Group position="center">
-              {oauthProviders.map((provider) => (
-                <Button
-                  key={provider}
-                  component="a"
-                  title={t(`signIn.oauth.${provider}`)}
-                  href={getOAuthUrl(provider)}
-                  variant="light"
-                  fullWidth
-                >
-                  {getOAuthIcon(provider)}
-                  {"\u2002" + t(`signIn.oauth.${provider}`)}
-                </Button>
-              ))}
+        <form
+          onSubmit={form.onSubmit((values) => {
+            signIn(values.emailOrUsername, values.password);
+          })}
+        >
+          <TextInput
+            label={t("signin.input.email-or-username")}
+            placeholder={t("signin.input.email-or-username.placeholder")}
+            {...form.getInputProps("emailOrUsername")}
+          />
+          <PasswordInput
+            label={t("signin.input.password")}
+            placeholder={t("signin.input.password.placeholder")}
+            mt="md"
+            {...form.getInputProps("password")}
+          />
+          {config.get("smtp.enabled") && (
+            <Group position="right" mt="xs">
+              <Anchor component={Link} href="/auth/resetPassword" size="xs">
+                <FormattedMessage id="resetPassword.title" />
+              </Anchor>
             </Group>
+          )}
+          <Button fullWidth mt="xl" type="submit">
+            <FormattedMessage id="signin.button.submit" />
+          </Button>
+        </form>
+        {oauthProviders.length > 0 && (
+          <Stack mt="xl">
+            <OAuthButtons providers={oauthProviders} divider="or" />
           </Stack>
         )}
       </Paper>
