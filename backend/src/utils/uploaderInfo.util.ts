@@ -169,11 +169,10 @@ export async function writeUploaderInfo(shareId: string, info: UploaderInfo) {
 
   try {
     await fs.promises.mkdir(path.dirname(filePath), { recursive: true });
-    await fs.promises.writeFile(
-      filePath,
-      JSON.stringify(info, null, 2),
-      "utf8",
-    );
+    await fs.promises.writeFile(filePath, JSON.stringify(info, null, 2), {
+      encoding: "utf8",
+      mode: 0o600,
+    });
   } catch (error) {
     logger.warn(
       `Failed to write uploader information for share ${shareId}: ${error}`,
