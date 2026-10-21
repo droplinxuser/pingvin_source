@@ -161,7 +161,6 @@ export async function writeUploaderInfo(shareId: string, info: UploaderInfo) {
       encoding: "utf8",
       mode: 0o600,
     });
-    await fs.promises.chmod(filePath, 0o600).catch(() => {});
   } catch (error) {
     logger.warn(
       `Failed to write uploader information for share ${shareId}: ${error}`,
@@ -182,19 +181,13 @@ export async function readUploaderInfo(
     if (!parsed || typeof parsed !== "object" || Array.isArray(parsed))
       return null;
 
-    // Older files stored the public IP, coordinates and raw user agent.
-    // Strip them lazily and rewrite the file once so they do not remain on disk.
-    let changed = false;
+    // Older files may still contain private fields. Strip them from the
+    // response only; do not rewrite old files on read.
     for (const field of LEGACY_PRIVATE_FIELDS) {
-      if (field in parsed) {
-        delete parsed[field];
-        changed = true;
-      }
+      delete parsed[field];
     }
 
-    const info = parsed as unknown as UploaderInfo;
-    if (changed) await writeUploaderInfo(shareId, info);
-    return info;
+    return parsed as unknown as UploaderInfo;
   } catch {
     return null;
   }
