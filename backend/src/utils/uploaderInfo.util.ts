@@ -5,21 +5,18 @@ import * as path from "path";
 import { SHARE_DIRECTORY } from "../constants";
 
 const UPLOADER_INFO_FILE = "uploader.json";
+const LEGACY_PRIVATE_FIELDS = ["ip", "latitude", "longitude", "userAgent"];
 const logger = new Logger("UploaderInfo");
 
 export type UploaderInfo = {
-  ip?: string;
   country?: string;
   city?: string;
   region?: string;
   regionCode?: string;
   continent?: string;
-  latitude?: string;
-  longitude?: string;
   timezone?: string;
   asn?: string;
   isp?: string;
-  userAgent?: string;
   browser?: string;
   browserVersion?: string;
   os?: string;
@@ -128,29 +125,20 @@ function parseUserAgent(
 
 export function getUploaderInfo(request: Request): UploaderInfo {
   const userAgent = getHeader(request, "user-agent");
-  const forwardedFor = getHeader(request, "x-forwarded-for")?.split(",")[0];
   const platform = getHeader(request, "sec-ch-ua-platform");
   const mobileHint = getHeader(request, "sec-ch-ua-mobile");
 
   const country = getHeader(request, "cf-ipcountry");
 
   return {
-    ip:
-      getHeader(request, "cf-connecting-ip") ||
-      forwardedFor?.trim() ||
-      request.ip ||
-      request.socket?.remoteAddress,
     country: country && country !== "XX" ? country.toUpperCase() : undefined,
     city: getHeader(request, "cf-ipcity"),
     region: getHeader(request, "cf-region"),
     regionCode: getHeader(request, "cf-region-code"),
     continent: getHeader(request, "cf-ipcontinent"),
-    latitude: getHeader(request, "cf-iplatitude"),
-    longitude: getHeader(request, "cf-iplongitude"),
     timezone: getHeader(request, "cf-timezone"),
     asn: getHeader(request, "cf-asn"),
     isp: getHeader(request, "cf-asorganization"),
-    userAgent,
     ...parseUserAgent(userAgent, platform, mobileHint),
     createdAt: new Date().toISOString(),
   };
@@ -173,6 +161,7 @@ export async function writeUploaderInfo(shareId: string, info: UploaderInfo) {
       encoding: "utf8",
       mode: 0o600,
     });
+    await fs.promises.chmod(filePath, 0o600).catch(() => {});
   } catch (error) {
     logger.warn(
       `Failed to write uploader information for share ${shareId}: ${error}`,
@@ -187,9 +176,25 @@ export async function readUploaderInfo(
   if (!filePath) return null;
 
   try {
-    const parsed = JSON.parse(await fs.promises.readFile(filePath, "utf8"));
-    if (!parsed || typeof parsed !== "object") return null;
-    return parsed as UploaderInfo;
+    const parsed = JSON.parse(
+      await fs.promises.readFile(filePath, "utf8"),
+    ) as Record<string, unknown> | null;
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed))
+      return null;
+
+    // Older files stored the public IP, coordinates and raw user agent.
+    // Strip them lazily and rewrite the file once so they do not remain on disk.
+    let changed = false;
+    for (const field of LEGACY_PRIVATE_FIELDS) {
+      if (field in parsed) {
+        delete parsed[field];
+        changed = true;
+      }
+    }
+
+    const info = parsed as unknown as UploaderInfo;
+    if (changed) await writeUploaderInfo(shareId, info);
+    return info;
   } catch {
     return null;
   }

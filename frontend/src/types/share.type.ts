@@ -14,18 +14,14 @@ export type Share = {
 };
 
 export type UploaderInfo = {
-  ip?: string;
   country?: string;
   city?: string;
   region?: string;
   regionCode?: string;
   continent?: string;
-  latitude?: string;
-  longitude?: string;
   timezone?: string;
   asn?: string;
   isp?: string;
-  userAgent?: string;
   browser?: string;
   browserVersion?: string;
   os?: string;

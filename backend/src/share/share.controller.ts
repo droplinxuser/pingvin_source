@@ -159,22 +159,14 @@ export class ShareController {
     if (!info) throw new NotFoundException();
 
     // Only public shares may have their uploader metadata stored at the edge.
-    // Protected shares keep it private, and the response omits sensitive
-    // fields that are still retained in uploader.json for abuse handling.
+    // Protected shares keep it private.
     const isPublicShare =
       (request as Request & { shareIsPublic?: boolean }).shareIsPublic === true;
     response.set(
       isPublicShare ? getDownloadCacheHeaders(true) : NO_STORE_HEADERS,
     );
 
-    const {
-      ip: _ip,
-      latitude: _latitude,
-      longitude: _longitude,
-      userAgent: _userAgent,
-      ...publicInfo
-    } = info;
-    return publicInfo;
+    return info;
   }
 
   @Post()
