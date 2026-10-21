@@ -109,6 +109,7 @@ const Admin = () => {
         <Center>
           <Text size="xs" color="dimmed">
             <FormattedMessage id="admin.version" /> {process.env.VERSION}
+            {process.env.COMMIT_HASH ? ` (${process.env.COMMIT_HASH})` : ""}
           </Text>
         </Center>
       </Stack>

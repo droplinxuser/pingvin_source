@@ -1,5 +1,20 @@
 /** @type {import('next').NextConfig} */
+const { execSync } = require("child_process");
 const { version } = require("./package.json");
+
+let commitHash = process.env.COMMIT_HASH || "";
+if (!commitHash) {
+  try {
+    commitHash = execSync("git rev-parse --short=8 HEAD", {
+      cwd: __dirname,
+      stdio: ["ignore", "pipe", "ignore"],
+    })
+      .toString()
+      .trim();
+  } catch {
+    // Building outside a git checkout (e.g. a source archive).
+  }
+}
 
 const withPWA = require("next-pwa")({
   dest: "public",
@@ -55,5 +70,6 @@ module.exports = withPWA({
   },
   env: {
     VERSION: version,
+    COMMIT_HASH: commitHash,
   },
 });
