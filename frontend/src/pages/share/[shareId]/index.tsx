@@ -46,9 +46,13 @@ export async function getServerSideProps(context: GetServerSidePropsContext) {
   try {
     await axios.head(`${apiURL}/api/shares/${encodeURIComponent(shareId)}`);
   } catch (e) {
-    // A malformed or missing share ID can never resolve to a share page.
-    if (axios.isAxiosError(e) && [400, 404].includes(e.response?.status ?? 0)) {
-      return { notFound: true };
+    if (axios.isAxiosError(e)) {
+      const status = e.response?.status;
+      // Keep the share-specific "not found" message rendered by the page,
+      // but make the HTTP response itself a 404.
+      if (status === 400 || status === 404) {
+        context.res.statusCode = 404;
+      }
     }
   }
 
