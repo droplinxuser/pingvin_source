@@ -10,6 +10,7 @@ import {
   Share,
   ShareMetaData,
   UpdateShare,
+  UploaderInfo,
 } from "../types/share.type";
 import { generateUUID } from "../utils/crypto.util";
 import {
@@ -79,6 +80,11 @@ const getFromOwner = async (id: string): Promise<Share> => {
 const getMetaData = async (id: string): Promise<ShareMetaData> => {
   if (!isValidId(id)) throw new Error("Invalid ID");
   return (await api.get(`shares/${id}/metaData`)).data;
+};
+
+const getUploaderInfo = async (id: string): Promise<UploaderInfo> => {
+  if (!isValidId(id)) throw new Error("Invalid ID");
+  return (await api.get(`shares/${id}/uploader`)).data;
 };
 
 const remove = async (id: string) => {
@@ -502,6 +508,7 @@ export default {
   report,
   expire,
   getMetaData,
+  getUploaderInfo,
   doesFileSupportPreview,
   isShareTextFile,
   getFileMimeType,

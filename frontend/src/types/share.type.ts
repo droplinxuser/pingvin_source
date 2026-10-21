@@ -12,6 +12,27 @@ export type Share = {
   hasPassword: boolean;
 };
 
+export type UploaderInfo = {
+  ip?: string;
+  country?: string;
+  city?: string;
+  region?: string;
+  regionCode?: string;
+  continent?: string;
+  latitude?: string;
+  longitude?: string;
+  timezone?: string;
+  asn?: string;
+  isp?: string;
+  userAgent?: string;
+  browser?: string;
+  browserVersion?: string;
+  os?: string;
+  osVersion?: string;
+  deviceType?: string;
+  createdAt: string;
+};
+
 export type CompletedShare = Share & {
   /**
    * undefined means is not reverse share

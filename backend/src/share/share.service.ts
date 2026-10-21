@@ -586,6 +586,9 @@ export class ShareService {
       throw new ForbiddenException(this.i18n.t("share.anonymousNoDelete"));
 
     await this.fileService.deleteAllFiles(shareId);
+    await fs.promises
+      .rm(`${SHARE_DIRECTORY}/${shareId}`, { recursive: true, force: true })
+      .catch(() => {});
     await this.prisma.share.delete({ where: { id: shareId } });
   }
 

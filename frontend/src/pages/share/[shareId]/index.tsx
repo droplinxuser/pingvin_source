@@ -20,6 +20,7 @@ import Meta from "../../../components/Meta";
 import DownloadAllButton from "../../../components/share/DownloadAllButton";
 import FileList from "../../../components/share/FileList";
 import MediaPreviewGallery from "../../../components/share/MediaPreviewGallery";
+import UploaderInfoBadges from "../../../components/share/UploaderInfoBadges";
 import Ads from "../../../components/Ads";
 import showEnterPasswordModal from "../../../components/share/showEnterPasswordModal";
 import showErrorModal from "../../../components/share/showErrorModal";
@@ -29,7 +30,11 @@ import useConfig from "../../../hooks/config.hook";
 import useTranslate from "../../../hooks/useTranslate.hook";
 import useUser from "../../../hooks/user.hook";
 import shareService from "../../../services/share.service";
-import { MyShare, Share as ShareType } from "../../../types/share.type";
+import {
+  MyShare,
+  Share as ShareType,
+  UploaderInfo,
+} from "../../../types/share.type";
 import toast from "../../../utils/toast.util";
 import { byteToHumanSizeString } from "../../../utils/fileSize.util";
 import { getQueryString } from "../../../utils/router.util";
@@ -76,6 +81,7 @@ const Share = ({
 
   const [share, setShare] = useState<ShareType>();
   const [isRestricted, setIsRestricted] = useState(false);
+  const [uploaderInfo, setUploaderInfo] = useState<UploaderInfo>();
   const [pageError, setPageError] = useState<{
     title: string;
     description: string;
@@ -230,6 +236,24 @@ const Share = ({
     if (!initialNotFound) getFiles();
   }, []);
 
+  // Uploader details are stored in a small text file inside the share folder.
+  // Load them after the share itself so they never block the page render.
+  useEffect(() => {
+    if (!share) return;
+
+    let active = true;
+    shareService
+      .getUploaderInfo(shareId)
+      .then((info) => {
+        if (active) setUploaderInfo(info);
+      })
+      .catch(() => {});
+
+    return () => {
+      active = false;
+    };
+  }, [share, shareId]);
+
   if (isRestricted) {
     return (
       <Center style={{ height: "70vh" }}>
@@ -303,13 +327,16 @@ const Share = ({
             </Text>
           )}
           {share && (
-            <Text size="sm" color="dimmed" mt={5}>
-              <FormattedMessage
-                id="share.viewCount"
-                defaultMessage="{count, plural, =1 {# view} other {# views}}"
-                values={{ count: share.views }}
-              />
-            </Text>
+            <Group spacing="xs" mt={5}>
+              <Text size="sm" color="dimmed">
+                <FormattedMessage
+                  id="share.viewCount"
+                  defaultMessage="{count, plural, =1 {# view} other {# views}}"
+                  values={{ count: share.views }}
+                />
+              </Text>
+              <UploaderInfoBadges share={share} info={uploaderInfo} />
+            </Group>
           )}
         </Box>
 

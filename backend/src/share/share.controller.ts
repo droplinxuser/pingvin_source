@@ -25,6 +25,11 @@ import { JwtGuard } from "src/auth/guard/jwt.guard";
 import { ConfigService } from "src/config/config.service";
 import { NoStore } from "src/utils/cache.util";
 import { parsePagination } from "src/utils/pagination.util";
+import {
+  getUploaderInfo,
+  readUploaderInfo,
+  writeUploaderInfo,
+} from "src/utils/uploaderInfo.util";
 import { AdminShareDTO } from "./dto/adminShare.dto";
 import { CreateShareDTO } from "./dto/createShare.dto";
 import { MyShareDTO } from "./dto/myShare.dto";
@@ -136,6 +141,17 @@ export class ShareController {
     return new ShareMetaDataDTO().from(await this.shareService.getMetaData(id));
   }
 
+  // Uploader details live in uploader.json inside the share folder. The
+  // request is lazy-loaded by the share page after the share is accessible.
+  @Get(":id/uploader")
+  @UseGuards(IdValidation, ShareSecurityGuard)
+  @NoStore()
+  async getUploader(@Param("id") id: string) {
+    const info = await readUploaderInfo(id);
+    if (!info) throw new NotFoundException();
+    return info;
+  }
+
   @Post()
   @UseGuards(CreateShareGuard)
   async create(
@@ -144,9 +160,13 @@ export class ShareController {
     @GetUser() user: User,
   ) {
     const { reverse_share_token } = request.cookies;
-    return new ShareDTO().from(
-      await this.shareService.create(body, user, reverse_share_token),
+    const share = await this.shareService.create(
+      body,
+      user,
+      reverse_share_token,
     );
+    await writeUploaderInfo(share.id, getUploaderInfo(request));
+    return new ShareDTO().from(share);
   }
 
   @Patch(":id")
