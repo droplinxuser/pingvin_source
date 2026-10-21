@@ -14,10 +14,7 @@ LimitNOFILE=524288
 Environment=DATABASE_URL="file:/var/www/pingvin_data/pingvin-share.db?connection_limit=1"
 Environment=DATA_DIRECTORY="/var/www/pingvin_data"
 Environment=SITE_NAME=SiteName
-# Optional: send share report notifications to this address instead of the
-# SMTP sender email (smtp.email) configured in the admin UI.
-# Environment=REPORT_EMAIL=admin@example.com
-
+Environment=REPORT_EMAIL=admin@gmail.com
 Environment=TRUST_PROXY=true
 Environment=THROTTLE_LIMIT=300
 
