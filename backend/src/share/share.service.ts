@@ -455,6 +455,8 @@ export class ShareService {
         return { views: direction };
       case "expiration":
         return { expiration: direction };
+      case "createdAt":
+        return { createdAt: direction };
       case "username":
         return { creator: { username: direction } };
       default:

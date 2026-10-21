@@ -76,6 +76,16 @@ const ManageShareTable = ({
             </th>
             <th>
               <Group spacing="xs">
+                <FormattedMessage id="admin.shares.table.uploadDate" />
+                <TableSortIcon
+                  sort={sort}
+                  setSort={setSort}
+                  property="createdAt"
+                />
+              </Group>
+            </th>
+            <th>
+              <Group spacing="xs">
                 <FormattedMessage id="account.shares.table.visitors" />
                 <TableSortIcon sort={sort} setSort={setSort} property="views" />
               </Group>
@@ -120,6 +130,7 @@ const ManageShareTable = ({
                       <Text color="dimmed">Anonymous</Text>
                     )}
                   </td>
+                  <td>{moment(share.createdAt).format("LLL")}</td>
                   <td>{share.views}</td>
                   <td>{byteToHumanSizeString(share.size)}</td>
                   <td>
@@ -217,6 +228,9 @@ const skeletonRows = [...Array(10)].map((v, i) => (
         <Skeleton key={i} height={20} />
       </td>
     </MediaQuery>
+    <td>
+      <Skeleton key={i} height={20} />
+    </td>
     <td>
       <Skeleton key={i} height={20} />
     </td>

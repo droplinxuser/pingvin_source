@@ -277,6 +277,7 @@ export default {
   "admin.shares.diskUsage": "Χρήση δίσκου",
   "admin.shares.table.id": "Αναγνωριστικό κοινοποίησης",
   "admin.shares.table.username": "Δημιουργός",
+  "admin.shares.table.uploadDate": "Ημερομηνία μεταφόρτωσης",
   "admin.shares.table.visitors": "Επισκέπτες",
   "admin.shares.table.expires": "Λήγει στις",
   "admin.shares.table.deletes": "Διαγράφεται στις",

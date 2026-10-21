@@ -277,6 +277,7 @@ export default {
   "admin.shares.diskUsage": "استخدام القرص",
   "admin.shares.table.id": "معرّف المشاركة",
   "admin.shares.table.username": "المُنشئ",
+  "admin.shares.table.uploadDate": "تاريخ الرفع",
   "admin.shares.table.visitors": "الزوار",
   "admin.shares.table.expires": "ينتهي في",
   "admin.shares.table.deletes": "يُحذف في",

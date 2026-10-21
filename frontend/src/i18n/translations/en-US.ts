@@ -375,6 +375,7 @@ export default {
   "admin.shares.diskUsage": "Disk Usage",
   "admin.shares.table.id": "Share ID",
   "admin.shares.table.username": "Creator",
+  "admin.shares.table.uploadDate": "Upload date",
   "admin.shares.table.visitors": "Visitors",
   "admin.shares.table.expires": "Expires on",
   "admin.shares.table.deletes": "Deletes on",

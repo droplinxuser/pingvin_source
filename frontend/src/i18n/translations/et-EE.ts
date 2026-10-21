@@ -277,6 +277,7 @@ export default {
   "admin.shares.diskUsage": "Kettakasutus",
   "admin.shares.table.id": "Jagamise ID",
   "admin.shares.table.username": "Looja",
+  "admin.shares.table.uploadDate": "Üleslaadimise kuupäev",
   "admin.shares.table.visitors": "Külastajad",
   "admin.shares.table.expires": "Aegub",
   "admin.shares.table.deletes": "Kustub",

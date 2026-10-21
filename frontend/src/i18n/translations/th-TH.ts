@@ -277,6 +277,7 @@ export default {
   "admin.shares.diskUsage": "การใช้พื้นที่ดิสก์",
   "admin.shares.table.id": "ID การแชร์",
   "admin.shares.table.username": "ผู้สร้าง",
+  "admin.shares.table.uploadDate": "วันที่อัปโหลด",
   "admin.shares.table.visitors": "ผู้เข้าชม",
   "admin.shares.table.expires": "หมดอายุวันที่",
   "admin.shares.table.deletes": "จะถูกลบวันที่",

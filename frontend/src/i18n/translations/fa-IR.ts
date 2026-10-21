@@ -277,6 +277,7 @@ export default {
   "admin.shares.diskUsage": "استفاده از دیسک",
   "admin.shares.table.id": "شناسه اشتراک",
   "admin.shares.table.username": "سازنده",
+  "admin.shares.table.uploadDate": "تاریخ بارگذاری",
   "admin.shares.table.visitors": "بازدیدکنندگان",
   "admin.shares.table.expires": "منقضی می‌شود در",
   "admin.shares.table.deletes": "حذف می‌شود در",

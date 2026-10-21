@@ -277,6 +277,7 @@ export default {
   "admin.shares.diskUsage": "Disk Kullanımı",
   "admin.shares.table.id": "Paylaşım ID",
   "admin.shares.table.username": "Oluşturan",
+  "admin.shares.table.uploadDate": "Yükleme tarihi",
   "admin.shares.table.visitors": "Ziyaretçi Sayısı",
   "admin.shares.table.expires": "Bitiş Tarihi",
   "admin.shares.table.deletes": "Silinme tarihi",

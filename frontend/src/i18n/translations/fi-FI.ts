@@ -277,6 +277,7 @@ export default {
   "admin.shares.diskUsage": "Levynkäyttö",
   "admin.shares.table.id": "Jaon tunnus",
   "admin.shares.table.username": "Luoja",
+  "admin.shares.table.uploadDate": "Latauspäivä",
   "admin.shares.table.visitors": "Vierailijat",
   "admin.shares.table.expires": "Vanhenee",
   "admin.shares.table.deletes": "Poistuu",

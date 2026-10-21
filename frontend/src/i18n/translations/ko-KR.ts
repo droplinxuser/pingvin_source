@@ -277,6 +277,7 @@ export default {
   "admin.shares.diskUsage": "디스크 사용량",
   "admin.shares.table.id": "공유 ID",
   "admin.shares.table.username": "만든이",
+  "admin.shares.table.uploadDate": "업로드 날짜",
   "admin.shares.table.visitors": "방문자",
   "admin.shares.table.expires": "만료일",
   "admin.shares.table.deletes": "삭제일",

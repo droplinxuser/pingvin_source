@@ -277,6 +277,7 @@ export default {
   "admin.shares.diskUsage": "Schijfgebruik",
   "admin.shares.table.id": "Deel ID",
   "admin.shares.table.username": "Auteur",
+  "admin.shares.table.uploadDate": "Uploaddatum",
   "admin.shares.table.visitors": "Bezoekers",
   "admin.shares.table.expires": "Verloopt op",
   "admin.shares.table.deletes": "Verwijdert op",

@@ -277,6 +277,7 @@ export default {
   "admin.shares.diskUsage": "Использование диска",
   "admin.shares.table.id": "ID раздачи (или Идентификатор раздачи)",
   "admin.shares.table.username": "Автор",
+  "admin.shares.table.uploadDate": "Дата загрузки",
   "admin.shares.table.visitors": "Посетители",
   "admin.shares.table.expires": "Срок действия до",
   "admin.shares.table.deletes": "Удалён",

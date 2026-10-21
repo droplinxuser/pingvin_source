@@ -277,6 +277,7 @@ export default {
   "admin.shares.diskUsage": "Tárhelyhasználat",
   "admin.shares.table.id": "Megosztás ID",
   "admin.shares.table.username": "Létrehozó",
+  "admin.shares.table.uploadDate": "Feltöltés dátuma",
   "admin.shares.table.visitors": "Látogatók",
   "admin.shares.table.expires": "Lejár",
   "admin.shares.table.deletes": "Törlések ekkor",

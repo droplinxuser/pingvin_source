@@ -277,6 +277,7 @@ export default {
   "admin.shares.diskUsage": "Употреба диска",
   "admin.shares.table.id": "ID дељења",
   "admin.shares.table.username": "Креатор",
+  "admin.shares.table.uploadDate": "Датум отпремања",
   "admin.shares.table.visitors": "Посетиоци",
   "admin.shares.table.expires": "Истиче",
   "admin.shares.table.deletes": "Брише се",
