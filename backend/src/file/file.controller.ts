@@ -30,6 +30,8 @@ import { FileSecurityGuard } from "./guard/fileSecurity.guard";
 
 const VALID_ID_REGEX = /^[a-zA-Z0-9-]*={0,2}$/;
 
+type FileRequest = Request & { shareIsPublic?: boolean };
+
 function getValidRecipientId(recipientId?: string): string | undefined {
   if (!recipientId) return undefined;
   return VALID_ID_REGEX.test(recipientId) ? recipientId : undefined;
@@ -146,7 +148,9 @@ export class FileController {
       "Content-Type": "application/zip",
       "Content-Disposition": contentDisposition(`${shareId}.zip`),
     });
-    res.set(getDownloadCacheHeaders(req, shareId));
+    res.set(
+      getDownloadCacheHeaders((req as FileRequest).shareIsPublic === true),
+    );
 
     void this.fileService.notifyRecipientDownload(
       shareId,
@@ -248,9 +252,10 @@ export class FileController {
       headers["Content-Security-Policy"] = "sandbox";
     }
 
-    if (isDownload && !file.range) {
-      Object.assign(headers, getDownloadCacheHeaders(req, shareId));
-    }
+    Object.assign(
+      headers,
+      getDownloadCacheHeaders((req as FileRequest).shareIsPublic === true),
+    );
 
     res.set(headers);
 

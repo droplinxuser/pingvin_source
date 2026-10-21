@@ -1,8 +1,8 @@
 import { applyDecorators, Header } from "@nestjs/common";
-import { Request } from "express";
 
-// How long Cloudflare and browsers may cache successful download responses
-const DOWNLOAD_CACHE_MAX_AGE = 3600;
+// Public downloads are immutable for a given share/file URL. Cloudflare and
+// browsers may keep them for a year; protected shares stay private.
+const DOWNLOAD_CACHE_MAX_AGE = 60 * 60 * 24 * 365;
 
 export const NO_STORE_HEADERS = {
   "Cache-Control": "no-store",
@@ -26,29 +26,25 @@ export const NoStore = () =>
   );
 
 /**
- * Cloudflare's default cache key ignores cookies, so responses for
- * authenticated access must not carry public cache headers - otherwise
- * password protected or recipient restricted files would be served from
- * the edge cache to anyone.
- */
-function isAuthenticatedRequest(req: Request, shareId: string): boolean {
-  return !!(req.cookies.access_token || req.cookies[`share_${shareId}_token`]);
-}
-
-/**
- * Cache headers for a successful (full 200) download response: unauthenticated
- * downloads may be cached on Cloudflare edge servers, authenticated downloads
- * stay out of shared caches.
+ * Cache headers for a successful file or ZIP response. Files belonging to a
+ * public share can be stored on Cloudflare and in browsers for a year,
+ * regardless of whether the visitor has a share token. Protected shares stay
+ * private so CDN edges never serve them to other visitors.
  */
 export function getDownloadCacheHeaders(
-  req: Request,
-  shareId: string,
+  isPublicShare: boolean,
 ): Record<string, string> {
-  if (isAuthenticatedRequest(req, shareId)) {
-    return { "Cache-Control": "private" };
+  if (!isPublicShare) {
+    return {
+      "Cache-Control": "private",
+      "CDN-Cache-Control": "private",
+      "Cloudflare-CDN-Cache-Control": "private",
+    };
   }
+  const value = `public, max-age=${DOWNLOAD_CACHE_MAX_AGE}, immutable`;
   return {
-    "Cache-Control": `public, max-age=${DOWNLOAD_CACHE_MAX_AGE}`,
-    "CDN-Cache-Control": `public, max-age=${DOWNLOAD_CACHE_MAX_AGE}`,
+    "Cache-Control": value,
+    "CDN-Cache-Control": value,
+    "Cloudflare-CDN-Cache-Control": value,
   };
 }

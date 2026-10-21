@@ -1,5 +1,6 @@
 import axios from "axios";
 import { GetServerSidePropsContext } from "next";
+import { setPublicPageCacheHeaders } from "../utils/antiCache.util";
 
 // The PWA manifest is served dynamically so that the name always reflects
 // the site name configured on the backend (general.appName, which can be
@@ -44,6 +45,7 @@ export async function getServerSideProps({ res }: GetServerSidePropsContext) {
   }
 
   res.setHeader("Content-Type", "application/manifest+json; charset=utf-8");
+  setPublicPageCacheHeaders(res);
   res.write(JSON.stringify(buildManifest(siteName), null, 2));
   res.end();
 

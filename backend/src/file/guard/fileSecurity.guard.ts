@@ -55,6 +55,12 @@ export class FileSecurityGuard extends ShareSecurityGuard {
       },
     });
 
+    (request as Request & { shareIsPublic?: boolean }).shareIsPublic =
+      !!share &&
+      !share.security?.password &&
+      !share.security?.restrictToRecipients &&
+      (!share.reverseShare || share.reverseShare.publicAccess);
+
     // If there is no share token the user requests a file directly
     if (!shareToken) {
       const user = await this.authenticateUser(context);

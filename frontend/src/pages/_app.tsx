@@ -38,8 +38,12 @@ import AdminNoticeModal, {
   AdminNotice,
 } from "../components/admin/AdminNoticeModal";
 import adminNoticeService from "../services/adminNotice.service";
+import { setPublicPageCacheHeaders } from "../utils/antiCache.util";
 
 const excludeDefaultLayoutRoutes = ["/admin/config/[category]"];
+// Only public, content-only pages. Account, admin, upload and share pages
+// depend on the visitor or change on every request, so they must stay dynamic.
+const cacheablePageRoutes = new Set(["/", "/imprint", "/privacy"]);
 const availableMantineColors = [
   "dark",
   "gray",
@@ -209,6 +213,19 @@ function App({ Component, pageProps }: AppProps) {
     setRoute(router.pathname);
   }, [router.pathname]);
 
+  // Public pages can be served from the CDN as an anonymous shell. Restore
+  // the real user immediately when a logged-in visitor receives such a copy.
+  useEffect(() => {
+    if (pageProps.user || !getCookie("access_token")) return;
+
+    userService
+      .getCurrentUser()
+      .then((currentUser) => {
+        if (currentUser) setUser(currentUser);
+      })
+      .catch(() => {});
+  }, []);
+
   useEffect(() => {
     const interval = setInterval(
       async () => await authService.refreshAccessToken(),
@@ -226,7 +243,14 @@ function App({ Component, pageProps }: AppProps) {
         i18nUtil.setLanguageCookie(pageProps.language);
       }
     } else if (pageProps.language !== cookieLanguage) {
-      location.reload();
+      // A CDN-cached page may be rendered in the default language. Add the
+      // language to the URL so the CDN cache key differs from the default
+      // version, then let the origin render the visitor's language.
+      const url = new URL(location.href);
+      if (url.searchParams.get("lang") !== cookieLanguage) {
+        url.searchParams.set("lang", cookieLanguage);
+        location.replace(url.toString());
+      }
     }
 
     const current = i18nUtil.getLocaleByCode(pageProps.language);
@@ -416,6 +440,25 @@ App.getInitialProps = async ({ ctx }: { ctx: GetServerSidePropsContext }) => {
 
     pageProps.language =
       ctx.req.cookies["language"] || defaultLanguage || requestLanguage;
+
+    const pageLanguage = i18nUtil.getLocaleByCode(
+      pageProps.language || "en-US",
+    ).code;
+    const defaultPageLanguage = i18nUtil.getLocaleByCode(
+      defaultLanguage || "en-US",
+    ).code;
+    const requestPath = ctx.req.url?.split("?")[0];
+
+    if (
+      ctx.res &&
+      !pageProps.user &&
+      !pageProps.isConfigFallback &&
+      requestPath &&
+      cacheablePageRoutes.has(requestPath) &&
+      pageLanguage === defaultPageLanguage
+    ) {
+      setPublicPageCacheHeaders(ctx.res);
+    }
   }
   return { pageProps };
 };

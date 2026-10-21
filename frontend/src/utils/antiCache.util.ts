@@ -1,5 +1,12 @@
 import { ServerResponse } from "http";
 
+// Cacheable public pages (home, legal pages) can be stored on Cloudflare for
+// a month. Browsers revalidate on every navigation so a new deployment is
+// picked up immediately; the CDN keeps serving the cached copy in the
+// meantime.
+export const PUBLIC_PAGE_CACHE_MAX_AGE = 60 * 60 * 24 * 30;
+const PUBLIC_PAGE_CACHE_VALUE = `public, max-age=0, s-maxage=${PUBLIC_PAGE_CACHE_MAX_AGE}, stale-while-revalidate=86400`;
+
 // Strict anti-caching headers used for share pages. They instruct browsers,
 // origin servers and CDN edges (such as Cloudflare) to never cache the
 // response, since share page data changes on every visit (rolling expiration,
@@ -16,4 +23,17 @@ export const setNoStoreCacheHeaders = (res: ServerResponse) => {
   Object.entries(NO_STORE_CACHE_HEADERS).forEach(([name, value]) =>
     res.setHeader(name, value),
   );
+};
+
+export const setPublicPageCacheHeaders = (res: ServerResponse) => {
+  res.setHeader("Cache-Control", PUBLIC_PAGE_CACHE_VALUE);
+  res.setHeader(
+    "CDN-Cache-Control",
+    `public, s-maxage=${PUBLIC_PAGE_CACHE_MAX_AGE}, stale-while-revalidate=86400`,
+  );
+  res.setHeader(
+    "Cloudflare-CDN-Cache-Control",
+    `public, s-maxage=${PUBLIC_PAGE_CACHE_MAX_AGE}, stale-while-revalidate=86400`,
+  );
+  res.setHeader("Vary", "Accept-Encoding, Accept-Language, Cookie");
 };
