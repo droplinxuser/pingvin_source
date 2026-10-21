@@ -75,7 +75,7 @@ const SignInForm = ({ redirectPath }: { redirectPath: string }) => {
   const { refreshUser } = useUser();
   const { classes } = useStyles();
 
-  const [oauthProviders, setOauthProviders] = useState<string[] | null>(null);
+  const [oauthProviders, setOauthProviders] = useState<string[]>([]);
   const [isRedirectingToOauthProvider, setIsRedirectingToOauthProvider] =
     useState(false);
 
@@ -133,8 +133,6 @@ const SignInForm = ({ redirectPath }: { redirectPath: string }) => {
       })
       .catch(toast.axiosError);
   }, []);
-
-  if (!oauthProviders) return null;
 
   if (isRedirectingToOauthProvider)
     return (

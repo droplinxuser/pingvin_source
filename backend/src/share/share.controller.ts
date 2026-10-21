@@ -108,6 +108,7 @@ export class ShareController {
   // no rolling expiration, no token required).
   @Head(":id")
   @SkipThrottle()
+  @NoStore()
   async exists(@Param("id") id: string) {
     if ((await this.shareService.isShareIdAvailable(id)).isAvailable)
       throw new NotFoundException();

@@ -42,6 +42,7 @@ export async function getServerSideProps(context: GetServerSidePropsContext) {
 
   const shareId = context.params!.shareId as string;
   const apiURL = process.env.API_URL || "http://localhost:8080";
+  let initialNotFound = false;
 
   try {
     await axios.head(`${apiURL}/api/shares/${encodeURIComponent(shareId)}`);
@@ -52,21 +53,40 @@ export async function getServerSideProps(context: GetServerSidePropsContext) {
       // but make the HTTP response itself a 404.
       if (status === 400 || status === 404) {
         context.res.statusCode = 404;
+        initialNotFound = true;
       }
     }
   }
 
-  return { props: { shareId } };
+  return { props: { shareId, initialNotFound } };
 }
 
-const Share = ({ shareId }: { shareId: string }) => {
+const Share = ({
+  shareId,
+  initialNotFound = false,
+}: {
+  shareId: string;
+  initialNotFound?: boolean;
+}) => {
   const modals = useModals();
   const router = useRouter();
-  const [share, setShare] = useState<ShareType>();
-  const [isRestricted, setIsRestricted] = useState(false);
   const { user } = useUser();
   const config = useConfig();
   const t = useTranslate();
+
+  const [share, setShare] = useState<ShareType>();
+  const [isRestricted, setIsRestricted] = useState(false);
+  const [pageError, setPageError] = useState<{
+    title: string;
+    description: string;
+  } | null>(() =>
+    initialNotFound
+      ? {
+          title: t("share.error.not-found.title"),
+          description: t("share.error.not-found.description"),
+        }
+      : null,
+  );
 
   const isOwner = !!user && !!share && share.creator?.id === user.id;
 
@@ -163,26 +183,23 @@ const Share = ({ shareId }: { shareId: string }) => {
     shareService
       .get(shareId)
       .then((share) => {
+        setPageError(null);
         setShare(share);
       })
       .catch((e) => {
         const { error } = e.response.data;
         if (e.response.status == 404) {
-          if (error == "share_removed") {
-            showErrorModal(
-              modals,
-              t("share.error.removed.title"),
-              e.response.data.message,
-              "go-home",
-            );
-          } else {
-            showErrorModal(
-              modals,
-              t("share.error.not-found.title"),
-              t("share.error.not-found.description"),
-              "go-home",
-            );
-          }
+          setPageError(
+            error == "share_removed"
+              ? {
+                  title: t("share.error.removed.title"),
+                  description: e.response.data.message,
+                }
+              : {
+                  title: t("share.error.not-found.title"),
+                  description: t("share.error.not-found.description"),
+                },
+          );
         } else if (
           e.response.status == 403 &&
           error == "share_restricted_to_recipients"
@@ -210,7 +227,7 @@ const Share = ({ shareId }: { shareId: string }) => {
   };
 
   useEffect(() => {
-    getFiles();
+    if (!initialNotFound) getFiles();
   }, []);
 
   if (isRestricted) {
@@ -231,6 +248,29 @@ const Share = ({ shareId }: { shareId: string }) => {
           </Button>
         </Stack>
       </Center>
+    );
+  }
+
+  if (pageError) {
+    return (
+      <>
+        <Meta
+          title={t("share.title", { shareId })}
+          description={t("share.description")}
+        />
+        <Center style={{ height: "70vh" }}>
+          <Stack align="center" spacing="md">
+            <Title order={3}>{pageError.title}</Title>
+            <Text color="dimmed" align="center">
+              {pageError.description}
+            </Text>
+            <Button component={Link} href="/">
+              <FormattedMessage id="common.button.go-home" />
+            </Button>
+          </Stack>
+        </Center>
+        <Ads />
+      </>
     );
   }
 
