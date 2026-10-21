@@ -7,6 +7,7 @@ const DOWNLOAD_CACHE_MAX_AGE = 60 * 60 * 24 * 365;
 export const NO_STORE_HEADERS = {
   "Cache-Control": "no-store",
   "CDN-Cache-Control": "no-store",
+  "Cloudflare-CDN-Cache-Control": "no-store",
 };
 
 /**

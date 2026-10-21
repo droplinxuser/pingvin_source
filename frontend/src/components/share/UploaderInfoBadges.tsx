@@ -105,10 +105,6 @@ const UploaderInfoBadges = ({
   const continentName = info?.continent
     ? continentNames[info.continent] || info.continent
     : undefined;
-  const coordinates =
-    info?.latitude && info?.longitude
-      ? `${info.latitude}, ${info.longitude}`
-      : undefined;
   const uploadedAt =
     info?.createdAt && moment(info.createdAt).isValid()
       ? moment(info.createdAt).format("LL")
@@ -120,9 +116,7 @@ const UploaderInfoBadges = ({
     continentName && `${t("share.uploader.continent")}: ${continentName}`,
     info?.isp && `${t("share.uploader.isp")}: ${info.isp}`,
     info?.asn && `${t("share.uploader.asn")}: AS${info.asn}`,
-    info?.ip && `${t("share.uploader.ip")}: ${info.ip}`,
     info?.timezone && `${t("share.uploader.timezone")}: ${info.timezone}`,
-    coordinates && `${t("share.uploader.coordinates")}: ${coordinates}`,
     info?.deviceType && `${t("share.uploader.device")}: ${info.deviceType}`,
   ].filter(Boolean) as string[];
 

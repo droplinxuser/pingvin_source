@@ -2,6 +2,7 @@ import User from "./user.type";
 
 export type Share = {
   id: string;
+  createdAt?: string | Date;
   name?: string;
   files: any;
   creator?: User;

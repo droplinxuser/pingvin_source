@@ -82,9 +82,20 @@ const getMetaData = async (id: string): Promise<ShareMetaData> => {
   return (await api.get(`shares/${id}/metaData`)).data;
 };
 
-const getUploaderInfo = async (id: string): Promise<UploaderInfo> => {
+const getUploaderInfo = async (
+  id: string,
+  version?: string | Date,
+): Promise<UploaderInfo> => {
   if (!isValidId(id)) throw new Error("Invalid ID");
-  return (await api.get(`shares/${id}/uploader`)).data;
+  const cacheVersion = version ? new Date(version).getTime() : undefined;
+  return (
+    await api.get(`shares/${id}/uploader.json`, {
+      params:
+        cacheVersion && Number.isFinite(cacheVersion)
+          ? { v: cacheVersion }
+          : undefined,
+    })
+  ).data;
 };
 
 const remove = async (id: string) => {

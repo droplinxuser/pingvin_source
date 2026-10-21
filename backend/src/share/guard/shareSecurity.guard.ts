@@ -88,6 +88,11 @@ export class ShareSecurityGuard extends JwtGuard {
 
     if (!share) throw new NotFoundException(this.i18n.t("share.notFound"));
 
+    (request as Request & { shareIsPublic?: boolean }).shareIsPublic =
+      !share.security?.password &&
+      !share.security?.restrictToRecipients &&
+      (!share.reverseShare || share.reverseShare.publicAccess);
+
     // Rolling expiration: every visit of the share page extends the expiration
     // to 100 days from the current visit (permanent epoch-0 shares are skipped)
     if (!moment(share.expiration).isSame(0)) {

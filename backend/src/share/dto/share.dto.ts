@@ -7,6 +7,9 @@ export class ShareDTO {
   id: string;
 
   @Expose()
+  createdAt: Date;
+
+  @Expose()
   name?: string;
 
   @Expose()

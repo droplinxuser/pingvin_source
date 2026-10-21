@@ -23,7 +23,11 @@ import { GetUser } from "src/auth/decorator/getUser.decorator";
 import { AdministratorGuard } from "src/auth/guard/isAdmin.guard";
 import { JwtGuard } from "src/auth/guard/jwt.guard";
 import { ConfigService } from "src/config/config.service";
-import { NoStore } from "src/utils/cache.util";
+import {
+  NoStore,
+  NO_STORE_HEADERS,
+  getDownloadCacheHeaders,
+} from "src/utils/cache.util";
 import { parsePagination } from "src/utils/pagination.util";
 import {
   getUploaderInfo,
@@ -142,14 +146,35 @@ export class ShareController {
   }
 
   // Uploader details live in uploader.json inside the share folder. The
-  // request is lazy-loaded by the share page after the share is accessible.
-  @Get(":id/uploader")
+  // .json suffix also makes the endpoint eligible for Cloudflare's default
+  // static-extension caching.
+  @Get(":id/uploader.json")
   @UseGuards(IdValidation, ShareSecurityGuard)
-  @NoStore()
-  async getUploader(@Param("id") id: string) {
+  async getUploader(
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+    @Param("id") id: string,
+  ) {
     const info = await readUploaderInfo(id);
     if (!info) throw new NotFoundException();
-    return info;
+
+    // Only public shares may have their uploader metadata stored at the edge.
+    // Protected shares keep it private, and the response omits sensitive
+    // fields that are still retained in uploader.json for abuse handling.
+    const isPublicShare =
+      (request as Request & { shareIsPublic?: boolean }).shareIsPublic === true;
+    response.set(
+      isPublicShare ? getDownloadCacheHeaders(true) : NO_STORE_HEADERS,
+    );
+
+    const {
+      ip: _ip,
+      latitude: _latitude,
+      longitude: _longitude,
+      userAgent: _userAgent,
+      ...publicInfo
+    } = info;
+    return publicInfo;
   }
 
   @Post()

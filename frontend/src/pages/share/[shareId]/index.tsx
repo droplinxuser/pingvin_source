@@ -243,7 +243,7 @@ const Share = ({
 
     let active = true;
     shareService
-      .getUploaderInfo(shareId)
+      .getUploaderInfo(shareId, share.createdAt)
       .then((info) => {
         if (active) setUploaderInfo(info);
       })
