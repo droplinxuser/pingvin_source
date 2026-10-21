@@ -162,10 +162,10 @@ const mimeTypeOverrides: Record<string, string> = {
 };
 
 const getFileMimeType = (fileName: string) => {
-  return (
-    mimeTypeOverrides[getFileExtension(fileName)] ||
-    (mime.contentType(fileName) || "").split(";")[0]
-  );
+  const extension = getFileExtension(fileName);
+  // Use the extension instead of the full name: mime.contentType() mistakes
+  // names containing "/" (folder uploads) for MIME types and returns them as-is.
+  return mimeTypeOverrides[extension] || mime.lookup(extension) || "";
 };
 
 const doesFileSupportPreview = (fileName: string) => {
