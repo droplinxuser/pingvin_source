@@ -11,6 +11,7 @@ import { I18nService } from "nestjs-i18n";
 import { PrismaService } from "src/prisma/prisma.service";
 import { ShareSecurityGuard } from "src/share/guard/shareSecurity.guard";
 import { ShareService } from "src/share/share.service";
+import { isPublicShare } from "src/share/share.util";
 import { ConfigService } from "src/config/config.service";
 
 @Injectable()
@@ -56,10 +57,7 @@ export class FileSecurityGuard extends ShareSecurityGuard {
     });
 
     (request as Request & { shareIsPublic?: boolean }).shareIsPublic =
-      !!share &&
-      !share.security?.password &&
-      !share.security?.restrictToRecipients &&
-      (!share.reverseShare || share.reverseShare.publicAccess);
+      isPublicShare(share);
 
     // If there is no share token the user requests a file directly
     if (!shareToken) {

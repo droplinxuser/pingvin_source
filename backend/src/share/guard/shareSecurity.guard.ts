@@ -9,6 +9,7 @@ import * as moment from "moment";
 import { I18nService } from "nestjs-i18n";
 import { PrismaService } from "src/prisma/prisma.service";
 import { ShareService } from "src/share/share.service";
+import { isPublicShare } from "src/share/share.util";
 import { ConfigService } from "src/config/config.service";
 import { JwtGuard } from "src/auth/guard/jwt.guard";
 import { User } from "@prisma/client";
@@ -89,9 +90,7 @@ export class ShareSecurityGuard extends JwtGuard {
     if (!share) throw new NotFoundException(this.i18n.t("share.notFound"));
 
     (request as Request & { shareIsPublic?: boolean }).shareIsPublic =
-      !share.security?.password &&
-      !share.security?.restrictToRecipients &&
-      (!share.reverseShare || share.reverseShare.publicAccess);
+      isPublicShare(share);
 
     // Rolling expiration: every visit of the share page extends the expiration
     // to 100 days from the current visit (permanent epoch-0 shares are skipped)

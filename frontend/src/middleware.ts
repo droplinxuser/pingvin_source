@@ -33,8 +33,8 @@ async function fetchConfig(apiUrl: string): Promise<any> {
 export async function middleware(request: NextRequest) {
   const routes = {
     unauthenticated: new Routes(["/auth/*", "/"]),
-    admin: new Routes(["/admin*"]),
-    account: new Routes(["/account*"]),
+    admin: new Routes(["/admin", "/admin/*"]),
+    account: new Routes(["/account", "/account/*"]),
     disabled: new Routes([]),
   };
 
@@ -66,7 +66,7 @@ export async function middleware(request: NextRequest) {
   }
 
   if (!getConfig("smtp.enabled")) {
-    routes.disabled.routes.push("/auth/resetPassword*");
+    routes.disabled.routes.push("/auth/resetPassword", "/auth/resetPassword/*");
   }
 
   if (!getConfig("legal.enabled")) {

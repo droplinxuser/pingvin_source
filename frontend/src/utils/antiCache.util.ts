@@ -1,4 +1,5 @@
 import { ServerResponse } from "http";
+import i18nUtil from "./i18n.util";
 
 // Cacheable public pages (home, legal pages) can be stored on Cloudflare for
 // a month. Browsers revalidate on every navigation so a new deployment is
@@ -6,6 +7,7 @@ import { ServerResponse } from "http";
 // meantime.
 export const PUBLIC_PAGE_CACHE_MAX_AGE = 60 * 60 * 24 * 30;
 const PUBLIC_PAGE_CACHE_VALUE = `public, max-age=0, s-maxage=${PUBLIC_PAGE_CACHE_MAX_AGE}, stale-while-revalidate=86400`;
+const PUBLIC_PAGE_ROUTES = new Set(["/", "/imprint", "/privacy"]);
 
 // Strict anti-caching headers used for share pages. They instruct browsers,
 // origin servers and CDN edges (such as Cloudflare) to never cache the
@@ -36,4 +38,34 @@ export const setPublicPageCacheHeaders = (res: ServerResponse) => {
     `public, s-maxage=${PUBLIC_PAGE_CACHE_MAX_AGE}, stale-while-revalidate=86400`,
   );
   res.setHeader("Vary", "Accept-Encoding, Accept-Language, Cookie");
+};
+
+export const setPublicPageCacheHeadersForRequest = (
+  res: ServerResponse,
+  options: {
+    url?: string;
+    hasUser: boolean;
+    isConfigFallback?: boolean;
+    language?: string;
+    defaultLanguage?: string;
+  },
+) => {
+  const path = options.url?.split("?")[0];
+  if (
+    !path ||
+    options.hasUser ||
+    options.isConfigFallback ||
+    !PUBLIC_PAGE_ROUTES.has(path)
+  )
+    return;
+
+  const pageLanguage = i18nUtil.getLocaleByCode(
+    options.language || "en-US",
+  ).code;
+  const defaultPageLanguage = i18nUtil.getLocaleByCode(
+    options.defaultLanguage || "en-US",
+  ).code;
+  if (pageLanguage !== defaultPageLanguage) return;
+
+  setPublicPageCacheHeaders(res);
 };

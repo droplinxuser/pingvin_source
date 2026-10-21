@@ -38,12 +38,9 @@ import AdminNoticeModal, {
   AdminNotice,
 } from "../components/admin/AdminNoticeModal";
 import adminNoticeService from "../services/adminNotice.service";
-import { setPublicPageCacheHeaders } from "../utils/antiCache.util";
+import { setPublicPageCacheHeadersForRequest } from "../utils/antiCache.util";
 
 const excludeDefaultLayoutRoutes = ["/admin/config/[category]"];
-// Only public, content-only pages. Account, admin, upload and share pages
-// depend on the visitor or change on every request, so they must stay dynamic.
-const cacheablePageRoutes = new Set(["/", "/imprint", "/privacy"]);
 const availableMantineColors = [
   "dark",
   "gray",
@@ -441,23 +438,14 @@ App.getInitialProps = async ({ ctx }: { ctx: GetServerSidePropsContext }) => {
     pageProps.language =
       ctx.req.cookies["language"] || defaultLanguage || requestLanguage;
 
-    const pageLanguage = i18nUtil.getLocaleByCode(
-      pageProps.language || "en-US",
-    ).code;
-    const defaultPageLanguage = i18nUtil.getLocaleByCode(
-      defaultLanguage || "en-US",
-    ).code;
-    const requestPath = ctx.req.url?.split("?")[0];
-
-    if (
-      ctx.res &&
-      !pageProps.user &&
-      !pageProps.isConfigFallback &&
-      requestPath &&
-      cacheablePageRoutes.has(requestPath) &&
-      pageLanguage === defaultPageLanguage
-    ) {
-      setPublicPageCacheHeaders(ctx.res);
+    if (ctx.res) {
+      setPublicPageCacheHeadersForRequest(ctx.res, {
+        url: ctx.req.url,
+        hasUser: !!pageProps.user,
+        isConfigFallback: pageProps.isConfigFallback,
+        language: pageProps.language,
+        defaultLanguage,
+      });
     }
   }
   return { pageProps };
