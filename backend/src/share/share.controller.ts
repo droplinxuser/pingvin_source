@@ -3,7 +3,9 @@ import {
   Controller,
   Delete,
   Get,
+  Head,
   HttpCode,
+  NotFoundException,
   Param,
   Patch,
   Post,
@@ -13,7 +15,7 @@ import {
   UseGuards,
 } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
-import { Throttle } from "@nestjs/throttler";
+import { Throttle, SkipThrottle } from "@nestjs/throttler";
 import { Share, ShareSecurity, User } from "@prisma/client";
 import { Request, Response } from "express";
 import * as moment from "moment";
@@ -99,6 +101,16 @@ export class ShareController {
     return new ReceivedShareDTO().fromList(
       await this.shareService.getReceivedShares(user.id),
     );
+  }
+
+  // Lightweight existence check used by the share page SSR so that missing
+  // shares get a real 404 status without touching the share (no view count,
+  // no rolling expiration, no token required).
+  @Head(":id")
+  @SkipThrottle()
+  async exists(@Param("id") id: string) {
+    if ((await this.shareService.isShareIdAvailable(id)).isAvailable)
+      throw new NotFoundException();
   }
 
   // Share page endpoints must never be cached: the share data changes on

@@ -20,6 +20,7 @@ import { I18nService } from "nestjs-i18n";
 import { AdministratorGuard } from "src/auth/guard/isAdmin.guard";
 import { JwtGuard } from "src/auth/guard/jwt.guard";
 import { EmailService } from "src/email/email.service";
+import { NoStore } from "src/utils/cache.util";
 import { ConfigService } from "./config.service";
 import { AdminConfigDTO } from "./dto/adminConfig.dto";
 import { ConfigDTO } from "./dto/config.dto";
@@ -38,6 +39,7 @@ export class ConfigController {
 
   @Get()
   @SkipThrottle()
+  @NoStore()
   async list() {
     return new ConfigDTO().fromList(await this.configService.list());
   }

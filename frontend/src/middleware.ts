@@ -15,7 +15,7 @@ export const config = {
 async function fetchConfig(apiUrl: string): Promise<any> {
   try {
     const response = await fetch(`${apiUrl}/api/configs`, {
-      next: { revalidate: 30 },
+      cache: "no-store",
       signal: AbortSignal.timeout(1000),
     });
 
@@ -33,15 +33,7 @@ async function fetchConfig(apiUrl: string): Promise<any> {
 export async function middleware(request: NextRequest) {
   const routes = {
     unauthenticated: new Routes(["/auth/*", "/"]),
-    public: new Routes([
-      "/share/*",
-      "/s/*",
-      "/upload/*",
-      "/error",
-      "/imprint",
-      "/privacy",
-    ]),
-    admin: new Routes(["/admin/*"]),
+    admin: new Routes(["/admin*"]),
     account: new Routes(["/account*"]),
     disabled: new Routes([]),
   };
@@ -71,10 +63,6 @@ export async function middleware(request: NextRequest) {
 
   if (!getConfig("security.allowRegistration")) {
     routes.disabled.routes.push("/auth/signUp");
-  }
-
-  if (getConfig("security.allowUnauthenticatedShares")) {
-    routes.public.routes = ["*"];
   }
 
   if (!getConfig("smtp.enabled")) {
@@ -107,9 +95,11 @@ export async function middleware(request: NextRequest) {
       condition: user && routes.unauthenticated.contains(route) && !getConfig("security.allowUnauthenticatedShares"),
       path: "/upload",
     },
-    // Unauthenticated state
+    // Unauthenticated state: only known protected routes require sign-in.
+    // Unknown paths are left to Next.js so they render the 404 page with a
+    // 404 status instead of being redirected to sign-in.
     {
-      condition: !user && !routes.public.contains(route) && !routes.unauthenticated.contains(route),
+      condition: !user && !getConfig("security.allowUnauthenticatedShares") && (routes.account.contains(route) || routes.admin.contains(route) || route == "/upload"),
       path: "/auth/signIn",
     },
     {
@@ -146,6 +136,9 @@ export async function middleware(request: NextRequest) {
       }
       const response = NextResponse.redirect(new URL(path, request.url));
       response.headers.set("Vary", "x-nextjs-data");
+      response.headers.set("Cache-Control", "no-store");
+      response.headers.set("CDN-Cache-Control", "no-store");
+      response.headers.set("Cloudflare-CDN-Cache-Control", "no-store");
       return response;
     }
   }

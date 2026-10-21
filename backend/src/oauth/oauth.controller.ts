@@ -24,6 +24,7 @@ import { ProviderGuard } from "./guard/provider.guard";
 import { OAuthService } from "./oauth.service";
 import { OAuthProvider } from "./provider/oauthProvider.interface";
 import { OAuthExceptionFilter } from "./filter/oauthException.filter";
+import { NoStore } from "src/utils/cache.util";
 
 @Controller("oauth")
 export class OAuthController {
@@ -36,6 +37,7 @@ export class OAuthController {
   ) {}
 
   @Get("available")
+  @NoStore()
   available() {
     return this.oauthService.available();
   }

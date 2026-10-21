@@ -9,6 +9,7 @@ import {
   Title,
 } from "@mantine/core";
 import { useModals } from "@mantine/modals";
+import axios from "axios";
 import { GetServerSidePropsContext } from "next";
 import Link from "next/link";
 import { useRouter } from "next/router";
@@ -35,12 +36,23 @@ import { getQueryString } from "../../../utils/router.util";
 import { setNoStoreCacheHeaders } from "../../../utils/antiCache.util";
 import { HoverTip } from "../../../components/core/HoverTip";
 
-export function getServerSideProps(context: GetServerSidePropsContext) {
+export async function getServerSideProps(context: GetServerSidePropsContext) {
   // Share pages must never be cached by browsers, origin servers or CDN edges
   setNoStoreCacheHeaders(context.res);
-  return {
-    props: { shareId: context.params!.shareId },
-  };
+
+  const shareId = context.params!.shareId as string;
+  const apiURL = process.env.API_URL || "http://localhost:8080";
+
+  try {
+    await axios.head(`${apiURL}/api/shares/${encodeURIComponent(shareId)}`);
+  } catch (e) {
+    // A malformed or missing share ID can never resolve to a share page.
+    if (axios.isAxiosError(e) && [400, 404].includes(e.response?.status ?? 0)) {
+      return { notFound: true };
+    }
+  }
+
+  return { props: { shareId } };
 }
 
 const Share = ({ shareId }: { shareId: string }) => {
