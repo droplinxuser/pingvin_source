@@ -3,7 +3,6 @@ import {
   Controller,
   Delete,
   Get,
-  Header,
   HttpCode,
   Param,
   Patch,
@@ -22,6 +21,7 @@ import { GetUser } from "src/auth/decorator/getUser.decorator";
 import { AdministratorGuard } from "src/auth/guard/isAdmin.guard";
 import { JwtGuard } from "src/auth/guard/jwt.guard";
 import { ConfigService } from "src/config/config.service";
+import { NoStore } from "src/utils/cache.util";
 import { parsePagination } from "src/utils/pagination.util";
 import { AdminShareDTO } from "./dto/adminShare.dto";
 import { CreateShareDTO } from "./dto/createShare.dto";
@@ -60,14 +60,21 @@ export class ShareController {
     @Query("sortBy") sortBy?: string,
     @Query("sortDirection") sortDirection?: string,
   ) {
-    const { page: pageNum, pageSize: size, skip } = parsePagination(
-      page,
-      pageSize,
-    );
+    const {
+      page: pageNum,
+      pageSize: size,
+      skip,
+    } = parsePagination(page, pageSize);
     const searchTerm = typeof search === "string" ? search.trim() : "";
 
     const [shares, count] = await Promise.all([
-      this.shareService.getShares(size, skip, searchTerm, sortBy, sortDirection),
+      this.shareService.getShares(
+        size,
+        skip,
+        searchTerm,
+        sortBy,
+        sortDirection,
+      ),
       this.shareService.countShares(searchTerm),
     ]);
     return {
@@ -94,18 +101,11 @@ export class ShareController {
     );
   }
 
-  // Share page endpoints must never be cached by browsers, origin servers or
-  // CDN edges (e.g. Cloudflare): the share data changes on every visit.
+  // Share page endpoints must never be cached: the share data changes on
+  // every visit (rolling expiration, view counter)
   @Get(":id")
   @UseGuards(IdValidation, ShareSecurityGuard)
-  @Header(
-    "Cache-Control",
-    "no-store, no-cache, must-revalidate, proxy-revalidate",
-  )
-  @Header("CDN-Cache-Control", "no-store")
-  @Header("Cloudflare-CDN-Cache-Control", "no-store")
-  @Header("Pragma", "no-cache")
-  @Header("Expires", "0")
+  @NoStore()
   async get(@Param("id") id: string) {
     return new ShareDTO().from(await this.shareService.get(id));
   }
@@ -118,14 +118,7 @@ export class ShareController {
 
   @Get(":id/metaData")
   @UseGuards(IdValidation, ShareSecurityGuard)
-  @Header(
-    "Cache-Control",
-    "no-store, no-cache, must-revalidate, proxy-revalidate",
-  )
-  @Header("CDN-Cache-Control", "no-store")
-  @Header("Cloudflare-CDN-Cache-Control", "no-store")
-  @Header("Pragma", "no-cache")
-  @Header("Expires", "0")
+  @NoStore()
   async getMetaData(@Param("id") id: string) {
     return new ShareMetaDataDTO().from(await this.shareService.getMetaData(id));
   }

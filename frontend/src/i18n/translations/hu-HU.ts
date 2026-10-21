@@ -14,24 +14,19 @@ export default {
 
   // Footer
   "footer.poweredBy": "Powered by",
-  "footer.stats.users": "{count, number} users",
-  "footer.stats.shares": "{count, number} shares",
-  "footer.stats.files": "{count, number} files",
-  "footer.stats.storage": "{size} storage used",
-
   // END footer
 
   // /
-  "home.title": "<h>{siteName}</h> a free file-sharing platform.",
-  "home.description": "Our platform allows you to generate a link for any file you wish to share, ensuring a hassle-free transfer experience.",
-  "home.bullet.a.name": "Custom Expiration & Download Limits",
-  "home.bullet.a.description": "You have the option to set expiration dates on your shared files, customize download limits, or provide password protection.",
-  "home.bullet.b.name": "Sharing via Email",
-  "home.bullet.b.description": "An integrated email feature allows you to send files directly to recipients' inboxes.",
-  "home.bullet.c.name": "Contact Us",
-  "home.bullet.c.description": "For any inquiries, takedown requests, or other concerns, please reach out to us directly at {contactEmail}.",
-  "home.button.start": "New upload",
-  "home.button.source": "About",
+  "home.title": "<h>Saját üzemeltetésű</h> fájl megosztó platform.",
+  "home.description": "Valóban hozzáférhetővé akarja tenni fájljait a WeTransfer és más hasonló harmadik felek számára?",
+  "home.bullet.a.name": "Saját üzemeltetés",
+  "home.bullet.a.description": "A Pingvin Share megosztót saját gépéről futtathatja.",
+  "home.bullet.b.name": "Adatvédelem",
+  "home.bullet.b.description": "A te fájljaid a tiéd, és harmadik felek soha nem férnek hozzá.",
+  "home.bullet.c.name": "Nincs bosszantó fájl méretkorlát",
+  "home.bullet.c.description": "Akkora fájlokat oszt meg, amekkorákat csak akar. Határt csak a lemezterület szab.",
+  "home.button.start": "Nosza, kezdjük",
+  "home.button.source": "Forráskód",
   // END /
 
   // /auth/signin
@@ -208,6 +203,7 @@ export default {
   "account.reverseShares.modal.public-access.description": "A fordított megosztással létrehozott megosztások nyilvánossá tétele. Kikapcsolása esetén csak a megosztás létrehozója és Ön láthatja a megosztást.",
   "account.reverseShares.modal.max-use.label": "Megengedett alkalmak száma",
   "account.reverseShares.modal.max-use.description": "A megosztási hivatkozás megengedett felhasználási alkalmainak száma.",
+  "account.reverseShare.never-expires": "Ez a fordított megosztás soha nem fog lejárni.",
   "account.reverseShare.expires-on": "A fordított megosztás lejárata: {expiration}.",
   "account.reverseShares.table.no-shares": "Még nincsenek megosztások",
   "account.reverseShares.table.count.singular": "megosztás",
@@ -286,13 +282,6 @@ export default {
   "admin.shares.table.deletes": "Törlések ekkor",
   "admin.shares.edit.delete.title": "Megosztás törlése: {id}",
   "admin.shares.edit.delete.description": "Valóban törölni kívánja ezt a megosztást?",
-  "admin.shares.notify.deleted": "Share deleted successfully",
-
-  "admin.shares.search.placeholder": "Search by name, creator or share ID",
-  "admin.shares.empty": "No shares found",
-  "admin.shares.search.empty": "No shares match your search query",
-  "admin.shares.search.clear": "Clear search",
-
   // END /admin/shares
 
   // /upload
@@ -328,6 +317,8 @@ export default {
   "upload.modal.link.error.s3-etag-missing": "Hiányzik az ETag fejléc az S3 válaszból. Győződjön meg arról, hogy a CORS engedélyezi az ETag fejlécet.",
   "upload.modal.not-signed-in": "Nincs bejelentkezve",
   "upload.modal.not-signed-in-description": "Nem lesz képes megosztását kézzel törölni vagy megtekinteni a látogatók számát.",
+  "upload.modal.expires.never": "soha",
+  "upload.modal.expires.never-long": "Állandó megosztás",
   "upload.modal.expires.error.too-long": "A lejárati dátum meghaladja a {max} maximális értéket.",
   "upload.modal.link.label": "Hivatkozás",
   "upload.modal.expires.label": "Lejárat",
@@ -356,6 +347,7 @@ export default {
   "upload.modal.accordion.security.max-views.label": "Megtekintések max száma",
   "upload.modal.accordion.security.max-views.placeholder": "Nincs korlát",
   // showCompletedUploadModal.tsx
+  "upload.modal.completed.never-expires": "Ez a megosztás soha nem fog lejárni.",
   "upload.modal.completed.expires-on": "A megosztás lejárata: {expiration}.",
   "upload.modal.completed.share-ready": "A megosztás készen áll",
   "upload.modal.completed.notified-reverse-share-creator": "Értesítettük a fordított megosztás létrehozóját. Ezt a linket kézzel is megoszthatja velük más csatornákon keresztül.",
@@ -621,9 +613,6 @@ export default {
   "admin.config.oauth.oidc-client-id.description": "Az OpenID Connect OAuth applikáció ügyfél ID azonosítója",
   "admin.config.oauth.oidc-client-secret": "OpenID Connect ügyfél titok",
   "admin.config.oauth.oidc-client-secret.description": "Az OpenID Connect OAuth applikáció ügyfél titka",
-  "admin.config.oauth.allowed-hosts": "Allowed OAuth Hosts",
-  "admin.config.oauth.allowed-hosts.description":
-    "Comma-separated list of additional hostnames allowed for OAuth sign-in (e.g. share.internal.example.com).",
   "admin.config.category.ldap": "LAP",
   "admin.config.ldap.enabled": "LDAP engedélyezve",
   "admin.config.ldap.enabled.description": "LDAP hitelesítés használata a felhasználói beléptetéshez",
@@ -752,22 +741,5 @@ export default {
   "admin.notice.modal.button.acknowledge": "Tudomásul veszem és bezárom",
   "admin.notice.modal.button.acknowledging": "Feldolgozás...",
   "admin.notice.modal.docsLink": "Dokumentáció megtekintése",
-  "admin.notice.modal.globalNoticeFooter": "Megjegyzés: A tudomásulvételt követően ez az értesítés minden adminisztrátor számára véglegesen elrejtésre kerül az összes eszközön.",
-
-  // Share report feature
-  "share.report.button": "Jelentés",
-  "share.report.modal.title": "Megosztás jelentése",
-  "share.report.modal.description": "Ha ez a megosztás jogszabályba vagy irányelveinkbe ütköző tartalmat tartalmaz, jelentheti. A rendszergazda értesítést kap.",
-  "share.report.modal.reason": "Ok",
-  "share.report.modal.custom-reason": "További részletek",
-  "share.report.modal.error.no-reason": "Válasszon okot",
-  "share.report.modal.error.no-message": "Írja le, miért jelenti ezt a megosztást",
-  "share.report.notify.success": "Köszönjük. A jelentése be lett küldve.",
-  "share.report.reason.dmca": "DMCA / Szerzői jog megsértése",
-  "share.report.reason.csam": "Gyermekek szexuális bántalmazását ábrázoló anyag (CSAM)",
-  "share.report.reason.gore": "Véres / Erőszakos tartalom",
-  "share.report.reason.malware": "Kártevő / Adathalászat",
-  "share.report.reason.spam": "Spam",
-  "share.report.reason.personal-information": "Személyes adatok / Doxxing",
-  "share.report.reason.other": "Egyéb"
+  "admin.notice.modal.globalNoticeFooter": "Megjegyzés: A tudomásulvételt követően ez az értesítés minden adminisztrátor számára véglegesen elrejtésre kerül az összes eszközön."
 };

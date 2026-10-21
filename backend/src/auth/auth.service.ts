@@ -121,26 +121,25 @@ export class AuthService {
       );
     }
 
-    // Password sign in stays available for existing users even when
-    // oauth.disablePassword is enabled; that setting only restricts new
-    // password registrations to the OAuth providers on this fork.
-    const email = dto.email?.toLowerCase().trim();
-    const user = await this.prisma.user.findFirst({
-      where: {
-        OR: [{ email }, { username: dto.username }],
-      },
-    });
+    if (!this.config.get("oauth.disablePassword")) {
+      const email = dto.email?.toLowerCase().trim();
+      const user = await this.prisma.user.findFirst({
+        where: {
+          OR: [{ email }, { username: dto.username }],
+        },
+      });
 
-    if (user?.password && (await argon.verify(user.password, dto.password))) {
-      if (!user.isActivated) {
-        throw new UnauthorizedException(
-          this.i18n.t("auth.accountNotActivated"),
+      if (user?.password && (await argon.verify(user.password, dto.password))) {
+        if (!user.isActivated) {
+          throw new UnauthorizedException(
+            this.i18n.t("auth.accountNotActivated"),
+          );
+        }
+        this.logger.log(
+          `Successful password login for user ${user.email} from IP ${ip}`,
         );
+        return this.generateToken(user);
       }
-      this.logger.log(
-        `Successful password login for user ${user.email} from IP ${ip}`,
-      );
-      return this.generateToken(user);
     }
 
     if (this.config.get("ldap.enabled")) {
@@ -190,6 +189,9 @@ export class AuthService {
   }
 
   async requestResetPassword(emailInput: string) {
+    if (this.config.get("oauth.disablePassword"))
+      throw new ForbiddenException(this.i18n.t("auth.passwordSignInDisabled"));
+
     const email = emailInput.toLowerCase().trim();
     const user = await this.prisma.user.findUnique({
       where: { email },
@@ -231,6 +233,9 @@ export class AuthService {
   }
 
   async resetPassword(token: string, newPassword: string) {
+    if (this.config.get("oauth.disablePassword"))
+      throw new ForbiddenException(this.i18n.t("auth.passwordSignInDisabled"));
+
     if (
       typeof newPassword === "string" &&
       !(await this.userService.enforcePasswordPolicy(newPassword))

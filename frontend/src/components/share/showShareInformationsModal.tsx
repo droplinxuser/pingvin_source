@@ -91,6 +91,10 @@ const Body = ({
   const shareSizeProgress = shareSizeRatio * 100;
 
   const formattedCreatedAt = moment(currentShare.createdAt).format("LLL");
+  const formattedExpiration =
+    moment(currentShare.expiration).unix() === 0
+      ? "Never"
+      : moment(currentShare.expiration).format("LLL");
 
   if (isEditing) {
     return (
@@ -144,6 +148,12 @@ const Body = ({
         {formattedCreatedAt}
       </Text>
 
+      <Text size="sm">
+        <b>
+          <FormattedMessage id="account.shares.table.expiresAt" />:{" "}
+        </b>
+        {formattedExpiration}
+      </Text>
       <Divider />
       <CopyTextField link={link} toggleQR={handleToggleQR} />
       <Collapse in={showQR}>

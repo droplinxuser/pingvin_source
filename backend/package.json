@@ -101,13 +101,5 @@
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.59.2",
     "wait-on": "^8.0.3"
-  },
-  "allowScripts": {
-    "@prisma/client@6.6.0": true,
-    "@prisma/engines@6.6.0": true,
-    "@scarf/scarf@1.4.0": true,
-    "argon2@0.41.1": true,
-    "esbuild@0.25.2": true,
-    "prisma@6.6.0": true
   }
 }

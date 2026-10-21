@@ -4,7 +4,6 @@ import {
   Container,
   Paper,
   PasswordInput,
-  Stack,
   Text,
   TextInput,
   Title,
@@ -12,7 +11,6 @@ import {
 import { useForm, yupResolver } from "@mantine/form";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { useEffect, useState } from "react";
 import { FormattedMessage } from "react-intl";
 import * as yup from "yup";
 import useConfig from "../../hooks/config.hook";
@@ -20,18 +18,12 @@ import useTranslate from "../../hooks/useTranslate.hook";
 import useUser from "../../hooks/user.hook";
 import authService from "../../services/auth.service";
 import toast from "../../utils/toast.util";
-import OAuthButtons from "./OAuthButtons";
 
 const SignUpForm = () => {
   const config = useConfig();
   const router = useRouter();
   const t = useTranslate();
   const { refreshUser } = useUser();
-
-  // When password registration is disabled (oauth.disablePassword), the sign
-  // up page only offers the configured OAuth providers.
-  const disablePassword = config.get("oauth.disablePassword");
-  const [oauthProviders, setOauthProviders] = useState<string[] | null>(null);
 
   let minLength = 8;
   let requireLowercase = false;
@@ -88,16 +80,6 @@ const SignUpForm = () => {
     validate: yupResolver(validationSchema),
   });
 
-  useEffect(() => {
-    if (!disablePassword) return;
-    authService
-      .getAvailableOAuth()
-      .then((providers) => {
-        setOauthProviders(providers.data);
-      })
-      .catch(toast.axiosError);
-  }, []);
-
   const signUp = async (
     displayName: string,
     email: string,
@@ -124,8 +106,6 @@ const SignUpForm = () => {
       .catch(toast.axiosError);
   };
 
-  if (disablePassword && !oauthProviders) return null;
-
   return (
     <Container size={420} my={40}>
       <Title order={2} align="center" weight={900}>
@@ -140,52 +120,43 @@ const SignUpForm = () => {
         </Text>
       )}
       <Paper withBorder shadow="md" p={30} mt={30} radius="md">
-        {disablePassword ? (
-          <Stack>
-            <OAuthButtons
-              providers={oauthProviders ?? []}
-              divider="signInWith"
-            />
-          </Stack>
-        ) : (
-          <form
-            onSubmit={form.onSubmit((values) =>
-              signUp(
-                values.displayName,
-                values.email,
-                values.username,
-                values.password,
-              ),
-            )}
-          >
-            <TextInput
-              label={t("signup.input.displayName")}
-              placeholder={t("signup.input.displayName.placeholder")}
-              {...form.getInputProps("displayName")}
-            />
-            <TextInput
-              label={t("signup.input.username")}
-              placeholder={t("signup.input.username.placeholder")}
-              mt="md"
-              {...form.getInputProps("username")}
-            />
-            <TextInput
-              label={t("signup.input.email")}
-              placeholder={t("signup.input.email.placeholder")}
-              mt="md"
-              {...form.getInputProps("email")}
-            />
-            <PasswordInput
-              label={t("signin.input.password")}
-              placeholder={t("signin.input.password.placeholder")}
-              mt="md"
-              {...form.getInputProps("password")}
-            />
-            <Button fullWidth mt="xl" type="submit">
-              <FormattedMessage id="signup.button.submit" />
-            </Button>
-          </form>
-        )}
+        <form
+          onSubmit={form.onSubmit((values) =>
+            signUp(
+              values.displayName,
+              values.email,
+              values.username,
+              values.password,
+            ),
+          )}
+        >
+          <TextInput
+            label={t("signup.input.displayName")}
+            placeholder={t("signup.input.displayName.placeholder")}
+            {...form.getInputProps("displayName")}
+          />
+          <TextInput
+            label={t("signup.input.username")}
+            placeholder={t("signup.input.username.placeholder")}
+            mt="md"
+            {...form.getInputProps("username")}
+          />
+          <TextInput
+            label={t("signup.input.email")}
+            placeholder={t("signup.input.email.placeholder")}
+            mt="md"
+            {...form.getInputProps("email")}
+          />
+          <PasswordInput
+            label={t("signin.input.password")}
+            placeholder={t("signin.input.password.placeholder")}
+            mt="md"
+            {...form.getInputProps("password")}
+          />
+          <Button fullWidth mt="xl" type="submit">
+            <FormattedMessage id="signup.button.submit" />
+          </Button>
+        </form>
       </Paper>
     </Container>
   );

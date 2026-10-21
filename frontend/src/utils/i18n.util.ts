@@ -2,7 +2,14 @@ import { setCookie } from "cookies-next";
 import { LOCALES } from "../i18n/locales";
 
 const getLocaleByCode = (code: string) => {
-  return Object.values(LOCALES).find((l) => l.code === code) ?? LOCALES.ENGLISH;
+  const locale =
+    Object.values(LOCALES).find((l) => l.code === code) ?? LOCALES.ENGLISH;
+  // Keys missing from a locale fall back to the English text instead of
+  // rendering the raw message ID
+  return {
+    ...locale,
+    messages: { ...LOCALES.ENGLISH.messages, ...locale.messages },
+  };
 };
 
 // Parse the Accept-Language header and return the first supported language

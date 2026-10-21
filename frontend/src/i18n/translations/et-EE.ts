@@ -14,11 +14,6 @@ export default {
 
   // Footer
   "footer.poweredBy": "Powered by",
-  "footer.stats.users": "{count, number} users",
-  "footer.stats.shares": "{count, number} shares",
-  "footer.stats.files": "{count, number} files",
-  "footer.stats.storage": "{size} storage used",
-
   // END footer
 
   // /
@@ -208,6 +203,7 @@ export default {
   "account.reverseShares.modal.public-access.description": "Tee selle tagasijagamise lingi abil loodud jagamised avalikuks. Kui see on keelatud, saavad neid vaadata ainult sina ja jagamise looja.",
   "account.reverseShares.modal.max-use.label": "Maksimaalne kasutuskordade arv",
   "account.reverseShares.modal.max-use.description": "Maksimaalne arv kordi, mil seda URL-i saab kasutada jagamise loomiseks.",
+  "account.reverseShare.never-expires": "See tagasijagamine ei aegu kunagi.",
   "account.reverseShare.expires-on": "See tagasijagamine aegub {expiration}.",
   "account.reverseShares.table.no-shares": "Ühtegi jagamist pole veel loodud",
   "account.reverseShares.table.count.singular": "jagamine",
@@ -286,13 +282,6 @@ export default {
   "admin.shares.table.deletes": "Kustub",
   "admin.shares.edit.delete.title": "Kustuta jagamine: {id}",
   "admin.shares.edit.delete.description": "Kas soovid tõesti seda jagamist kustutada?",
-  "admin.shares.notify.deleted": "Share deleted successfully",
-
-  "admin.shares.search.placeholder": "Search by name, creator or share ID",
-  "admin.shares.empty": "No shares found",
-  "admin.shares.search.empty": "No shares match your search query",
-  "admin.shares.search.clear": "Clear search",
-
   // END /admin/shares
 
   // /upload
@@ -328,6 +317,8 @@ export default {
   "upload.modal.link.error.s3-etag-missing": "S3 vastuses puudub ETag päis. Veendu, et CORS teeb ETag päise kättesaadavaks.",
   "upload.modal.not-signed-in": "Sa ei ole sisse logitud",
   "upload.modal.not-signed-in-description": "Sa ei saa oma jagamist käsitsi kustutada ega külastajate arvu vaadata.",
+  "upload.modal.expires.never": "mitte kunagi",
+  "upload.modal.expires.never-long": "Püsiv jagamine",
   "upload.modal.expires.error.too-long": "Aegumiskuupäev ületab lubatud maksimaalset {max}.",
   "upload.modal.link.label": "Ühenda",
   "upload.modal.expires.label": "Aegumisaeg",
@@ -356,6 +347,7 @@ export default {
   "upload.modal.accordion.security.max-views.label": "Maksimaalne vaatamiste arv",
   "upload.modal.accordion.security.max-views.placeholder": "Piiramatu",
   // showCompletedUploadModal.tsx
+  "upload.modal.completed.never-expires": "See jagamine ei aegu mitte kunagi.",
   "upload.modal.completed.expires-on": "See jagamine aegub {expiration}.",
   "upload.modal.completed.share-ready": "Jagamine valmis",
   "upload.modal.completed.notified-reverse-share-creator": "Oleme teavitanud tagasijagamise loojat. Saad samuti seda linki nendega käsitsi teiste vahenditega jagada.",
@@ -621,9 +613,6 @@ export default {
   "admin.config.oauth.oidc-client-id.description": "OpenID Connect OAuth rakenduse kliendi ID",
   "admin.config.oauth.oidc-client-secret": "OpenID Connect kliendi saladus",
   "admin.config.oauth.oidc-client-secret.description": "OpenID Connect OAuth rakenduse kliendi saladus",
-  "admin.config.oauth.allowed-hosts": "Allowed OAuth Hosts",
-  "admin.config.oauth.allowed-hosts.description":
-    "Comma-separated list of additional hostnames allowed for OAuth sign-in (e.g. share.internal.example.com).",
   "admin.config.category.ldap": "LDAP",
   "admin.config.ldap.enabled": "Luba LDAP",
   "admin.config.ldap.enabled.description": "Kasutaja sisselogimiseks kasutada LDAP autentimist",
@@ -752,22 +741,5 @@ export default {
   "admin.notice.modal.button.acknowledge": "Kinnita ja sulge",
   "admin.notice.modal.button.acknowledging": "Kinnitamine...",
   "admin.notice.modal.docsLink": "Vaata dokumentatsiooni",
-  "admin.notice.modal.globalNoticeFooter": "Märkus: Pärast kinnitamist eemaldatakse see teavitus jäädavalt kõigi administraatorite jaoks kõigis seadmetes.",
-
-  // Share report feature
-  "share.report.button": "Teavita",
-  "share.report.modal.title": "Teavita jagamisest",
-  "share.report.modal.description": "Kui see jagamine sisaldab seadust või meie eeskirju rikkuvat sisu, saate sellest teavitada. Administraatorit teavitatakse.",
-  "share.report.modal.reason": "Põhjus",
-  "share.report.modal.custom-reason": "Lisainfo",
-  "share.report.modal.error.no-reason": "Valige põhjus",
-  "share.report.modal.error.no-message": "Kirjeldage, miks te sellest jagamisest teavitate",
-  "share.report.notify.success": "Täname. Teie teade on saadetud.",
-  "share.report.reason.dmca": "DMCA / Autoriõiguse rikkumine",
-  "share.report.reason.csam": "Laste seksuaalset väärkohtlemist kujutav materjal (CSAM)",
-  "share.report.reason.gore": "Vägivaldne / Šokeeriv sisu",
-  "share.report.reason.malware": "Pahavara / Õngitsus",
-  "share.report.reason.spam": "Rämpspost",
-  "share.report.reason.personal-information": "Isikuandmed / Doxxing",
-  "share.report.reason.other": "Muu"
+  "admin.notice.modal.globalNoticeFooter": "Märkus: Pärast kinnitamist eemaldatakse see teavitus jäädavalt kõigi administraatorite jaoks kõigis seadmetes."
 };

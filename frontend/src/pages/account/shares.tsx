@@ -13,6 +13,7 @@ import {
 } from "@mantine/core";
 import { useClipboard } from "@mantine/hooks";
 import { useModals } from "@mantine/modals";
+import moment from "moment";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import {
@@ -93,6 +94,9 @@ const MyShares = () => {
                 <th>
                   <FormattedMessage id="account.shares.table.visitors" />
                 </th>
+                <th>
+                  <FormattedMessage id="account.shares.table.expiresAt" />
+                </th>
                 <th></th>
               </tr>
             </thead>
@@ -153,6 +157,13 @@ const MyShares = () => {
                         />
                       ) : (
                         share.views
+                      )}
+                    </td>
+                    <td>
+                      {moment(share.expiration).unix() === 0 ? (
+                        <FormattedMessage id="account.shares.table.expiry-never" />
+                      ) : (
+                        moment(share.expiration).format("LLL")
                       )}
                     </td>
                     <td>

@@ -14,11 +14,6 @@ export default {
 
   // Footer
   "footer.poweredBy": "Powered by",
-  "footer.stats.users": "{count, number} users",
-  "footer.stats.shares": "{count, number} shares",
-  "footer.stats.files": "{count, number} files",
-  "footer.stats.storage": "{size} storage used",
-
   // END footer
 
   // /
@@ -208,6 +203,7 @@ export default {
   "account.reverseShares.modal.public-access.description": "Feu públiques les comparticions creades amb aquesta compartició inversa. Si està desactivat, només vosaltres i el creador de la compartició hi tindreu accés.",
   "account.reverseShares.modal.max-use.label": "Usos màxims",
   "account.reverseShares.modal.max-use.description": "La quantitat màxima de vegades que es pot utilitzar aquesta URL per crear una compartició.",
+  "account.reverseShare.never-expires": "Aquesta compartició inversa no caducarà mai.",
   "account.reverseShare.expires-on": "Aquesta compartició inversa caducarà el {expiration}.",
   "account.reverseShares.table.no-shares": "Encara no s'ha creat cap compartició",
   "account.reverseShares.table.count.singular": "compartició",
@@ -286,13 +282,6 @@ export default {
   "admin.shares.table.deletes": "S'elimina el",
   "admin.shares.edit.delete.title": "Suprimir compartició: {id}",
   "admin.shares.edit.delete.description": "Realment voleu suprimir aquesta compartició?",
-  "admin.shares.notify.deleted": "Share deleted successfully",
-
-  "admin.shares.search.placeholder": "Search by name, creator or share ID",
-  "admin.shares.empty": "No shares found",
-  "admin.shares.search.empty": "No shares match your search query",
-  "admin.shares.search.clear": "Clear search",
-
   // END /admin/shares
 
   // /upload
@@ -328,6 +317,8 @@ export default {
   "upload.modal.link.error.s3-etag-missing": "Falta la capçalera ETag a la resposta de S3. Assegureu-vos que CORS exposa la capçalera ETag.",
   "upload.modal.not-signed-in": "No heu iniciat sessió",
   "upload.modal.not-signed-in-description": "No podreu suprimir la compartició manualment ni veure el recompte de visitants.",
+  "upload.modal.expires.never": "mai",
+  "upload.modal.expires.never-long": "Compartició permanent",
   "upload.modal.expires.error.too-long": "La data de caducitat supera el màxim de {max}.",
   "upload.modal.link.label": "Enllaç",
   "upload.modal.expires.label": "Caducitat",
@@ -356,6 +347,7 @@ export default {
   "upload.modal.accordion.security.max-views.label": "Visualitzacions màximes",
   "upload.modal.accordion.security.max-views.placeholder": "Sense límit",
   // showCompletedUploadModal.tsx
+  "upload.modal.completed.never-expires": "Aquesta compartició no caducarà mai.",
   "upload.modal.completed.expires-on": "Aquesta compartició caducarà el {expiration}.",
   "upload.modal.completed.share-ready": "Compartició llesta",
   "upload.modal.completed.notified-reverse-share-creator": "Hem notificat al creador de la compartició inversa. També podeu compartir manualment aquest enllaç amb ell per altres mitjans.",
@@ -621,9 +613,6 @@ export default {
   "admin.config.oauth.oidc-client-id.description": "ID de client de l'aplicació OAuth d'OpenID Connect",
   "admin.config.oauth.oidc-client-secret": "Secret de client d'OpenID Connect",
   "admin.config.oauth.oidc-client-secret.description": "Secret de client de l'aplicació OAuth d'OpenID Connect",
-  "admin.config.oauth.allowed-hosts": "Allowed OAuth Hosts",
-  "admin.config.oauth.allowed-hosts.description":
-    "Comma-separated list of additional hostnames allowed for OAuth sign-in (e.g. share.internal.example.com).",
   "admin.config.category.ldap": "LDAP",
   "admin.config.ldap.enabled": "Activar LDAP",
   "admin.config.ldap.enabled.description": "Utilitzar l'autenticació LDAP per a l'inici de sessió dels usuaris",
@@ -752,22 +741,5 @@ export default {
   "admin.notice.modal.button.acknowledge": "Reconèixer i descartar",
   "admin.notice.modal.button.acknowledging": "Reconeixent...",
   "admin.notice.modal.docsLink": "Veure la documentació",
-  "admin.notice.modal.globalNoticeFooter": "Nota: Un cop reconegut, aquest avís es descartarà permanentment per a tots els administradors en tots els dispositius.",
-
-  // Share report feature
-  "share.report.button": "Denuncia",
-  "share.report.modal.title": "Denuncia la compartició",
-  "share.report.modal.description": "Si aquesta compartició conté contingut que infringeix la llei o les nostres polítiques, pots denunciar-la. S'avisarà l'administrador.",
-  "share.report.modal.reason": "Motiu",
-  "share.report.modal.custom-reason": "Detalls addicionals",
-  "share.report.modal.error.no-reason": "Selecciona un motiu",
-  "share.report.modal.error.no-message": "Descriu per què denuncies aquesta compartició",
-  "share.report.notify.success": "Gràcies. La teva denúncia s'ha enviat.",
-  "share.report.reason.dmca": "DMCA / Infracció de drets d'autor",
-  "share.report.reason.csam": "Material d'abús sexual infantil (CSAM)",
-  "share.report.reason.gore": "Contingut sagnant / Violent",
-  "share.report.reason.malware": "Programari maliciós / Phishing",
-  "share.report.reason.spam": "Correu brossa",
-  "share.report.reason.personal-information": "Informació personal / Doxxing",
-  "share.report.reason.other": "Un altre"
+  "admin.notice.modal.globalNoticeFooter": "Nota: Un cop reconegut, aquest avís es descartarà permanentment per a tots els administradors en tots els dispositius."
 };

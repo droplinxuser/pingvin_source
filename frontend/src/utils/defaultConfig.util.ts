@@ -4,8 +4,8 @@ export function getDefaultConfig(): Config[] {
   return [
     {
       key: "general.appName",
-      value: "SiteName",
-      defaultValue: "SiteName",
+      value: "Pingvin Share X",
+      defaultValue: "Pingvin Share X",
       type: "string",
     },
     {
