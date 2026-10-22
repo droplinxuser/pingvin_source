@@ -11,9 +11,11 @@ import { I18nModule } from "nestjs-i18n";
 import { APP_GUARD } from "@nestjs/core";
 import { ThrottlerGuard, ThrottlerModule } from "@nestjs/throttler";
 import { AppCacheModule } from "./cache/cache.module";
+import { ValkeyThrottlerStorage } from "./cache/valkeyThrottler.storage";
 import { AppController } from "./app.controller";
 import { ClamScanModule } from "./clamscan/clamscan.module";
 import { ConfigModule } from "./config/config.module";
+import { ConfigService } from "./config/config.service";
 import { EmailModule } from "./email/email.module";
 import { FileModule } from "./file/file.module";
 import { JobsModule } from "./jobs/jobs.module";
@@ -58,26 +60,43 @@ const VISITOR_RATE_BLOCK_MS = positiveInt(
     UserModule,
     SystemModule,
     AdminNoticeModule,
-    ThrottlerModule.forRoot([
-      {
-        name: "default",
-        ttl: 60 * 1000,
-        limit: parseInt(process.env.THROTTLE_LIMIT || "100"),
-        blockDuration: 60 * 1000,
+    ThrottlerModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: async (configService: ConfigService) => {
+        const storage = new ValkeyThrottlerStorage(
+          configService.get("cache.redis-enabled") === true,
+          configService.get("cache.redis-url"),
+        );
+        await storage.initialize();
+
+        return {
+          storage,
+          throttlers: [
+            {
+              name: "default",
+              ttl: 60 * 1000,
+              limit: parseInt(process.env.THROTTLE_LIMIT || "100"),
+              blockDuration: 60 * 1000,
+            },
+            {
+              name: "visitor",
+              ttl: VISITOR_RATE_TTL_MS,
+              limit: VISITOR_RATE_LIMIT,
+              blockDuration: VISITOR_RATE_BLOCK_MS,
+              getTracker: (req) =>
+                typeof req.visitorKey === "string"
+                  ? req.visitorKey
+                  : `ip:${req.ip}`,
+              generateKey: (_context, tracker) =>
+                createHash("sha256")
+                  .update(`visitor:${tracker}`)
+                  .digest("hex"),
+            },
+          ],
+        };
       },
-      {
-        name: "visitor",
-        ttl: VISITOR_RATE_TTL_MS,
-        limit: VISITOR_RATE_LIMIT,
-        blockDuration: VISITOR_RATE_BLOCK_MS,
-        getTracker: (req) =>
-          typeof req.visitorKey === "string" ? req.visitorKey : `ip:${req.ip}`,
-        generateKey: (_context, tracker) =>
-          createHash("sha256")
-            .update(`visitor:${tracker}`)
-            .digest("hex"),
-      },
-    ]),
+    }),
     ScheduleModule.forRoot(),
     ClamScanModule,
     ReverseShareModule,

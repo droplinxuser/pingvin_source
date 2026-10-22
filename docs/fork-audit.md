@@ -15,7 +15,7 @@ so `git merge upstream/main` stays small.
 | Uploader metadata / visitors | `backend/src/utils/uploaderInfo.util.ts`, `ShareDTO.uploaderInfo`, `frontend/src/components/share/UploaderInfoBadges.tsx`, `ShareStats.tsx`; view counts stay in `Share.views` |
 | Inline media gallery | `frontend/src/components/share/MediaPreviewGallery.tsx` reuses `FilePreview.tsx` |
 | Cache headers / hotlink protection | `backend/src/utils/cache.util.ts`, `backend/src/utils/referrer.util.ts`, `frontend/src/middleware.ts`, `frontend/next.config.js` |
-| Per-visitor rate limiting | `backend/src/utils/visitorIdentity.util.ts`, `backend/src/app.module.ts`, `backend/src/main.ts` |
+| Per-visitor rate limiting | `backend/src/utils/visitorIdentity.util.ts`, `backend/src/cache/valkeyThrottler.storage.ts`, `backend/src/app.module.ts`, `backend/src/main.ts` |
 | Valkey/Redis share cache | `backend/src/utils/shareCache.util.ts`, `backend/src/share/share.service.ts`, `backend/src/cache/cache.module.ts` |
 | Site stats and footer | `backend/src/system/system.service.ts`, `frontend/src/components/footer/Footer.tsx` |
 | Home copy and ads | `frontend/src/pages/index.tsx` (upstream layout), `home.custom.*` keys in `en-US.ts`, `frontend/src/components/Ads.tsx` |
@@ -62,9 +62,12 @@ other languages show the upstream copy instead of the English fallback.
   `VISITOR_RATE_TTL_MS` and `VISITOR_RATE_BLOCK_MS`. Guests use a signed,
   HttpOnly `pingvin_visitor` cookie; signed-in users use their account ID;
   cookie-less/forged-cookie requests fall back to the client IP. The existing
-  per-route/per-IP `THROTTLE_LIMIT` limiter remains in place. `/api/configs`,
-  share `HEAD` checks and upload chunk requests are exempt from the visitor
-  bucket to keep SSR and large uploads working.
+  per-route/per-IP `THROTTLE_LIMIT` limiter remains in place. When
+  `CACHE_REDIS_ENABLED=true`, both limiter buckets are stored atomically in
+  Valkey (shared across instances/restarts); if Valkey is unavailable they
+  fall back to the in-memory store. `/api/configs`, share `HEAD` checks and
+  upload chunk requests are exempt from the visitor bucket to keep SSR and
+  large uploads working.
 - Valkey/Redis is optional but recommended: set `CACHE_REDIS_ENABLED=true` and
   `CACHE_REDIS_URL=redis://127.0.0.1:6379` in `backend/.env` (`update.sh`
   enables both automatically when a local `valkey-server` is active). Share-page data
