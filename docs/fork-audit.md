@@ -130,8 +130,11 @@ login can loop between `/upload` and `/auth/signIn`.
   backend stopped, the frontend still renders the home page from its bundled
   default config.
 - The local sandbox ran without Valkey, so the in-memory page-view and
-  throttler fallbacks were exercised. The Valkey-backed paths are exercised on
-  the live server, where `valkey-server` is enabled by `update.sh`.
+  throttler fallbacks were exercised.
+- Live `https://dropmb.com` was checked for test-account sign-in, account
+  shares, public share stats and the dynamic manifest. The origin host is not
+  reachable from this workstation, so the new commit still needs
+  `sudo bash /var/www/pingvin_source/update.sh` on the server.
 - `bash -n update.sh` passes; its env writer produces the exact live
   `DATABASE_URL` above.
 
