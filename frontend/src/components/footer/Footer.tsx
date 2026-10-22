@@ -81,7 +81,10 @@ const Footer = () => {
                     title={getCountryName(country, intl.locale)}
                   >
                     {index > 0 ? " · " : ""}
-                    {countryCodeToFlag(country)} {count}
+                    {countryCodeToFlag(country)}{" "}
+                    <span style={{ fontSize: "0.82em", opacity: 0.85 }}>
+                      {count}
+                    </span>
                   </span>
                 ))}
               </>

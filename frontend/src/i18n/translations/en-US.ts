@@ -19,8 +19,8 @@ export default {
   "footer.custom.stats.summary":
     "{users, number} users • {shares, number} shares • {files, number} files • {size} storage used",
   "footer.custom.stats.pageviews":
-    "{count, plural, one {# page view} other {# page views}} in the last 60 minutes",
-  "footer.custom.stats.top-countries": "Top countries:",
+    "{count, plural, one {# view} other {# views}} ~ last 1-hour",
+  "footer.custom.stats.top-countries": "Top 5 countries:",
 
   // END footer
 
