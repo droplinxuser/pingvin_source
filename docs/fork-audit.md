@@ -48,6 +48,13 @@ so `git merge upstream/main` stays small.
   responses after deployments. Page HTML is cached for at most 60s; hashed
   `/_next/static` assets stay immutable.
 
+## Auth redirects
+
+Post-login, post-TOTP, post-signup and authenticated-home redirects use a
+full document navigation. The public home page prefetches `/upload`, which
+returns a sign-in redirect for guests; reusing that cached redirect after
+login can loop between `/upload` and `/auth/signIn`.
+
 ## Known non-issues
 
 - Backend lint reports upstream warnings only.

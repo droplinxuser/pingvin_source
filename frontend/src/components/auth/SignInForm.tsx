@@ -112,7 +112,10 @@ const SignInForm = ({ redirectPath }: { redirectPath: string }) => {
           );
         } else {
           await refreshUser();
-          router.replace(safeRedirectPath(redirectPath));
+          // Use a full navigation after authentication. A client-side
+          // navigation can reuse a prefetched redirect for a protected page
+          // that was cached before login, causing a redirect loop.
+          window.location.replace(safeRedirectPath(redirectPath));
         }
       })
       .catch(toast.axiosError);

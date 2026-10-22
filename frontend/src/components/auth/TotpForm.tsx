@@ -47,7 +47,7 @@ function TotpForm({ redirectPath }: { redirectPath: string }) {
         router.query.loginToken as string,
       );
       await refreshUser();
-      await router.replace(safeRedirectPath(redirectPath));
+      window.location.replace(safeRedirectPath(redirectPath));
     } catch (e) {
       toast.axiosError(e);
       form.setFieldError("code", "error");

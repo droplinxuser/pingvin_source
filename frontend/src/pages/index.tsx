@@ -9,7 +9,6 @@ import {
   Title,
 } from "@mantine/core";
 import Link from "next/link";
-import { useRouter } from "next/router";
 import { useEffect } from "react";
 import { TbCheck } from "react-icons/tb";
 import { FormattedMessage } from "react-intl";
@@ -77,16 +76,17 @@ const useStyles = createStyles((theme) => ({
 export default function Home() {
   const { classes } = useStyles();
   const { user } = useUser();
-  const router = useRouter();
   const config = useConfig();
   const t = useTranslate();
 
-  // If user is already authenticated, redirect to the upload page
+  // If user is already authenticated, redirect to the upload page.
+  // Use a full navigation to avoid reusing a prefetched redirect that was
+  // cached while the page was rendered for a guest.
   useEffect(() => {
     if (user) {
-      router.replace("/upload");
+      window.location.replace("/upload");
     }
-  }, [user, router]);
+  }, [user]);
 
   // config.get returns null until the config has been loaded from the API
   const getConfig = (key: string, fallback: string) =>

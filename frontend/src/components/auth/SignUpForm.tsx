@@ -97,9 +97,9 @@ const SignUpForm = () => {
         } else {
           const user = await refreshUser();
           if (user?.isAdmin) {
-            router.replace("/admin/intro");
+            window.location.replace("/admin/intro");
           } else {
-            router.replace("/upload");
+            window.location.replace("/upload");
           }
         }
       })

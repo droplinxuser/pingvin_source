@@ -1,9 +1,12 @@
 export function safeRedirectPath(path: string | undefined) {
   if (!path) return "/";
 
-  if (!path.startsWith("/")) return `/${path}`;
+  const normalized = path.startsWith("/") ? path : `/${path}`;
 
-  return path;
+  // Do not allow protocol-relative or backslash redirects to another origin.
+  if (normalized.startsWith("//") || normalized.includes("\\")) return "/";
+
+  return normalized;
 }
 
 export function getQueryString(

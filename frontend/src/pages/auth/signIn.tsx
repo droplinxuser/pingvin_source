@@ -1,6 +1,5 @@
 import { LoadingOverlay } from "@mantine/core";
 import { GetServerSidePropsContext } from "next";
-import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 import SignInForm from "../../components/auth/SignInForm";
 import Meta from "../../components/Meta";
@@ -15,7 +14,6 @@ export function getServerSideProps(context: GetServerSidePropsContext) {
 
 const SignIn = ({ redirectPath }: { redirectPath?: string }) => {
   const { refreshUser } = useUser();
-  const router = useRouter();
   const t = useTranslate();
 
   const [isLoading, setIsLoading] = useState(redirectPath ? true : false);
@@ -25,7 +23,7 @@ const SignIn = ({ redirectPath }: { redirectPath?: string }) => {
   useEffect(() => {
     refreshUser().then((user) => {
       if (user) {
-        router.replace(redirectPath ?? "/upload");
+        window.location.replace(redirectPath ?? "/upload");
       } else {
         setIsLoading(false);
       }
