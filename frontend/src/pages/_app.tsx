@@ -209,6 +209,17 @@ function App({ Component, pageProps }: AppProps) {
     setRoute(router.pathname);
   }, [router.pathname]);
 
+  // Version the service worker URL so browsers fetch the new worker even if
+  // Cloudflare or the browser has cached /sw.js from a previous deployment.
+  useEffect(() => {
+    if (process.env.NODE_ENV !== "production") return;
+    if (!("serviceWorker" in navigator)) return;
+    const version = process.env.COMMIT_HASH || process.env.VERSION;
+    navigator.serviceWorker
+      .register(`/sw.js?v=${version}`, { updateViaCache: "none" })
+      .catch(() => {});
+  }, []);
+
   // Public pages can be served from the CDN as an anonymous shell. Restore
   // the real user immediately when a logged-in visitor receives such a copy.
   useEffect(() => {

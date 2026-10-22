@@ -44,6 +44,9 @@ so `git merge upstream/main` stays small.
   live database URL at `file:/var/www/pingvin_data/pingvin-share.db?connection_limit=1`.
 - `update.sh` runs migrations/seeding via the service restart, installs the
   systemd units, and preserves existing `.env` values.
+- Cloudflare: bypass cache for `/sw.js` and purge old HTML/service-worker
+  responses after deployments. Page HTML is cached for at most 60s; hashed
+  `/_next/static` assets stay immutable.
 
 ## Known non-issues
 

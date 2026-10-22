@@ -19,6 +19,9 @@ if (!commitHash) {
 const withPWA = require("next-pwa")({
   dest: "public",
   disable: process.env.NODE_ENV === "development",
+  // Registered manually in _app with the build hash in the URL so a cached
+  // /sw.js cannot keep an old service worker alive across deployments.
+  register: false,
   reloadOnOnline: false,
   runtimeCaching: [
     {

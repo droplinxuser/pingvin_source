@@ -13,8 +13,9 @@ export const config = {
 };
 
 const PUBLIC_PAGES = new Set(["/", "/imprint", "/privacy"]);
-const PUBLIC_CACHE =
-  "public, max-age=0, s-maxage=2592000, stale-while-revalidate=86400";
+// Keep this short: the HTML contains the build ID used by client navigation.
+// A long CDN TTL serves an old build after a deployment and breaks navigation.
+const PUBLIC_CACHE = "public, max-age=0, s-maxage=60, stale-while-revalidate=30";
 
 async function fetchConfig(
   apiUrl: string,

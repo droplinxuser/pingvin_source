@@ -1,4 +1,5 @@
-import { Controller, Get, Header, UseGuards } from "@nestjs/common";
+import { Controller, Get, Res, UseGuards } from "@nestjs/common";
+import { Response } from "express";
 import { AdministratorGuard } from "src/auth/guard/isAdmin.guard";
 import { JwtGuard } from "src/auth/guard/jwt.guard";
 import { SystemService, SystemStats } from "./system.service";
@@ -15,10 +16,14 @@ export class SystemController {
   }
 
   @Get("stats")
-  @Header("Cache-Control", "public, max-age=60")
-  @Header("CDN-Cache-Control", "public, max-age=60")
-  @Header("Cloudflare-CDN-Cache-Control", "public, max-age=60")
-  async getSystemStats(): Promise<SystemStats> {
+  async getSystemStats(
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<SystemStats> {
+    response.set({
+      "Cache-Control": "public, max-age=60",
+      "CDN-Cache-Control": "public, max-age=60",
+      "Cloudflare-CDN-Cache-Control": "public, max-age=60",
+    });
     return await this.systemService.getSystemStats();
   }
 }
