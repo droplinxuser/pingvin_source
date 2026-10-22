@@ -83,6 +83,7 @@ const Body = ({
           .min(3, t("common.error.too-short", { length: 3 })),
         password: yup
           .string()
+          .transform((value) => value || undefined)
           .min(
             customPasswordPolicy.minLength,
             t("common.error.too-short", {
@@ -107,8 +108,13 @@ const Body = ({
               : /.*/,
             t("common.error.password.special"),
           )
-          .required(t("common.error.field-required"))
-          .optional(),
+          .when("setPasswordManually", {
+            is: (setPasswordManually: boolean) =>
+              !smtpEnabled || setPasswordManually,
+            then: (schema) =>
+              schema.required(t("common.error.field-required")),
+            otherwise: (schema) => schema.optional(),
+          }),
         maxShares: yup
           .number()
           .transform((value) => value || 0)
@@ -226,6 +232,7 @@ const Body = ({
               {(form.values.setPasswordManually || !smtpEnabled) && (
                 <PasswordInput
                   label={t("admin.users.modal.create.password")}
+                  withAsterisk
                   {...form.getInputProps("password")}
                 />
               )}

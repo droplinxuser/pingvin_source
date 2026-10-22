@@ -95,8 +95,13 @@ export class UserSevice {
       throw new BadRequestException(this.i18n.t("auth.passwordPolicyNotMet"));
     }
 
-    // The password can be undefined if the user is invited by an admin
+    // The password can be undefined only when an invite email can be sent.
     if (!dto.password) {
+      if (!this.configService.get("smtp.enabled")) {
+        throw new BadRequestException(
+          this.i18n.t("auth.passwordRequiredWithoutSmtp"),
+        );
+      }
       randomPassword = crypto.randomUUID();
       hash = await argon.hash(randomPassword);
     } else {
@@ -134,6 +139,7 @@ export class UserSevice {
           );
         }
       }
+      throw e;
     }
   }
 
@@ -173,6 +179,7 @@ export class UserSevice {
           );
         }
       }
+      throw e;
     }
   }
 
