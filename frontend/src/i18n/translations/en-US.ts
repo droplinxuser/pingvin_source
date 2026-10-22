@@ -16,11 +16,19 @@ export default {
 
   // Footer
   "footer.poweredBy": "Powered by",
-  "footer.custom.stats.summary":
-    "{users, number} users • {shares, number} shares • {files, number} files • {size} storage used",
-  "footer.custom.stats.pageviews":
-    "{count, plural, one {# view} other {# views}} ~ last 1-hour",
-  "footer.custom.stats.top-countries": "Top 5 countries:",
+  "footer.custom.tagline": "Big files, short links.",
+  "footer.custom.overview": "Overview",
+  "footer.custom.activity": "Activity",
+  "footer.custom.links": "Links",
+  "footer.custom.users": "Users",
+  "footer.custom.shares": "Shares",
+  "footer.custom.files": "Files",
+  "footer.custom.storage": "Storage",
+  "footer.custom.views":
+    "{count, plural, one {# view} other {# views}} in the last hour",
+  "footer.custom.loading": "Loading activity…",
+  "footer.custom.contact": "Contact",
+  "footer.custom.copyright": "© {year} {siteName}",
 
   // END footer
 
