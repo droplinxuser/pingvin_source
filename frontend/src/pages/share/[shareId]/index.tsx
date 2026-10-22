@@ -242,6 +242,8 @@ const Share = ({
 
       <MediaPreviewGallery shareId={shareId} files={share?.files} />
 
+      <Ads />
+
       <FileList
         files={share?.files}
         setShare={setShare}
@@ -249,7 +251,6 @@ const Share = ({
         isLoading={!share}
         recipientId={recipientId}
       />
-      <Ads />
     </>
   );
 };
