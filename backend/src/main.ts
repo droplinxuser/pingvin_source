@@ -17,6 +17,7 @@ import {
   LOG_LEVEL_DEFAULT,
   LOG_LEVEL_ENV,
 } from "./constants";
+import { NO_STORE_HEADERS } from "./utils/cache.util";
 
 function generateNestJsLogLevels(): LogLevel[] {
   if (LOG_LEVEL_ENV) {
@@ -45,6 +46,14 @@ async function bootstrap() {
   app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)));
 
   const config = app.get<ConfigService>(ConfigService);
+
+  // API responses are private by default. Endpoints that intentionally serve
+  // cacheable content (e.g. public downloads or system stats) override these
+  // headers later.
+  app.use((_req: Request, res: Response, next: NextFunction) => {
+    res.set(NO_STORE_HEADERS);
+    next();
+  });
 
   app.use((req: Request, res: Response, next: NextFunction) => {
     const chunkSize = config.get("share.chunkSize");

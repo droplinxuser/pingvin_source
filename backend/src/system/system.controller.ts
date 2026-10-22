@@ -17,6 +17,8 @@ export class SystemController {
 
   @Get("stats")
   @Header("Cache-Control", "public, max-age=60")
+  @Header("CDN-Cache-Control", "public, max-age=60")
+  @Header("Cloudflare-CDN-Cache-Control", "public, max-age=60")
   async getSystemStats(): Promise<SystemStatsDTO> {
     return await this.systemService.getSystemStats();
   }

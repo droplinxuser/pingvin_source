@@ -72,18 +72,16 @@ const useStyles = createStyles((theme) => ({
 
 export default function Home() {
   const { classes } = useStyles();
-  const { refreshUser } = useUser();
+  const { user } = useUser();
   const router = useRouter();
   const config = useConfig();
 
   // If user is already authenticated, redirect to the upload page
   useEffect(() => {
-    refreshUser().then((user) => {
-      if (user) {
-        router.replace("/upload");
-      }
-    });
-  }, [config]);
+    if (user) {
+      router.replace("/upload");
+    }
+  }, [user, router]);
 
   // config.get returns null until the config has been loaded from the API
   const getConfig = (key: string, fallback: string) =>

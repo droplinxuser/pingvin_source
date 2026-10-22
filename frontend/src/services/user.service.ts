@@ -1,3 +1,4 @@
+import { getCookie } from "cookies-next";
 import {
   CreateUser,
   CurrentUser,
@@ -41,9 +42,14 @@ const removeCurrentUser = async () => {
 };
 
 const getCurrentUser = async (): Promise<CurrentUser | null> => {
+  // Without an access token there is no user to load. This also prevents a
+  // cached anonymous page from asking the API for a user on every render.
+  if (!getCookie("access_token")) return null;
+
   try {
     await authService.refreshAccessToken();
-    return (await api.get("users/me")).data;
+    // User-specific responses must never come from a shared CDN cache.
+    return (await api.get("users/me", { params: { _: Date.now() } })).data;
   } catch {
     return null;
   }

@@ -408,11 +408,13 @@ App.getInitialProps = async ({ ctx }: { ctx: GetServerSidePropsContext }) => {
     const apiURL = process.env.API_URL || "http://localhost:8080";
     const cookieHeader = ctx.req.headers.cookie;
 
-    pageProps.user = await axios(`${apiURL}/api/users/me`, {
-      headers: { cookie: cookieHeader },
-    })
-      .then((res) => res.data)
-      .catch(() => null);
+    if (ctx.req.cookies.access_token) {
+      pageProps.user = await axios(`${apiURL}/api/users/me`, {
+        headers: { cookie: cookieHeader },
+      })
+        .then((res) => res.data)
+        .catch(() => null);
+    }
 
     try {
       pageProps.configVariables = (
