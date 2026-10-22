@@ -1,32 +1,27 @@
 import { useEffect, useRef } from "react";
 
-// Ad units from the publishers' original snippets
-const BANNER_SCRIPTS = ["//iz.chaponrearing.com/t9EmdEo0Xr3P/157480"];
-const BODY_SCRIPTS = [
-  "https://grop.net/14/4d696fd2a6a11010f9f9e4cdbadc5907",
-  "https://wingsmob.com/1/ccdff92c9d7f97c5af143f6c519f16ed",
+// Ad units from the publishers' original snippets. Banner scripts are inserted
+// into the placeholder below, page-level scripts into <body>.
+const SCRIPTS = [
+  { src: "//iz.chaponrearing.com/t9EmdEo0Xr3P/157480", banner: true },
+  { src: "https://grop.net/14/4d696fd2a6a11010f9f9e4cdbadc5907" },
+  { src: "https://wingsmob.com/1/ccdff92c9d7f97c5af143f6c519f16ed" },
 ];
 
 const Ads = () => {
   const bannerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const loadScript = (src: string, target: HTMLElement, async?: boolean) => {
+    const scripts = SCRIPTS.map(({ src, banner }) => {
       const script = document.createElement("script");
       script.setAttribute("data-cfasync", "false");
-      script.async = !!async;
+      script.async = !!banner;
       script.src = src;
-      target.appendChild(script);
-    };
+      (banner ? bannerRef.current : document.body)?.appendChild(script);
+      return script;
+    });
 
-    BANNER_SCRIPTS.forEach(
-      (src) => bannerRef.current && loadScript(src, bannerRef.current, true),
-    );
-    BODY_SCRIPTS.forEach((src) => loadScript(src, document.body));
-
-    return () => {
-      if (bannerRef.current) bannerRef.current.innerHTML = "";
-    };
+    return () => scripts.forEach((script) => script.remove());
   }, []);
 
   return (

@@ -89,6 +89,38 @@ const UploaderInfoBadges = ({
     info?.browserVersion ? ` ${info.browserVersion}` : ""
   }`;
 
+  const badges = [
+    {
+      label: t("share.uploader.country"),
+      tooltip: (
+        <Stack spacing={2} sx={{ maxWidth: 280 }}>
+          {(details.length > 0 ? details : [t("share.uploader.unknown")]).map(
+            (line) => (
+              <Text key={line} size="xs">
+                {line}
+              </Text>
+            ),
+          )}
+        </Stack>
+      ),
+      icon: info?.country ? (
+        countryCodeToFlag(info.country)
+      ) : (
+        <TbWorld {...iconProps} />
+      ),
+    },
+    {
+      label: t("share.uploader.os"),
+      tooltip: osLabel,
+      icon: ICONS[info?.os ?? ""] ?? <TbDeviceLaptop {...iconProps} />,
+    },
+    {
+      label: t("share.uploader.browser"),
+      tooltip: browserLabel,
+      icon: ICONS[info?.browser ?? ""] ?? <TbBrowser {...iconProps} />,
+    },
+  ];
+
   return (
     <Group spacing={6}>
       <Text size="sm" color="dimmed">
@@ -96,37 +128,13 @@ const UploaderInfoBadges = ({
           ? t("share.uploader.by", { name: creator })
           : t("share.uploader.anonymous")}
       </Text>
-      <HoverTip
-        label={
-          <Stack spacing={2} sx={{ maxWidth: 280 }}>
-            {(details.length > 0 ? details : [t("share.uploader.unknown")]).map(
-              (line) => (
-                <Text key={line} size="xs">
-                  {line}
-                </Text>
-              ),
-            )}
-          </Stack>
-        }
-      >
-        <span style={iconStyle} aria-label={t("share.uploader.country")}>
-          {info?.country ? (
-            countryCodeToFlag(info.country)
-          ) : (
-            <TbWorld size={16} />
-          )}
-        </span>
-      </HoverTip>
-      <HoverTip label={osLabel}>
-        <span style={iconStyle} aria-label={t("share.uploader.os")}>
-          {ICONS[info?.os ?? ""] ?? <TbDeviceLaptop {...iconProps} />}
-        </span>
-      </HoverTip>
-      <HoverTip label={browserLabel}>
-        <span style={iconStyle} aria-label={t("share.uploader.browser")}>
-          {ICONS[info?.browser ?? ""] ?? <TbBrowser {...iconProps} />}
-        </span>
-      </HoverTip>
+      {badges.map(({ label, tooltip, icon }) => (
+        <HoverTip key={label} label={tooltip}>
+          <span style={iconStyle} aria-label={label}>
+            {icon}
+          </span>
+        </HoverTip>
+      ))}
     </Group>
   );
 };

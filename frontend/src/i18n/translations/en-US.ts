@@ -54,12 +54,6 @@ export default {
   "home.custom.bullet.c.name": "Share on your terms",
   "home.custom.bullet.c.description":
     "Add a password, set a download limit, or make a share recipient-only. Links renew on every visit and expire after 100 quiet days.",
-  "home.custom.bullet.d.name": "A dashboard for every share",
-  "home.custom.bullet.d.description":
-    "Track views and expiry, edit security, add or remove files, and manage received shares and file-request links.",
-  "home.custom.bullet.e.name": "Contact us",
-  "home.custom.bullet.e.description":
-    "For inquiries, takedown requests or anything else, reach us at {contactEmail}.",
   "home.custom.button.start": "Start sharing",
   "home.custom.button.source": "About",
   // END /

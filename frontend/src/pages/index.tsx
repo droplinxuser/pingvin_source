@@ -18,9 +18,6 @@ import useUser from "../hooks/user.hook";
 import useConfig from "../hooks/config.hook";
 import useTranslate from "../hooks/useTranslate.hook";
 
-const CONTACT_EMAIL = "contactwebph@gmail.com";
-const HOME_BULLETS = ["a", "b", "c", "d", "e"];
-
 const useStyles = createStyles((theme) => ({
   inner: {
     display: "flex",
@@ -79,29 +76,23 @@ export default function Home() {
   const config = useConfig();
   const t = useTranslate();
 
-  // If user is already authenticated, redirect to the upload page.
-  // Use a full navigation to avoid reusing a prefetched redirect that was
-  // cached while the page was rendered for a guest.
+  // Use a full navigation after login: a redirect page prefetched while
+  // logged out must not be reused (it can loop between /upload and sign-in).
   useEffect(() => {
     if (user) {
       window.location.replace("/upload");
     }
   }, [user]);
 
-  // config.get returns null until the config has been loaded from the API
-  const getConfig = (key: string, fallback: string) =>
-    (config.get(key) as string) || fallback;
-
-  const aboutHref = getConfig("legal.imprintUrl", "") || "/imprint";
+  const siteName = (config.get("general.appName") as string) || "SiteName";
+  const aboutHref = (config.get("legal.imprintUrl") as string) || "/imprint";
   const aboutIsExternal = /^https?:\/\//i.test(aboutHref);
 
   return (
     <>
       <Meta
         title={t("home.custom.metaTitle")}
-        description={t("home.custom.metaDescription", {
-          siteName: getConfig("general.appName", "SiteName"),
-        })}
+        description={t("home.custom.metaDescription", { siteName })}
       />
       <Container>
         <div className={classes.inner}>
@@ -110,7 +101,7 @@ export default function Home() {
               <FormattedMessage
                 id="home.custom.title"
                 values={{
-                  siteName: getConfig("general.appName", "SiteName"),
+                  siteName,
                   h: (chunks) => (
                     <span className={classes.highlight}>{chunks}</span>
                   ),
@@ -131,20 +122,30 @@ export default function Home() {
                 </ThemeIcon>
               }
             >
-              {HOME_BULLETS.map((key) => (
-                <List.Item key={key}>
-                  <div>
-                    <b>
-                      <FormattedMessage id={`home.custom.bullet.${key}.name`} />
-                    </b>{" "}
-                    -{" "}
-                    <FormattedMessage
-                      id={`home.custom.bullet.${key}.description`}
-                      values={{ contactEmail: CONTACT_EMAIL }}
-                    />
-                  </div>
-                </List.Item>
-              ))}
+              <List.Item>
+                <div>
+                  <b>
+                    <FormattedMessage id="home.custom.bullet.a.name" />
+                  </b>{" "}
+                  - <FormattedMessage id="home.custom.bullet.a.description" />
+                </div>
+              </List.Item>
+              <List.Item>
+                <div>
+                  <b>
+                    <FormattedMessage id="home.custom.bullet.b.name" />
+                  </b>{" "}
+                  - <FormattedMessage id="home.custom.bullet.b.description" />
+                </div>
+              </List.Item>
+              <List.Item>
+                <div>
+                  <b>
+                    <FormattedMessage id="home.custom.bullet.c.name" />
+                  </b>{" "}
+                  - <FormattedMessage id="home.custom.bullet.c.description" />
+                </div>
+              </List.Item>
             </List>
 
             <Group mt={30}>

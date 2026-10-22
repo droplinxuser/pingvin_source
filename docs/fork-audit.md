@@ -12,15 +12,18 @@ so `git merge upstream/main` stays small.
 | Rolling 100-day expiration | `backend/src/utils/date.util.ts`, migrations `20261016000000` / `20261016000001`, share create/edit modals |
 | Admin pagination, search and sorting | `backend/src/share/share.service.ts`, `backend/src/user/user.service.ts`, `frontend/src/pages/admin/*`, `frontend/src/components/core/SortIcon.tsx` |
 | Share reports | `backend/src/share/dto/reportShare.dto.ts`, `backend/src/email/email.service.ts`, `frontend/src/components/share/showReportShareModal.tsx` |
-| Uploader metadata | `backend/src/utils/uploaderInfo.util.ts`, `ShareDTO.uploaderInfo`, `UploaderInfoBadges.tsx` |
-| Inline media gallery | `frontend/src/components/share/MediaPreviewGallery.tsx`, exported media previews in `FilePreview.tsx` |
+| Uploader metadata | `backend/src/utils/uploaderInfo.util.ts`, `ShareDTO.uploaderInfo`, `frontend/src/components/share/UploaderInfoBadges.tsx` |
+| Inline media gallery | `frontend/src/components/share/MediaPreviewGallery.tsx` reuses `FilePreview.tsx` |
 | Cache headers / hotlink protection | `backend/src/utils/cache.util.ts`, `backend/src/utils/referrer.util.ts`, `frontend/src/middleware.ts`, `frontend/next.config.js` |
 | Site stats and footer | `backend/src/system/system.service.ts`, `frontend/src/components/footer/Footer.tsx` |
+| Home copy and ads | `frontend/src/pages/index.tsx` (upstream layout), `home.custom.*` keys in `en-US.ts`, `frontend/src/components/Ads.tsx` |
 | Fork branding / deployment | `frontend/public/img/**`, `frontend/src/pages/manifest.json.tsx`, `pingvin-*.service`, `update.sh` |
 
 Fork-only UI strings live in `frontend/src/i18n/translations/en-US.ts`; every
 other locale falls back to English through `frontend/src/utils/i18n.util.ts`,
-so translations do not need a fork-specific edit on each upstream merge.
+so translations do not need a fork-specific edit on each upstream merge. New
+fork strings must use new `*.custom.*` keys: reusing an upstream key would make
+other languages show the upstream copy instead of the English fallback.
 
 ## Merge checklist
 
@@ -52,7 +55,8 @@ so translations do not need a fork-specific edit on each upstream merge.
   share at `uploads/shares/<shareId>/uploader.json` with mode `600`.
 - `update.sh` pulls origin/main, preserves `backend/.env`, reinstalls and
   rebuilds both packages, installs the systemd units, runs migrations/seeding
-  through the backend restart, and restarts the frontend.
+  through the backend restart, and restarts the frontend. It must run as root:
+  `sudo bash /var/www/pingvin_source/update.sh`.
 - Keep an up-to-date database copy at `/home/rt/Documents/pingvin-share.db`
   (`sqlite3 ... "PRAGMA integrity_check;"` must return `ok`).
 - Cloudflare: bypass cache for `/sw.js` and purge old HTML/service-worker
@@ -72,11 +76,17 @@ login can loop between `/upload` and `/auth/signIn`.
   production builds pass for backend and frontend.
 - Backend started with `npm run prod` against a copy of
   `/home/rt/Documents/pingvin-share.db`; migrations were already current and
-  the seed completed.
-- Browser smoke test: home, password sign-in, upload page, admin shares
-  (search/sort/pagination), admin users (sort/pagination), media share gallery,
-  uploader badges, report modal, missing-share 404, dynamic manifest, site
-  stats footer and service-worker registration.
+  the seed completed. The source backup passes `PRAGMA integrity_check`.
+- Browser tests (48 guest/user/admin checks plus 24 security/reverse-share
+  checks): home, guest + password sign-in, upload, file and ZIP downloads,
+  text and image previews, inline gallery, uploader badges, share report
+  (including SMTP delivery), password-protected share, reverse share upload,
+  admin shares (search/sort/pagination), admin users (sort/pagination), admin
+  delete, missing-share/unknown-route 404s, language fallback, dynamic
+  manifest, site stats footer and service-worker registration.
+- Live `https://dropmb.com` check (18 checks): guest home/share/404/manifest
+  and the `thuoct222026` account sign-in, session, account and reverse-share
+  pages pass without JavaScript errors.
 - `bash -n update.sh` passes; its env writer produces the exact live
   `DATABASE_URL` above.
 
@@ -84,5 +94,8 @@ login can loop between `/upload` and `/auth/signIn`.
 
 - Backend lint reports upstream warnings only.
 - A fresh data directory logs one `ENOENT` from the temporary-file cron.
+- Chrome logs the expected `403` while the share page fetches its share token,
+  and `404`s for intentionally missing shares. These are network status logs,
+  not JavaScript exceptions; the page recovers and renders normally.
 - Node 24+ prints an upstream `util._extend` deprecation warning at frontend
   startup.

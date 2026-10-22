@@ -102,6 +102,7 @@ const ShareActions = ({
           variant="light"
           color="red"
           leftIcon={<TbFlag />}
+          aria-label={t("share.report.button")}
           onClick={() => showReportShareModal(modals, shareId)}
         >
           <FormattedMessage id="share.report.button" />
@@ -110,7 +111,12 @@ const ShareActions = ({
       {isOwner && (
         <HoverTip label={t("account.shares.button.edit")}>
           <Link href={`/share/${shareId}/edit`}>
-            <ActionIcon variant="light" color="orange" size="lg">
+            <ActionIcon
+              variant="light"
+              color="orange"
+              size="lg"
+              aria-label={t("account.shares.button.edit")}
+            >
               <TbPlusMinus />
             </ActionIcon>
           </Link>
@@ -122,6 +128,7 @@ const ShareActions = ({
             variant="light"
             color="blue"
             size="lg"
+            aria-label={t("common.button.edit")}
             onClick={handleEditClick}
           >
             <TbEdit />
@@ -134,6 +141,7 @@ const ShareActions = ({
             variant="light"
             color="red"
             size="lg"
+            aria-label={t("common.button.delete")}
             onClick={handleDeleteClick}
           >
             <TbTrash />

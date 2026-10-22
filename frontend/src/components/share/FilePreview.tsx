@@ -11,7 +11,7 @@ import React, { Dispatch, SetStateAction, useEffect, useState } from "react";
 import { FormattedMessage } from "react-intl";
 import api from "../../services/api.service";
 
-export const FilePreviewContext = React.createContext<{
+const FilePreviewContext = React.createContext<{
   shareId: string;
   fileId: string;
   mimeType: string;
@@ -27,10 +27,12 @@ const FilePreview = ({
   shareId,
   fileId,
   mimeType,
+  showOriginalFileButton = true,
 }: {
   shareId: string;
   fileId: string;
   mimeType: string;
+  showOriginalFileButton?: boolean;
 }) => {
   const [isNotSupported, setIsNotSupported] = useState(false);
   if (isNotSupported) return <UnSupportedFile />;
@@ -42,15 +44,17 @@ const FilePreview = ({
       >
         <FileDecider />
       </FilePreviewContext.Provider>
-      <Button
-        variant="subtle"
-        component="a"
-        target="_blank"
-        rel="noreferrer"
-        href={`/api/shares/${shareId}/files/${fileId}?download=false`}
-      >
-        <FormattedMessage id="share.modal.file-preview.original_file" />
-      </Button>
+      {showOriginalFileButton && (
+        <Button
+          variant="subtle"
+          component="a"
+          target="_blank"
+          rel="noreferrer"
+          href={`/api/shares/${shareId}/files/${fileId}?download=false`}
+        >
+          <FormattedMessage id="share.modal.file-preview.original_file" />
+        </Button>
+      )}
     </Stack>
   );
 };
@@ -74,9 +78,7 @@ const FileDecider = () => {
   }
 };
 
-// The context and media preview components are exported so the inline media
-// gallery can reuse them instead of duplicating the playback logic.
-export const AudioPreview = () => {
+const AudioPreview = () => {
   const { shareId, fileId, setIsNotSupported } =
     React.useContext(FilePreviewContext);
   return (
@@ -93,7 +95,7 @@ export const AudioPreview = () => {
   );
 };
 
-export const VideoPreview = () => {
+const VideoPreview = () => {
   const { shareId, fileId, mimeType, setIsNotSupported } =
     React.useContext(FilePreviewContext);
   return (
@@ -110,7 +112,7 @@ export const VideoPreview = () => {
   );
 };
 
-export const ImagePreview = () => {
+const ImagePreview = () => {
   const { shareId, fileId, setIsNotSupported } =
     React.useContext(FilePreviewContext);
   return (
