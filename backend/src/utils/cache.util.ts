@@ -8,8 +8,6 @@ export const SHARE_META_CACHE_TTL_MS = 5 * 1000;
 
 export const shareDataCacheKey = (shareId: string) => `share:data:${shareId}`;
 export const shareGuardCacheKey = (shareId: string) => `share:guard:${shareId}`;
-export const shareExistsCacheKey = (shareId: string) =>
-  `share:exists:${shareId}`;
 export const shareMetaCacheKey = (shareId: string) => `share:meta:${shareId}`;
 
 const cacheHeaders = (value: string) => ({
@@ -80,7 +78,6 @@ export async function invalidateShareDataCache(
   await Promise.all([
     deleteCachedValue(cache, shareDataCacheKey(shareId)),
     deleteCachedValue(cache, shareGuardCacheKey(shareId)),
-    deleteCachedValue(cache, shareExistsCacheKey(shareId)),
     deleteCachedValue(cache, shareMetaCacheKey(shareId)),
   ]);
 }

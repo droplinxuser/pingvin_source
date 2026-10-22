@@ -5,9 +5,7 @@ import { createKeyv } from "@keyv/redis";
 import { Keyv } from "keyv";
 import { ConfigModule } from "src/config/config.module";
 import { ConfigService } from "src/config/config.service";
-import { PrismaModule } from "src/prisma/prisma.module";
 import { MetricsService } from "./metrics.service";
-import { ShareWriteBufferService } from "./shareWriteBuffer.service";
 import { ValkeyService } from "./valkey.service";
 
 const logger = new Logger("AppCacheModule");
@@ -17,7 +15,6 @@ let lastCacheErrorLog = 0;
 @Module({
   imports: [
     ConfigModule,
-    PrismaModule,
     CacheModule.registerAsync({
       isGlobal: true,
       imports: [ConfigModule],
@@ -60,12 +57,7 @@ let lastCacheErrorLog = 0;
       },
     }),
   ],
-  providers: [ValkeyService, MetricsService, ShareWriteBufferService],
-  exports: [
-    CacheModule,
-    ValkeyService,
-    MetricsService,
-    ShareWriteBufferService,
-  ],
+  providers: [ValkeyService, MetricsService],
+  exports: [CacheModule, ValkeyService, MetricsService],
 })
 export class AppCacheModule {}

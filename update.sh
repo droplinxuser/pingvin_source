@@ -93,13 +93,11 @@ if systemctl is-active --quiet valkey-server; then
   ensure_env CACHE_REDIS_URL "redis://127.0.0.1:6379"
 fi
 
-# Move legacy uploader.json view counts into Share.views once. Stop the old
-# backend first so it cannot write another legacy count mid-migration.
+# Stop the old backend first so the SQLite migration cannot race live writes.
 systemctl stop pingvin-back.service 2>/dev/null || true
-echo "==> Syncing legacy share view counts"
+echo "==> Applying database migrations"
 cd "$SRC_DIR/backend"
 npx prisma migrate deploy
-npm run sync:views
 
 echo "==> Installing systemd units"
 install -m 644 "$SRC_DIR/pingvin-back.service" /etc/systemd/system/pingvin-back.service

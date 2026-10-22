@@ -526,8 +526,8 @@ export class ShareService {
     return this.shareState.shareExists(id);
   }
 
-  async getCurrentViews(id: string, dbViews: number): Promise<number> {
-    return this.shareState.getCurrentViews(id, dbViews);
+  async getCurrentViews(id: string): Promise<number> {
+    return this.shareState.getCurrentViews(id);
   }
 
   async getMetaData(id: string) {
@@ -735,13 +735,8 @@ export class ShareService {
     return { isAvailable: !share };
   }
 
-  async recordView(
-    id: string,
-    request: Request,
-    dbViews: number,
-    maxViews?: number | null,
-  ) {
-    return this.shareState.recordView(id, request, dbViews, maxViews);
+  async recordView(id: string, request: Request, maxViews?: number | null) {
+    return this.shareState.recordView(id, request, maxViews);
   }
 
   assertViewLimit(
@@ -782,7 +777,7 @@ export class ShareService {
     }
 
     this.assertViewLimit(
-      await this.getCurrentViews(share.id, share.views),
+      await this.getCurrentViews(share.id),
       share.security?.maxViews,
     );
     return await this.generateShareToken(share);

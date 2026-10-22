@@ -9,7 +9,6 @@ import {
 import { useColorScheme } from "@mantine/hooks";
 import { ModalsProvider } from "@mantine/modals";
 import { Notifications } from "@mantine/notifications";
-import axios from "axios";
 import { getCookie, setCookie } from "cookies-next";
 import moment from "moment";
 import "moment/min/locales";
@@ -33,7 +32,7 @@ import { CurrentUser } from "../types/user.type";
 import i18nUtil from "../utils/i18n.util";
 import userPreferences from "../utils/userPreferences.util";
 import Footer from "../components/footer/Footer";
-import { getDefaultConfig } from "../utils/defaultConfig.util";
+import { fetchConfig } from "../utils/config.server.util";
 import AdminNoticeModal, {
   AdminNotice,
 } from "../components/admin/AdminNoticeModal";
@@ -413,23 +412,16 @@ App.getInitialProps = async ({ ctx }: { ctx: GetServerSidePropsContext }) => {
     const cookieHeader = ctx.req.headers.cookie;
 
     if (ctx.req.cookies.access_token) {
-      pageProps.user = await axios(`${apiURL}/api/users/me`, {
-        headers: { cookie: cookieHeader },
+      pageProps.user = await fetch(`${apiURL}/api/users/me`, {
+        headers: cookieHeader ? { cookie: cookieHeader } : undefined,
       })
-        .then((res) => res.data)
+        .then((response) => (response.ok ? response.json() : null))
         .catch(() => null);
     }
 
-    try {
-      pageProps.configVariables = (
-        await axios(`${apiURL}/api/configs`, {
-          timeout: 1000,
-        })
-      ).data;
-    } catch (e) {
-      pageProps.configVariables = getDefaultConfig();
-      pageProps.isConfigFallback = true;
-    }
+    const { config, fallback } = await fetchConfig(apiURL, cookieHeader);
+    pageProps.configVariables = config;
+    pageProps.isConfigFallback = fallback;
 
     pageProps.route = ctx.req.url;
 

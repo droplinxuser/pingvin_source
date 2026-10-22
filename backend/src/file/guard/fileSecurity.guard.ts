@@ -101,7 +101,7 @@ export class FileSecurityGuard extends ShareSecurityGuard {
       // The page view that consumed the last allowed view must still be able
       // to download its files.
       this._shareService.assertViewLimit(
-        await this._shareService.getCurrentViews(share.id, share.views),
+        await this._shareService.getCurrentViews(share.id),
         share.security?.maxViews,
         true,
       );

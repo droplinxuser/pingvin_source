@@ -1,5 +1,5 @@
-import axios from "axios";
 import { GetServerSidePropsContext } from "next";
+import { fetchConfig } from "../utils/config.server.util";
 
 // The PWA manifest is served dynamically so that the name always reflects
 // the site name configured on the backend (general.appName, which can be
@@ -16,12 +16,9 @@ const icons = [72, 96, 128, 144, 152, 192, 384, 512].map((size) => ({
 
 export async function getServerSideProps({ res }: GetServerSidePropsContext) {
   const apiURL = process.env.API_URL || "http://localhost:8080";
-  const configs = await axios
-    .get(`${apiURL}/api/configs`, { timeout: 2000 })
-    .then(({ data }) => data as { key: string; value: string }[])
-    .catch(() => []);
+  const { config } = await fetchConfig(apiURL);
   const siteName =
-    configs.find((config) => config.key === "general.appName")?.value?.trim() ||
+    config.find((item) => item.key === "general.appName")?.value?.trim() ||
     DEFAULT_SITE_NAME;
 
   const cache = "public, max-age=86400";

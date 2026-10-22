@@ -4,7 +4,6 @@ import {
   Inject,
   Injectable,
   NotFoundException,
-  OnApplicationShutdown,
 } from "@nestjs/common";
 import { Prisma } from "@prisma/client";
 import { Cache } from "cache-manager";
@@ -26,10 +25,9 @@ import {
   invalidateShareDataCache,
   setCachedValue,
   shareDataCacheKey,
-  shareExistsCacheKey,
   shareGuardCacheKey,
 } from "src/utils/cache.util";
-import { ShareWriteBufferService } from "src/cache/shareWriteBuffer.service";
+import { isViewLimitExceeded } from "./share.util";
 
 const GUARD_INCLUDE = {
   security: true,
@@ -43,15 +41,12 @@ export type GuardShare = Prisma.ShareGetPayload<{
 }>;
 
 @Injectable()
-export class ShareStateService implements OnApplicationShutdown {
+export class ShareStateService {
   private readonly visitorLocks = new Map<string, Promise<void>>();
-  private readonly pendingUploaderWrites = new Map<string, UploaderInfo>();
-  private readonly uploaderWriteTimers = new Map<string, NodeJS.Timeout>();
 
   constructor(
     private prisma: PrismaService,
     private readonly i18n: I18nService,
-    private readonly shareWrites: ShareWriteBufferService,
     @Inject(CACHE_MANAGER) private cache: Cache,
   ) {}
 
@@ -94,11 +89,14 @@ export class ShareStateService implements OnApplicationShutdown {
     if (!share.uploadLocked)
       throw new NotFoundException(this.i18n.t("share.notFound"));
 
-    // Refresh the rolling expiration on a cache miss. The new value is queued
-    // in Valkey and written to SQLite with the other buffered share updates.
+    // Refresh the rolling expiration on a cache miss. A cached share is served
+    // for 30 seconds, so this writes at most once per cache window.
     if (!moment(share.expiration).isSame(0)) {
       share.expiration = getDefaultShareExpiration();
-      await this.shareWrites.queueExpiration(id, share.expiration);
+      await this.prisma.share.updateMany({
+        where: { id },
+        data: { expiration: share.expiration },
+      });
     }
 
     const { security, ...shareData } = share;
@@ -130,53 +128,46 @@ export class ShareStateService implements OnApplicationShutdown {
   }
 
   async shareExists(shareId: string): Promise<boolean> {
-    const key = shareExistsCacheKey(shareId);
-    const cached = await getCachedValue<boolean>(this.cache, key);
-    if (cached) return cached;
-
-    const share = await this.prisma.share.findUnique({
-      where: { id: shareId },
-      select: { id: true },
-    });
-    if (share)
-      await setCachedValue(this.cache, key, true, SHARE_DATA_CACHE_TTL_MS);
-    return !!share;
+    return !!(await this.getGuardShare(shareId));
   }
 
-  async getCurrentViews(shareId: string, dbViews: number): Promise<number> {
-    return this.shareWrites.getViews(shareId, dbViews);
+  async getCurrentViews(shareId: string): Promise<number> {
+    const share = await this.prisma.share.findUnique({
+      where: { id: shareId },
+      select: { views: true },
+    });
+    return share?.views ?? 0;
   }
 
   async clear(shareId: string) {
-    const timer = this.uploaderWriteTimers.get(shareId);
-    if (timer) clearTimeout(timer);
-    this.uploaderWriteTimers.delete(shareId);
-    this.pendingUploaderWrites.delete(shareId);
-    await Promise.all([
-      invalidateShareDataCache(this.cache, shareId),
-      this.shareWrites.clear(shareId),
-    ]);
+    await invalidateShareDataCache(this.cache, shareId);
   }
 
-  async recordView(
-    id: string,
-    request: Request,
-    dbViews: number,
-    maxViews?: number | null,
-  ) {
-    const result = await this.shareWrites.recordView(id, dbViews, maxViews);
-    if (result.status === "missing")
-      throw new NotFoundException(this.i18n.t("share.notFound"));
-    if (result.status === "limit")
-      throw new ForbiddenException(
-        this.i18n.t("share.maxViewsExceeded"),
-        "share_max_views_exceeded",
-      );
+  async recordView(id: string, request: Request, maxViews?: number | null) {
+    const views = await this.prisma.$transaction(async (tx) => {
+      const share = await tx.share.findUnique({
+        where: { id },
+        select: { views: true },
+      });
+
+      if (!share) throw new NotFoundException(this.i18n.t("share.notFound"));
+      if (isViewLimitExceeded(share.views, maxViews)) {
+        throw new ForbiddenException(
+          this.i18n.t("share.maxViewsExceeded"),
+          "share_max_views_exceeded",
+        );
+      }
+
+      const updated = await tx.share.update({
+        where: { id },
+        data: { views: { increment: 1 } },
+        select: { views: true },
+      });
+      return updated.views;
+    });
 
     const uploaderInfo = await this.recordVisitor(id, request);
-    delete uploaderInfo.views;
-
-    return { views: result.views, uploaderInfo };
+    return { views, uploaderInfo };
   }
 
   private withVisitorLock<T>(
@@ -204,49 +195,15 @@ export class ShareStateService implements OnApplicationShutdown {
     request: Request,
   ): Promise<UploaderInfo> {
     return this.withVisitorLock(shareId, async () => {
-      // Read the pending copy first so visitors recorded during the 5s write
-      // debounce are not lost.
-      const info = this.pendingUploaderWrites.get(shareId) ??
-        (await readUploaderInfo(shareId)) ?? {
-          createdAt: new Date().toISOString(),
-        };
+      const info = (await readUploaderInfo(shareId)) ?? {
+        createdAt: new Date().toISOString(),
+      };
       info.visitors = [...(info.visitors ?? []), getVisitorInfo(request)].slice(
         -MAX_VISITORS,
       );
 
-      this.queueUploaderInfoWrite(shareId, info);
+      await writeUploaderInfo(shareId, info);
       return info;
     });
-  }
-
-  private queueUploaderInfoWrite(shareId: string, info: UploaderInfo) {
-    this.pendingUploaderWrites.set(shareId, info);
-    if (this.uploaderWriteTimers.has(shareId)) return;
-
-    const timer = setTimeout(() => {
-      this.uploaderWriteTimers.delete(shareId);
-      void this.flushUploaderInfo(shareId);
-    }, 5000);
-    timer.unref?.();
-    this.uploaderWriteTimers.set(shareId, timer);
-  }
-
-  private async flushUploaderInfo(shareId: string) {
-    const info = this.pendingUploaderWrites.get(shareId);
-    if (!info) return;
-
-    this.pendingUploaderWrites.delete(shareId);
-    await writeUploaderInfo(shareId, info);
-  }
-
-  async onApplicationShutdown() {
-    for (const timer of this.uploaderWriteTimers.values()) clearTimeout(timer);
-    this.uploaderWriteTimers.clear();
-
-    await Promise.all(
-      [...this.pendingUploaderWrites.keys()].map((id) =>
-        this.flushUploaderInfo(id),
-      ),
-    );
   }
 }

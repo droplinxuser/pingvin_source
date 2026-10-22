@@ -1,6 +1,5 @@
-import { Logger } from "@nestjs/common";
 import { ThrottlerStorage, ThrottlerStorageService } from "@nestjs/throttler";
-import { createClient } from "@keyv/redis";
+import { ValkeyService } from "./valkey.service";
 
 type ThrottlerStorageRecord = Awaited<
   ReturnType<ThrottlerStorage["increment"]>
@@ -47,41 +46,15 @@ redis.call('PEXPIRE', key, math.max(ttl, blockDuration) + 1000)
 return {hits, math.ceil((expiresAt - now) / 1000), 0, 0}
 `;
 
+/**
+ * Stores throttler buckets in the shared Valkey connection so multiple
+ * instances and restarts see the same limits. The in-memory store remains the
+ * fallback when Valkey is disabled or unreachable.
+ */
 export class ValkeyThrottlerStorage implements ThrottlerStorage {
-  private readonly logger = new Logger(ValkeyThrottlerStorage.name);
   private readonly fallback = new ThrottlerStorageService();
-  private client: ReturnType<typeof createClient> | null = null;
 
-  constructor(
-    private readonly enabled: boolean,
-    private readonly url: string,
-  ) {}
-
-  async initialize() {
-    if (!this.enabled) return;
-
-    try {
-      const client = createClient({
-        url: this.url,
-        disableOfflineQueue: true,
-        socket: {
-          connectTimeout: 2000,
-          reconnectStrategy: false,
-        },
-      });
-      client.on("error", (error) => {
-        this.logger.debug(
-          `Valkey throttling connection error: ${error.message}`,
-        );
-      });
-      await client.connect();
-      this.client = client;
-    } catch (error) {
-      this.logger.warn(
-        `Valkey throttling unavailable; using in-memory fallback: ${error}`,
-      );
-    }
-  }
+  constructor(private readonly valkey: Pick<ValkeyService, "run">) {}
 
   async increment(
     key: string,
@@ -90,18 +63,8 @@ export class ValkeyThrottlerStorage implements ThrottlerStorage {
     blockDuration: number,
     throttlerName: string,
   ): Promise<ThrottlerStorageRecord> {
-    if (!this.client) {
-      return this.fallback.increment(
-        key,
-        ttl,
-        limit,
-        blockDuration,
-        throttlerName,
-      );
-    }
-
-    try {
-      const result = (await this.client.eval(INCREMENT_SCRIPT, {
+    const result = await this.valkey.run((client) =>
+      client.eval(INCREMENT_SCRIPT, {
         keys: [`pingvin:throttle:${throttlerName}:${key}`],
         arguments: [
           String(ttl),
@@ -109,21 +72,10 @@ export class ValkeyThrottlerStorage implements ThrottlerStorage {
           String(blockDuration),
           String(Date.now()),
         ],
-      })) as unknown as [number, number, number, number];
+      }),
+    );
 
-      return {
-        totalHits: Number(result[0]),
-        timeToExpire: Number(result[1]),
-        isBlocked: Number(result[2]) === 1,
-        timeToBlockExpire: Number(result[3]),
-      };
-    } catch (error) {
-      this.logger.warn(
-        `Valkey throttling failed; using in-memory fallback: ${error}`,
-      );
-      const client = this.client;
-      this.client = null;
-      await client?.disconnect().catch(() => {});
+    if (!Array.isArray(result)) {
       return this.fallback.increment(
         key,
         ttl,
@@ -132,12 +84,16 @@ export class ValkeyThrottlerStorage implements ThrottlerStorage {
         throttlerName,
       );
     }
+
+    return {
+      totalHits: Number(result[0]),
+      timeToExpire: Number(result[1]),
+      isBlocked: Number(result[2]) === 1,
+      timeToBlockExpire: Number(result[3]),
+    };
   }
 
-  async onApplicationShutdown() {
-    const client = this.client;
-    this.client = null;
-    await client?.quit().catch(() => {});
+  onApplicationShutdown() {
     this.fallback.onApplicationShutdown();
   }
 }

@@ -1,7 +1,7 @@
 import { jwtDecode } from "jwt-decode";
 import { NextRequest, NextResponse } from "next/server";
 import configService from "./services/config.service";
-import { getDefaultConfig } from "./utils/defaultConfig.util";
+import { fetchConfig } from "./utils/config.server.util";
 
 // This middleware redirects based on different conditions:
 // - Authentication state
@@ -25,26 +25,6 @@ const CACHE_HEADERS = [
 
 function setCacheHeaders(response: NextResponse, value: string) {
   for (const header of CACHE_HEADERS) response.headers.set(header, value);
-}
-
-async function fetchConfig(
-  apiUrl: string,
-): Promise<{ config: any; fallback: boolean }> {
-  try {
-    const response = await fetch(`${apiUrl}/api/configs`, {
-      cache: "no-store",
-      signal: AbortSignal.timeout(1000),
-    });
-
-    if (!response.ok) {
-      throw new Error(`Config fetch failed: ${response.status}`);
-    }
-
-    return { config: await response.json(), fallback: false };
-  } catch (error) {
-    console.error("Config fetch failed, using defaults:", error);
-    return { config: getDefaultConfig(), fallback: true };
-  }
 }
 
 export async function middleware(request: NextRequest) {

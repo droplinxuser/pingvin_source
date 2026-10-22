@@ -16,7 +16,7 @@ so `git merge upstream/main` stays small.
 | Inline media gallery | `frontend/src/components/share/MediaPreviewGallery.tsx` reuses `FilePreview.tsx` |
 | Cache headers / hotlink protection | `backend/src/utils/cache.util.ts`, `backend/src/utils/referrer.util.ts`, `frontend/src/middleware.ts`, `frontend/next.config.js` |
 | Per-visitor rate limiting | `backend/src/utils/visitorIdentity.util.ts`, `backend/src/cache/valkeyThrottler.storage.ts`, `backend/src/cache/throttler.config.ts`, `backend/src/main.ts` |
-| Valkey/Redis cache and write buffer | `backend/src/utils/cache.util.ts`, `backend/src/share/shareState.service.ts`, `backend/src/cache/cache.module.ts`, `backend/src/cache/valkey.service.ts`, `backend/src/cache/shareWriteBuffer.service.ts` |
+| Valkey/Redis cache | `backend/src/utils/cache.util.ts`, `backend/src/share/shareState.service.ts`, `backend/src/cache/cache.module.ts`, `backend/src/cache/valkey.service.ts` |
 | Site stats and footer | `backend/src/system/system.service.ts`, `backend/src/cache/metrics.service.ts`, `frontend/src/components/footer/Footer.tsx`; `POST /api/system/pageview` |
 | Home copy and ads | `frontend/src/pages/index.tsx` (upstream layout), `home.custom.*` keys in `en-US.ts`, `frontend/src/components/Ads.tsx` |
 | Fork branding / deployment | `frontend/public/img/**`, `frontend/src/pages/manifest.json.tsx`, `pingvin-*.service`, `update.sh` |
@@ -39,9 +39,9 @@ other languages show the upstream copy instead of the English fallback.
    - lint: `npm run lint` in both packages (backend warnings are upstream-only)
 5. Smoke-test locally: home page, sign-in, upload, share page, admin
    shares/users (search, sort, pagination), missing share (404), file download
-   headers, report modal, footer page-view/top-country metrics, the 20s share
-   view/expiration flush, and the dynamic `/manifest.json`. Repeat once with
-   Valkey stopped to confirm the fallbacks.
+   headers, report modal, footer page-view/top-country metrics, and the
+   dynamic `/manifest.json`. Repeat once with Valkey stopped to confirm the
+   fallbacks.
 
 ## Production settings
 
@@ -57,9 +57,7 @@ other languages show the upstream copy instead of the English fallback.
   `DATABASE_URL="file:/var/www/pingvin_data/pingvin-share.db?connection_limit=1"`
 - `DATA_DIRECTORY="/var/www/pingvin_data"`; uploader/visitor metadata is stored
   per share at `uploads/shares/<shareId>/uploader.json` with mode `600`. View
-  counts live in `Share.views`; `npm run sync:views` (run by `update.sh`) moves
-  legacy counts out of `uploader.json` once and removes the old field. The
-  legacy field is only read during that migration.
+  counts live in `Share.views` and are updated directly in SQLite.
 - Global rate limiting is 90 requests per 60 seconds per visitor, blocking for
   60 seconds after the limit. Configure it with `VISITOR_RATE_LIMIT`,
   `VISITOR_RATE_TTL_MS` and `VISITOR_RATE_BLOCK_MS`. Guests use a signed,
@@ -74,11 +72,9 @@ other languages show the upstream copy instead of the English fallback.
 - Valkey/Redis is optional but recommended: set `CACHE_REDIS_ENABLED=true` and
   `CACHE_REDIS_URL=redis://127.0.0.1:6379` in `backend/.env` (`update.sh`
   enables both automatically when a local `valkey-server` is active). Share-page
-  data, guard data and metadata are cached for 30s/30s/5s. Share views and
-  rolling expiration updates are written to Valkey counters/hashes and flushed
-  to SQLite every 20s; `Share.views` reads during the flush window combine the
-  buffered total with the SQLite baseline. Visitor writes to `uploader.json`
-  are debounced to at most one write per 5s per share.
+  data, guard data and metadata are cached for 30s/30s/5s. A cache miss also
+  resets the rolling expiration to 100 days. Share views and visitor metadata
+  are written directly to SQLite and `uploader.json` on each view.
 - The footer posts to `POST /api/system/pageview` on every rendered page. The
   endpoint increments per-minute Valkey buckets atomically, expires them after
   two hours and returns the last 60 minutes of page views plus the top five
@@ -87,15 +83,13 @@ other languages show the upstream copy instead of the English fallback.
   `GET /api/system/stats` remains available as a read-only fallback and caches
   the SQLite-derived user/share/file totals for 60s.
 - Fallbacks: if Valkey is disabled or unreachable, page-view metrics and the
-  top-country list move to a per-process 60-minute memory window, while share
-  views and expiration updates fall back to the original direct SQLite writes.
-  The Valkey connection retries after 30s; cache reads fail open to SQLite.
-  All Redis clients have error handlers and `disableOfflineQueue` so a dead
-  Valkey server never hangs a request or crashes the backend.
+  top-country list move to a per-process 60-minute memory window. The Valkey
+  connection retries after 30s; cache reads fail open to SQLite. All Redis
+  clients have error handlers and `disableOfflineQueue` so a dead Valkey
+  server never hangs a request or crashes the backend.
 - `update.sh` pulls origin/main, preserves `backend/.env`, reinstalls and
-  rebuilds both packages, syncs legacy view counts, installs the systemd units,
-  runs migrations/seeding through the backend restart, and restarts the
-  frontend. It must run as root:
+  rebuilds both packages, installs the systemd units, runs migrations/seeding
+  through the backend restart, and restarts the frontend. It must run as root:
   `sudo bash /var/www/pingvin_source/update.sh`.
 - Keep an up-to-date database copy at `/home/rt/Documents/pingvin-share.db`
   (`sqlite3 ... "PRAGMA integrity_check;"` must return `ok`).
@@ -112,38 +106,32 @@ login can loop between `/upload` and `/auth/signIn`.
 
 ## Verified locally
 
-- Node `22.23.3` / npm `10.9.9` (same as the live server): `npm ci` and
-  production builds pass for backend and frontend.
-- View-count refactor: `npm run test:unit` passes; a throwaway database
-  verified DB-backed views, file access on the last permitted max-view, token
-  rejection after the limit, and the legacy `uploader.json` view sync.
-- Backend started with `npm run prod` against a copy of
-  `/home/rt/Documents/pingvin-share.db`; migrations were already current and
-  the seed completed. The source backup passes `PRAGMA integrity_check`.
-- Refactor regression suite (2026-10-23): 15 backend unit tests and production
-  builds pass on Node `22.23.3`; 15 Playwright checks against a copy of the live
-  database cover guest/user/admin flows, upload, analytics, reporting, the
-  max-view limit and admin delete. Reverse-share creation, the 429 UI, hotlink
-  protection, year-long file cache headers, footer page-view/top-country
-  metrics, the 20s view/expiration flush and both Valkey-outage fallbacks were
-  also verified.
-- Browser tests (48 guest/user/admin checks plus 24 security/reverse-share
-  checks): home, guest + password sign-in, upload, file and ZIP downloads,
-  text and image previews, inline gallery, uploader badges, share report
-  (including SMTP delivery), password-protected share, reverse share upload,
-  admin shares (search/sort/pagination), admin users (sort/pagination), admin
-  delete, missing-share/unknown-route 404s, language fallback, dynamic
-  manifest, site stats footer and service-worker registration.
-- Live `https://site.com` redeploy (2026-10-23, commit `bb0986d4`): the footer
-  shows the 60-minute page-view count and top-country flags, and the counter
-  increments on client navigation. Home, share, 404 and manifest pages,
-  `testuser` sign-in, account and reverse-share pages pass without JavaScript
-  errors. A live upload -> share -> file access -> delete cycle passed; the
-  account API returned `views=0` immediately after the share page view and
-  `views=1` after the 20s flush, proving the Valkey write-behind is active.
-  The deleted share returned 404. The source backup still passes
-  `PRAGMA integrity_check`; live counts match it apart from the one-file
-  difference explained by normal share cleanup.
+- Node `22.23.3` production builds pass for backend and frontend. `npm run
+  test:unit` passes all 12 tests, covering view limits, visitor identity,
+  throttler fallback, uploader metadata and page-view metrics.
+- Refactor checks against a copy of `/home/rt/Documents/pingvin-share.db`:
+  share `HEAD` does not change the view count; a share `GET` increments
+  `Share.views` immediately in SQLite and refreshes the rolling expiration;
+  the last permitted max-view is allowed for file access while the next page
+  view returns `403 share_max_views_exceeded`; visitor country, city, browser,
+  OS and referrer are written to `uploader.json`.
+- Playwright against that database (11 smoke checks plus a 5-check upload
+  flow): home page, footer stats, dynamic manifest, sign-in, account shares,
+  share page with visitor badges and text preview, report modal, admin shares
+  search/sort, admin users sort (plus page 2 via the API), missing-share/
+  unknown-route 404 statuses, public file access with year-long cache headers,
+  upload -> share creation -> share page -> ZIP button -> delete, and no
+  JavaScript errors.
+- API checks: reverse-share creation without an expiration field uses the
+  100-day rolling expiration; 20 concurrent share views increment exactly 20;
+  20 concurrent views against a 5-view limit yield exactly 5 successes and 15
+  `403` responses; the visitor limiter returns `429` after 90 requests and the
+  hotlink guard redirects direct file requests to the share page. With the
+  backend stopped, the frontend still renders the home page from its bundled
+  default config.
+- The local sandbox ran without Valkey, so the in-memory page-view and
+  throttler fallbacks were exercised. The Valkey-backed paths are exercised on
+  the live server, where `valkey-server` is enabled by `update.sh`.
 - `bash -n update.sh` passes; its env writer produces the exact live
   `DATABASE_URL` above.
 

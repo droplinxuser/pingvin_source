@@ -37,8 +37,6 @@ export type ShareVisitor = Partial<
 
 export type UploaderInfo = Partial<Record<(typeof FIELDS)[number], string>> & {
   createdAt: string;
-  /** Legacy view count, only read for the one-time migration to Share.views. */
-  views?: number;
   visitors?: ShareVisitor[];
 };
 
@@ -111,11 +109,7 @@ function parseUserAgent(
     browserVersion: braveVersion ?? parsed?.browser.version,
     os: osName,
     osVersion:
-      osName === "Windows"
-        ? "10/11"
-        : parsedOs
-          ? parsed.os.version
-          : undefined,
+      osName === "Windows" ? "10/11" : parsedOs ? parsed.os.version : undefined,
     deviceType:
       parsed?.platform.type ??
       (/iPad|Tablet/i.test(userAgent)
@@ -251,13 +245,6 @@ export async function readUploaderInfo(
   // Keep only supported Cloudflare fields and repair older mojibake values.
   const info = pick(FIELDS, parsed) as unknown as UploaderInfo;
   info.createdAt = info.createdAt ?? new Date().toISOString();
-  if (
-    typeof parsed.views === "number" &&
-    Number.isFinite(parsed.views) &&
-    parsed.views >= 0
-  ) {
-    info.views = Math.floor(parsed.views);
-  }
   if (Array.isArray(parsed.visitors)) {
     info.visitors = parsed.visitors
       .filter(

@@ -11,10 +11,10 @@ import { APP_GUARD } from "@nestjs/core";
 import { ThrottlerGuard, ThrottlerModule } from "@nestjs/throttler";
 import { AppCacheModule } from "./cache/cache.module";
 import { createThrottlerOptions } from "./cache/throttler.config";
+import { ValkeyService } from "./cache/valkey.service";
 import { AppController } from "./app.controller";
 import { ClamScanModule } from "./clamscan/clamscan.module";
 import { ConfigModule } from "./config/config.module";
-import { ConfigService } from "./config/config.service";
 import { EmailModule } from "./email/email.module";
 import { FileModule } from "./file/file.module";
 import { JobsModule } from "./jobs/jobs.module";
@@ -46,8 +46,8 @@ const i18nPath = existsSync(join(__dirname, "../i18n"))
     SystemModule,
     AdminNoticeModule,
     ThrottlerModule.forRootAsync({
-      imports: [ConfigModule],
-      inject: [ConfigService],
+      imports: [AppCacheModule],
+      inject: [ValkeyService],
       useFactory: createThrottlerOptions,
     }),
     ScheduleModule.forRoot(),
