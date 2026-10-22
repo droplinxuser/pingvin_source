@@ -21,3 +21,16 @@ export function isPublicShare(share?: ShareVisibility | null): boolean {
     (!share.reverseShare || share.reverseShare.publicAccess)
   );
 }
+
+/**
+ * Checks a share's view limit. File access is allowed on the last permitted
+ * view, while new share tokens are blocked once that limit is reached.
+ */
+export function isViewLimitExceeded(
+  views: number,
+  maxViews?: number | null,
+  allowAtLimit = false,
+): boolean {
+  if (!maxViews) return false;
+  return allowAtLimit ? views > maxViews : views >= maxViews;
+}

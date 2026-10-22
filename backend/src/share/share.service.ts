@@ -25,11 +25,12 @@ import { SystemService } from "src/system/system.service";
 import { getDefaultShareExpiration } from "src/utils/date.util";
 import { byteToHumanSizeString } from "src/utils/fileSize.util";
 import { getUserActiveStorageUsage } from "src/utils/storageQuota.util";
-import { readShareViews, recordShareView } from "src/utils/uploaderInfo.util";
+import { recordShareVisitor } from "src/utils/uploaderInfo.util";
 import { SHARE_DIRECTORY } from "../constants";
 import { CreateShareDTO } from "./dto/createShare.dto";
 import { ReportShareDTO } from "./dto/reportShare.dto";
 import { UpdateShareDTO } from "./dto/updateShare.dto";
+import { isViewLimitExceeded } from "./share.util";
 
 const SHARE_SORT_FIELDS = {
   id: "id",
@@ -428,18 +429,14 @@ export class ShareService {
     const include = SHARE_INCLUDE;
     const where = this.buildSearchWhere(search);
 
-    // Size is computed from the files and views are stored in uploader.json,
-    // so neither can be sorted with a Prisma orderBy clause. Fetch all matching
-    // shares and sort them in memory instead.
-    if (sortBy === "size" || sortBy === "views") {
+    // Size is computed from the files, so it can't be sorted with a Prisma
+    // orderBy clause. Fetch all matching shares and sort them in memory.
+    if (sortBy === "size") {
       const direction = sortDirection === "asc" ? 1 : -1;
       const shares = await this.prisma.share.findMany({ where, include });
-      const transformed = await this.attachViewCounts(
-        shares.map((share) => this.transformShare(share)),
-      );
-      const property = sortBy === "size" ? "size" : "views";
-      return transformed
-        .sort((a, b) => (a[property] - b[property]) * direction)
+      return shares
+        .map((share) => this.transformShare(share))
+        .sort((a, b) => (a.size - b.size) * direction)
         .slice(skip ?? 0, (skip ?? 0) + (take ?? 20));
     }
 
@@ -453,20 +450,7 @@ export class ShareService {
       include,
     });
 
-    return this.attachViewCounts(
-      shares.map((share) => this.transformShare(share)),
-    );
-  }
-
-  private async attachViewCounts<T extends { id: string; views: number }>(
-    shares: T[],
-  ): Promise<T[]> {
-    return Promise.all(
-      shares.map(async (share) => ({
-        ...share,
-        views: await readShareViews(share.id, share.views),
-      })),
-    );
+    return shares.map((share) => this.transformShare(share));
   }
 
   private getSharesOrderBy(
@@ -517,9 +501,7 @@ export class ShareService {
       },
       include: SHARE_INCLUDE,
     });
-    return this.attachViewCounts(
-      shares.map((share) => this.transformShare(share)),
-    );
+    return shares.map((share) => this.transformShare(share));
   }
 
   async get(id: string): Promise<any> {
@@ -754,22 +736,43 @@ export class ShareService {
     return { isAvailable: !share };
   }
 
-  async recordView(
-    id: string,
-    request: Request,
-    share: Share & { security?: ShareSecurity },
-  ) {
-    return recordShareView(id, request, {
-      seedViews: share.views,
-      maxViews: share.security?.maxViews,
-      maxViewsMessage: this.i18n.t("share.maxViewsExceeded"),
+  async recordView(id: string, request: Request) {
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const current = await tx.share.findUnique({
+        where: { id },
+        select: {
+          views: true,
+          security: { select: { maxViews: true } },
+        },
+      });
+      if (!current) throw new NotFoundException(this.i18n.t("share.notFound"));
+
+      if (isViewLimitExceeded(current.views, current.security?.maxViews)) {
+        throw new ForbiddenException(
+          this.i18n.t("share.maxViewsExceeded"),
+          "share_max_views_exceeded",
+        );
+      }
+
+      return tx.share.update({
+        where: { id },
+        data: { views: { increment: 1 } },
+        select: { views: true },
+      });
     });
+
+    const uploaderInfo = await recordShareVisitor(id, request);
+    delete uploaderInfo.views;
+
+    return { views: updated.views, uploaderInfo };
   }
 
-  async assertViewLimit(id: string, maxViews?: number, seedViews = 0) {
-    if (!maxViews) return;
-
-    if ((await readShareViews(id, seedViews)) >= maxViews) {
+  assertViewLimit(
+    views: number,
+    maxViews?: number | null,
+    allowAtLimit = false,
+  ) {
+    if (isViewLimitExceeded(views, maxViews, allowAtLimit)) {
       throw new ForbiddenException(
         this.i18n.t("share.maxViewsExceeded"),
         "share_max_views_exceeded",
@@ -805,7 +808,7 @@ export class ShareService {
       }
     }
 
-    await this.assertViewLimit(share.id, share.security?.maxViews, share.views);
+    this.assertViewLimit(share.views, share.security?.maxViews);
     return await this.generateShareToken(share);
   }
 

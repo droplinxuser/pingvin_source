@@ -1,4 +1,4 @@
-import { ForbiddenException, Logger } from "@nestjs/common";
+import { Logger } from "@nestjs/common";
 import { Request } from "express";
 import { promises as fs } from "fs";
 import { dirname, join } from "path";
@@ -37,6 +37,7 @@ export type ShareVisitor = Partial<
 
 export type UploaderInfo = Partial<Record<(typeof FIELDS)[number], string>> & {
   createdAt: string;
+  /** Legacy view count, only read for the one-time migration to Share.views. */
   views?: number;
   visitors?: ShareVisitor[];
 };
@@ -316,35 +317,14 @@ export async function readUploaderInfo(
   }
 }
 
-export async function readShareViews(shareId: string, fallback = 0) {
-  const info = await readUploaderInfo(shareId);
-  return Math.max(info?.views ?? 0, fallback);
-}
-
-export async function recordShareView(
+export async function recordShareVisitor(
   shareId: string,
   request: Request,
-  options: {
-    seedViews?: number;
-    maxViews?: number;
-    maxViewsMessage?: string;
-  } = {},
 ): Promise<UploaderInfo> {
   return withShareFileLock(shareId, async () => {
     const info = (await readUploaderInfo(shareId)) ?? {
       createdAt: new Date().toISOString(),
     };
-    const views = Math.max(info.views ?? 0, options.seedViews ?? 0);
-
-    if (options.maxViews != null && views >= options.maxViews) {
-      throw new ForbiddenException(
-        options.maxViewsMessage ??
-          "The maximum number of views for this share has been exceeded.",
-        "share_max_views_exceeded",
-      );
-    }
-
-    info.views = views + 1;
     info.visitors = [...(info.visitors ?? []), getVisitorInfo(request)].slice(
       -MAX_VISITORS,
     );

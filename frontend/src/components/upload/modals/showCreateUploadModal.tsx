@@ -32,7 +32,6 @@ const showCreateUploadModal = (
   modals: ModalsContextProps,
   options: {
     isUserSignedIn: boolean;
-    isReverseShare: boolean;
     appUrl: string;
     defaultAppUrl: string;
     allowUnauthenticatedShares: boolean;
@@ -95,7 +94,6 @@ const CreateUploadModalBody = ({
   uploadCallback: (createShare: CreateShare, files: FileUpload[]) => void;
   options: {
     isUserSignedIn: boolean;
-    isReverseShare: boolean;
     appUrl: string;
     defaultAppUrl: string;
     allowUnauthenticatedShares: boolean;

@@ -33,7 +33,6 @@ export type UploaderInfo = {
   osVersion?: string;
   deviceType?: string;
   createdAt: string;
-  views?: number;
   visitors?: ShareVisitor[];
 };
 

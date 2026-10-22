@@ -106,10 +106,12 @@ export class FileSecurityGuard extends ShareSecurityGuard {
       if (share.security?.password)
         throw new ForbiddenException(this._i18n.t("file.passwordProtected"));
 
-      await this._shareService.assertViewLimit(
-        share.id,
-        share.security?.maxViews,
+      // The page view that consumed the last allowed view must still be able
+      // to download its files.
+      this._shareService.assertViewLimit(
         share.views,
+        share.security?.maxViews,
+        true,
       );
       return true;
     } else {

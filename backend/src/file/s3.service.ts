@@ -24,7 +24,9 @@ import { PrismaService } from "src/prisma/prisma.service";
 import { ConfigService } from "src/config/config.service";
 import { I18nService } from "nestjs-i18n";
 import * as crypto from "crypto";
+import { promises as fs } from "fs";
 import * as mime from "mime-types";
+import { SHARE_DIRECTORY } from "../constants";
 import { byteToHumanSizeString } from "src/utils/fileSize.util";
 import { getUserActiveStorageUsage } from "src/utils/storageQuota.util";
 import { getFileMimeType } from "src/utils/mime.util";
@@ -344,6 +346,12 @@ export class S3FileService {
       // try deleting by known file names from DB instead.
       await fallbackDeleteByDb("list_or_bulk_delete_failed");
       void error;
+    } finally {
+      // The share directory also contains uploader.json and may contain a
+      // locally built archive; S3 deletes only remote objects.
+      await fs
+        .rm(`${SHARE_DIRECTORY}/${shareId}`, { recursive: true, force: true })
+        .catch(() => {});
     }
   }
 

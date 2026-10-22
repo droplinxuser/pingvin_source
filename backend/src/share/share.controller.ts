@@ -26,7 +26,6 @@ import { ConfigService } from "src/config/config.service";
 import { parsePagination } from "src/utils/pagination.util";
 import {
   getUploaderInfo,
-  readShareViews,
   writeUploaderInfo,
 } from "src/utils/uploaderInfo.util";
 import { AdminShareDTO } from "./dto/adminShare.dto";
@@ -121,10 +120,13 @@ export class ShareController {
   @UseGuards(IdValidation, ShareSecurityGuard)
   async get(@Param("id") id: string, @Req() request: Request) {
     const share = await this.shareService.get(id);
-    const uploaderInfo = await this.shareService.recordView(id, request, share);
+    const { views, uploaderInfo } = await this.shareService.recordView(
+      id,
+      request,
+    );
     return new ShareDTO().from({
       ...share,
-      views: uploaderInfo.views ?? share.views,
+      views,
       uploaderInfo,
     });
   }
@@ -132,11 +134,7 @@ export class ShareController {
   @Get(":id/from-owner")
   @UseGuards(IdValidation, RegisteredShareOwnerGuard)
   async getFromOwner(@Param("id") id: string) {
-    const share = await this.shareService.get(id);
-    return new ShareDTO().from({
-      ...share,
-      views: await readShareViews(id, share.views),
-    });
+    return new ShareDTO().from(await this.shareService.get(id));
   }
 
   @Get(":id/metaData")
@@ -160,7 +158,6 @@ export class ShareController {
     );
     await writeUploaderInfo(share.id, {
       ...getUploaderInfo(request),
-      views: 0,
       visitors: [],
     });
     return new ShareDTO().from(share);

@@ -47,7 +47,7 @@ const Footer = () => {
     <MFooter height="auto" py={6} px="xl" zIndex={100}>
       {stats && (
         <Text size="xs" color="dimmed" align="center" mb={2}>
-          {t("footer.stats.summary", {
+          {t("footer.custom.stats.summary", {
             users: stats.userCount,
             shares: stats.shareCount,
             files: stats.fileCount,

@@ -1,19 +1,9 @@
-import {
-  ActionIcon,
-  Box,
-  Group,
-  Skeleton,
-  Stack,
-  Table,
-  Text,
-  TextInput,
-} from "@mantine/core";
+import { ActionIcon, Box, Group, Skeleton, Table, Text } from "@mantine/core";
 import { useClipboard } from "@mantine/hooks";
 import { useModals } from "@mantine/modals";
 import { Dispatch, SetStateAction, useEffect, useState } from "react";
-import { TbDownload, TbEye, TbLink, TbClipboard } from "react-icons/tb";
+import { TbDownload, TbEye, TbClipboard } from "react-icons/tb";
 import { FormattedMessage } from "react-intl";
-import useConfig from "../../hooks/config.hook";
 import useTranslate from "../../hooks/useTranslate.hook";
 import shareService from "../../services/share.service";
 import { FileMetaData } from "../../types/File.type";
@@ -52,7 +42,6 @@ const FileList = ({
   recipientId?: string;
 }) => {
   const clipboard = useClipboard();
-  const config = useConfig();
   const modals = useModals();
   const t = useTranslate();
 
@@ -78,29 +67,6 @@ const FileList = ({
       setShare({
         ...share,
         files: sortedFiles,
-      });
-    }
-  };
-
-  const copyFileLink = (file: FileMetaData) => {
-    const recipientQuery = recipientId
-      ? `?recipient=${encodeURIComponent(recipientId)}`
-      : "";
-    const link = `${config.get("general.appUrl") !== config.get("general.appUrl", true) ? config.get("general.appUrl") : window.location.origin}/api/shares/${
-      share.id
-    }/files/${file.id}${recipientQuery}`;
-
-    if (window.isSecureContext) {
-      clipboard.copy(link);
-      toast.success(t("common.notify.copied-link"));
-    } else {
-      modals.openModal({
-        title: t("share.modal.file-link"),
-        children: (
-          <Stack align="stretch">
-            <TextInput variant="filled" value={link} />
-          </Stack>
-        ),
       });
     }
   };
@@ -169,32 +135,19 @@ const FileList = ({
                       )}
                       {shareService.doesFileSupportPreview(file.name) &&
                         parseInt(file.size) <= MAX_INLINE_FILE_SIZE && (
-                        <HoverTip label={t("common.button.preview")}>
-                          <ActionIcon
-                            color="green"
-                            variant="light"
-                            size={25}
-                            onClick={() =>
-                              showFilePreviewModal(share.id, file, modals)
-                            }
-                          >
-                            <TbEye />
-                          </ActionIcon>
-                        </HoverTip>
-                      )}
-                      {!share.hasPassword && (
-                        <HoverTip label={t("common.button.copy-link")}>
-                          <ActionIcon
-                            color="victoria"
-                            variant="light"
-                            size={25}
-                            onClick={() => copyFileLink(file)}
-                          >
-                            <TbLink />
-                          </ActionIcon>
-                        </HoverTip>
-                      )}
-
+                          <HoverTip label={t("common.button.preview")}>
+                            <ActionIcon
+                              color="green"
+                              variant="light"
+                              size={25}
+                              onClick={() =>
+                                showFilePreviewModal(share.id, file, modals)
+                              }
+                            >
+                              <TbEye />
+                            </ActionIcon>
+                          </HoverTip>
+                        )}
                       <HoverTip label={t("common.button.download")}>
                         <ActionIcon
                           color="cyan"

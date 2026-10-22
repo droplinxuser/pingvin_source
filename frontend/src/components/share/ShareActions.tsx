@@ -86,7 +86,7 @@ const ShareActions = ({
       onConfirm: async () => {
         try {
           await shareService.remove(shareId);
-          toast.success(t("admin.shares.notify.deleted"));
+          toast.success(t("admin.shares.custom.notify.deleted"));
           onDeleted();
         } catch (e) {
           toast.axiosError(e);
@@ -97,15 +97,15 @@ const ShareActions = ({
 
   return (
     <Group spacing="xs">
-      <HoverTip label={t("share.report.button")}>
+      <HoverTip label={t("share.custom.report.button")}>
         <Button
           variant="light"
           color="red"
           leftIcon={<TbFlag />}
-          aria-label={t("share.report.button")}
+          aria-label={t("share.custom.report.button")}
           onClick={() => showReportShareModal(modals, shareId)}
         >
-          <FormattedMessage id="share.report.button" />
+          <FormattedMessage id="share.custom.report.button" />
         </Button>
       </HoverTip>
       {isOwner && (

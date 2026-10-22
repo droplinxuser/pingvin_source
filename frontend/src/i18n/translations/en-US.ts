@@ -16,7 +16,7 @@ export default {
 
   // Footer
   "footer.poweredBy": "Powered by",
-  "footer.stats.summary":
+  "footer.custom.stats.summary":
     "{users, number} users • {shares, number} shares • {files, number} files • {size} storage used",
 
   // END footer
@@ -376,7 +376,7 @@ export default {
   "admin.shares.diskUsage": "Disk Usage",
   "admin.shares.table.id": "Share ID",
   "admin.shares.table.username": "Creator",
-  "admin.shares.table.uploadDate": "Upload date",
+  "admin.shares.custom.table.uploadDate": "Upload date",
   "admin.shares.table.visitors": "Visitors",
   "admin.shares.table.expires": "Expires on",
   "admin.shares.table.deletes": "Deletes on",
@@ -385,12 +385,12 @@ export default {
   "admin.shares.edit.delete.description":
     "Do you really want to delete this share?",
 
-  "admin.shares.notify.deleted": "Share deleted successfully",
+  "admin.shares.custom.notify.deleted": "Share deleted successfully",
 
-  "admin.shares.search.placeholder": "Search by name, creator or share ID",
-  "admin.shares.empty": "No shares found",
-  "admin.shares.search.empty": "No shares match your search query",
-  "admin.shares.search.clear": "Clear search",
+  "admin.shares.custom.search.placeholder": "Search by name, creator or share ID",
+  "admin.shares.custom.empty": "No shares found",
+  "admin.shares.custom.search.empty": "No shares match your search query",
+  "admin.shares.custom.search.clear": "Clear search",
 
   // END /admin/shares
 
@@ -496,39 +496,38 @@ export default {
   "share.description": "Take a look at what I’ve shared with you!",
   "share.fileCount":
     "{count, plural, =1 {# file} other {# files}} · {size} (zip file may be smaller due to compression)",
-  "share.viewCount": "{count, plural, =1 {# view} other {# views}}",
-  "share.stats.title": "Visitor insights",
-  "share.stats.views": "Total views",
-  "share.stats.recent": "Recent visitors",
-  "share.stats.empty": "No visits recorded yet.",
-  "share.stats.unknown-location": "Unknown location",
-  "share.stats.direct": "Direct visit",
-  "share.stats.via": "via {domain}",
-  "share.uploader.by": "Uploaded by {name}",
-  "share.uploader.anonymous": "Anonymous uploader",
-  "share.uploader.uploaded-at": "Uploaded {date}",
-  "share.uploader.country": "Uploader country",
-  "share.uploader.os": "Operating system",
-  "share.uploader.browser": "Browser",
-  "share.uploader.timezone": "Timezone",
-  "share.uploader.unknown": "Unknown",
-  "share.report.button": "Report",
-  "share.report.modal.title": "Report share",
-  "share.report.modal.description":
+  "share.custom.stats.title": "Visitor insights",
+  "share.custom.stats.views": "Total views",
+  "share.custom.stats.recent": "Recent visitors",
+  "share.custom.stats.empty": "No visits recorded yet.",
+  "share.custom.stats.unknown-location": "Unknown location",
+  "share.custom.stats.direct": "Direct visit",
+  "share.custom.stats.via": "via {domain}",
+  "share.custom.uploader.by": "Uploaded by {name}",
+  "share.custom.uploader.anonymous": "Anonymous uploader",
+  "share.custom.uploader.uploaded-at": "Uploaded {date}",
+  "share.custom.uploader.country": "Uploader country",
+  "share.custom.uploader.os": "Operating system",
+  "share.custom.uploader.browser": "Browser",
+  "share.custom.uploader.timezone": "Timezone",
+  "share.custom.uploader.unknown": "Unknown",
+  "share.custom.report.button": "Report",
+  "share.custom.report.modal.title": "Report share",
+  "share.custom.report.modal.description":
     "If this share contains content that violates the law or our policies, you can report it. The administrator will be notified.",
-  "share.report.modal.reason": "Reason",
-  "share.report.modal.custom-reason": "Additional details",
-  "share.report.modal.error.no-reason": "Please select a reason",
-  "share.report.modal.error.no-message":
+  "share.custom.report.modal.reason": "Reason",
+  "share.custom.report.modal.custom-reason": "Additional details",
+  "share.custom.report.modal.error.no-reason": "Please select a reason",
+  "share.custom.report.modal.error.no-message":
     "Please describe why you are reporting this share",
-  "share.report.notify.success": "Thank you. Your report has been submitted.",
-  "share.report.reason.dmca": "DMCA / Copyright infringement",
-  "share.report.reason.csam": "Child sexual abuse material (CSAM)",
-  "share.report.reason.gore": "Gore / Violent content",
-  "share.report.reason.malware": "Malware / Phishing",
-  "share.report.reason.spam": "Spam",
-  "share.report.reason.personal-information": "Personal information / Doxxing",
-  "share.report.reason.other": "Other",
+  "share.custom.report.notify.success": "Thank you. Your report has been submitted.",
+  "share.custom.report.reason.dmca": "DMCA / Copyright infringement",
+  "share.custom.report.reason.csam": "Child sexual abuse material (CSAM)",
+  "share.custom.report.reason.gore": "Gore / Violent content",
+  "share.custom.report.reason.malware": "Malware / Phishing",
+  "share.custom.report.reason.spam": "Spam",
+  "share.custom.report.reason.personal-information": "Personal information / Doxxing",
+  "share.custom.report.reason.other": "Other",
   "share.copy-text-contents": "Copy file contents to clipboard",
   "share.error.visitor-limit-exceeded.title": "Visitor limit exceeded",
   "share.error.visitor-limit-exceeded.description":

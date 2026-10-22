@@ -12,7 +12,7 @@ so `git merge upstream/main` stays small.
 | Rolling 100-day expiration | `backend/src/utils/date.util.ts`, migrations `20261016000000` / `20261016000001`, share create/edit modals |
 | Admin pagination, search and sorting | `backend/src/share/share.service.ts`, `backend/src/user/user.service.ts`, `frontend/src/pages/admin/*`, `frontend/src/components/core/SortIcon.tsx` |
 | Share reports | `backend/src/share/dto/reportShare.dto.ts`, `backend/src/email/email.service.ts`, `frontend/src/components/share/showReportShareModal.tsx` |
-| Uploader metadata | `backend/src/utils/uploaderInfo.util.ts`, `ShareDTO.uploaderInfo`, `frontend/src/components/share/UploaderInfoBadges.tsx` |
+| Uploader metadata / visitors | `backend/src/utils/uploaderInfo.util.ts`, `ShareDTO.uploaderInfo`, `frontend/src/components/share/UploaderInfoBadges.tsx`, `ShareStats.tsx`; view counts stay in `Share.views` |
 | Inline media gallery | `frontend/src/components/share/MediaPreviewGallery.tsx` reuses `FilePreview.tsx` |
 | Cache headers / hotlink protection | `backend/src/utils/cache.util.ts`, `backend/src/utils/referrer.util.ts`, `frontend/src/middleware.ts`, `frontend/next.config.js` |
 | Site stats and footer | `backend/src/system/system.service.ts`, `frontend/src/components/footer/Footer.tsx` |
@@ -32,7 +32,7 @@ other languages show the upstream copy instead of the English fallback.
    and `createShare.dto.ts` / `createReverseShare.dto.ts`.
 3. Re-check the production settings below after any config seed changes.
 4. Run:
-   - backend: `npm ci && npm run build`
+   - backend: `npm ci && npm run build && npm run test:unit`
    - frontend: `npm ci && npm run build`
    - lint: `npm run lint` in both packages (backend warnings are upstream-only)
 5. Smoke-test locally: home page, sign-in, upload, share page, admin
@@ -51,11 +51,14 @@ other languages show the upstream copy instead of the English fallback.
 - `backend/.env` is authoritative for the backend and systemd unit. Keep the
   live database URL exactly:
   `DATABASE_URL="file:/var/www/pingvin_data/pingvin-share.db?connection_limit=1"`
-- `DATA_DIRECTORY="/var/www/pingvin_data"`; uploader metadata is stored per
-  share at `uploads/shares/<shareId>/uploader.json` with mode `600`.
+- `DATA_DIRECTORY="/var/www/pingvin_data"`; uploader/visitor metadata is stored
+  per share at `uploads/shares/<shareId>/uploader.json` with mode `600`. View
+  counts live in `Share.views`; `npm run sync:views` (run by `update.sh`) moves
+  legacy counts out of `uploader.json` once and removes the old field.
 - `update.sh` pulls origin/main, preserves `backend/.env`, reinstalls and
-  rebuilds both packages, installs the systemd units, runs migrations/seeding
-  through the backend restart, and restarts the frontend. It must run as root:
+  rebuilds both packages, syncs legacy view counts, installs the systemd units,
+  runs migrations/seeding through the backend restart, and restarts the
+  frontend. It must run as root:
   `sudo bash /var/www/pingvin_source/update.sh`.
 - Keep an up-to-date database copy at `/home/rt/Documents/pingvin-share.db`
   (`sqlite3 ... "PRAGMA integrity_check;"` must return `ok`).
@@ -74,6 +77,9 @@ login can loop between `/upload` and `/auth/signIn`.
 
 - Node `22.23.3` / npm `10.9.9` (same as the live server): `npm ci` and
   production builds pass for backend and frontend.
+- View-count refactor: `npm run test:unit` passes; a throwaway database
+  verified DB-backed views, file access on the last permitted max-view, token
+  rejection after the limit, and the legacy `uploader.json` view sync.
 - Backend started with `npm run prod` against a copy of
   `/home/rt/Documents/pingvin-share.db`; migrations were already current and
   the seed completed. The source backup passes `PRAGMA integrity_check`.

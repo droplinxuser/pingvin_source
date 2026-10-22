@@ -85,28 +85,30 @@ const UploaderInfoBadges = ({
       : undefined;
   const details = [
     location,
-    info?.timezone && `${t("share.uploader.timezone")}: ${info.timezone}`,
-    uploadedAt && t("share.uploader.uploaded-at", { date: uploadedAt }),
+    info?.timezone &&
+      `${t("share.custom.uploader.timezone")}: ${info.timezone}`,
+    uploadedAt && t("share.custom.uploader.uploaded-at", { date: uploadedAt }),
   ].filter(Boolean) as string[];
-  const osLabel = `${info?.os || t("share.uploader.unknown")}${
+  const osLabel = `${info?.os || t("share.custom.uploader.unknown")}${
     info?.osVersion ? ` ${info.osVersion}` : ""
   }${info?.deviceType ? ` · ${info.deviceType}` : ""}`;
-  const browserLabel = `${info?.browser || t("share.uploader.unknown")}${
+  const browserLabel = `${info?.browser || t("share.custom.uploader.unknown")}${
     info?.browserVersion ? ` ${info.browserVersion}` : ""
   }`;
 
   const badges = [
     {
-      label: t("share.uploader.country"),
+      label: t("share.custom.uploader.country"),
       tooltip: (
         <Stack spacing={2} sx={{ maxWidth: 280 }}>
-          {(details.length > 0 ? details : [t("share.uploader.unknown")]).map(
-            (line) => (
-              <Text key={line} size="xs">
-                {line}
-              </Text>
-            ),
-          )}
+          {(details.length > 0
+            ? details
+            : [t("share.custom.uploader.unknown")]
+          ).map((line) => (
+            <Text key={line} size="xs">
+              {line}
+            </Text>
+          ))}
         </Stack>
       ),
       icon: info?.country ? (
@@ -116,12 +118,12 @@ const UploaderInfoBadges = ({
       ),
     },
     {
-      label: t("share.uploader.os"),
+      label: t("share.custom.uploader.os"),
       tooltip: osLabel,
       icon: getOsIcon(info?.os),
     },
     {
-      label: t("share.uploader.browser"),
+      label: t("share.custom.uploader.browser"),
       tooltip: browserLabel,
       icon: getBrowserIcon(info?.browser),
     },
@@ -131,8 +133,8 @@ const UploaderInfoBadges = ({
     <Group spacing={6}>
       <Text size="sm" color="dimmed">
         {creator
-          ? t("share.uploader.by", { name: creator })
-          : t("share.uploader.anonymous")}
+          ? t("share.custom.uploader.by", { name: creator })
+          : t("share.custom.uploader.anonymous")}
       </Text>
       {badges.map(({ label, tooltip, icon }) => (
         <HoverTip key={label} label={tooltip}>

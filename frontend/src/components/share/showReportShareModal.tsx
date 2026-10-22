@@ -23,7 +23,7 @@ const REPORT_REASONS = [
 const showReportShareModal = (modals: ModalsContextProps, shareId: string) => {
   const t = translateOutsideContext();
   return modals.openModal({
-    title: t("share.report.modal.title"),
+    title: t("share.custom.report.modal.title"),
     children: <Body shareId={shareId} />,
   });
 };
@@ -36,17 +36,19 @@ const Body = ({ shareId }: { shareId: string }) => {
     initialValues: { reason: null as string | null, message: "" },
     validate: {
       reason: (value) =>
-        value ? null : t("share.report.modal.error.no-reason"),
+        value ? null : t("share.custom.report.modal.error.no-reason"),
       message: (value, values) =>
         values.reason === "Other" && !value.trim()
-          ? t("share.report.modal.error.no-message")
+          ? t("share.custom.report.modal.error.no-message")
           : null,
     },
   });
 
   const reasonOptions = REPORT_REASONS.map((value) => ({
     value,
-    label: t(`share.report.reason.${value.toLowerCase().replace(/ /g, "-")}`),
+    label: t(
+      `share.custom.report.reason.${value.toLowerCase().replace(/ /g, "-")}`,
+    ),
   }));
 
   const submit = form.onSubmit(async (values) => {
@@ -58,7 +60,7 @@ const Body = ({ shareId }: { shareId: string }) => {
         values.message.trim() || undefined,
       );
       modals.closeAll();
-      toast.success(t("share.report.notify.success"));
+      toast.success(t("share.custom.report.notify.success"));
     } catch (e) {
       toast.axiosError(e);
     } finally {
@@ -69,21 +71,21 @@ const Body = ({ shareId }: { shareId: string }) => {
   return (
     <Stack align="stretch">
       <Text size="sm">
-        <FormattedMessage id="share.report.modal.description" />
+        <FormattedMessage id="share.custom.report.modal.description" />
       </Text>
       <form onSubmit={submit}>
         <Stack>
           <Select
             variant="filled"
-            label={t("share.report.modal.reason")}
-            placeholder={t("share.report.modal.reason")}
+            label={t("share.custom.report.modal.reason")}
+            placeholder={t("share.custom.report.modal.reason")}
             data={reasonOptions}
             {...form.getInputProps("reason")}
           />
           <Textarea
             variant="filled"
-            label={t("share.report.modal.custom-reason")}
-            placeholder={t("share.report.modal.custom-reason")}
+            label={t("share.custom.report.modal.custom-reason")}
+            placeholder={t("share.custom.report.modal.custom-reason")}
             autosize
             minRows={3}
             maxLength={2000}

@@ -49,7 +49,7 @@ const FilePreview = ({
           variant="subtle"
           component="a"
           target="_blank"
-          rel="noreferrer"
+          rel="noopener"
           href={`/api/shares/${shareId}/files/${fileId}?download=false`}
         >
           <FormattedMessage id="share.modal.file-preview.original_file" />

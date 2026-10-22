@@ -85,6 +85,14 @@ set_env DATA_DIRECTORY "\"$DATA_DIR\""
 ensure_env TRUST_PROXY "true"
 ensure_env THROTTLE_LIMIT "300"
 
+# Move legacy uploader.json view counts into Share.views once. Stop the old
+# backend first so it cannot write another legacy count mid-migration.
+systemctl stop pingvin-back.service 2>/dev/null || true
+echo "==> Syncing legacy share view counts"
+cd "$SRC_DIR/backend"
+npx prisma migrate deploy
+npm run sync:views
+
 echo "==> Installing systemd units"
 install -m 644 "$SRC_DIR/pingvin-back.service" /etc/systemd/system/pingvin-back.service
 install -m 644 "$SRC_DIR/pingvin-front.service" /etc/systemd/system/pingvin-front.service

@@ -101,13 +101,13 @@ const Shares = () => {
       <TextInput
         value={search}
         onChange={(event) => setSearch(event.currentTarget.value)}
-        placeholder={t("admin.shares.search.placeholder")}
+        placeholder={t("admin.shares.custom.search.placeholder")}
         icon={<TbSearch size={16} />}
         rightSection={
           search ? (
             <ActionIcon
               onClick={() => setSearch("")}
-              aria-label={t("admin.shares.search.clear")}
+              aria-label={t("admin.shares.custom.search.clear")}
             >
               <TbX size={16} />
             </ActionIcon>
@@ -122,14 +122,14 @@ const Shares = () => {
           <Stack align="center" spacing="sm">
             <Text color="dimmed">
               {search ? (
-                <FormattedMessage id="admin.shares.search.empty" />
+                <FormattedMessage id="admin.shares.custom.search.empty" />
               ) : (
-                <FormattedMessage id="admin.shares.empty" />
+                <FormattedMessage id="admin.shares.custom.empty" />
               )}
             </Text>
             {search && (
               <Button variant="light" onClick={() => setSearch("")}>
-                <FormattedMessage id="admin.shares.search.clear" />
+                <FormattedMessage id="admin.shares.custom.search.clear" />
               </Button>
             )}
           </Stack>

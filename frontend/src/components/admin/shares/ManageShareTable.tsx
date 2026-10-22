@@ -27,7 +27,7 @@ const SORTABLE_COLUMNS: [id: string, property: string][] = [
   ["account.shares.table.id", "id"],
   ["account.shares.table.name", "name"],
   ["admin.shares.table.username", "username"],
-  ["admin.shares.table.uploadDate", "createdAt"],
+  ["admin.shares.custom.table.uploadDate", "createdAt"],
   ["account.shares.table.visitors", "views"],
   ["account.shares.table.size", "size"],
   ["account.shares.table.expiresAt", "expiration"],
@@ -81,7 +81,7 @@ const ManageShareTable = ({
         </thead>
         <tbody>
           {isLoading
-            ? skeletonRows
+            ? skeletonRows(fileRetentionEnabled)
             : shares.map((share) => (
                 <tr key={share.id}>
                   <td>{share.id}</td>
@@ -181,32 +181,41 @@ const ManageShareTable = ({
   );
 };
 
-const skeletonRows = [...Array(10)].map((v, i) => (
-  <tr key={i}>
-    <td>
-      <Skeleton key={i} height={20} />
-    </td>
-    <MediaQuery smallerThan="md" styles={{ display: "none" }}>
+const skeletonRows = (fileRetentionEnabled: boolean) =>
+  [...Array(10)].map((v, i) => (
+    <tr key={i}>
       <td>
         <Skeleton key={i} height={20} />
       </td>
-    </MediaQuery>
-    <td>
-      <Skeleton key={i} height={20} />
-    </td>
-    <td>
-      <Skeleton key={i} height={20} />
-    </td>
-    <td>
-      <Skeleton key={i} height={20} />
-    </td>
-    <td>
-      <Skeleton key={i} height={20} />
-    </td>
-    <td>
-      <Skeleton key={i} height={20} />
-    </td>
-  </tr>
-));
+      <MediaQuery smallerThan="md" styles={{ display: "none" }}>
+        <td>
+          <Skeleton key={i} height={20} />
+        </td>
+      </MediaQuery>
+      <td>
+        <Skeleton key={i} height={20} />
+      </td>
+      <td>
+        <Skeleton key={i} height={20} />
+      </td>
+      <td>
+        <Skeleton key={i} height={20} />
+      </td>
+      <td>
+        <Skeleton key={i} height={20} />
+      </td>
+      <td>
+        <Skeleton key={i} height={20} />
+      </td>
+      {fileRetentionEnabled && (
+        <td>
+          <Skeleton key={`${i}-retention`} height={20} />
+        </td>
+      )}
+      <td>
+        <Skeleton key={`${i}-actions`} height={20} />
+      </td>
+    </tr>
+  ));
 
 export default ManageShareTable;

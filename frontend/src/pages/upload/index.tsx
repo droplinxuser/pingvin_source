@@ -175,7 +175,6 @@ const Upload = ({
       modals,
       {
         isUserSignedIn: user ? true : false,
-        isReverseShare,
         appUrl: config.get("general.appUrl"),
         defaultAppUrl: config.get("general.appUrl", true),
         allowUnauthenticatedShares: config.get(
