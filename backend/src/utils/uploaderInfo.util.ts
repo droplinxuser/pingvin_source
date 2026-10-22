@@ -5,7 +5,18 @@ import * as path from "path";
 import { SHARE_DIRECTORY } from "../constants";
 
 const UPLOADER_INFO_FILE = "uploader.json";
-const LEGACY_PRIVATE_FIELDS = ["ip", "latitude", "longitude", "userAgent"];
+const UPLOADER_INFO_FIELDS = [
+  "country",
+  "city",
+  "region",
+  "timezone",
+  "browser",
+  "browserVersion",
+  "os",
+  "osVersion",
+  "deviceType",
+  "createdAt",
+] as const;
 const logger = new Logger("UploaderInfo");
 
 export type UploaderInfo = {
@@ -13,8 +24,6 @@ export type UploaderInfo = {
   city?: string;
   region?: string;
   timezone?: string;
-  asn?: string;
-  isp?: string;
   browser?: string;
   browserVersion?: string;
   os?: string;
@@ -23,12 +32,8 @@ export type UploaderInfo = {
   createdAt: string;
 };
 
-function getHeader(request: Request, name: string): string | undefined {
-  const value = request.headers[name];
-  const header = Array.isArray(value) ? value[0] : value;
-  if (!header) return undefined;
-
-  let decoded = header;
+function decodeText(value: string): string {
+  let decoded = value;
   try {
     decoded = decodeURIComponent(decoded);
   } catch {
@@ -49,6 +54,12 @@ function getHeader(request: Request, name: string): string | undefined {
   }
 
   return decoded;
+}
+
+function getHeader(request: Request, name: string): string | undefined {
+  const value = request.headers[name];
+  const header = Array.isArray(value) ? value[0] : value;
+  return header ? decodeText(header) : undefined;
 }
 
 function parseUserAgent(
@@ -131,8 +142,6 @@ export function getUploaderInfo(request: Request): UploaderInfo {
     city: getHeader(request, "cf-ipcity"),
     region: getHeader(request, "cf-region"),
     timezone: getHeader(request, "cf-timezone"),
-    asn: getHeader(request, "cf-asn"),
-    isp: getHeader(request, "cf-asorganization"),
     ...parseUserAgent(
       getHeader(request, "user-agent"),
       getHeader(request, "sec-ch-ua-platform"),
@@ -179,10 +188,21 @@ export async function readUploaderInfo(
     if (!parsed || typeof parsed !== "object" || Array.isArray(parsed))
       return null;
 
-    // Older files may still contain private fields; never expose them.
-    for (const field of LEGACY_PRIVATE_FIELDS) delete parsed[field];
+    // Keep only supported Cloudflare fields and repair older mojibake values.
+    const info: Record<string, unknown> = {};
+    let changed = Object.keys(parsed).some(
+      (key) => !(UPLOADER_INFO_FIELDS as readonly string[]).includes(key),
+    );
+    for (const field of UPLOADER_INFO_FIELDS) {
+      const value = parsed[field];
+      if (typeof value !== "string") continue;
+      const decoded = decodeText(value);
+      if (decoded !== value) changed = true;
+      info[field] = decoded;
+    }
 
-    return parsed as UploaderInfo;
+    if (changed) await writeUploaderInfo(shareId, info as UploaderInfo);
+    return info as UploaderInfo;
   } catch {
     return null;
   }

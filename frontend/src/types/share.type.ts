@@ -18,8 +18,6 @@ export type UploaderInfo = {
   city?: string;
   region?: string;
   timezone?: string;
-  asn?: string;
-  isp?: string;
   browser?: string;
   browserVersion?: string;
   os?: string;

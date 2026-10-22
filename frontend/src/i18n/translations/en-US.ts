@@ -509,8 +509,6 @@ export default {
   "share.uploader.country": "Uploader country",
   "share.uploader.os": "Operating system",
   "share.uploader.browser": "Browser",
-  "share.uploader.isp": "ISP",
-  "share.uploader.asn": "ASN",
   "share.uploader.timezone": "Timezone",
   "share.uploader.unknown": "Unknown",
   "share.report.button": "Report",

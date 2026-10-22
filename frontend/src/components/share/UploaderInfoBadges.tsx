@@ -103,8 +103,6 @@ const UploaderInfoBadges = ({
   const details = [
     location,
     info?.timezone && `${t("share.uploader.timezone")}: ${info.timezone}`,
-    info?.isp && `${t("share.uploader.isp")}: ${info.isp}`,
-    info?.asn && `${t("share.uploader.asn")}: AS${info.asn}`,
     uploadedAt && t("share.uploader.uploaded-at", { date: uploadedAt }),
   ].filter(Boolean) as string[];
   const osLabel = `${info?.os || t("share.uploader.unknown")}${
