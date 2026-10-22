@@ -27,11 +27,28 @@ function getHeader(request: Request, name: string): string | undefined {
   const value = request.headers[name];
   const header = Array.isArray(value) ? value[0] : value;
   if (!header) return undefined;
+
+  let decoded = header;
   try {
-    return decodeURIComponent(header);
+    decoded = decodeURIComponent(decoded);
   } catch {
-    return header;
+    // Not percent-encoded; keep the original value.
   }
+
+  // Node exposes header bytes as Latin-1, while Cloudflare sends UTF-8.
+  // Re-decode only when the Latin-1 bytes form valid UTF-8, so already
+  // correct values such as "Dasmariñas" are left untouched.
+  if (/[\u0080-\u00ff]/.test(decoded)) {
+    try {
+      decoded = new TextDecoder("utf-8", { fatal: true }).decode(
+        Buffer.from(decoded, "latin1"),
+      );
+    } catch {
+      // Already valid text; keep it.
+    }
+  }
+
+  return decoded;
 }
 
 function parseUserAgent(

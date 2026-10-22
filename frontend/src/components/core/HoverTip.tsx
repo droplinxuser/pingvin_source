@@ -2,7 +2,7 @@ import { Tooltip } from "@mantine/core";
 import type { ReactNode } from "react";
 
 type HoverTipProps = {
-  label: string;
+  label: ReactNode;
   children: ReactNode;
   disabled?: boolean;
 };
