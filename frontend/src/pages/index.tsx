@@ -17,6 +17,32 @@ import Logo from "../components/Logo";
 import Meta from "../components/Meta";
 import useUser from "../hooks/user.hook";
 import useConfig from "../hooks/config.hook";
+import useTranslate from "../hooks/useTranslate.hook";
+
+const CONTACT_EMAIL = "contactwebph@gmail.com";
+
+const homeBullets = [
+  {
+    name: "home.custom.bullet.a.name",
+    description: "home.custom.bullet.a.description",
+  },
+  {
+    name: "home.custom.bullet.b.name",
+    description: "home.custom.bullet.b.description",
+  },
+  {
+    name: "home.custom.bullet.c.name",
+    description: "home.custom.bullet.c.description",
+  },
+  {
+    name: "home.custom.bullet.d.name",
+    description: "home.custom.bullet.d.description",
+  },
+  {
+    name: "home.custom.bullet.e.name",
+    description: "home.custom.bullet.e.description",
+  },
+];
 
 const useStyles = createStyles((theme) => ({
   inner: {
@@ -75,6 +101,7 @@ export default function Home() {
   const { user } = useUser();
   const router = useRouter();
   const config = useConfig();
+  const t = useTranslate();
 
   // If user is already authenticated, redirect to the upload page
   useEffect(() => {
@@ -87,20 +114,17 @@ export default function Home() {
   const getConfig = (key: string, fallback: string) =>
     (config.get(key) as string) || fallback;
 
-  const getContactEmail = () => {
-    try {
-      return `admin@${new URL(getConfig("general.appUrl", "")).hostname}`;
-    } catch {
-      return "admin@localhost";
-    }
-  };
-
   const aboutHref = getConfig("legal.imprintUrl", "") || "/imprint";
   const aboutIsExternal = /^https?:\/\//i.test(aboutHref);
 
   return (
     <>
-      <Meta title="Home" />
+      <Meta
+        title={t("home.custom.metaTitle")}
+        description={t("home.custom.metaDescription", {
+          siteName: getConfig("general.appName", "SiteName"),
+        })}
+      />
       <Container>
         <div className={classes.inner}>
           <div className={classes.content}>
@@ -129,34 +153,20 @@ export default function Home() {
                 </ThemeIcon>
               }
             >
-              <List.Item>
-                <div>
-                  <b>
-                    <FormattedMessage id="home.custom.bullet.a.name" />
-                  </b>{" "}
-                  - <FormattedMessage id="home.custom.bullet.a.description" />
-                </div>
-              </List.Item>
-              <List.Item>
-                <div>
-                  <b>
-                    <FormattedMessage id="home.custom.bullet.b.name" />
-                  </b>{" "}
-                  - <FormattedMessage id="home.custom.bullet.b.description" />
-                </div>
-              </List.Item>
-              <List.Item>
-                <div>
-                  <b>
-                    <FormattedMessage id="home.custom.bullet.c.name" />
-                  </b>{" "}
-                  -{" "}
-                  <FormattedMessage
-                    id="home.custom.bullet.c.description"
-                    values={{ contactEmail: getContactEmail() }}
-                  />
-                </div>
-              </List.Item>
+              {homeBullets.map((bullet) => (
+                <List.Item key={bullet.name}>
+                  <div>
+                    <b>
+                      <FormattedMessage id={bullet.name} />
+                    </b>{" "}
+                    -{" "}
+                    <FormattedMessage
+                      id={bullet.description}
+                      values={{ contactEmail: CONTACT_EMAIL }}
+                    />
+                  </div>
+                </List.Item>
+              ))}
             </List>
 
             <Group mt={30}>

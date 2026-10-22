@@ -51,13 +51,9 @@ const Footer = () => {
       )}
       {!config.get("legal.enabled") && (
         <Text size="xs" color="dimmed" align="center">
-          Contact{" "}
-          <Anchor
-            size="xs"
-            href="https://phc.onl/contact"
-            target="_blank"
-          >
-            for any inquiries
+          Questions?{" "}
+          <Anchor size="xs" href="mailto:contactwebph@gmail.com">
+            contactwebph@gmail.com
           </Anchor>
         </Text>
       )}
@@ -65,13 +61,9 @@ const Footer = () => {
         <SimpleGrid cols={isMobile ? 2 : 3} m={0}>
           {!isMobile && <div></div>}
           <Text size="xs" color="dimmed" align={isMobile ? "left" : "center"}>
-            Contact{" "}
-            <Anchor
-              size="xs"
-              href="https://phc.onl/contact"
-              target="_blank"
-            >
-              for any inquiries
+            Questions?{" "}
+            <Anchor size="xs" href="mailto:contactwebph@gmail.com">
+              contactwebph@gmail.com
             </Anchor>
           </Text>
           <div>

@@ -41,19 +41,28 @@ export default {
   "home.button.source": "Source code",
 
   // Fork-specific home page copy (English only; other locales fall back to it)
-  "home.custom.title": "<h>{siteName}</h> a free file-sharing platform.",
+  "home.custom.title": "<h>{siteName}</h> — big files, short links, zero fuss.",
   "home.custom.description":
-    "Our platform allows you to generate a link for any file you wish to share, ensuring a hassle-free transfer experience.",
-  "home.custom.bullet.a.name": "Custom Expiration & Download Limits",
+    "A free file-sharing platform for sending up to 512 MB with one link. Sign in with Google, GitHub or Discord; recipients just open the link — no app, and no account needed for standard downloads.",
+  "home.custom.metaTitle": "Big files, short links",
+  "home.custom.metaDescription":
+    "{siteName} is a free file-sharing platform. Share up to 512 MB with short links, previews, passwords, QR codes and email delivery. No app needed.",
+  "home.custom.bullet.a.name": "512 MB, any file type",
   "home.custom.bullet.a.description":
-    "You have the option to set expiration dates on your shared files, customize download limits, or provide password protection.",
-  "home.custom.bullet.b.name": "Sharing via Email",
+    "Upload files or whole folders, preview photos, videos, audio, PDFs and text, and download multi-file shares as one ZIP.",
+  "home.custom.bullet.b.name": "Short links, your way",
   "home.custom.bullet.b.description":
-    "An integrated email feature allows you to send files directly to recipients' inboxes.",
-  "home.custom.bullet.c.name": "Contact Us",
+    "Share a short or custom link, show a QR code, or email the link directly to recipients.",
+  "home.custom.bullet.c.name": "Share on your terms",
   "home.custom.bullet.c.description":
-    "For any inquiries, takedown requests, or other concerns, please reach out to us directly at {contactEmail}.",
-  "home.custom.button.start": "New upload",
+    "Add a password, set a download limit, or make a share recipient-only. Links renew on every visit and expire after 100 quiet days.",
+  "home.custom.bullet.d.name": "A dashboard for every share",
+  "home.custom.bullet.d.description":
+    "Track views and expiry, edit security, add or remove files, and manage received shares and file-request links.",
+  "home.custom.bullet.e.name": "Contact us",
+  "home.custom.bullet.e.description":
+    "For inquiries, takedown requests or anything else, reach us at {contactEmail}.",
+  "home.custom.button.start": "Start sharing",
   "home.custom.button.source": "About",
   // END /
 
