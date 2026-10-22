@@ -35,6 +35,16 @@ const Share = ({ shareId }: { shareId: string }) => {
         setShare(share);
       })
       .catch((e) => {
+        if (e.response?.status == 429) {
+          showErrorModal(
+            modals,
+            t("common.custom.rate-limit.title"),
+            t("common.custom.rate-limit.description"),
+            "go-home",
+          );
+          return;
+        }
+
         const { error } = e.response.data;
         if (e.response.status == 404) {
           if (error == "share_removed") {

@@ -72,6 +72,14 @@ const Share = ({
 
   const recipientId = getQueryString(router.query.recipient);
 
+  const showRateLimitModal = () =>
+    showErrorModal(
+      modals,
+      t("common.custom.rate-limit.title"),
+      t("common.custom.rate-limit.description"),
+      "go-home",
+    );
+
   const getShareToken = async (password?: string) => {
     await shareService
       .getShareToken(shareId, password)
@@ -80,6 +88,11 @@ const Share = ({
         getFiles();
       })
       .catch((e) => {
+        if (e.response?.status == 429) {
+          showRateLimitModal();
+          return;
+        }
+
         const { error } = e.response.data;
         if (error == "share_max_views_exceeded") {
           showErrorModal(
@@ -104,6 +117,11 @@ const Share = ({
         setShare(share);
       })
       .catch((e) => {
+        if (e.response?.status == 429) {
+          showRateLimitModal();
+          return;
+        }
+
         const { error } = e.response.data;
         if (e.response.status == 404) {
           setPageError(

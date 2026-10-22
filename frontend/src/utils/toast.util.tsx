@@ -20,12 +20,22 @@ const error = (
     ...config,
   });
 
-const axiosError = (axiosError: any) =>
-  error(
-    getApiErrorMessage(axiosError) ?? (
-      <FormattedMessage id="common.error.unknown" />
+const axiosError = (axiosError: any) => {
+  const isRateLimited = axiosError?.response?.status === 429;
+
+  return error(
+    isRateLimited ? (
+      <FormattedMessage id="common.custom.rate-limit.description" />
+    ) : (
+      getApiErrorMessage(axiosError) ?? (
+        <FormattedMessage id="common.error.unknown" />
+      )
     ),
+    isRateLimited
+      ? { title: <FormattedMessage id="common.custom.rate-limit.title" /> }
+      : undefined,
   );
+};
 
 const success = (
   message: ReactNode,

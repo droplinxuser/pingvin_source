@@ -1058,6 +1058,9 @@ export default {
 
   "common.error": "Error",
   "common.error.unknown": "An unknown error occurred",
+  "common.custom.rate-limit.title": "Too many requests",
+  "common.custom.rate-limit.description":
+    "You have made too many requests. Please wait a minute and try again.",
   "common.error.invalid-email": "Invalid email address",
   "common.error.too-short": "Must be at least {length} characters",
   "common.error.too-long": "Must be at most {length} characters",
