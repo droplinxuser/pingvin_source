@@ -32,7 +32,7 @@ export async function setCachedValue(
   }
 }
 
-export async function deleteCachedValue(
+async function deleteCachedValue(
   cache: Cache,
   key: string,
 ): Promise<void> {
