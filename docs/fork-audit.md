@@ -134,13 +134,16 @@ login can loop between `/upload` and `/auth/signIn`.
   admin shares (search/sort/pagination), admin users (sort/pagination), admin
   delete, missing-share/unknown-route 404s, language fallback, dynamic
   manifest, site stats footer and service-worker registration.
-- Live `https://site.com` redeploy (2026-10-23, commit `ea200c0b`): the JWT
-  visitor cookie and visitor-grid markup confirm the new build. Home, share,
-  404 and manifest pages, `testuser` sign-in, account and reverse-share
-  pages pass without JavaScript errors. A live upload -> share -> file access
-  -> delete cycle also passed, and the deleted share returned 404. The source
-  backup still passes `PRAGMA integrity_check`; live counts match it apart from
-  the one-file difference explained by normal share cleanup.
+- Live `https://site.com` redeploy (2026-10-23, commit `bb0986d4`): the footer
+  shows the 60-minute page-view count and top-country flags, and the counter
+  increments on client navigation. Home, share, 404 and manifest pages,
+  `testuser` sign-in, account and reverse-share pages pass without JavaScript
+  errors. A live upload -> share -> file access -> delete cycle passed; the
+  account API returned `views=0` immediately after the share page view and
+  `views=1` after the 20s flush, proving the Valkey write-behind is active.
+  The deleted share returned 404. The source backup still passes
+  `PRAGMA integrity_check`; live counts match it apart from the one-file
+  difference explained by normal share cleanup.
 - `bash -n update.sh` passes; its env writer produces the exact live
   `DATABASE_URL` above.
 
