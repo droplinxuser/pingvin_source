@@ -35,6 +35,7 @@ const i18nPath = existsSync(join(__dirname, "../i18n"))
 @Module({
   imports: [
     ConfigModule,
+    AppCacheModule,
     AuthModule,
     ShareModule,
     FileModule,
@@ -53,7 +54,6 @@ const i18nPath = existsSync(join(__dirname, "../i18n"))
     ClamScanModule,
     ReverseShareModule,
     OAuthModule,
-    AppCacheModule,
     I18nModule.forRoot({
       fallbackLanguage: "en-US",
       loaderOptions: {

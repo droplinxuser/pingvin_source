@@ -16,8 +16,8 @@ so `git merge upstream/main` stays small.
 | Inline media gallery | `frontend/src/components/share/MediaPreviewGallery.tsx` reuses `FilePreview.tsx` |
 | Cache headers / hotlink protection | `backend/src/utils/cache.util.ts`, `backend/src/utils/referrer.util.ts`, `frontend/src/middleware.ts`, `frontend/next.config.js` |
 | Per-visitor rate limiting | `backend/src/utils/visitorIdentity.util.ts`, `backend/src/cache/valkeyThrottler.storage.ts`, `backend/src/cache/throttler.config.ts`, `backend/src/main.ts` |
-| Valkey/Redis share cache | `backend/src/utils/cache.util.ts`, `backend/src/share/shareState.service.ts`, `backend/src/cache/cache.module.ts` |
-| Site stats and footer | `backend/src/system/system.service.ts`, `frontend/src/components/footer/Footer.tsx` |
+| Valkey/Redis cache and write buffer | `backend/src/utils/cache.util.ts`, `backend/src/share/shareState.service.ts`, `backend/src/cache/cache.module.ts`, `backend/src/cache/valkey.service.ts`, `backend/src/cache/shareWriteBuffer.service.ts` |
+| Site stats and footer | `backend/src/system/system.service.ts`, `backend/src/cache/metrics.service.ts`, `frontend/src/components/footer/Footer.tsx`; `POST /api/system/pageview` |
 | Home copy and ads | `frontend/src/pages/index.tsx` (upstream layout), `home.custom.*` keys in `en-US.ts`, `frontend/src/components/Ads.tsx` |
 | Fork branding / deployment | `frontend/public/img/**`, `frontend/src/pages/manifest.json.tsx`, `pingvin-*.service`, `update.sh` |
 
@@ -39,7 +39,9 @@ other languages show the upstream copy instead of the English fallback.
    - lint: `npm run lint` in both packages (backend warnings are upstream-only)
 5. Smoke-test locally: home page, sign-in, upload, share page, admin
    shares/users (search, sort, pagination), missing share (404), file download
-   headers, report modal and the dynamic `/manifest.json`.
+   headers, report modal, footer page-view/top-country metrics, the 20s share
+   view/expiration flush, and the dynamic `/manifest.json`. Repeat once with
+   Valkey stopped to confirm the fallbacks.
 
 ## Production settings
 
@@ -56,7 +58,8 @@ other languages show the upstream copy instead of the English fallback.
 - `DATA_DIRECTORY="/var/www/pingvin_data"`; uploader/visitor metadata is stored
   per share at `uploads/shares/<shareId>/uploader.json` with mode `600`. View
   counts live in `Share.views`; `npm run sync:views` (run by `update.sh`) moves
-  legacy counts out of `uploader.json` once and removes the old field.
+  legacy counts out of `uploader.json` once and removes the old field. The
+  legacy field is only read during that migration.
 - Global rate limiting is 90 requests per 60 seconds per visitor, blocking for
   60 seconds after the limit. Configure it with `VISITOR_RATE_LIMIT`,
   `VISITOR_RATE_TTL_MS` and `VISITOR_RATE_BLOCK_MS`. Guests use a signed,
@@ -70,12 +73,25 @@ other languages show the upstream copy instead of the English fallback.
   large uploads working.
 - Valkey/Redis is optional but recommended: set `CACHE_REDIS_ENABLED=true` and
   `CACHE_REDIS_URL=redis://127.0.0.1:6379` in `backend/.env` (`update.sh`
-  enables both automatically when a local `valkey-server` is active). Share-page data
-  is cached for 30s; visitor writes to `uploader.json` are debounced to at most
-  one write per 5s per share. All cache operations fail open, and share
-  updates/deletes/expiry/ClamAV removal invalidate the cache. View increments
-  remain one SQLite write per page view; the rolling expiration write is
-  reduced to one per 30s cache miss.
+  enables both automatically when a local `valkey-server` is active). Share-page
+  data, guard data and metadata are cached for 30s/30s/5s. Share views and
+  rolling expiration updates are written to Valkey counters/hashes and flushed
+  to SQLite every 20s; `Share.views` reads during the flush window combine the
+  buffered total with the SQLite baseline. Visitor writes to `uploader.json`
+  are debounced to at most one write per 5s per share.
+- The footer posts to `POST /api/system/pageview` on every rendered page. The
+  endpoint increments per-minute Valkey buckets atomically, expires them after
+  two hours and returns the last 60 minutes of page views plus the top five
+  countries by unique visitor (`visitorKey`) count. The stats response is never
+  cached; the older
+  `GET /api/system/stats` remains available as a read-only fallback and caches
+  the SQLite-derived user/share/file totals for 60s.
+- Fallbacks: if Valkey is disabled or unreachable, page-view metrics and the
+  top-country list move to a per-process 60-minute memory window, while share
+  views and expiration updates fall back to the original direct SQLite writes.
+  The Valkey connection retries after 30s; cache reads fail open to SQLite.
+  All Redis clients have error handlers and `disableOfflineQueue` so a dead
+  Valkey server never hangs a request or crashes the backend.
 - `update.sh` pulls origin/main, preserves `backend/.env`, reinstalls and
   rebuilds both packages, syncs legacy view counts, installs the systemd units,
   runs migrations/seeding through the backend restart, and restarts the
@@ -104,11 +120,13 @@ login can loop between `/upload` and `/auth/signIn`.
 - Backend started with `npm run prod` against a copy of
   `/home/rt/Documents/pingvin-share.db`; migrations were already current and
   the seed completed. The source backup passes `PRAGMA integrity_check`.
-- Refactor regression suite (2026-10-23): 9 backend unit tests and production
+- Refactor regression suite (2026-10-23): 15 backend unit tests and production
   builds pass on Node `22.23.3`; 15 Playwright checks against a copy of the live
   database cover guest/user/admin flows, upload, analytics, reporting, the
   max-view limit and admin delete. Reverse-share creation, the 429 UI, hotlink
-  protection and year-long file cache headers were also verified.
+  protection, year-long file cache headers, footer page-view/top-country
+  metrics, the 20s view/expiration flush and both Valkey-outage fallbacks were
+  also verified.
 - Browser tests (48 guest/user/admin checks plus 24 security/reverse-share
   checks): home, guest + password sign-in, upload, file and ZIP downloads,
   text and image previews, inline gallery, uploader badges, share report

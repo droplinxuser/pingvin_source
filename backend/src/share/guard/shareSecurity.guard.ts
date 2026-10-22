@@ -77,15 +77,7 @@ export class ShareSecurityGuard extends JwtGuard {
 
     const shareToken = request.cookies[`share_${shareId}_token`];
 
-    const share = await this.prisma.share.findUnique({
-      where: { id: shareId },
-      include: {
-        security: true,
-        reverseShare: true,
-        userRecipients: { select: { userId: true } },
-        recipients: { select: { email: true } },
-      },
-    });
+    const share = await this.shareService.getGuardShare(shareId);
 
     if (!share) throw new NotFoundException(this.i18n.t("share.notFound"));
 

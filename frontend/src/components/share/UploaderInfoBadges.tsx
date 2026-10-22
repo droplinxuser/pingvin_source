@@ -17,6 +17,7 @@ import { SiBrave, SiIos } from "react-icons/si";
 import { TbBrowser, TbDeviceLaptop, TbWorld } from "react-icons/tb";
 import useTranslate from "../../hooks/useTranslate.hook";
 import { Share, UploaderInfo } from "../../types/share.type";
+import { countryCodeToFlag, getCountryName } from "../../utils/country.util";
 import { HoverTip } from "../core/HoverTip";
 
 const iconProps = { size: 16 };
@@ -33,22 +34,6 @@ const ICONS: Record<string, ReactNode> = {
   Edge: <FaEdge {...iconProps} />,
   Opera: <FaOpera {...iconProps} />,
   Brave: <SiBrave {...iconProps} />,
-};
-
-export const countryCodeToFlag = (code?: string) =>
-  code && /^[A-Z]{2}$/.test(code) && code !== "T1"
-    ? String.fromCodePoint(
-        ...Array.from(code).map((char) => 127397 + char.charCodeAt(0)),
-      )
-    : "🌐";
-
-export const getCountryName = (code: string, locale: string) => {
-  if (code === "T1") return "Tor";
-  try {
-    return new Intl.DisplayNames([locale], { type: "region" }).of(code) ?? code;
-  } catch {
-    return code;
-  }
 };
 
 export const getOsIcon = (os?: string) =>

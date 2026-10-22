@@ -1,22 +1,34 @@
 import { Anchor, Footer as MFooter, SimpleGrid, Text } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
+import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
+import { useIntl } from "react-intl";
 import useConfig from "../../hooks/config.hook";
 import useTranslate from "../../hooks/useTranslate.hook";
 import systemService, { SystemStats } from "../../services/system.service";
+import { countryCodeToFlag, getCountryName } from "../../utils/country.util";
 import { byteToHumanSizeString } from "../../utils/fileSize.util";
 
 const Footer = () => {
   const t = useTranslate();
+  const intl = useIntl();
+  const router = useRouter();
   const config = useConfig();
   const [stats, setStats] = useState<SystemStats | null>(null);
 
+  // This is also the page-view beacon: one POST per rendered page, with the
+  // counters kept in Valkey instead of SQLite.
   useEffect(() => {
     systemService
-      .getSystemStats()
+      .recordPageView()
       .then(setStats)
-      .catch(() => {});
-  }, []);
+      .catch(() =>
+        systemService
+          .getSystemStats()
+          .then(setStats)
+          .catch(() => {}),
+      );
+  }, [router.asPath]);
 
   const hasImprint = !!(
     config.get("legal.imprintUrl") || config.get("legal.imprintText")
@@ -46,14 +58,36 @@ const Footer = () => {
   return (
     <MFooter height="auto" py={6} px="xl" zIndex={100}>
       {stats && (
-        <Text size="xs" color="dimmed" align="center" mb={2}>
-          {t("footer.custom.stats.summary", {
-            users: stats.userCount,
-            shares: stats.shareCount,
-            files: stats.fileCount,
-            size: byteToHumanSizeString(stats.storageSizeBytes),
-          })}
-        </Text>
+        <>
+          <Text size="xs" color="dimmed" align="center" mb={2}>
+            {t("footer.custom.stats.summary", {
+              users: stats.userCount,
+              shares: stats.shareCount,
+              files: stats.fileCount,
+              size: byteToHumanSizeString(stats.storageSizeBytes),
+            })}
+          </Text>
+          <Text size="xs" color="dimmed" align="center" mb={2}>
+            {t("footer.custom.stats.pageviews", {
+              count: stats.pageViewsLastHour ?? 0,
+            })}
+            {stats.topCountriesLastHour?.length ? (
+              <>
+                {" · "}
+                {t("footer.custom.stats.top-countries")}{" "}
+                {stats.topCountriesLastHour.map(({ country, count }, index) => (
+                  <span
+                    key={country}
+                    title={getCountryName(country, intl.locale)}
+                  >
+                    {index > 0 ? " · " : ""}
+                    {countryCodeToFlag(country)} {count}
+                  </span>
+                ))}
+              </>
+            ) : null}
+          </Text>
+        </>
       )}
       {!config.get("legal.enabled") && (
         <Text size="xs" color="dimmed" align="center">

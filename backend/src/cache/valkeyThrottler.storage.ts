@@ -63,10 +63,16 @@ export class ValkeyThrottlerStorage implements ThrottlerStorage {
     try {
       const client = createClient({
         url: this.url,
+        disableOfflineQueue: true,
         socket: {
           connectTimeout: 2000,
           reconnectStrategy: false,
         },
+      });
+      client.on("error", (error) => {
+        this.logger.debug(
+          `Valkey throttling connection error: ${error.message}`,
+        );
       });
       await client.connect();
       this.client = client;

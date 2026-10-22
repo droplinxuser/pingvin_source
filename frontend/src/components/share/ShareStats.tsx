@@ -15,12 +15,8 @@ import { TbActivity } from "react-icons/tb";
 import useTranslate from "../../hooks/useTranslate.hook";
 import { Share } from "../../types/share.type";
 import { HoverTip } from "../core/HoverTip";
-import {
-  countryCodeToFlag,
-  getBrowserIcon,
-  getCountryName,
-  getOsIcon,
-} from "./UploaderInfoBadges";
+import { countryCodeToFlag, getCountryName } from "../../utils/country.util";
+import { getBrowserIcon, getOsIcon } from "./UploaderInfoBadges";
 
 const MAX_VISITORS = 20;
 

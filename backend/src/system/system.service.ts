@@ -3,6 +3,7 @@ import { CACHE_MANAGER } from "@nestjs/cache-manager";
 import { Cache } from "cache-manager";
 import checkDiskSpace from "check-disk-space";
 import { DATA_DIRECTORY } from "src/constants";
+import { MetricsService, PageViewMetrics } from "src/cache/metrics.service";
 import { PrismaService } from "src/prisma/prisma.service";
 import { getCachedValue, setCachedValue } from "src/utils/cache.util";
 import { SystemInfoDTO } from "./dto/systemInfo.dto";
@@ -12,12 +13,14 @@ import * as path from "path";
 const SYSTEM_STATS_CACHE_KEY = "system:stats";
 const SYSTEM_STATS_CACHE_TTL = 60 * 1000;
 
-export type SystemStats = {
+type BaseSystemStats = {
   userCount: number;
   shareCount: number;
   fileCount: number;
   storageSizeBytes: number;
 };
+
+export type SystemStats = BaseSystemStats & PageViewMetrics;
 
 @Injectable()
 export class SystemService {
@@ -26,11 +29,31 @@ export class SystemService {
   constructor(
     private configService: ConfigService,
     private prisma: PrismaService,
+    private readonly metrics: MetricsService,
     @Inject(CACHE_MANAGER) private cache: Cache,
   ) {}
 
   async getSystemStats(): Promise<SystemStats> {
-    const cached = await getCachedValue<SystemStats>(
+    const [base, pageViews] = await Promise.all([
+      this.getBaseSystemStats(),
+      this.metrics.getLastHour(),
+    ]);
+    return { ...base, ...pageViews };
+  }
+
+  async recordPageView(
+    country?: string,
+    visitorKey?: string,
+  ): Promise<SystemStats> {
+    const [base, pageViews] = await Promise.all([
+      this.getBaseSystemStats(),
+      this.metrics.recordPageView(country, visitorKey),
+    ]);
+    return { ...base, ...pageViews };
+  }
+
+  private async getBaseSystemStats(): Promise<BaseSystemStats> {
+    const cached = await getCachedValue<BaseSystemStats>(
       this.cache,
       SYSTEM_STATS_CACHE_KEY,
     );
@@ -46,7 +69,7 @@ export class SystemService {
       SELECT COALESCE(SUM(CAST(size AS INTEGER)), 0) AS total FROM "File"
     `;
 
-    const stats: SystemStats = {
+    const stats: BaseSystemStats = {
       userCount,
       shareCount,
       fileCount,

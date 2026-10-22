@@ -18,11 +18,11 @@ import { ConfigService } from "src/config/config.service";
 export class FileSecurityGuard extends ShareSecurityGuard {
   constructor(
     private _shareService: ShareService,
-    private _prisma: PrismaService,
+    prisma: PrismaService,
     private _config: ConfigService,
     private readonly _i18n: I18nService,
   ) {
-    super(_shareService, _prisma, _config, _i18n);
+    super(_shareService, prisma, _config, _i18n);
   }
 
   isBase64(toCheck: string) {
@@ -46,15 +46,7 @@ export class FileSecurityGuard extends ShareSecurityGuard {
 
     const shareToken = request.cookies[`share_${shareId}_token`];
 
-    const share = await this._prisma.share.findUnique({
-      where: { id: shareId },
-      include: {
-        security: true,
-        reverseShare: true,
-        userRecipients: { select: { userId: true } },
-        recipients: { select: { email: true } },
-      },
-    });
+    const share = await this._shareService.getGuardShare(shareId);
 
     (request as Request & { shareIsPublic?: boolean }).shareIsPublic =
       isPublicShare(share);
@@ -109,7 +101,7 @@ export class FileSecurityGuard extends ShareSecurityGuard {
       // The page view that consumed the last allowed view must still be able
       // to download its files.
       this._shareService.assertViewLimit(
-        share.views,
+        await this._shareService.getCurrentViews(share.id, share.views),
         share.security?.maxViews,
         true,
       );

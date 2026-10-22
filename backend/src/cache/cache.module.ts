@@ -1,14 +1,23 @@
-import { Module } from "@nestjs/common";
+import { Global, Logger, Module } from "@nestjs/common";
 import { CacheModule } from "@nestjs/cache-manager";
 import { CacheableMemory } from "cacheable";
 import { createKeyv } from "@keyv/redis";
 import { Keyv } from "keyv";
 import { ConfigModule } from "src/config/config.module";
 import { ConfigService } from "src/config/config.service";
+import { PrismaModule } from "src/prisma/prisma.module";
+import { MetricsService } from "./metrics.service";
+import { ShareWriteBufferService } from "./shareWriteBuffer.service";
+import { ValkeyService } from "./valkey.service";
 
+const logger = new Logger("AppCacheModule");
+let lastCacheErrorLog = 0;
+
+@Global()
 @Module({
   imports: [
     ConfigModule,
+    PrismaModule,
     CacheModule.registerAsync({
       isGlobal: true,
       imports: [ConfigModule],
@@ -26,9 +35,24 @@ import { ConfigService } from "src/config/config.service";
 
         if (useRedis) {
           const redisUrl = configService.get("cache.redis-url");
+          const redisStore = createKeyv({
+            url: redisUrl,
+            disableOfflineQueue: true,
+            socket: {
+              connectTimeout: 2000,
+              reconnectStrategy: (retries) => Math.min(retries * 200, 3000),
+            },
+          });
+          redisStore.on("error", (error) => {
+            if (Date.now() - lastCacheErrorLog < 30_000) return;
+            lastCacheErrorLog = Date.now();
+            logger.warn(
+              `Redis cache unavailable; using memory fallback: ${error}`,
+            );
+          });
           config.stores = [
             new Keyv({ store: new CacheableMemory({ ttl, lruSize: 5000 }) }),
-            createKeyv(redisUrl),
+            redisStore,
           ];
         }
 
@@ -36,6 +60,12 @@ import { ConfigService } from "src/config/config.service";
       },
     }),
   ],
-  exports: [CacheModule],
+  providers: [ValkeyService, MetricsService, ShareWriteBufferService],
+  exports: [
+    CacheModule,
+    ValkeyService,
+    MetricsService,
+    ShareWriteBufferService,
+  ],
 })
 export class AppCacheModule {}

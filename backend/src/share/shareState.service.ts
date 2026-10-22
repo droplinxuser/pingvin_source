@@ -6,7 +6,7 @@ import {
   NotFoundException,
   OnApplicationShutdown,
 } from "@nestjs/common";
-import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library";
+import { Prisma } from "@prisma/client";
 import { Cache } from "cache-manager";
 import { Request } from "express";
 import * as moment from "moment";
@@ -26,7 +26,21 @@ import {
   invalidateShareDataCache,
   setCachedValue,
   shareDataCacheKey,
+  shareExistsCacheKey,
+  shareGuardCacheKey,
 } from "src/utils/cache.util";
+import { ShareWriteBufferService } from "src/cache/shareWriteBuffer.service";
+
+const GUARD_INCLUDE = {
+  security: true,
+  reverseShare: true,
+  userRecipients: { select: { userId: true } },
+  recipients: { select: { email: true } },
+} satisfies Prisma.ShareInclude;
+
+export type GuardShare = Prisma.ShareGetPayload<{
+  include: typeof GUARD_INCLUDE;
+}>;
 
 @Injectable()
 export class ShareStateService implements OnApplicationShutdown {
@@ -37,6 +51,7 @@ export class ShareStateService implements OnApplicationShutdown {
   constructor(
     private prisma: PrismaService,
     private readonly i18n: I18nService,
+    private readonly shareWrites: ShareWriteBufferService,
     @Inject(CACHE_MANAGER) private cache: Cache,
   ) {}
 
@@ -79,14 +94,11 @@ export class ShareStateService implements OnApplicationShutdown {
     if (!share.uploadLocked)
       throw new NotFoundException(this.i18n.t("share.notFound"));
 
-    // Refresh the rolling expiration only on a cache miss to avoid a SQLite
-    // write for every visit.
+    // Refresh the rolling expiration on a cache miss. The new value is queued
+    // in Valkey and written to SQLite with the other buffered share updates.
     if (!moment(share.expiration).isSame(0)) {
       share.expiration = getDefaultShareExpiration();
-      await this.prisma.share.update({
-        where: { id },
-        data: { expiration: share.expiration },
-      });
+      await this.shareWrites.queueExpiration(id, share.expiration);
     }
 
     const { security, ...shareData } = share;
@@ -95,12 +107,7 @@ export class ShareStateService implements OnApplicationShutdown {
       hasPassword: !!security?.password,
       maxViews: security?.maxViews,
     };
-    await setCachedValue(
-      this.cache,
-      cacheKey,
-      result,
-      SHARE_DATA_CACHE_TTL_MS,
-    );
+    await setCachedValue(this.cache, cacheKey, result, SHARE_DATA_CACHE_TTL_MS);
     return result;
   }
 
@@ -108,49 +115,68 @@ export class ShareStateService implements OnApplicationShutdown {
     await invalidateShareDataCache(this.cache, shareId);
   }
 
+  async getGuardShare(shareId: string): Promise<GuardShare | null> {
+    const key = shareGuardCacheKey(shareId);
+    const cached = await getCachedValue<GuardShare>(this.cache, key);
+    if (cached) return cached;
+
+    const share = await this.prisma.share.findUnique({
+      where: { id: shareId },
+      include: GUARD_INCLUDE,
+    });
+    if (share)
+      await setCachedValue(this.cache, key, share, SHARE_DATA_CACHE_TTL_MS);
+    return share;
+  }
+
+  async shareExists(shareId: string): Promise<boolean> {
+    const key = shareExistsCacheKey(shareId);
+    const cached = await getCachedValue<boolean>(this.cache, key);
+    if (cached) return cached;
+
+    const share = await this.prisma.share.findUnique({
+      where: { id: shareId },
+      select: { id: true },
+    });
+    if (share)
+      await setCachedValue(this.cache, key, true, SHARE_DATA_CACHE_TTL_MS);
+    return !!share;
+  }
+
+  async getCurrentViews(shareId: string, dbViews: number): Promise<number> {
+    return this.shareWrites.getViews(shareId, dbViews);
+  }
+
   async clear(shareId: string) {
     const timer = this.uploaderWriteTimers.get(shareId);
     if (timer) clearTimeout(timer);
     this.uploaderWriteTimers.delete(shareId);
     this.pendingUploaderWrites.delete(shareId);
-    await invalidateShareDataCache(this.cache, shareId);
+    await Promise.all([
+      invalidateShareDataCache(this.cache, shareId),
+      this.shareWrites.clear(shareId),
+    ]);
   }
 
   async recordView(
     id: string,
     request: Request,
+    dbViews: number,
     maxViews?: number | null,
   ) {
-    let updated: { views: number };
-    try {
-      updated = await this.prisma.share.update({
-        where: maxViews ? { id, views: { lt: maxViews } } : { id },
-        data: { views: { increment: 1 } },
-        select: { views: true },
-      });
-    } catch (error) {
-      if (
-        error instanceof PrismaClientKnownRequestError &&
-        error.code === "P2025"
-      ) {
-        const exists = await this.prisma.share.findUnique({
-          where: { id },
-          select: { id: true },
-        });
-        if (!exists)
-          throw new NotFoundException(this.i18n.t("share.notFound"));
-        throw new ForbiddenException(
-          this.i18n.t("share.maxViewsExceeded"),
-          "share_max_views_exceeded",
-        );
-      }
-      throw error;
-    }
+    const result = await this.shareWrites.recordView(id, dbViews, maxViews);
+    if (result.status === "missing")
+      throw new NotFoundException(this.i18n.t("share.notFound"));
+    if (result.status === "limit")
+      throw new ForbiddenException(
+        this.i18n.t("share.maxViewsExceeded"),
+        "share_max_views_exceeded",
+      );
 
     const uploaderInfo = await this.recordVisitor(id, request);
     delete uploaderInfo.views;
 
-    return { views: updated.views, uploaderInfo };
+    return { views: result.views, uploaderInfo };
   }
 
   private withVisitorLock<T>(
@@ -214,8 +240,7 @@ export class ShareStateService implements OnApplicationShutdown {
   }
 
   async onApplicationShutdown() {
-    for (const timer of this.uploaderWriteTimers.values())
-      clearTimeout(timer);
+    for (const timer of this.uploaderWriteTimers.values()) clearTimeout(timer);
     this.uploaderWriteTimers.clear();
 
     await Promise.all(

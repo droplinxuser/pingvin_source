@@ -18,6 +18,9 @@ export default {
   "footer.poweredBy": "Powered by",
   "footer.custom.stats.summary":
     "{users, number} users • {shares, number} shares • {files, number} files • {size} storage used",
+  "footer.custom.stats.pageviews":
+    "{count, plural, one {# page view} other {# page views}} in the last 60 minutes",
+  "footer.custom.stats.top-countries": "Top countries:",
 
   // END footer
 

@@ -112,7 +112,7 @@ export class ShareController {
   @Head(":id")
   @SkipThrottle({ default: true, visitor: true })
   async exists(@Param("id") id: string) {
-    if ((await this.shareService.isShareIdAvailable(id)).isAvailable)
+    if (!(await this.shareService.shareExists(id)))
       throw new NotFoundException();
   }
 
@@ -123,6 +123,7 @@ export class ShareController {
     const { views, uploaderInfo } = await this.shareService.recordView(
       id,
       request,
+      share.views ?? 0,
       share.maxViews,
     );
     return new ShareDTO().from({

@@ -1,11 +1,14 @@
 import {
   BadRequestException,
   ForbiddenException,
+  Inject,
   Injectable,
   Logger,
   NotFoundException,
 } from "@nestjs/common";
+import { CACHE_MANAGER } from "@nestjs/cache-manager";
 import { JwtService, JwtSignOptions } from "@nestjs/jwt";
+import { Cache } from "cache-manager";
 import { Prisma, Share, User, ShareSecurity } from "@prisma/client";
 import * as archiver from "archiver";
 import * as argon from "argon2";
@@ -22,6 +25,12 @@ import { FileService } from "src/file/file.service";
 import { PrismaService } from "src/prisma/prisma.service";
 import { ReverseShareService } from "src/reverseShare/reverseShare.service";
 import { SystemService } from "src/system/system.service";
+import {
+  SHARE_META_CACHE_TTL_MS,
+  getCachedValue,
+  setCachedValue,
+  shareMetaCacheKey,
+} from "src/utils/cache.util";
 import { getDefaultShareExpiration } from "src/utils/date.util";
 import { byteToHumanSizeString } from "src/utils/fileSize.util";
 import { getUserActiveStorageUsage } from "src/utils/storageQuota.util";
@@ -29,7 +38,7 @@ import { SHARE_DIRECTORY } from "../constants";
 import { CreateShareDTO } from "./dto/createShare.dto";
 import { ReportShareDTO } from "./dto/reportShare.dto";
 import { UpdateShareDTO } from "./dto/updateShare.dto";
-import { ShareStateService } from "./shareState.service";
+import { GuardShare, ShareStateService } from "./shareState.service";
 import { isViewLimitExceeded } from "./share.util";
 import { tableOrderBy } from "src/utils/pagination.util";
 
@@ -48,6 +57,10 @@ const SHARE_INCLUDE = {
   recipients: true,
 } as const;
 
+type ShareMetaData = Prisma.ShareGetPayload<{
+  include: { _count: { select: { files: true } } };
+}>;
+
 @Injectable()
 export class ShareService {
   private readonly logger = new Logger(ShareService.name);
@@ -64,6 +77,7 @@ export class ShareService {
     private systemService: SystemService,
     private readonly i18n: I18nService,
     private shareState: ShareStateService,
+    @Inject(CACHE_MANAGER) private cache: Cache,
   ) {}
 
   async create(share: CreateShareDTO, user?: User, reverseShareToken?: string) {
@@ -448,12 +462,11 @@ export class ShareService {
 
     const shares = await this.prisma.share.findMany({
       where,
-      orderBy:
-        (sortBy === "username"
-          ? { creator: { username: sortDirection === "asc" ? "asc" : "desc" } }
-          : tableOrderBy(SHARE_SORT_FIELDS, sortBy, sortDirection)) ?? {
-          expiration: "desc",
-        },
+      orderBy: (sortBy === "username"
+        ? { creator: { username: sortDirection === "asc" ? "asc" : "desc" } }
+        : tableOrderBy(SHARE_SORT_FIELDS, sortBy, sortDirection)) ?? {
+        expiration: "desc",
+      },
       take,
       skip,
       include,
@@ -505,7 +518,23 @@ export class ShareService {
     return this.shareState.getShare(id);
   }
 
+  async getGuardShare(id: string): Promise<GuardShare | null> {
+    return this.shareState.getGuardShare(id);
+  }
+
+  async shareExists(id: string): Promise<boolean> {
+    return this.shareState.shareExists(id);
+  }
+
+  async getCurrentViews(id: string, dbViews: number): Promise<number> {
+    return this.shareState.getCurrentViews(id, dbViews);
+  }
+
   async getMetaData(id: string) {
+    const cacheKey = shareMetaCacheKey(id);
+    const cached = await getCachedValue<ShareMetaData>(this.cache, cacheKey);
+    if (cached) return cached;
+
     const share = await this.prisma.share.findUnique({
       where: { id },
       include: {
@@ -526,6 +555,7 @@ export class ShareService {
       void this.createZip(id);
     }
 
+    await setCachedValue(this.cache, cacheKey, share, SHARE_META_CACHE_TTL_MS);
     return share;
   }
 
@@ -708,9 +738,10 @@ export class ShareService {
   async recordView(
     id: string,
     request: Request,
+    dbViews: number,
     maxViews?: number | null,
   ) {
-    return this.shareState.recordView(id, request, maxViews);
+    return this.shareState.recordView(id, request, dbViews, maxViews);
   }
 
   assertViewLimit(
@@ -727,12 +758,8 @@ export class ShareService {
   }
 
   async getShareToken(shareId: string, password: string) {
-    const share = await this.prisma.share.findFirst({
-      where: { id: shareId },
-      include: {
-        security: true,
-      },
-    });
+    const share = await this.shareState.getGuardShare(shareId);
+    if (!share) throw new NotFoundException(this.i18n.t("share.notFound"));
 
     if (share?.security?.password) {
       if (!password) {
@@ -754,11 +781,14 @@ export class ShareService {
       }
     }
 
-    this.assertViewLimit(share.views, share.security?.maxViews);
+    this.assertViewLimit(
+      await this.getCurrentViews(share.id, share.views),
+      share.security?.maxViews,
+    );
     return await this.generateShareToken(share);
   }
 
-  async generateShareToken(share: Share & { security?: ShareSecurity }) {
+  async generateShareToken(share: Share & { security?: ShareSecurity | null }) {
     const { id: shareId, expiration, createdAt, security } = share;
 
     const tokenPayload = {
@@ -784,7 +814,7 @@ export class ShareService {
   }
 
   async verifyShareToken(
-    share: Share & { security?: ShareSecurity },
+    share: Share & { security?: ShareSecurity | null },
     token: string,
   ) {
     const { expiration, createdAt, security } = share;
