@@ -15,6 +15,7 @@ so `git merge upstream/main` stays small.
 | Uploader metadata / visitors | `backend/src/utils/uploaderInfo.util.ts`, `ShareDTO.uploaderInfo`, `frontend/src/components/share/UploaderInfoBadges.tsx`, `ShareStats.tsx`; view counts stay in `Share.views` |
 | Inline media gallery | `frontend/src/components/share/MediaPreviewGallery.tsx` reuses `FilePreview.tsx` |
 | Cache headers / hotlink protection | `backend/src/utils/cache.util.ts`, `backend/src/utils/referrer.util.ts`, `frontend/src/middleware.ts`, `frontend/next.config.js` |
+| Per-visitor rate limiting | `backend/src/utils/visitorIdentity.util.ts`, `backend/src/app.module.ts`, `backend/src/main.ts` |
 | Site stats and footer | `backend/src/system/system.service.ts`, `frontend/src/components/footer/Footer.tsx` |
 | Home copy and ads | `frontend/src/pages/index.tsx` (upstream layout), `home.custom.*` keys in `en-US.ts`, `frontend/src/components/Ads.tsx` |
 | Fork branding / deployment | `frontend/public/img/**`, `frontend/src/pages/manifest.json.tsx`, `pingvin-*.service`, `update.sh` |
@@ -55,6 +56,14 @@ other languages show the upstream copy instead of the English fallback.
   per share at `uploads/shares/<shareId>/uploader.json` with mode `600`. View
   counts live in `Share.views`; `npm run sync:views` (run by `update.sh`) moves
   legacy counts out of `uploader.json` once and removes the old field.
+- Global rate limiting is 90 requests per 60 seconds per visitor, blocking for
+  60 seconds after the limit. Configure it with `VISITOR_RATE_LIMIT`,
+  `VISITOR_RATE_TTL_MS` and `VISITOR_RATE_BLOCK_MS`. Guests use a signed,
+  HttpOnly `pingvin_visitor` cookie; signed-in users use their account ID;
+  cookie-less/forged-cookie requests fall back to the client IP. The existing
+  per-route/per-IP `THROTTLE_LIMIT` limiter remains in place. `/api/configs`,
+  share `HEAD` checks and upload chunk requests are exempt from the visitor
+  bucket to keep SSR and large uploads working.
 - `update.sh` pulls origin/main, preserves `backend/.env`, reinstalls and
   rebuilds both packages, syncs legacy view counts, installs the systemd units,
   runs migrations/seeding through the backend restart, and restarts the

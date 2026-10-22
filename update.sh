@@ -84,6 +84,9 @@ set_env DATA_DIRECTORY "\"$DATA_DIR\""
 # Keep existing custom values; add defaults on first deploy.
 ensure_env TRUST_PROXY "true"
 ensure_env THROTTLE_LIMIT "300"
+ensure_env VISITOR_RATE_LIMIT "90"
+ensure_env VISITOR_RATE_TTL_MS "60000"
+ensure_env VISITOR_RATE_BLOCK_MS "60000"
 
 # Move legacy uploader.json view counts into Share.views once. Stop the old
 # backend first so it cannot write another legacy count mid-migration.

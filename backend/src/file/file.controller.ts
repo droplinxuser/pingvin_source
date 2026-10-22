@@ -101,7 +101,7 @@ export class FileController {
   }
 
   @Post()
-  @SkipThrottle()
+  @SkipThrottle({ default: true, visitor: true })
   @UseGuards(IdValidation, CreateShareGuard, StrictShareOwnerGuard)
   async create(
     @Query()

@@ -2,6 +2,7 @@
 import "./constants";
 import { ClassSerializerInterceptor, Logger, LogLevel } from "@nestjs/common";
 import { NestFactory, Reflector } from "@nestjs/core";
+import { JwtService } from "@nestjs/jwt";
 import { NestExpressApplication } from "@nestjs/platform-express";
 import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
 import * as bodyParser from "body-parser";
@@ -18,6 +19,7 @@ import {
   LOG_LEVEL_ENV,
 } from "./constants";
 import { NO_STORE_HEADERS } from "./utils/cache.util";
+import { createVisitorIdentityMiddleware } from "./utils/visitorIdentity.util";
 
 function generateNestJsLogLevels(): LogLevel[] {
   if (LOG_LEVEL_ENV) {
@@ -65,6 +67,13 @@ async function bootstrap() {
 
   app.use(cookieParser());
   app.set("trust proxy", process.env.TRUST_PROXY === "true");
+  app.use(
+    createVisitorIdentityMiddleware(
+      app.get(JwtService),
+      config.get("internal.jwtSecret"),
+      config.get("security.secureCookies"),
+    ),
+  );
 
   await fs.promises.mkdir(`${DATA_DIRECTORY}/uploads/_temp`, {
     recursive: true,

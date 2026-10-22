@@ -37,7 +37,7 @@ export class ConfigController {
   ) {}
 
   @Get()
-  @SkipThrottle()
+  @SkipThrottle({ default: true, visitor: true })
   async list() {
     return new ConfigDTO().fromList(await this.configService.list());
   }
