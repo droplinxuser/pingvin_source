@@ -8,7 +8,6 @@ export interface SystemInfo {
 export interface SystemStats {
   userCount: number;
   shareCount: number;
-  activeShareCount: number;
   fileCount: number;
   storageSizeBytes: number;
 }

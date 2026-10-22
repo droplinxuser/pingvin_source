@@ -29,6 +29,14 @@ import { CreateShareDTO } from "./dto/createShare.dto";
 import { ReportShareDTO } from "./dto/reportShare.dto";
 import { UpdateShareDTO } from "./dto/updateShare.dto";
 
+const SHARE_SORT_FIELDS = {
+  id: "id",
+  name: "name",
+  views: "views",
+  expiration: "expiration",
+  createdAt: "createdAt",
+} as const;
+
 @Injectable()
 export class ShareService {
   private readonly logger = new Logger(ShareService.name);
@@ -446,22 +454,11 @@ export class ShareService {
     sortDirection?: string,
   ): Prisma.ShareOrderByWithRelationInput | undefined {
     const direction = sortDirection === "asc" ? "asc" : "desc";
-    switch (sortBy) {
-      case "id":
-        return { id: direction };
-      case "name":
-        return { name: direction };
-      case "views":
-        return { views: direction };
-      case "expiration":
-        return { expiration: direction };
-      case "createdAt":
-        return { createdAt: direction };
-      case "username":
-        return { creator: { username: direction } };
-      default:
-        return undefined;
-    }
+    if (sortBy === "username") return { creator: { username: direction } };
+    const field = SHARE_SORT_FIELDS[sortBy as keyof typeof SHARE_SORT_FIELDS];
+    return field
+      ? ({ [field]: direction } as Prisma.ShareOrderByWithRelationInput)
+      : undefined;
   }
 
   async countShares(search?: string) {
@@ -523,6 +520,17 @@ export class ShareService {
 
     if (!share || !share.uploadLocked)
       throw new NotFoundException(this.i18n.t("share.notFound"));
+
+    // Rolling expiration: every visit of the share page extends the expiration
+    // to 100 days from now (permanent epoch-0 shares are skipped).
+    if (!moment(share.expiration).isSame(0)) {
+      share.expiration = getDefaultShareExpiration();
+      await this.prisma.share.update({
+        where: { id },
+        data: { expiration: share.expiration },
+      });
+    }
+
     return {
       ...share,
       hasPassword: !!share.security?.password,
@@ -588,9 +596,6 @@ export class ShareService {
       throw new ForbiddenException(this.i18n.t("share.anonymousNoDelete"));
 
     await this.fileService.deleteAllFiles(shareId);
-    await fs.promises
-      .rm(`${SHARE_DIRECTORY}/${shareId}`, { recursive: true, force: true })
-      .catch(() => {});
     await this.prisma.share.delete({ where: { id: shareId } });
   }
 
@@ -727,19 +732,6 @@ export class ShareService {
         restrictToRecipients: !!share.security?.restrictToRecipients,
       },
     };
-  }
-
-  /**
-   * Rolling expiration: extends the share's expiration to 100 days from now.
-   * Called whenever the share page is visited. Returns the new expiration date.
-   */
-  async extendExpirationOnVisit(shareId: string) {
-    const expiration = getDefaultShareExpiration();
-    await this.prisma.share.update({
-      where: { id: shareId },
-      data: { expiration },
-    });
-    return expiration;
   }
 
   async isShareIdAvailable(id: string) {

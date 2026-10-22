@@ -14,6 +14,14 @@ import { FileService } from "../file/file.service";
 import { CreateUserDTO } from "./dto/createUser.dto";
 import { UpdateUserDto } from "./dto/updateUser.dto";
 
+const USER_SORT_FIELDS = {
+  displayName: "displayName",
+  username: "username",
+  email: "email",
+  isAdmin: "isAdmin",
+  createdAt: "createdAt",
+} as const;
+
 @Injectable()
 export class UserSevice {
   private readonly logger = new Logger(UserSevice.name);
@@ -65,20 +73,10 @@ export class UserSevice {
     sortDirection?: string,
   ): Prisma.UserOrderByWithRelationInput | undefined {
     const direction = sortDirection === "asc" ? "asc" : "desc";
-    switch (sortBy) {
-      case "displayName":
-        return { displayName: direction };
-      case "username":
-        return { username: direction };
-      case "email":
-        return { email: direction };
-      case "isAdmin":
-        return { isAdmin: direction };
-      case "createdAt":
-        return { createdAt: direction };
-      default:
-        return undefined;
-    }
+    const field = USER_SORT_FIELDS[sortBy as keyof typeof USER_SORT_FIELDS];
+    return field
+      ? ({ [field]: direction } as Prisma.UserOrderByWithRelationInput)
+      : undefined;
   }
 
   async count() {

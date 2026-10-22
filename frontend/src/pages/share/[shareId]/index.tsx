@@ -1,13 +1,4 @@
-import {
-  ActionIcon,
-  Box,
-  Button,
-  Center,
-  Group,
-  Stack,
-  Text,
-  Title,
-} from "@mantine/core";
+import { Box, Button, Center, Group, Stack, Text, Title } from "@mantine/core";
 import { useModals } from "@mantine/modals";
 import axios from "axios";
 import { GetServerSidePropsContext } from "next";
@@ -15,36 +6,22 @@ import Link from "next/link";
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 import { FormattedMessage } from "react-intl";
-import { TbEdit, TbFlag, TbPlusMinus, TbTrash } from "react-icons/tb";
 import Meta from "../../../components/Meta";
-import DownloadAllButton from "../../../components/share/DownloadAllButton";
 import FileList from "../../../components/share/FileList";
 import MediaPreviewGallery from "../../../components/share/MediaPreviewGallery";
+import ShareActions from "../../../components/share/ShareActions";
 import UploaderInfoBadges from "../../../components/share/UploaderInfoBadges";
 import Ads from "../../../components/Ads";
 import showEnterPasswordModal from "../../../components/share/showEnterPasswordModal";
 import showErrorModal from "../../../components/share/showErrorModal";
-import showReportShareModal from "../../../components/share/showReportShareModal";
-import showShareInformationsModal from "../../../components/share/showShareInformationsModal";
-import useConfig from "../../../hooks/config.hook";
 import useTranslate from "../../../hooks/useTranslate.hook";
-import useUser from "../../../hooks/user.hook";
 import shareService from "../../../services/share.service";
-import {
-  MyShare,
-  Share as ShareType,
-  UploaderInfo,
-} from "../../../types/share.type";
+import { Share as ShareType } from "../../../types/share.type";
 import toast from "../../../utils/toast.util";
 import { byteToHumanSizeString } from "../../../utils/fileSize.util";
 import { getQueryString } from "../../../utils/router.util";
-import { setNoStoreCacheHeaders } from "../../../utils/antiCache.util";
-import { HoverTip } from "../../../components/core/HoverTip";
 
 export async function getServerSideProps(context: GetServerSidePropsContext) {
-  // Share pages must never be cached by browsers, origin servers or CDN edges
-  setNoStoreCacheHeaders(context.res);
-
   const shareId = context.params!.shareId as string;
   const apiURL = process.env.API_URL || "http://localhost:8080";
   let initialNotFound = false;
@@ -75,13 +52,10 @@ const Share = ({
 }) => {
   const modals = useModals();
   const router = useRouter();
-  const { user } = useUser();
-  const config = useConfig();
   const t = useTranslate();
 
   const [share, setShare] = useState<ShareType>();
   const [isRestricted, setIsRestricted] = useState(false);
-  const [uploaderInfo, setUploaderInfo] = useState<UploaderInfo>();
   const [pageError, setPageError] = useState<{
     title: string;
     description: string;
@@ -94,72 +68,7 @@ const Share = ({
       : null,
   );
 
-  const isOwner = !!user && !!share && share.creator?.id === user.id;
-
-  const isOwnerOrAdmin =
-    !!user && !!share && (share.creator?.id === user.id || user.isAdmin);
   const recipientId = getQueryString(router.query.recipient);
-
-  const handleEditClick = async () => {
-    try {
-      const myShares = await shareService.getMyShares();
-      const myShare = myShares.find((s) => s.id === shareId);
-      if (!myShare) return;
-      showShareInformationsModal(
-        modals,
-        myShare,
-        parseInt(config.get("share.maxSize")),
-        config.get("general.appUrl"),
-        config.get("general.appUrl", true),
-        (updatedShare: MyShare) => {
-          setShare((prev) =>
-            prev
-              ? {
-                  ...prev,
-                  name: updatedShare.name,
-                  description: updatedShare.description,
-                  expiration: updatedShare.expiration,
-                  hasPassword:
-                    updatedShare.security?.passwordProtected ??
-                    prev.hasPassword,
-                }
-              : prev,
-          );
-        },
-        true,
-      );
-    } catch (e) {
-      toast.axiosError(e);
-    }
-  };
-
-  const handleDeleteClick = () => {
-    modals.openConfirmModal({
-      title: t("admin.shares.edit.delete.title", {
-        id: shareId,
-      }),
-      children: (
-        <Text size="sm">
-          <FormattedMessage id="admin.shares.edit.delete.description" />
-        </Text>
-      ),
-      labels: {
-        confirm: t("common.button.delete"),
-        cancel: t("common.button.cancel"),
-      },
-      confirmProps: { color: "red" },
-      onConfirm: async () => {
-        try {
-          await shareService.remove(shareId);
-          toast.success(t("admin.shares.notify.deleted"));
-          // Re-fetch the share to show the standard "Share not found" state
-          getFiles();
-        } catch (e) {
-          toast.axiosError(e);
-        }
-      },
-    });
-  };
 
   const getShareToken = async (password?: string) => {
     await shareService
@@ -235,24 +144,6 @@ const Share = ({
   useEffect(() => {
     if (!initialNotFound) getFiles();
   }, []);
-
-  // Uploader details are stored in a small text file inside the share folder.
-  // Load them after the share itself so they never block the page render.
-  useEffect(() => {
-    if (!share) return;
-
-    let active = true;
-    shareService
-      .getUploaderInfo(shareId, share.createdAt)
-      .then((info) => {
-        if (active) setUploaderInfo(info);
-      })
-      .catch(() => {});
-
-    return () => {
-      active = false;
-    };
-  }, [share, shareId]);
 
   if (isRestricted) {
     return (
@@ -335,66 +226,21 @@ const Share = ({
                   values={{ count: share.views }}
                 />
               </Text>
-              <UploaderInfoBadges share={share} info={uploaderInfo} />
+              <UploaderInfoBadges share={share} info={share.uploaderInfo} />
             </Group>
           )}
         </Box>
 
-        <Group spacing="xs">
-          <HoverTip label={t("share.report.button")}>
-            <Button
-              variant="light"
-              color="red"
-              leftIcon={<TbFlag />}
-              onClick={() => showReportShareModal(modals, shareId)}
-            >
-              <FormattedMessage id="share.report.button" />
-            </Button>
-          </HoverTip>
-          {isOwner && (
-            <HoverTip label={t("account.shares.button.edit")}>
-              <Link href={`/share/${shareId}/edit`}>
-                <ActionIcon variant="light" color="orange" size="lg">
-                  <TbPlusMinus />
-                </ActionIcon>
-              </Link>
-            </HoverTip>
-          )}
-          {isOwnerOrAdmin && (
-            <HoverTip label={t("common.button.edit")}>
-              <ActionIcon
-                variant="light"
-                color="blue"
-                size="lg"
-                onClick={handleEditClick}
-              >
-                <TbEdit />
-              </ActionIcon>
-            </HoverTip>
-          )}
-          {user?.isAdmin && (
-            <HoverTip label={t("common.button.delete")}>
-              <ActionIcon
-                variant="light"
-                color="red"
-                size="lg"
-                onClick={handleDeleteClick}
-              >
-                <TbTrash />
-              </ActionIcon>
-            </HoverTip>
-          )}
-          {share?.files.length > 1 && (
-            <DownloadAllButton shareId={shareId} recipientId={recipientId} />
-          )}
-        </Group>
+        <ShareActions
+          share={share}
+          shareId={shareId}
+          recipientId={recipientId}
+          setShare={setShare}
+          onDeleted={getFiles}
+        />
       </Group>
 
-      <MediaPreviewGallery
-        shareId={shareId}
-        files={share?.files}
-        recipientId={recipientId}
-      />
+      <MediaPreviewGallery shareId={shareId} files={share?.files} />
 
       <FileList
         files={share?.files}

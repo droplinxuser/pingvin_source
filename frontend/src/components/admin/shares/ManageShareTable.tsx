@@ -18,7 +18,7 @@ import useTranslate from "../../../hooks/useTranslate.hook";
 import { MyShare } from "../../../types/share.type";
 import { byteToHumanSizeString } from "../../../utils/fileSize.util";
 import toast from "../../../utils/toast.util";
-import TableSortIcon, { TableSort } from "../../core/SortIcon";
+import { SortableTh, TableSort } from "../../core/SortIcon";
 import showShareInformationsModal from "../../share/showShareInformationsModal";
 import showShareLinkModal from "../../account/showShareLinkModal";
 import { HoverTip } from "../../core/HoverTip";
@@ -52,60 +52,48 @@ const ManageShareTable = ({
       <Table verticalSpacing="sm">
         <thead>
           <tr>
-            <th>
-              <Group spacing="xs">
-                <FormattedMessage id="account.shares.table.id" />
-                <TableSortIcon sort={sort} setSort={setSort} property="id" />
-              </Group>
-            </th>
-            <th>
-              <Group spacing="xs">
-                <FormattedMessage id="account.shares.table.name" />
-                <TableSortIcon sort={sort} setSort={setSort} property="name" />
-              </Group>
-            </th>
-            <th>
-              <Group spacing="xs">
-                <FormattedMessage id="admin.shares.table.username" />
-                <TableSortIcon
-                  sort={sort}
-                  setSort={setSort}
-                  property="username"
-                />
-              </Group>
-            </th>
-            <th>
-              <Group spacing="xs">
-                <FormattedMessage id="admin.shares.table.uploadDate" />
-                <TableSortIcon
-                  sort={sort}
-                  setSort={setSort}
-                  property="createdAt"
-                />
-              </Group>
-            </th>
-            <th>
-              <Group spacing="xs">
-                <FormattedMessage id="account.shares.table.visitors" />
-                <TableSortIcon sort={sort} setSort={setSort} property="views" />
-              </Group>
-            </th>
-            <th>
-              <Group spacing="xs">
-                <FormattedMessage id="account.shares.table.size" />
-                <TableSortIcon sort={sort} setSort={setSort} property="size" />
-              </Group>
-            </th>
-            <th>
-              <Group spacing="xs">
-                <FormattedMessage id="account.shares.table.expiresAt" />
-                <TableSortIcon
-                  sort={sort}
-                  setSort={setSort}
-                  property="expiration"
-                />
-              </Group>
-            </th>
+            <SortableTh
+              id="account.shares.table.id"
+              property="id"
+              sort={sort}
+              setSort={setSort}
+            />
+            <SortableTh
+              id="account.shares.table.name"
+              property="name"
+              sort={sort}
+              setSort={setSort}
+            />
+            <SortableTh
+              id="admin.shares.table.username"
+              property="username"
+              sort={sort}
+              setSort={setSort}
+            />
+            <SortableTh
+              id="admin.shares.table.uploadDate"
+              property="createdAt"
+              sort={sort}
+              setSort={setSort}
+            />
+            <SortableTh
+              id="account.shares.table.visitors"
+              property="views"
+              sort={sort}
+              setSort={setSort}
+            />
+            <SortableTh
+              id="account.shares.table.size"
+              property="size"
+              sort={sort}
+              setSort={setSort}
+            />
+            <SortableTh
+              id="account.shares.table.expiresAt"
+              property="expiration"
+              sort={sort}
+              setSort={setSort}
+            />
             {fileRetentionEnabled ? (
               <th>
                 <FormattedMessage id="admin.shares.table.deletes" />

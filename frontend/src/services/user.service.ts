@@ -48,8 +48,7 @@ const getCurrentUser = async (): Promise<CurrentUser | null> => {
 
   try {
     await authService.refreshAccessToken();
-    // User-specific responses must never come from a shared CDN cache.
-    return (await api.get("users/me", { params: { _: Date.now() } })).data;
+    return (await api.get("users/me")).data;
   } catch {
     return null;
   }

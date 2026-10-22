@@ -38,7 +38,6 @@ import AdminNoticeModal, {
   AdminNotice,
 } from "../components/admin/AdminNoticeModal";
 import adminNoticeService from "../services/adminNotice.service";
-import { setPublicPageCacheHeadersForRequest } from "../utils/antiCache.util";
 
 const excludeDefaultLayoutRoutes = ["/admin/config/[category]"];
 const availableMantineColors = [
@@ -364,13 +363,7 @@ function App({ Component, pageProps }: AppProps) {
                       >
                         <div>
                           <Header />
-                          <Container
-                            size={
-                              router.pathname === "/admin/shares"
-                                ? "lg"
-                                : undefined
-                            }
-                          >
+                          <Container>
                             <Component {...pageProps} />
                           </Container>
                         </div>
@@ -439,16 +432,6 @@ App.getInitialProps = async ({ ctx }: { ctx: GetServerSidePropsContext }) => {
 
     pageProps.language =
       ctx.req.cookies["language"] || defaultLanguage || requestLanguage;
-
-    if (ctx.res) {
-      setPublicPageCacheHeadersForRequest(ctx.res, {
-        url: ctx.req.url,
-        hasUser: !!pageProps.user,
-        isConfigFallback: pageProps.isConfigFallback,
-        language: pageProps.language,
-        defaultLanguage,
-      });
-    }
   }
   return { pageProps };
 };

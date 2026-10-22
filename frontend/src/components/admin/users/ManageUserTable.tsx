@@ -4,10 +4,9 @@ import { Dispatch, SetStateAction } from "react";
 import { TbCheck, TbEdit, TbTrash } from "react-icons/tb";
 import User from "../../../types/user.type";
 import showUpdateUserModal from "./showUpdateUserModal";
-import { FormattedMessage } from "react-intl";
 import useTranslate from "../../../hooks/useTranslate.hook";
 import { HoverTip } from "../../core/HoverTip";
-import TableSortIcon, { TableSort } from "../../core/SortIcon";
+import { SortableTh, TableSort } from "../../core/SortIcon";
 import { byteToHumanSizeString } from "../../../utils/fileSize.util";
 import { CustomPasswordPolicy } from "../../../types/config.type";
 
@@ -41,66 +40,46 @@ const ManageUserTable = ({
         <thead>
           <tr>
             {showDisplayName && (
-              <th>
-                <Group spacing="xs">
-                  <FormattedMessage id="admin.users.table.displayName" />
-                  <TableSortIcon
-                    sort={sort}
-                    setSort={setSort}
-                    property="displayName"
-                  />
-                </Group>
-              </th>
+              <SortableTh
+                id="admin.users.table.displayName"
+                property="displayName"
+                sort={sort}
+                setSort={setSort}
+              />
             )}
-            <th>
-              <Group spacing="xs">
-                <FormattedMessage id="admin.users.table.username" />
-                <TableSortIcon
-                  sort={sort}
-                  setSort={setSort}
-                  property="username"
-                />
-              </Group>
-            </th>
-            <th>
-              <Group spacing="xs">
-                <FormattedMessage id="admin.users.table.email" />
-                <TableSortIcon sort={sort} setSort={setSort} property="email" />
-              </Group>
-            </th>
-            <th>
-              <Group spacing="xs">
-                <FormattedMessage id="admin.users.table.admin" />
-                <TableSortIcon
-                  sort={sort}
-                  setSort={setSort}
-                  property="isAdmin"
-                />
-              </Group>
-            </th>
+            <SortableTh
+              id="admin.users.table.username"
+              property="username"
+              sort={sort}
+              setSort={setSort}
+            />
+            <SortableTh
+              id="admin.users.table.email"
+              property="email"
+              sort={sort}
+              setSort={setSort}
+            />
+            <SortableTh
+              id="admin.users.table.admin"
+              property="isAdmin"
+              sort={sort}
+              setSort={setSort}
+            />
             {showStorageQuota && (
-              <th>
-                <Group spacing="xs">
-                  <FormattedMessage id="admin.users.table.storageQuota" />
-                  <TableSortIcon
-                    sort={sort}
-                    setSort={setSort}
-                    property="storageQuotaLimit"
-                  />
-                </Group>
-              </th>
+              <SortableTh
+                id="admin.users.table.storageQuota"
+                property="storageQuotaLimit"
+                sort={sort}
+                setSort={setSort}
+              />
             )}
             {showMaxShareSize && (
-              <th>
-                <Group spacing="xs">
-                  <FormattedMessage id="admin.users.table.maxShareSize" />
-                  <TableSortIcon
-                    sort={sort}
-                    setSort={setSort}
-                    property="shareSizeLimit"
-                  />
-                </Group>
-              </th>
+              <SortableTh
+                id="admin.users.table.maxShareSize"
+                property="shareSizeLimit"
+                sort={sort}
+                setSort={setSort}
+              />
             )}
             <th></th>
           </tr>

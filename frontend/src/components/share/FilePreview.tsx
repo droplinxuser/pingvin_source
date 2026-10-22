@@ -102,7 +102,7 @@ export const VideoPreview = () => {
       <source
         src={`/api/shares/${shareId}/files/${fileId}?download=false`}
         // QuickTime (.mov) files are served as video/mp4 so browsers can play
-        // them (see share.service.ts -> getInlinePlaybackMimeType).
+        // them (see utils/mime.util.ts -> getInlinePlaybackMimeType).
         // Other types are left without a type attribute so the browser can
         // fall back to content sniffing when canPlayType() is inconclusive.
         type={shareService.getInlinePlaybackMimeType(mimeType)}

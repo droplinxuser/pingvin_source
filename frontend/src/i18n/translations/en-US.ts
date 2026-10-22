@@ -16,10 +16,8 @@ export default {
 
   // Footer
   "footer.poweredBy": "Powered by",
-  "footer.stats.users": "{count, number} users",
-  "footer.stats.shares": "{count, number} shares",
-  "footer.stats.files": "{count, number} files",
-  "footer.stats.storage": "{size} storage used",
+  "footer.stats.summary":
+    "{users, number} users • {shares, number} shares • {files, number} files • {size} storage used",
 
   // END footer
 
@@ -509,13 +507,9 @@ export default {
   "share.uploader.anonymous": "Anonymous uploader",
   "share.uploader.uploaded-at": "Uploaded {date}",
   "share.uploader.location": "Uploader location",
-  "share.uploader.continent": "Continent",
   "share.uploader.isp": "ISP",
   "share.uploader.asn": "ASN",
   "share.uploader.timezone": "Timezone",
-  "share.uploader.device": "Device",
-  "share.uploader.os": "Operating system",
-  "share.uploader.browser": "Browser",
   "share.uploader.unknown": "Unknown",
   "share.report.button": "Report",
   "share.report.modal.title": "Report share",

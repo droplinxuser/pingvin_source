@@ -17,7 +17,6 @@ import { GetUser } from "src/auth/decorator/getUser.decorator";
 import { AdministratorGuard } from "src/auth/guard/isAdmin.guard";
 import { JwtGuard } from "src/auth/guard/jwt.guard";
 import { ConfigService } from "../config/config.service";
-import { NoStore } from "src/utils/cache.util";
 import { parsePagination } from "src/utils/pagination.util";
 import { CreateUserDTO } from "./dto/createUser.dto";
 import { UpdateOwnUserDTO } from "./dto/updateOwnUser.dto";
@@ -35,7 +34,6 @@ export class UserController {
   // Own user operations
   @Get("me")
   @UseGuards(JwtGuard)
-  @NoStore()
   async getCurrentUser(@GetUser() user?: User) {
     if (!user) return null;
     const userDTO = new UserDTO().from(user);

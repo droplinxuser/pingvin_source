@@ -63,13 +63,29 @@ cp -r .next/static .next/standalone/.next/static
 
 echo "==> Preparing data directory and backend/.env"
 mkdir -p "$DATA_DIR"
-if [ ! -f "$SRC_DIR/backend/.env" ]; then
-  cat > "$SRC_DIR/backend/.env" <<EOF
-DATABASE_URL="file:$DATA_DIR/pingvin-share.db?connection_limit=1"
-DATA_DIRECTORY="$DATA_DIR"
-EOF
-  echo "Created backend/.env"
-fi
+ENV_FILE="$SRC_DIR/backend/.env"
+touch "$ENV_FILE"
+set_env() {
+  if grep -q "^$1=" "$ENV_FILE"; then
+    sed -i "s|^$1=.*|$1=$2|" "$ENV_FILE"
+  else
+    printf '%s=%s\n' "$1" "$2" >>"$ENV_FILE"
+  fi
+}
+ensure_env() {
+  grep -q "^$1=" "$ENV_FILE" || printf '%s=%s\n' "$1" "$2" >>"$ENV_FILE"
+}
+# The database location is fixed for this deployment.
+set_env DATABASE_URL "\"file:$DATA_DIR/pingvin-share.db?connection_limit=1\""
+set_env DATA_DIRECTORY "\"$DATA_DIR\""
+# Keep existing custom values; add defaults on first deploy.
+ensure_env TRUST_PROXY "true"
+ensure_env THROTTLE_LIMIT "300"
+
+echo "==> Installing systemd units"
+install -m 644 "$SRC_DIR/pingvin-back.service" /etc/systemd/system/pingvin-back.service
+install -m 644 "$SRC_DIR/pingvin-front.service" /etc/systemd/system/pingvin-front.service
+systemctl daemon-reload
 
 echo "==> Restarting the backend (runs database migrations)"
 systemctl restart pingvin-back.service

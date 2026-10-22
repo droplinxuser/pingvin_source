@@ -12,7 +12,13 @@ export const config = {
   matcher: "/((?!api|static|.*\\..*|_next).*)",
 };
 
-async function fetchConfig(apiUrl: string): Promise<any> {
+const PUBLIC_PAGES = new Set(["/", "/imprint", "/privacy"]);
+const PUBLIC_CACHE =
+  "public, max-age=0, s-maxage=2592000, stale-while-revalidate=86400";
+
+async function fetchConfig(
+  apiUrl: string,
+): Promise<{ config: any; fallback: boolean }> {
   try {
     const response = await fetch(`${apiUrl}/api/configs`, {
       cache: "no-store",
@@ -23,10 +29,10 @@ async function fetchConfig(apiUrl: string): Promise<any> {
       throw new Error(`Config fetch failed: ${response.status}`);
     }
 
-    return await response.json();
+    return { config: await response.json(), fallback: false };
   } catch (error) {
     console.error("Config fetch failed, using defaults:", error);
-    return getDefaultConfig();
+    return { config: getDefaultConfig(), fallback: true };
   }
 }
 
@@ -40,7 +46,7 @@ export async function middleware(request: NextRequest) {
 
   // Get config from backend with caching and error handling
   const apiUrl = process.env.API_URL || "http://localhost:8080";
-  const config = await fetchConfig(apiUrl);
+  const { config, fallback: isConfigFallback } = await fetchConfig(apiUrl);
 
   const getConfig = (key: string) => {
     return configService.get(key, config);
@@ -142,6 +148,28 @@ export async function middleware(request: NextRequest) {
       return response;
     }
   }
+
+  const response = NextResponse.next();
+  const defaultLanguage = getConfig("general.defaultLanguage") || "en-US";
+  const language =
+    request.cookies.get("language")?.value || defaultLanguage;
+
+  if (
+    PUBLIC_PAGES.has(route) &&
+    !user &&
+    !isConfigFallback &&
+    language === defaultLanguage
+  ) {
+    response.headers.set("Cache-Control", PUBLIC_CACHE);
+    response.headers.set("CDN-Cache-Control", PUBLIC_CACHE);
+    response.headers.set("Cloudflare-CDN-Cache-Control", PUBLIC_CACHE);
+    response.headers.set("Vary", "Accept-Encoding, Accept-Language, Cookie");
+  } else {
+    response.headers.set("Cache-Control", "no-store");
+    response.headers.set("CDN-Cache-Control", "no-store");
+    response.headers.set("Cloudflare-CDN-Cache-Control", "no-store");
+  }
+  return response;
 }
 
 // Helper class to check if a route matches a list of routes

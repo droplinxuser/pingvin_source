@@ -1,6 +1,5 @@
 import axios from "axios";
 import { GetServerSidePropsContext } from "next";
-import { setPublicPageCacheHeaders } from "../utils/antiCache.util";
 
 // The PWA manifest is served dynamically so that the name always reflects
 // the site name configured on the backend (general.appName, which can be
@@ -44,8 +43,11 @@ export async function getServerSideProps({ res }: GetServerSidePropsContext) {
     // Backend unreachable: fall back to the default site name
   }
 
+  const cache = "public, max-age=86400";
   res.setHeader("Content-Type", "application/manifest+json; charset=utf-8");
-  setPublicPageCacheHeaders(res);
+  res.setHeader("Cache-Control", cache);
+  res.setHeader("CDN-Cache-Control", cache);
+  res.setHeader("Cloudflare-CDN-Cache-Control", cache);
   res.write(JSON.stringify(buildManifest(siteName), null, 2));
   res.end();
 

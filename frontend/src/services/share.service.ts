@@ -1,5 +1,4 @@
 import { deleteCookie, setCookie } from "cookies-next";
-import mime from "mime-types";
 import axios from "axios";
 import { translateOutsideContext } from "../hooks/useTranslate.hook";
 import { FileUploadResponse } from "../types/File.type";
@@ -10,9 +9,15 @@ import {
   Share,
   ShareMetaData,
   UpdateShare,
-  UploaderInfo,
 } from "../types/share.type";
 import { generateUUID } from "../utils/crypto.util";
+import {
+  doesFileSupportPreview,
+  getFileMimeType,
+  getInlinePlaybackMimeType,
+  getInlinePreviewKind,
+  isShareTextFile,
+} from "../utils/mime.util";
 import {
   type UploadProgressHandler,
   withUploadInactivityTimeout,
@@ -82,22 +87,6 @@ const getMetaData = async (id: string): Promise<ShareMetaData> => {
   return (await api.get(`shares/${id}/metaData`)).data;
 };
 
-const getUploaderInfo = async (
-  id: string,
-  version?: string | Date,
-): Promise<UploaderInfo> => {
-  if (!isValidId(id)) throw new Error("Invalid ID");
-  const cacheVersion = version ? new Date(version).getTime() : undefined;
-  return (
-    await api.get(`shares/${id}/uploader.json`, {
-      params:
-        cacheVersion && Number.isFinite(cacheVersion)
-          ? { v: cacheVersion }
-          : undefined,
-    })
-  ).data;
-};
-
 const remove = async (id: string) => {
   if (!isValidId(id)) throw new Error("Invalid ID");
   await api.delete(`shares/${id}`);
@@ -135,86 +124,6 @@ const isShareIdAvailable = async (id: string): Promise<boolean> => {
   if (!isValidId(id)) throw new Error("Invalid Share ID");
   return (await api.get(`/shares/isShareIdAvailable/${id}`)).data.isAvailable;
 };
-
-const getFileExtension = (fileName: string) => {
-  const lastDotIndex = fileName.lastIndexOf(".");
-  return lastDotIndex === -1
-    ? ""
-    : fileName.slice(lastDotIndex + 1).toLowerCase();
-};
-
-// Media extensions that browsers can render but that the installed mime-db
-// version misses or misclassifies. This keeps the frontend detection working
-// independently of the mime-db version (the backend ships a newer one).
-const mimeTypeOverrides: Record<string, string> = {
-  jfif: "image/jpeg", // JPEG File Interchange Format
-  jfi: "image/jpeg", // legacy JPEG extensions
-  jif: "image/jpeg",
-  jxl: "image/jxl", // JPEG XL
-  j2k: "image/jp2", // JPEG 2000 codestream
-  ogx: "video/ogg", // Ogg media container
-  ogm: "video/ogg", // Ogg Media
-  m2ts: "video/mp2t", // MPEG-2 transport streams
-  mts: "video/mp2t",
-  "3gpp2": "video/3gpp2", // 3GPP2 media
-  mov: "video/quicktime", // QuickTime movie
-  qt: "video/quicktime", // QuickTime movie
-};
-
-const getFileMimeType = (fileName: string) => {
-  const extension = getFileExtension(fileName);
-  // Use the extension instead of the full name: mime.contentType() mistakes
-  // names containing "/" (folder uploads) for MIME types and returns them as-is.
-  return mimeTypeOverrides[extension] || mime.lookup(extension) || "";
-};
-
-const doesFileSupportPreview = (fileName: string) => {
-  const mimeType = getFileMimeType(fileName);
-
-  if (!mimeType) return false;
-
-  const supportedMimeTypes = [
-    mimeType.startsWith("video/"),
-    mimeType.startsWith("image/"),
-    mimeType.startsWith("audio/"),
-    mimeType.startsWith("text/"),
-    mimeType == "application/pdf",
-  ];
-
-  return supportedMimeTypes.some((isSupported) => isSupported);
-};
-
-const isShareTextFile = (fileName: string) => {
-  const mimeType = getFileMimeType(fileName);
-
-  if (!mimeType) return false;
-
-  return mimeType.startsWith("text/");
-};
-
-export type InlinePreviewKind = "image" | "video" | "audio";
-
-const getInlinePreviewKind = (
-  fileName: string,
-): InlinePreviewKind | undefined => {
-  const mimeType = getFileMimeType(fileName);
-
-  if (!mimeType) return undefined;
-
-  if (mimeType.startsWith("image/")) return "image";
-  if (mimeType.startsWith("video/")) return "video";
-  if (mimeType.startsWith("audio/")) return "audio";
-
-  return undefined;
-};
-
-// Browsers refuse to play the QuickTime container when it is advertised as
-// "video/quicktime" (canPlayType returns an empty string in Chrome, Edge and
-// Firefox), so inline players advertise it as "video/mp4" instead. QuickTime
-// shares the ISO base media file format with MP4 and can be demuxed by the
-// browser's MP4 pipeline. Returns undefined when no replacement is needed.
-const getInlinePlaybackMimeType = (mimeType: string): string | undefined =>
-  mimeType == "video/quicktime" ? "video/mp4" : undefined;
 
 const downloadFile = async (
   shareId: string,
@@ -519,7 +428,6 @@ export default {
   report,
   expire,
   getMetaData,
-  getUploaderInfo,
   doesFileSupportPreview,
   isShareTextFile,
   getFileMimeType,

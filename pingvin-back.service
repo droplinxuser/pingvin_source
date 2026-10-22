@@ -11,12 +11,10 @@ Restart=always
 RestartSec=5s
 LimitNOFILE=524288
 
-Environment=DATABASE_URL="file:/var/www/pingvin_data/pingvin-share.db?connection_limit=1"
-Environment=DATA_DIRECTORY="/var/www/pingvin_data"
-Environment=SITE_NAME=SiteName
-Environment=REPORT_EMAIL=admin@gmail.com
-Environment=TRUST_PROXY=true
-Environment=THROTTLE_LIMIT=300
+# All deployment settings (DATABASE_URL, DATA_DIRECTORY, SITE_NAME, ...) live
+# in backend/.env so they survive code updates and are easy to edit.
+EnvironmentFile=-/var/www/pingvin_source/backend/.env
+Environment=NODE_ENV=production
 
 WorkingDirectory=/var/www/pingvin_source/backend
 ExecStart=/usr/bin/npm -- run prod

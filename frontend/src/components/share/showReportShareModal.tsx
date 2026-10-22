@@ -1,4 +1,5 @@
 import { Button, Select, Stack, Text, Textarea } from "@mantine/core";
+import { useForm } from "@mantine/form";
 import { useModals } from "@mantine/modals";
 import { ModalsContextProps } from "@mantine/modals/lib/context";
 import { useState } from "react";
@@ -9,7 +10,7 @@ import useTranslate, {
 import shareService from "../../services/share.service";
 import toast from "../../utils/toast.util";
 
-export const REPORT_REASONS = [
+const REPORT_REASONS = [
   "DMCA",
   "CSAM",
   "Gore",
@@ -19,7 +20,7 @@ export const REPORT_REASONS = [
   "Other",
 ] as const;
 
-export const REPORT_OTHER = "Other";
+const REPORT_OTHER = "Other";
 
 const showReportShareModal = (
   modals: ModalsContextProps,
@@ -35,27 +36,31 @@ const showReportShareModal = (
 const Body = ({ shareId }: { shareId: string }) => {
   const modals = useModals();
   const t = useTranslate();
-  const [reason, setReason] = useState<string | null>(null);
-  const [message, setMessage] = useState("");
-  const [reasonError, setReasonError] = useState(false);
-  const [messageError, setMessageError] = useState(false);
   const [loading, setLoading] = useState(false);
+  const form = useForm({
+    initialValues: { reason: null as string | null, message: "" },
+    validate: {
+      reason: (value) => (value ? null : t("share.report.modal.error.no-reason")),
+      message: (value, values) =>
+        values.reason === REPORT_OTHER && !value.trim()
+          ? t("share.report.modal.error.no-message")
+          : null,
+    },
+  });
 
   const reasonOptions = REPORT_REASONS.map((value) => ({
     value,
     label: t(`share.report.reason.${value.toLowerCase().replace(/ /g, "-")}`),
   }));
 
-  const submit = async () => {
-    const reasonMissing = !reason;
-    const messageMissing = reason === REPORT_OTHER && !message.trim();
-    setReasonError(reasonMissing);
-    setMessageError(messageMissing);
-    if (reasonMissing || messageMissing) return;
-
+  const submit = form.onSubmit(async (values) => {
     setLoading(true);
     try {
-      await shareService.report(shareId, reason!, message.trim() || undefined);
+      await shareService.report(
+        shareId,
+        values.reason!,
+        values.message.trim() || undefined,
+      );
       modals.closeAll();
       toast.success(t("share.report.notify.success"));
     } catch (e) {
@@ -63,32 +68,21 @@ const Body = ({ shareId }: { shareId: string }) => {
     } finally {
       setLoading(false);
     }
-  };
+  });
 
   return (
     <Stack align="stretch">
       <Text size="sm">
         <FormattedMessage id="share.report.modal.description" />
       </Text>
-
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          submit();
-        }}
-      >
+      <form onSubmit={submit}>
         <Stack>
           <Select
             variant="filled"
             label={t("share.report.modal.reason")}
             placeholder={t("share.report.modal.reason")}
             data={reasonOptions}
-            value={reason}
-            onChange={(value) => {
-              setReason(value);
-              setReasonError(false);
-            }}
-            error={reasonError && t("share.report.modal.error.no-reason")}
+            {...form.getInputProps("reason")}
           />
           <Textarea
             variant="filled"
@@ -97,12 +91,7 @@ const Body = ({ shareId }: { shareId: string }) => {
             autosize
             minRows={3}
             maxLength={2000}
-            value={message}
-            onChange={(e) => {
-              setMessage(e.currentTarget.value);
-              setMessageError(false);
-            }}
-            error={messageError && t("share.report.modal.error.no-message")}
+            {...form.getInputProps("message")}
           />
           <Button type="submit" loading={loading}>
             <FormattedMessage id="common.button.submit" />

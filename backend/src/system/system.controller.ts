@@ -1,9 +1,8 @@
 import { Controller, Get, Header, UseGuards } from "@nestjs/common";
 import { AdministratorGuard } from "src/auth/guard/isAdmin.guard";
 import { JwtGuard } from "src/auth/guard/jwt.guard";
-import { SystemService } from "./system.service";
+import { SystemService, SystemStats } from "./system.service";
 import { SystemInfoDTO } from "./dto/systemInfo.dto";
-import { SystemStatsDTO } from "./dto/systemStats.dto";
 
 @Controller("system")
 export class SystemController {
@@ -19,7 +18,7 @@ export class SystemController {
   @Header("Cache-Control", "public, max-age=60")
   @Header("CDN-Cache-Control", "public, max-age=60")
   @Header("Cloudflare-CDN-Cache-Control", "public, max-age=60")
-  async getSystemStats(): Promise<SystemStatsDTO> {
+  async getSystemStats(): Promise<SystemStats> {
     return await this.systemService.getSystemStats();
   }
 }

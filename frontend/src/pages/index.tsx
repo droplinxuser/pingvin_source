@@ -20,29 +20,7 @@ import useConfig from "../hooks/config.hook";
 import useTranslate from "../hooks/useTranslate.hook";
 
 const CONTACT_EMAIL = "contactwebph@gmail.com";
-
-const homeBullets = [
-  {
-    name: "home.custom.bullet.a.name",
-    description: "home.custom.bullet.a.description",
-  },
-  {
-    name: "home.custom.bullet.b.name",
-    description: "home.custom.bullet.b.description",
-  },
-  {
-    name: "home.custom.bullet.c.name",
-    description: "home.custom.bullet.c.description",
-  },
-  {
-    name: "home.custom.bullet.d.name",
-    description: "home.custom.bullet.d.description",
-  },
-  {
-    name: "home.custom.bullet.e.name",
-    description: "home.custom.bullet.e.description",
-  },
-];
+const HOME_BULLETS = ["a", "b", "c", "d", "e"];
 
 const useStyles = createStyles((theme) => ({
   inner: {
@@ -153,15 +131,15 @@ export default function Home() {
                 </ThemeIcon>
               }
             >
-              {homeBullets.map((bullet) => (
-                <List.Item key={bullet.name}>
+              {HOME_BULLETS.map((key) => (
+                <List.Item key={key}>
                   <div>
                     <b>
-                      <FormattedMessage id={bullet.name} />
+                      <FormattedMessage id={`home.custom.bullet.${key}.name`} />
                     </b>{" "}
                     -{" "}
                     <FormattedMessage
-                      id={bullet.description}
+                      id={`home.custom.bullet.${key}.description`}
                       values={{ contactEmail: CONTACT_EMAIL }}
                     />
                   </div>

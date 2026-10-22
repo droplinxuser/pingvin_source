@@ -23,11 +23,6 @@ import { GetUser } from "src/auth/decorator/getUser.decorator";
 import { AdministratorGuard } from "src/auth/guard/isAdmin.guard";
 import { JwtGuard } from "src/auth/guard/jwt.guard";
 import { ConfigService } from "src/config/config.service";
-import {
-  NoStore,
-  NO_STORE_HEADERS,
-  getDownloadCacheHeaders,
-} from "src/utils/cache.util";
 import { parsePagination } from "src/utils/pagination.util";
 import {
   getUploaderInfo,
@@ -117,19 +112,19 @@ export class ShareController {
   // no rolling expiration, no token required).
   @Head(":id")
   @SkipThrottle()
-  @NoStore()
   async exists(@Param("id") id: string) {
     if ((await this.shareService.isShareIdAvailable(id)).isAvailable)
       throw new NotFoundException();
   }
 
-  // Share page endpoints must never be cached: the share data changes on
-  // every visit (rolling expiration, view counter)
   @Get(":id")
   @UseGuards(IdValidation, ShareSecurityGuard)
-  @NoStore()
   async get(@Param("id") id: string) {
-    return new ShareDTO().from(await this.shareService.get(id));
+    const share = await this.shareService.get(id);
+    return new ShareDTO().from({
+      ...share,
+      uploaderInfo: await readUploaderInfo(id),
+    });
   }
 
   @Get(":id/from-owner")
@@ -140,33 +135,8 @@ export class ShareController {
 
   @Get(":id/metaData")
   @UseGuards(IdValidation, ShareSecurityGuard)
-  @NoStore()
   async getMetaData(@Param("id") id: string) {
     return new ShareMetaDataDTO().from(await this.shareService.getMetaData(id));
-  }
-
-  // Uploader details live in uploader.json inside the share folder. The
-  // .json suffix also makes the endpoint eligible for Cloudflare's default
-  // static-extension caching.
-  @Get(":id/uploader.json")
-  @UseGuards(IdValidation, ShareSecurityGuard)
-  async getUploader(
-    @Req() request: Request,
-    @Res({ passthrough: true }) response: Response,
-    @Param("id") id: string,
-  ) {
-    const info = await readUploaderInfo(id);
-    if (!info) throw new NotFoundException();
-
-    // Only public shares may have their uploader metadata stored at the edge.
-    // Protected shares keep it private.
-    const isPublicShare =
-      (request as Request & { shareIsPublic?: boolean }).shareIsPublic === true;
-    response.set(
-      isPublicShare ? getDownloadCacheHeaders(true) : NO_STORE_HEADERS,
-    );
-
-    return info;
   }
 
   @Post()

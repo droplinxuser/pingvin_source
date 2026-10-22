@@ -2,7 +2,6 @@ import User from "./user.type";
 
 export type Share = {
   id: string;
-  createdAt?: string | Date;
   name?: string;
   files: any;
   creator?: User;
@@ -11,14 +10,13 @@ export type Share = {
   views: number;
   size: number;
   hasPassword: boolean;
+  uploaderInfo?: UploaderInfo;
 };
 
 export type UploaderInfo = {
   country?: string;
   city?: string;
   region?: string;
-  regionCode?: string;
-  continent?: string;
   timezone?: string;
   asn?: string;
   isp?: string;

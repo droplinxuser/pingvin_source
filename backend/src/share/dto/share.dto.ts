@@ -1,13 +1,11 @@
 import { Expose, plainToClass, Type } from "class-transformer";
 import { FileDTO } from "src/file/dto/file.dto";
+import type { UploaderInfo } from "src/utils/uploaderInfo.util";
 import { PublicUserDTO } from "src/user/dto/publicUser.dto";
 
 export class ShareDTO {
   @Expose()
   id: string;
-
-  @Expose()
-  createdAt: Date;
 
   @Expose()
   name?: string;
@@ -34,6 +32,9 @@ export class ShareDTO {
 
   @Expose()
   size: number;
+
+  @Expose()
+  uploaderInfo?: UploaderInfo;
 
   from(partial: Partial<ShareDTO>) {
     return plainToClass(ShareDTO, partial, { excludeExtraneousValues: true });

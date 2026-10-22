@@ -2,16 +2,21 @@ import { Inject, Injectable, Logger } from "@nestjs/common";
 import { CACHE_MANAGER } from "@nestjs/cache-manager";
 import { Cache } from "cache-manager";
 import checkDiskSpace from "check-disk-space";
-import * as moment from "moment";
 import { DATA_DIRECTORY } from "src/constants";
 import { PrismaService } from "src/prisma/prisma.service";
 import { SystemInfoDTO } from "./dto/systemInfo.dto";
-import { SystemStatsDTO } from "./dto/systemStats.dto";
 import { ConfigService } from "src/config/config.service";
 import * as path from "path";
 
 const SYSTEM_STATS_CACHE_KEY = "system:stats";
 const SYSTEM_STATS_CACHE_TTL = 60 * 1000;
+
+export type SystemStats = {
+  userCount: number;
+  shareCount: number;
+  fileCount: number;
+  storageSizeBytes: number;
+};
 
 @Injectable()
 export class SystemService {
@@ -23,34 +28,23 @@ export class SystemService {
     @Inject(CACHE_MANAGER) private cache: Cache,
   ) {}
 
-  async getSystemStats(): Promise<SystemStatsDTO> {
-    const cached = await this.cache.get<SystemStatsDTO>(SYSTEM_STATS_CACHE_KEY);
+  async getSystemStats(): Promise<SystemStats> {
+    const cached = await this.cache.get<SystemStats>(SYSTEM_STATS_CACHE_KEY);
     if (cached) return cached;
 
-    const [userCount, shareCount, activeShareCount, fileCount] =
-      await Promise.all([
-        this.prisma.user.count(),
-        this.prisma.share.count(),
-        this.prisma.share.count({
-          where: {
-            removedReason: null,
-            OR: [
-              { expiration: { gt: new Date() } },
-              { expiration: { equals: moment(0).toDate() } },
-            ],
-          },
-        }),
-        this.prisma.file.count(),
-      ]);
+    const [userCount, shareCount, fileCount] = await Promise.all([
+      this.prisma.user.count(),
+      this.prisma.share.count(),
+      this.prisma.file.count(),
+    ]);
 
     const sizeRows = await this.prisma.$queryRaw<{ total: number | bigint }[]>`
       SELECT COALESCE(SUM(CAST(size AS INTEGER)), 0) AS total FROM "File"
     `;
 
-    const stats: SystemStatsDTO = {
+    const stats: SystemStats = {
       userCount,
       shareCount,
-      activeShareCount,
       fileCount,
       storageSizeBytes: Number(sizeRows[0]?.total ?? 0),
     };

@@ -2,35 +2,26 @@ import { HttpStatus } from "@nestjs/common";
 import { Request, Response } from "express";
 import { NO_STORE_HEADERS } from "./cache.util";
 
-/**
- * File downloads are only served when the request's Referer header belongs
- * to the configured app URL, so files cannot be hotlinked from other sites.
- * Requests with a missing or foreign referrer are redirected to the share
- * page instead (see redirectToSharePage).
- */
+// http and https are treated as equal because TLS is usually terminated by a
+// reverse proxy. The host always has to match the configured app URL.
 export function isRequestFromApp(req: Request, appUrl: string): boolean {
   const referrer = req.headers.referer ?? req.headers["referrer"];
   if (!referrer || Array.isArray(referrer)) return false;
 
   try {
-    const referrerUrl = new URL(referrer);
-    const parsedAppUrl = new URL(appUrl);
-
-    // http and https are treated as equal (TLS is usually terminated by a
-    // reverse proxy); the URL parser already ignores trailing slashes
-    const protocolMatches =
-      referrerUrl.protocol == parsedAppUrl.protocol ||
-      (["http:", "https:"].includes(referrerUrl.protocol) &&
-        ["http:", "https:"].includes(parsedAppUrl.protocol));
-
-    const appUrlPath = parsedAppUrl.pathname.replace(/\/+$/, "");
-    const pathMatches =
-      !appUrlPath ||
-      referrerUrl.pathname == appUrlPath ||
-      referrerUrl.pathname.startsWith(`${appUrlPath}/`);
+    const ref = new URL(referrer);
+    const app = new URL(appUrl);
+    const isHttp = (protocol: string) =>
+      protocol === "http:" || protocol === "https:";
+    const appPath = app.pathname.replace(/\/+$/, "");
 
     return (
-      protocolMatches && referrerUrl.host == parsedAppUrl.host && pathMatches
+      ref.host === app.host &&
+      (ref.protocol === app.protocol ||
+        (isHttp(ref.protocol) && isHttp(app.protocol))) &&
+      (!appPath ||
+        ref.pathname === appPath ||
+        ref.pathname.startsWith(`${appPath}/`))
     );
   } catch {
     return false;
@@ -38,9 +29,8 @@ export function isRequestFromApp(req: Request, appUrl: string): boolean {
 }
 
 /**
- * Redirects to the share page with a 302 status. Unlike 301, Cloudflare
- * does not cache 302 by default; the explicit no-store headers make sure
- * neither Cloudflare nor the browser stores the redirect.
+ * Redirects to the share page with a 302 status. The explicit no-store headers
+ * stop Cloudflare and browsers from caching the redirect.
  */
 export function redirectToSharePage(
   res: Response,

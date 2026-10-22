@@ -92,14 +92,6 @@ export class ShareSecurityGuard extends JwtGuard {
     (request as Request & { shareIsPublic?: boolean }).shareIsPublic =
       isPublicShare(share);
 
-    // Rolling expiration: every visit of the share page extends the expiration
-    // to 100 days from the current visit (permanent epoch-0 shares are skipped)
-    if (!moment(share.expiration).isSame(0)) {
-      share.expiration = await this.shareService.extendExpirationOnVisit(
-        share.id,
-      );
-    }
-
     const user = await this.authenticateUser(context);
 
     // If admin access is enabled and user is admin, allow access

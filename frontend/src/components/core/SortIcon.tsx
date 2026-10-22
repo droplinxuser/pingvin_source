@@ -1,5 +1,6 @@
-import { ActionIcon } from "@mantine/core";
+import { ActionIcon, Group } from "@mantine/core";
 import { Dispatch, SetStateAction } from "react";
+import { FormattedMessage } from "react-intl";
 import { TbChevronDown, TbChevronUp, TbSelector } from "react-icons/tb";
 
 export type TableSort = {
@@ -37,5 +38,24 @@ const TableSortIcon = ({
     );
   }
 };
+
+export const SortableTh = ({
+  id,
+  property,
+  sort,
+  setSort,
+}: {
+  id: string;
+  property: string;
+  sort: TableSort;
+  setSort: Dispatch<SetStateAction<TableSort>>;
+}) => (
+  <th>
+    <Group spacing="xs">
+      <FormattedMessage id={id} />
+      <TableSortIcon sort={sort} setSort={setSort} property={property} />
+    </Group>
+  </th>
+);
 
 export default TableSortIcon;

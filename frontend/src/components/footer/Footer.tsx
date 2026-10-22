@@ -34,37 +34,37 @@ const Footer = () => {
     "/privacy";
 
   const isMobile = useMediaQuery("(max-width: 700px)");
+  const contact = (
+    <>
+      Questions?{" "}
+      <Anchor size="xs" href="mailto:contactwebph@gmail.com">
+        contactwebph@gmail.com
+      </Anchor>
+    </>
+  );
 
   return (
     <MFooter height="auto" py={6} px="xl" zIndex={100}>
       {stats && (
         <Text size="xs" color="dimmed" align="center" mb={2}>
-          {[
-            t("footer.stats.users", { count: stats.userCount }),
-            t("footer.stats.shares", { count: stats.shareCount }),
-            t("footer.stats.files", { count: stats.fileCount }),
-            t("footer.stats.storage", {
-              size: byteToHumanSizeString(stats.storageSizeBytes),
-            }),
-          ].join(" • ")}
+          {t("footer.stats.summary", {
+            users: stats.userCount,
+            shares: stats.shareCount,
+            files: stats.fileCount,
+            size: byteToHumanSizeString(stats.storageSizeBytes),
+          })}
         </Text>
       )}
       {!config.get("legal.enabled") && (
         <Text size="xs" color="dimmed" align="center">
-          Questions?{" "}
-          <Anchor size="xs" href="mailto:contactwebph@gmail.com">
-            contactwebph@gmail.com
-          </Anchor>
+          {contact}
         </Text>
       )}
       {config.get("legal.enabled") && (
         <SimpleGrid cols={isMobile ? 2 : 3} m={0}>
           {!isMobile && <div></div>}
           <Text size="xs" color="dimmed" align={isMobile ? "left" : "center"}>
-            Questions?{" "}
-            <Anchor size="xs" href="mailto:contactwebph@gmail.com">
-              contactwebph@gmail.com
-            </Anchor>
+            {contact}
           </Text>
           <div>
             <Text size="xs" color="dimmed" align="right">
