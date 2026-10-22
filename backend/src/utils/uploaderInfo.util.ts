@@ -5,7 +5,7 @@ import { dirname, join } from "path";
 import { SHARE_DIRECTORY } from "../constants";
 
 const FILE_NAME = "uploader.json";
-const MAX_VISITORS = 10;
+const MAX_VISITORS = 20;
 const FIELDS = [
   "country",
   "city",

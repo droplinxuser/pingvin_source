@@ -6,12 +6,9 @@ import {
   Divider,
   Group,
   Paper,
-  SimpleGrid,
-  Stack,
   Text,
   ThemeIcon,
 } from "@mantine/core";
-import { useMediaQuery } from "@mantine/hooks";
 import moment from "moment";
 import { useIntl } from "react-intl";
 import { TbActivity } from "react-icons/tb";
@@ -28,7 +25,6 @@ import {
 const useStyles = createStyles((theme) => ({
   panel: {
     position: "relative",
-    overflow: "hidden",
     background:
       theme.colorScheme === "dark"
         ? `linear-gradient(145deg, ${theme.colors.dark[6]} 0%, ${theme.colors.dark[7]} 100%)`
@@ -56,6 +52,8 @@ const useStyles = createStyles((theme) => ({
   },
 }));
 
+const MAX_VISITORS = 20;
+
 const iconStyle = {
   display: "inline-flex",
   alignItems: "center",
@@ -66,34 +64,28 @@ const ShareStats = ({ share }: { share: Share }) => {
   const { classes } = useStyles();
   const t = useTranslate();
   const intl = useIntl();
-  const isMobile = useMediaQuery("(max-width: 720px)");
   const visitors = [...(share.uploaderInfo?.visitors ?? [])].reverse();
   const views = share.views ?? share.uploaderInfo?.views ?? 0;
 
   return (
-    <Paper className={classes.panel} radius="md" p="md" mt="lg" withBorder>
-      <Group position="apart" align="center" spacing="lg">
-        <Group spacing="sm" align="center" noWrap>
-          <ThemeIcon size={38} radius="md" variant="light">
-            <TbActivity size={20} />
+    <Paper className={classes.panel} radius="md" p="sm" mt="lg" withBorder>
+      <Group position="apart" align="center" spacing="md">
+        <Group spacing="xs" align="center" noWrap>
+          <ThemeIcon size={34} radius="sm" variant="light">
+            <TbActivity size={18} />
           </ThemeIcon>
-          <div>
-            <Text size="md" weight={700} lh={1.2}>
-              {t("share.stats.title")}
-            </Text>
-            <Text size="xs" color="dimmed">
-              {t("share.stats.description")}
-            </Text>
-          </div>
+          <Text size="md" weight={700} lh={1.2}>
+            {t("share.stats.title")}
+          </Text>
         </Group>
-        <Stack spacing={0} align="flex-end">
+        <Group spacing={8} align="baseline" noWrap>
           <Text size="xs" color="dimmed" weight={600} tt="uppercase">
             {t("share.stats.views")}
           </Text>
-          <Text size={26} weight={800} lh={1.1}>
+          <Text size={22} weight={800} lh={1}>
             {views.toLocaleString(intl.locale)}
           </Text>
-        </Stack>
+        </Group>
       </Group>
 
       <Divider my="sm" />
@@ -103,7 +95,7 @@ const ShareStats = ({ share }: { share: Share }) => {
           {t("share.stats.recent")}
         </Text>
         <Badge size="xs" radius="sm" variant="light">
-          {visitors.length}/10
+          {visitors.length}/{MAX_VISITORS}
         </Badge>
       </Group>
 
@@ -114,7 +106,14 @@ const ShareStats = ({ share }: { share: Share }) => {
           </Text>
         </Box>
       ) : (
-        <SimpleGrid cols={isMobile ? 1 : 2} spacing="xs">
+        <Box
+          sx={(theme) => ({
+            display: "grid",
+            gridTemplateColumns:
+              "repeat(auto-fill, minmax(min(100%, 290px), 1fr))",
+            gap: theme.spacing.xs,
+          })}
+        >
           {visitors.map((visitor, index) => {
             const countryName = visitor.country
               ? getCountryName(visitor.country, intl.locale)
@@ -128,8 +127,8 @@ const ShareStats = ({ share }: { share: Share }) => {
                 key={`${visitor.createdAt}-${index}`}
                 className={classes.visitor}
                 radius="sm"
-                px="sm"
-                py={8}
+                px="xs"
+                py={7}
                 withBorder
               >
                 <Group position="apart" align="center" noWrap spacing="xs">
@@ -173,7 +172,7 @@ const ShareStats = ({ share }: { share: Share }) => {
               </Card>
             );
           })}
-        </SimpleGrid>
+        </Box>
       )}
     </Paper>
   );

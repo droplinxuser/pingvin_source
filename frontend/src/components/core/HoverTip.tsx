@@ -14,6 +14,7 @@ export const HoverTip = ({ label, children, disabled }: HoverTipProps) => {
       events={{ hover: true, focus: false, touch: true }}
       label={label}
       disabled={disabled}
+      withinPortal
     >
       {children}
     </Tooltip>
