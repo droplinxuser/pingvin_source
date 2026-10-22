@@ -77,16 +77,31 @@ export class ConfigService extends EventEmitter {
 
   private applyEnvOverrides() {
     // Environment variables take precedence over config.yaml and the database
-    const siteName = process.env.SITE_NAME?.trim();
-    if (!siteName) return;
+    this.applyEnvOverride("general.appName", process.env.SITE_NAME?.trim());
+
+    const cacheEnabled = process.env.CACHE_REDIS_ENABLED?.trim().toLowerCase();
+    if (cacheEnabled !== undefined) {
+      this.applyEnvOverride(
+        "cache.redis-enabled",
+        cacheEnabled === "true" ? "true" : "false",
+      );
+    }
+    this.applyEnvOverride(
+      "cache.redis-url",
+      process.env.CACHE_REDIS_URL?.trim(),
+    );
+  }
+
+  private applyEnvOverride(key: string, value?: string) {
+    if (!value) return;
 
     const variable = this.configVariables.find(
-      (v) => `${v.category}.${v.name}` == "general.appName",
+      (v) => `${v.category}.${v.name}` == key,
     );
-    if (variable) {
-      variable.value = siteName;
-      this.emit("update", "general.appName", siteName);
-    }
+    if (!variable) return;
+
+    variable.value = value;
+    this.emit("update", key, value);
   }
 
   private async loadYamlConfig() {

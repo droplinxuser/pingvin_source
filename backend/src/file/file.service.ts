@@ -14,6 +14,10 @@ import { Readable } from "stream";
 import { PrismaService } from "../prisma/prisma.service";
 import { EmailService } from "src/email/email.service";
 import { I18nService } from "nestjs-i18n";
+import {
+  invalidateShareCaches,
+  invalidateShareDataCache,
+} from "src/utils/shareCache.util";
 
 const UPDATED_AT_THROTTLE_MS = 5 * 60 * 1000;
 const DOWNLOAD_NOTIFICATION_COOLDOWN_MS = 15 * 60 * 1000;
@@ -173,7 +177,8 @@ export class FileService {
       select: { storageProvider: true },
     });
     const storageService = this.getStorageService(share?.storageProvider);
-    return storageService.remove(shareId, fileId);
+    await storageService.remove(shareId, fileId);
+    await invalidateShareDataCache(this.cache, shareId);
   }
 
   async deleteAllFiles(shareId: string) {
@@ -182,7 +187,8 @@ export class FileService {
       select: { id: true, storageProvider: true },
     });
     const storageService = this.getStorageService(share?.storageProvider);
-    return storageService.deleteAllFiles(shareId);
+    await storageService.deleteAllFiles(shareId);
+    await invalidateShareCaches(this.cache, shareId);
   }
 
   async getZip(shareId: string): Promise<Readable> {

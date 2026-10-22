@@ -1,9 +1,12 @@
-import { Injectable, Logger } from "@nestjs/common";
+import { Inject, Injectable, Logger } from "@nestjs/common";
+import { CACHE_MANAGER } from "@nestjs/cache-manager";
+import { Cache } from "cache-manager";
 import * as NodeClam from "clamscan";
 import * as fs from "fs";
 import { Readable } from "stream";
 import { FileService } from "src/file/file.service";
 import { PrismaService } from "src/prisma/prisma.service";
+import { invalidateShareCaches } from "src/utils/shareCache.util";
 import { CLAMAV_HOST, CLAMAV_PORT, SHARE_DIRECTORY } from "../constants";
 
 const clamscanConfig = {
@@ -21,6 +24,7 @@ export class ClamScanService {
   constructor(
     private fileService: FileService,
     private prisma: PrismaService,
+    @Inject(CACHE_MANAGER) private cache: Cache,
   ) {}
 
   private clamScanInstance: NodeClam | null = null;
@@ -143,6 +147,7 @@ export class ClamScanService {
             removedReason: `Your share got removed because the file(s) ${fileNames} are malicious.`,
           },
         });
+        await invalidateShareCaches(this.cache, shareId);
 
         this.logger.warn(
           `Share ${shareId} deleted because it contained ${infectedFiles.length} malicious file(s)`,

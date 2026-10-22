@@ -46,6 +46,7 @@ async function bootstrap() {
   app.useGlobalPipes(new I18nValidationPipe({ whitelist: true }));
   app.useGlobalFilters(new I18nValidationExceptionFilter());
   app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)));
+  app.enableShutdownHooks();
 
   const config = app.get<ConfigService>(ConfigService);
 

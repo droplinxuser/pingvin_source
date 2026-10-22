@@ -5,7 +5,7 @@ import { dirname, join } from "path";
 import { SHARE_DIRECTORY } from "../constants";
 
 const FILE_NAME = "uploader.json";
-const MAX_VISITORS = 20;
+export const MAX_VISITORS = 20;
 const FIELDS = [
   "country",
   "city",
@@ -27,7 +27,6 @@ const VISITOR_FIELDS = [
   "createdAt",
 ] as const;
 const logger = new Logger("UploaderInfo");
-const shareFileLocks = new Map<string, Promise<void>>();
 
 export type ShareVisitor = Partial<
   Record<(typeof VISITOR_FIELDS)[number], string>
@@ -205,25 +204,6 @@ function getUploaderInfoPath(shareId: string) {
     : null;
 }
 
-function withShareFileLock<T>(
-  shareId: string,
-  task: () => Promise<T>,
-): Promise<T> {
-  const previous = shareFileLocks.get(shareId) ?? Promise.resolve();
-  const result = previous.then(task);
-  const tail = result.then(
-    () => undefined,
-    () => undefined,
-  );
-
-  shareFileLocks.set(shareId, tail);
-  void tail.then(() => {
-    if (shareFileLocks.get(shareId) === tail) shareFileLocks.delete(shareId);
-  });
-
-  return result;
-}
-
 export async function writeUploaderInfo(shareId: string, info: UploaderInfo) {
   const filePath = getUploaderInfoPath(shareId);
   if (!filePath) return;
@@ -233,7 +213,13 @@ export async function writeUploaderInfo(shareId: string, info: UploaderInfo) {
     .slice(2)}.tmp`;
 
   try {
-    await fs.mkdir(dirname(filePath), { recursive: true });
+    // Do not recreate a share directory that was deleted by a removal/scan.
+    await fs.access(dirname(filePath));
+  } catch {
+    return;
+  }
+
+  try {
     await fs.writeFile(tempPath, JSON.stringify(info), {
       encoding: "utf8",
       mode: 0o600,
@@ -315,21 +301,4 @@ export async function readUploaderInfo(
   } catch {
     return null;
   }
-}
-
-export async function recordShareVisitor(
-  shareId: string,
-  request: Request,
-): Promise<UploaderInfo> {
-  return withShareFileLock(shareId, async () => {
-    const info = (await readUploaderInfo(shareId)) ?? {
-      createdAt: new Date().toISOString(),
-    };
-    info.visitors = [...(info.visitors ?? []), getVisitorInfo(request)].slice(
-      -MAX_VISITORS,
-    );
-    await writeUploaderInfo(shareId, info);
-
-    return info;
-  });
 }

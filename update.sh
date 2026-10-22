@@ -87,6 +87,11 @@ ensure_env THROTTLE_LIMIT "300"
 ensure_env VISITOR_RATE_LIMIT "90"
 ensure_env VISITOR_RATE_TTL_MS "60000"
 ensure_env VISITOR_RATE_BLOCK_MS "60000"
+# Enable the local Valkey cache when the service is already installed.
+if systemctl is-active --quiet valkey-server; then
+  ensure_env CACHE_REDIS_ENABLED "true"
+  ensure_env CACHE_REDIS_URL "redis://127.0.0.1:6379"
+fi
 
 # Move legacy uploader.json view counts into Share.views once. Stop the old
 # backend first so it cannot write another legacy count mid-migration.

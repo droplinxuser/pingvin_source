@@ -1,14 +1,18 @@
 import {
   BadRequestException,
   ForbiddenException,
+  Inject,
   Injectable,
 } from "@nestjs/common";
+import { CACHE_MANAGER } from "@nestjs/cache-manager";
 import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library";
+import { Cache } from "cache-manager";
 import { I18nService } from "nestjs-i18n";
 import { ConfigService } from "src/config/config.service";
 import { FileService } from "src/file/file.service";
 import { PrismaService } from "src/prisma/prisma.service";
 import { getDefaultShareExpiration } from "src/utils/date.util";
+import { invalidateShareCaches } from "src/utils/shareCache.util";
 import { CreateReverseShareDTO } from "./dto/createReverseShare.dto";
 
 @Injectable()
@@ -18,6 +22,7 @@ export class ReverseShareService {
     private prisma: PrismaService,
     private fileService: FileService,
     private readonly i18n: I18nService,
+    @Inject(CACHE_MANAGER) private cache: Cache,
   ) {}
 
   async create(data: CreateReverseShareDTO, creatorId: string) {
@@ -139,6 +144,11 @@ export class ReverseShareService {
   }
 
   async remove(id: string) {
+    const shares = await this.prisma.share.findMany({
+      where: { reverseShareId: id },
+      select: { id: true },
+    });
+
     await this.prisma.share.updateMany({
       where: { reverseShareId: id },
       data: {
@@ -148,5 +158,8 @@ export class ReverseShareService {
     });
 
     await this.prisma.reverseShare.delete({ where: { id } });
+    await Promise.all(
+      shares.map((share) => invalidateShareCaches(this.cache, share.id)),
+    );
   }
 }

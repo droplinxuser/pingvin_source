@@ -29,8 +29,12 @@ export class SystemService {
   ) {}
 
   async getSystemStats(): Promise<SystemStats> {
-    const cached = await this.cache.get<SystemStats>(SYSTEM_STATS_CACHE_KEY);
-    if (cached) return cached;
+    try {
+      const cached = await this.cache.get<SystemStats>(SYSTEM_STATS_CACHE_KEY);
+      if (cached) return cached;
+    } catch {
+      // The stats endpoint must keep working if Valkey is unavailable.
+    }
 
     const [userCount, shareCount, fileCount] = await Promise.all([
       this.prisma.user.count(),
@@ -49,7 +53,11 @@ export class SystemService {
       storageSizeBytes: Number(sizeRows[0]?.total ?? 0),
     };
 
-    await this.cache.set(SYSTEM_STATS_CACHE_KEY, stats, SYSTEM_STATS_CACHE_TTL);
+    try {
+      await this.cache.set(SYSTEM_STATS_CACHE_KEY, stats, SYSTEM_STATS_CACHE_TTL);
+    } catch {
+      // The stats endpoint must keep working if Valkey is unavailable.
+    }
     return stats;
   }
 

@@ -123,6 +123,7 @@ export class ShareController {
     const { views, uploaderInfo } = await this.shareService.recordView(
       id,
       request,
+      share.maxViews,
     );
     return new ShareDTO().from({
       ...share,
