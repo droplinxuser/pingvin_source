@@ -19,10 +19,7 @@ import { ConfigService } from "src/config/config.service";
 import { CreateShareGuard } from "src/share/guard/createShare.guard";
 import { StrictShareOwnerGuard } from "src/share/guard/strictShareOwner.guard";
 import { IdValidation } from "src/share/guard/shareIdValidation.guard";
-import {
-  getDownloadCacheHeaders,
-  NO_STORE_HEADERS,
-} from "src/utils/cache.util";
+import { getDownloadCacheHeaders } from "src/utils/cache.util";
 import { getFileMimeType } from "src/utils/mime.util";
 import { isRequestFromApp, redirectToSharePage } from "src/utils/referrer.util";
 import { FileService } from "./file.service";
@@ -200,9 +197,8 @@ export class FileController {
           getValidRecipientId(recipientId),
         );
       }
-      // The pre-signed URL expires after 5 minutes, so the redirect must
-      // never be cached
-      res.set(NO_STORE_HEADERS);
+      // The pre-signed URL expires after 5 minutes, so it must never be cached
+      // (API responses are no-store by default).
       res.status(302).setHeader("Location", url);
       return;
     }
@@ -217,7 +213,6 @@ export class FileController {
         "Content-Range": `bytes */${totalSize}`,
         "Accept-Ranges": "bytes",
       });
-      res.set(NO_STORE_HEADERS);
       return;
     }
 

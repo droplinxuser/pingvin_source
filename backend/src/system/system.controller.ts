@@ -3,6 +3,7 @@ import { Response } from "express";
 import { AdministratorGuard } from "src/auth/guard/isAdmin.guard";
 import { JwtGuard } from "src/auth/guard/jwt.guard";
 import { SystemService, SystemStats } from "./system.service";
+import { getPublicCacheHeaders } from "src/utils/cache.util";
 import { SystemInfoDTO } from "./dto/systemInfo.dto";
 
 @Controller("system")
@@ -19,11 +20,7 @@ export class SystemController {
   async getSystemStats(
     @Res({ passthrough: true }) response: Response,
   ): Promise<SystemStats> {
-    response.set({
-      "Cache-Control": "public, max-age=60",
-      "CDN-Cache-Control": "public, max-age=60",
-      "Cloudflare-CDN-Cache-Control": "public, max-age=60",
-    });
+    response.set(getPublicCacheHeaders(60));
     return await this.systemService.getSystemStats();
   }
 }

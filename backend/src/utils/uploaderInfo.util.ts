@@ -1,11 +1,11 @@
 import { Logger } from "@nestjs/common";
 import { Request } from "express";
-import * as fs from "fs";
-import * as path from "path";
+import { promises as fs } from "fs";
+import { dirname, join } from "path";
 import { SHARE_DIRECTORY } from "../constants";
 
-const UPLOADER_INFO_FILE = "uploader.json";
-const UPLOADER_INFO_FIELDS = [
+const FILE_NAME = "uploader.json";
+const FIELDS = [
   "country",
   "city",
   "region",
@@ -19,23 +19,47 @@ const UPLOADER_INFO_FIELDS = [
 ] as const;
 const logger = new Logger("UploaderInfo");
 
-export type UploaderInfo = {
-  country?: string;
-  city?: string;
-  region?: string;
-  timezone?: string;
-  browser?: string;
-  browserVersion?: string;
-  os?: string;
-  osVersion?: string;
-  deviceType?: string;
+export type UploaderInfo = Partial<Record<(typeof FIELDS)[number], string>> & {
   createdAt: string;
 };
 
+type Rule = [RegExp, string, string?];
+
+const OS_RULES: Rule[] = [
+  [/Windows NT 10\.0/, "Windows", "10/11"],
+  [/Windows NT ([\d.]+)/, "Windows"],
+  [/(?:iPhone|iPad|iPod).*OS ([\d_]+)/, "iOS"],
+  [/Android[ /]([\d.]+)/, "Android"],
+  [/Mac OS X ([\d_]+)/, "macOS"],
+  [/CrOS/, "ChromeOS"],
+  [/Linux/, "Linux"],
+];
+
+const BROWSER_RULES: Rule[] = [
+  [/Edg(?:e|A|iOS)?\/([\d.]+)/, "Edge"],
+  [/OPR\/([\d.]+)/, "Opera"],
+  [/SamsungBrowser\/([\d.]+)/, "Samsung Internet"],
+  [/Brave\/([\d.]+)/, "Brave"],
+  [/CriOS\/([\d.]+)/, "Chrome"],
+  [/FxiOS\/([\d.]+)/, "Firefox"],
+  [/Firefox\/([\d.]+)/, "Firefox"],
+  [/Chrome\/([\d.]+)/, "Chrome"],
+  [/Version\/([\d.]+).*Safari/, "Safari"],
+  [/Safari\/([\d.]+)/, "Safari"],
+];
+
+const PLATFORM_NAMES: Record<string, string> = {
+  windows: "Windows",
+  macos: "macOS",
+  linux: "Linux",
+  android: "Android",
+  ios: "iOS",
+  "chrome os": "ChromeOS",
+};
+
 function decodeText(value: string): string {
-  let decoded = value;
   try {
-    decoded = decodeURIComponent(decoded);
+    value = decodeURIComponent(value);
   } catch {
     // Not percent-encoded; keep the original value.
   }
@@ -43,17 +67,17 @@ function decodeText(value: string): string {
   // Node exposes header bytes as Latin-1, while Cloudflare sends UTF-8.
   // Re-decode only when the Latin-1 bytes form valid UTF-8, so already
   // correct values such as "Dasmariñas" are left untouched.
-  if (/[\u0080-\u00ff]/.test(decoded)) {
+  if (/[\u0080-\u00ff]/.test(value)) {
     try {
-      decoded = new TextDecoder("utf-8", { fatal: true }).decode(
-        Buffer.from(decoded, "latin1"),
+      return new TextDecoder("utf-8", { fatal: true }).decode(
+        Buffer.from(value, "latin1"),
       );
     } catch {
       // Already valid text; keep it.
     }
   }
 
-  return decoded;
+  return value;
 }
 
 function getHeader(request: Request, name: string): string | undefined {
@@ -62,75 +86,38 @@ function getHeader(request: Request, name: string): string | undefined {
   return header ? decodeText(header) : undefined;
 }
 
+function matchRule(userAgent: string, rules: Rule[]) {
+  for (const [pattern, name, fixedVersion] of rules) {
+    const match = userAgent.match(pattern);
+    if (match) {
+      return {
+        name,
+        version: fixedVersion ?? match[1]?.replaceAll("_", "."),
+      };
+    }
+  }
+}
+
 function parseUserAgent(
   userAgent = "",
   platform?: string,
   mobileHint?: string,
 ) {
-  const osRules: Array<
-    [RegExp, string, (match: RegExpMatchArray) => string | undefined]
-  > = [
-    [/Windows NT 10\.0/, "Windows", () => "10/11"],
-    [/Windows NT ([\d.]+)/, "Windows", (match) => match[1]],
-    [
-      /iPhone|iPad|iPod.*OS ([\d_]+)/,
-      "iOS",
-      (match) => match[1].replaceAll("_", "."),
-    ],
-    [/Android[ /]([\d.]+)/, "Android", (match) => match[1]],
-    [
-      /Mac OS X ([\d_]+)/,
-      "macOS",
-      (match) => match[1].replaceAll("_", "."),
-    ],
-    [/CrOS/, "ChromeOS", () => undefined],
-    [/Linux/, "Linux", () => undefined],
-  ];
-  const osRule = osRules.find(([pattern]) => pattern.test(userAgent));
-  const os = osRule?.[1];
-  const osVersion = osRule?.[2](userAgent.match(osRule[0])!);
-
-  const browserRules: Array<[RegExp, string]> = [
-    [/Edg(?:e|A|iOS)?\/([\d.]+)/, "Edge"],
-    [/OPR\/([\d.]+)/, "Opera"],
-    [/SamsungBrowser\/([\d.]+)/, "Samsung Internet"],
-    [/Brave\/([\d.]+)/, "Brave"],
-    [/CriOS\/([\d.]+)/, "Chrome"],
-    [/FxiOS\/([\d.]+)/, "Firefox"],
-    [/Firefox\/([\d.]+)/, "Firefox"],
-    [/Chrome\/([\d.]+)/, "Chrome"],
-    [/Version\/([\d.]+).*Safari/, "Safari"],
-    [/Safari\/([\d.]+)/, "Safari"],
-  ];
-  const browserRule = browserRules.find(([pattern]) => pattern.test(userAgent));
-  const browser = browserRule?.[1];
-  const browserVersion = browserRule
-    ? userAgent.match(browserRule[0])?.[1]
-    : undefined;
-
-  const platformOs: Record<string, string> = {
-    windows: "Windows",
-    macos: "macOS",
-    linux: "Linux",
-    android: "Android",
-    ios: "iOS",
-    "chrome os": "ChromeOS",
-  };
+  const os = matchRule(userAgent, OS_RULES);
+  const browser = matchRule(userAgent, BROWSER_RULES);
   const platformName = platform?.replaceAll('"', "").toLowerCase();
-  const finalOs = os ?? (platformName ? platformOs[platformName] : undefined);
-
-  const deviceType = /iPad|Tablet/i.test(userAgent)
-    ? "tablet"
-    : mobileHint === "?1" || /Mobi|Android|iPhone/i.test(userAgent)
-      ? "mobile"
-      : "desktop";
+  const finalOs = os?.name ?? PLATFORM_NAMES[platformName ?? ""];
 
   return {
-    browser,
-    browserVersion,
+    browser: browser?.name,
+    browserVersion: browser?.version,
     os: finalOs,
-    osVersion: finalOs === os ? osVersion : undefined,
-    deviceType,
+    osVersion: os && finalOs === os.name ? os.version : undefined,
+    deviceType: /iPad|Tablet/i.test(userAgent)
+      ? "tablet"
+      : mobileHint === "?1" || /Mobi|Android|iPhone/i.test(userAgent)
+        ? "mobile"
+        : "desktop",
   };
 }
 
@@ -152,10 +139,11 @@ export function getUploaderInfo(request: Request): UploaderInfo {
 }
 
 function getUploaderInfoPath(shareId: string) {
-  // Share IDs are validated on creation; keep this defensive so a malformed
-  // ID can never escape the shares directory.
-  if (!/^[a-zA-Z0-9_-]+$/.test(shareId)) return null;
-  return path.join(SHARE_DIRECTORY, shareId, UPLOADER_INFO_FILE);
+  // Share IDs are validated on creation; stay defensive so a malformed ID
+  // can never escape the shares directory.
+  return /^[\w-]+$/.test(shareId)
+    ? join(SHARE_DIRECTORY, shareId, FILE_NAME)
+    : null;
 }
 
 export async function writeUploaderInfo(shareId: string, info: UploaderInfo) {
@@ -163,11 +151,12 @@ export async function writeUploaderInfo(shareId: string, info: UploaderInfo) {
   if (!filePath) return;
 
   try {
-    await fs.promises.mkdir(path.dirname(filePath), { recursive: true });
-    await fs.promises.writeFile(filePath, JSON.stringify(info), {
+    await fs.mkdir(dirname(filePath), { recursive: true });
+    await fs.writeFile(filePath, JSON.stringify(info), {
       encoding: "utf8",
       mode: 0o600,
     });
+    await fs.chmod(filePath, 0o600);
   } catch (error) {
     logger.warn(
       `Failed to write uploader information for share ${shareId}: ${error}`,
@@ -182,27 +171,24 @@ export async function readUploaderInfo(
   if (!filePath) return null;
 
   try {
-    const parsed = JSON.parse(
-      await fs.promises.readFile(filePath, "utf8"),
-    ) as Record<string, unknown> | null;
+    const parsed = JSON.parse(await fs.readFile(filePath, "utf8")) as Record<
+      string,
+      unknown
+    >;
     if (!parsed || typeof parsed !== "object" || Array.isArray(parsed))
       return null;
 
     // Keep only supported Cloudflare fields and repair older mojibake values.
-    const info: Record<string, unknown> = {};
-    let changed = Object.keys(parsed).some(
-      (key) => !(UPLOADER_INFO_FIELDS as readonly string[]).includes(key),
-    );
-    for (const field of UPLOADER_INFO_FIELDS) {
-      const value = parsed[field];
-      if (typeof value !== "string") continue;
-      const decoded = decodeText(value);
-      if (decoded !== value) changed = true;
-      info[field] = decoded;
-    }
+    const info = Object.fromEntries(
+      FIELDS.flatMap((field) => {
+        const value = parsed[field];
+        return typeof value === "string" ? [[field, decodeText(value)]] : [];
+      }),
+    ) as UploaderInfo;
 
-    if (changed) await writeUploaderInfo(shareId, info as UploaderInfo);
-    return info as UploaderInfo;
+    if (JSON.stringify(info) !== JSON.stringify(parsed))
+      await writeUploaderInfo(shareId, info);
+    return info;
   } catch {
     return null;
   }

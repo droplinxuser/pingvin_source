@@ -10,7 +10,6 @@ import Markdown, { MarkdownToJSX } from "markdown-to-jsx";
 import React, { Dispatch, SetStateAction, useEffect, useState } from "react";
 import { FormattedMessage } from "react-intl";
 import api from "../../services/api.service";
-import shareService from "../../services/share.service";
 
 export const FilePreviewContext = React.createContext<{
   shareId: string;
@@ -102,10 +101,9 @@ export const VideoPreview = () => {
       <source
         src={`/api/shares/${shareId}/files/${fileId}?download=false`}
         // QuickTime (.mov) files are served as video/mp4 so browsers can play
-        // them (see utils/mime.util.ts -> getInlinePlaybackMimeType).
-        // Other types are left without a type attribute so the browser can
-        // fall back to content sniffing when canPlayType() is inconclusive.
-        type={shareService.getInlinePlaybackMimeType(mimeType)}
+        // them; other types are left untyped so the browser can fall back to
+        // content sniffing when canPlayType() is inconclusive.
+        type={mimeType == "video/quicktime" ? "video/mp4" : undefined}
         onError={() => setIsNotSupported(true)}
       />
     </video>

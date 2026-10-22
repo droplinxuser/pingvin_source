@@ -15,7 +15,17 @@ export const config = {
 const PUBLIC_PAGES = new Set(["/", "/imprint", "/privacy"]);
 // Keep this short: the HTML contains the build ID used by client navigation.
 // A long CDN TTL serves an old build after a deployment and breaks navigation.
-const PUBLIC_CACHE = "public, max-age=0, s-maxage=60, stale-while-revalidate=30";
+const PUBLIC_CACHE =
+  "public, max-age=0, s-maxage=60, stale-while-revalidate=30";
+const CACHE_HEADERS = [
+  "Cache-Control",
+  "CDN-Cache-Control",
+  "Cloudflare-CDN-Cache-Control",
+];
+
+function setCacheHeaders(response: NextResponse, value: string) {
+  for (const header of CACHE_HEADERS) response.headers.set(header, value);
+}
 
 async function fetchConfig(
   apiUrl: string,
@@ -45,7 +55,7 @@ export async function middleware(request: NextRequest) {
     disabled: new Routes([]),
   };
 
-  // Get config from backend with caching and error handling
+  // Get config from the backend with a timeout and fallback
   const apiUrl = process.env.API_URL || "http://localhost:8080";
   const { config, fallback: isConfigFallback } = await fetchConfig(apiUrl);
 
@@ -143,17 +153,14 @@ export async function middleware(request: NextRequest) {
       }
       const response = NextResponse.redirect(new URL(path, request.url));
       response.headers.set("Vary", "x-nextjs-data");
-      response.headers.set("Cache-Control", "no-store");
-      response.headers.set("CDN-Cache-Control", "no-store");
-      response.headers.set("Cloudflare-CDN-Cache-Control", "no-store");
+      setCacheHeaders(response, "no-store");
       return response;
     }
   }
 
   const response = NextResponse.next();
   const defaultLanguage = getConfig("general.defaultLanguage") || "en-US";
-  const language =
-    request.cookies.get("language")?.value || defaultLanguage;
+  const language = request.cookies.get("language")?.value || defaultLanguage;
 
   if (
     PUBLIC_PAGES.has(route) &&
@@ -161,14 +168,10 @@ export async function middleware(request: NextRequest) {
     !isConfigFallback &&
     language === defaultLanguage
   ) {
-    response.headers.set("Cache-Control", PUBLIC_CACHE);
-    response.headers.set("CDN-Cache-Control", PUBLIC_CACHE);
-    response.headers.set("Cloudflare-CDN-Cache-Control", PUBLIC_CACHE);
+    setCacheHeaders(response, PUBLIC_CACHE);
     response.headers.set("Vary", "Accept-Encoding, Accept-Language, Cookie");
   } else {
-    response.headers.set("Cache-Control", "no-store");
-    response.headers.set("CDN-Cache-Control", "no-store");
-    response.headers.set("Cloudflare-CDN-Cache-Control", "no-store");
+    setCacheHeaders(response, "no-store");
   }
   return response;
 }

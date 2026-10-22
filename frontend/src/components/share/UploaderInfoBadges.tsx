@@ -1,5 +1,6 @@
 import { Group, Stack, Text } from "@mantine/core";
 import moment from "moment";
+import { ReactNode } from "react";
 import { useIntl } from "react-intl";
 import {
   FaAndroid,
@@ -18,6 +19,22 @@ import useTranslate from "../../hooks/useTranslate.hook";
 import { Share, UploaderInfo } from "../../types/share.type";
 import { HoverTip } from "../core/HoverTip";
 
+const iconProps = { size: 16 };
+const ICONS: Record<string, ReactNode> = {
+  Windows: <FaWindows {...iconProps} />,
+  macOS: <FaApple {...iconProps} />,
+  Linux: <FaLinux {...iconProps} />,
+  Android: <FaAndroid {...iconProps} />,
+  iOS: <SiIos {...iconProps} />,
+  ChromeOS: <FaChrome {...iconProps} />,
+  Chrome: <FaChrome {...iconProps} />,
+  Firefox: <FaFirefox {...iconProps} />,
+  Safari: <FaSafari {...iconProps} />,
+  Edge: <FaEdge {...iconProps} />,
+  Opera: <FaOpera {...iconProps} />,
+  Brave: <SiBrave {...iconProps} />,
+};
+
 const countryCodeToFlag = (code: string) =>
   /^[A-Z]{2}$/.test(code) && code !== "T1"
     ? String.fromCodePoint(
@@ -31,46 +48,6 @@ const getCountryName = (code: string, locale: string) => {
     return new Intl.DisplayNames([locale], { type: "region" }).of(code) ?? code;
   } catch {
     return code;
-  }
-};
-
-const getOsIcon = (os?: string) => {
-  const props = { size: 16 };
-  switch (os) {
-    case "Windows":
-      return <FaWindows {...props} />;
-    case "macOS":
-      return <FaApple {...props} />;
-    case "Linux":
-      return <FaLinux {...props} />;
-    case "Android":
-      return <FaAndroid {...props} />;
-    case "iOS":
-      return <SiIos {...props} />;
-    case "ChromeOS":
-      return <FaChrome {...props} />;
-    default:
-      return <TbDeviceLaptop {...props} />;
-  }
-};
-
-const getBrowserIcon = (browser?: string) => {
-  const props = { size: 16 };
-  switch (browser) {
-    case "Chrome":
-      return <FaChrome {...props} />;
-    case "Firefox":
-      return <FaFirefox {...props} />;
-    case "Safari":
-      return <FaSafari {...props} />;
-    case "Edge":
-      return <FaEdge {...props} />;
-    case "Opera":
-      return <FaOpera {...props} />;
-    case "Brave":
-      return <SiBrave {...props} />;
-    default:
-      return <TbBrowser {...props} />;
   }
 };
 
@@ -122,14 +99,12 @@ const UploaderInfoBadges = ({
       <HoverTip
         label={
           <Stack spacing={2} sx={{ maxWidth: 280 }}>
-            {details.length > 0 ? (
-              details.map((line) => (
+            {(details.length > 0 ? details : [t("share.uploader.unknown")]).map(
+              (line) => (
                 <Text key={line} size="xs">
                   {line}
                 </Text>
-              ))
-            ) : (
-              <Text size="xs">{t("share.uploader.unknown")}</Text>
+              ),
             )}
           </Stack>
         }
@@ -144,12 +119,12 @@ const UploaderInfoBadges = ({
       </HoverTip>
       <HoverTip label={osLabel}>
         <span style={iconStyle} aria-label={t("share.uploader.os")}>
-          {getOsIcon(info?.os)}
+          {ICONS[info?.os ?? ""] ?? <TbDeviceLaptop {...iconProps} />}
         </span>
       </HoverTip>
       <HoverTip label={browserLabel}>
         <span style={iconStyle} aria-label={t("share.uploader.browser")}>
-          {getBrowserIcon(info?.browser)}
+          {ICONS[info?.browser ?? ""] ?? <TbBrowser {...iconProps} />}
         </span>
       </HoverTip>
     </Group>

@@ -11,13 +11,7 @@ import {
   UpdateShare,
 } from "../types/share.type";
 import { generateUUID } from "../utils/crypto.util";
-import {
-  doesFileSupportPreview,
-  getFileMimeType,
-  getInlinePlaybackMimeType,
-  getInlinePreviewKind,
-  isShareTextFile,
-} from "../utils/mime.util";
+import { doesFileSupportPreview, isShareTextFile } from "../utils/mime.util";
 import {
   type UploadProgressHandler,
   withUploadInactivityTimeout,
@@ -430,9 +424,6 @@ export default {
   getMetaData,
   doesFileSupportPreview,
   isShareTextFile,
-  getFileMimeType,
-  getInlinePreviewKind,
-  getInlinePlaybackMimeType,
   getMyShares,
   getReceivedShares,
   isShareIdAvailable,

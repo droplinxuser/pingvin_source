@@ -37,6 +37,13 @@ const SHARE_SORT_FIELDS = {
   createdAt: "createdAt",
 } as const;
 
+const SHARE_INCLUDE = {
+  files: true,
+  creator: true,
+  security: true,
+  recipients: true,
+} as const;
+
 @Injectable()
 export class ShareService {
   private readonly logger = new Logger(ShareService.name);
@@ -416,12 +423,7 @@ export class ShareService {
     sortBy?: string,
     sortDirection?: string,
   ) {
-    const include = {
-      files: true,
-      creator: true,
-      security: true,
-      recipients: true,
-    } as const;
+    const include = SHARE_INCLUDE;
     const where = this.buildSearchWhere(search);
 
     // The size of a share is computed from its files, so it can't be sorted
@@ -495,9 +497,8 @@ export class ShareService {
       orderBy: {
         expiration: "desc",
       },
-      include: { recipients: true, files: true, security: true, creator: true },
+      include: SHARE_INCLUDE,
     });
-
     return shares.map((share) => this.transformShare(share));
   }
 
@@ -564,13 +565,7 @@ export class ShareService {
   async report(id: string, report: ReportShareDTO) {
     const share = await this.prisma.share.findUnique({
       where: { id },
-      include: {
-        files: {
-          orderBy: {
-            name: "asc",
-          },
-        },
-      },
+      include: { files: true },
     });
 
     if (!share || !share.uploadLocked)

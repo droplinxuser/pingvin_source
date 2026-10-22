@@ -277,7 +277,6 @@ export default {
   "admin.shares.diskUsage": "磁碟使用量",
   "admin.shares.table.id": "分享 ID",
   "admin.shares.table.username": "建立者",
-  "admin.shares.table.uploadDate": "上傳日期",
   "admin.shares.table.visitors": "造訪次數",
   "admin.shares.table.expires": "失效於",
   "admin.shares.table.deletes": "刪除時機",

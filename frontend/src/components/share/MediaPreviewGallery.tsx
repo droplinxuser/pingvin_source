@@ -1,13 +1,14 @@
-import { Box, Card, SimpleGrid, Text, useMantineTheme } from "@mantine/core";
+import { Box, Card, SimpleGrid, Text } from "@mantine/core";
 import { useState } from "react";
 import { FormattedMessage } from "react-intl";
-import shareService from "../../services/share.service";
-import { InlinePreviewKind } from "../../utils/mime.util";
 import { FileMetaData } from "../../types/File.type";
-import {
-  MAX_INLINE_FILE_SIZE,
-} from "../../utils/fileSize.util";
+import { MAX_INLINE_FILE_SIZE } from "../../utils/fileSize.util";
 import { getBaseName } from "../../utils/file.util";
+import {
+  getFileMimeType,
+  getInlinePreviewKind,
+  InlinePreviewKind,
+} from "../../utils/mime.util";
 import {
   AudioPreview,
   FilePreviewContext,
@@ -17,20 +18,14 @@ import {
 
 // Images are fully fetched by the browser as soon as they are rendered, so
 // only reasonably small ones are embedded. Videos and audio stream on demand.
-const getMediaFiles = (files?: FileMetaData[]) =>
-  (files || [])
-    .map((file) => ({
-      file,
-      kind: shareService.getInlinePreviewKind(file.name),
-    }))
-    .filter(
-      (
-        mediaFile,
-      ): mediaFile is { file: FileMetaData; kind: InlinePreviewKind } =>
-        mediaFile.kind != undefined &&
-        (mediaFile.kind != "image" ||
-          parseInt(mediaFile.file.size) <= MAX_INLINE_FILE_SIZE),
-    );
+const getMediaFiles = (files: FileMetaData[] = []) =>
+  files.flatMap((file) => {
+    const kind = getInlinePreviewKind(file.name);
+    return kind &&
+      (kind != "image" || parseInt(file.size) <= MAX_INLINE_FILE_SIZE)
+      ? [{ file, kind }]
+      : [];
+  });
 
 const MediaPreviewCard = ({
   shareId,
@@ -42,13 +37,12 @@ const MediaPreviewCard = ({
   kind: InlinePreviewKind;
 }) => {
   const [isNotSupported, setIsNotSupported] = useState(false);
-  const theme = useMantineTheme();
   const fileName = getBaseName(file.name);
 
   return (
     <Card withBorder radius="md" p="sm">
       <Box
-        sx={{
+        sx={(theme) => ({
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
@@ -60,7 +54,7 @@ const MediaPreviewCard = ({
               ? theme.colors.dark[8]
               : theme.colors.gray[2],
           "& img, & video": { maxHeight: "70vh" },
-        }}
+        })}
       >
         {isNotSupported ? (
           <Text size="xs" color="dimmed" align="center" p="md">
@@ -71,7 +65,7 @@ const MediaPreviewCard = ({
             value={{
               shareId,
               fileId: file.id,
-              mimeType: shareService.getFileMimeType(file.name),
+              mimeType: getFileMimeType(file.name),
               setIsNotSupported,
             }}
           >
@@ -108,14 +102,10 @@ const MediaPreviewGallery = ({
       mb="xl"
       cols={1}
       spacing="md"
-      breakpoints={
-        mediaFiles.length == 1
-          ? []
-          : [
-              { minWidth: "sm", cols: Math.min(2, mediaFiles.length) },
-              { minWidth: "lg", cols: Math.min(3, mediaFiles.length) },
-            ]
-      }
+      breakpoints={[
+        { minWidth: "sm", cols: Math.min(2, mediaFiles.length) },
+        { minWidth: "lg", cols: Math.min(3, mediaFiles.length) },
+      ]}
     >
       {mediaFiles.map(({ file, kind }) => (
         <MediaPreviewCard

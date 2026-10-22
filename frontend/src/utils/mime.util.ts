@@ -57,8 +57,3 @@ export const getInlinePreviewKind = (
   if (mimeType.startsWith("audio/")) return "audio";
   return undefined;
 };
-
-// Browsers refuse to play QuickTime when advertised as "video/quicktime", so
-// inline players advertise it as "video/mp4" (same ISO base media format).
-export const getInlinePlaybackMimeType = (mimeType: string) =>
-  mimeType == "video/quicktime" ? "video/mp4" : undefined;

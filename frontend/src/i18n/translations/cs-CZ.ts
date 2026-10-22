@@ -277,7 +277,6 @@ export default {
   "admin.shares.diskUsage": "Využití disku",
   "admin.shares.table.id": "ID sdílení",
   "admin.shares.table.username": "Autor",
-  "admin.shares.table.uploadDate": "Datum nahrání",
   "admin.shares.table.visitors": "Návštěvníci",
   "admin.shares.table.expires": "Vyprší",
   "admin.shares.table.deletes": "Smaže se dne",

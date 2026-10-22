@@ -23,6 +23,16 @@ import showShareInformationsModal from "../../share/showShareInformationsModal";
 import showShareLinkModal from "../../account/showShareLinkModal";
 import { HoverTip } from "../../core/HoverTip";
 
+const SORTABLE_COLUMNS: [id: string, property: string][] = [
+  ["account.shares.table.id", "id"],
+  ["account.shares.table.name", "name"],
+  ["admin.shares.table.username", "username"],
+  ["admin.shares.table.uploadDate", "createdAt"],
+  ["account.shares.table.visitors", "views"],
+  ["account.shares.table.size", "size"],
+  ["account.shares.table.expiresAt", "expiration"],
+];
+
 const ManageShareTable = ({
   shares,
   updateShare,
@@ -52,54 +62,19 @@ const ManageShareTable = ({
       <Table verticalSpacing="sm">
         <thead>
           <tr>
-            <SortableTh
-              id="account.shares.table.id"
-              property="id"
-              sort={sort}
-              setSort={setSort}
-            />
-            <SortableTh
-              id="account.shares.table.name"
-              property="name"
-              sort={sort}
-              setSort={setSort}
-            />
-            <SortableTh
-              id="admin.shares.table.username"
-              property="username"
-              sort={sort}
-              setSort={setSort}
-            />
-            <SortableTh
-              id="admin.shares.table.uploadDate"
-              property="createdAt"
-              sort={sort}
-              setSort={setSort}
-            />
-            <SortableTh
-              id="account.shares.table.visitors"
-              property="views"
-              sort={sort}
-              setSort={setSort}
-            />
-            <SortableTh
-              id="account.shares.table.size"
-              property="size"
-              sort={sort}
-              setSort={setSort}
-            />
-            <SortableTh
-              id="account.shares.table.expiresAt"
-              property="expiration"
-              sort={sort}
-              setSort={setSort}
-            />
-            {fileRetentionEnabled ? (
+            {SORTABLE_COLUMNS.map(([id, property]) => (
+              <SortableTh
+                key={property}
+                id={id}
+                property={property}
+                sort={sort}
+                setSort={setSort}
+              />
+            ))}
+            {fileRetentionEnabled && (
               <th>
                 <FormattedMessage id="admin.shares.table.deletes" />
               </th>
-            ) : (
-              <></>
             )}
             <th></th>
           </tr>
@@ -142,7 +117,7 @@ const ManageShareTable = ({
                     <></>
                   )}
                   <td>
-                    <Group position="right">
+                    <Group position="right" noWrap>
                       <HoverTip label={t("common.button.info")}>
                         <ActionIcon
                           color="blue"

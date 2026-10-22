@@ -37,34 +37,23 @@ const cacheHeaders = (value) => [
   { key: "Cloudflare-CDN-Cache-Control", value },
 ];
 
+// Hashed build output and content-hashed Workbox bundles never change for a
+// given URL. Logos, favicons and PWA icons can be replaced from the admin UI.
+// The service worker must be revalidated so new builds are picked up.
+const CACHE_RULES = [
+  ["/_next/static/:path*", "public, max-age=31536000, immutable"],
+  ["/img/:path*", "public, max-age=2592000"],
+  ["/favicon.ico", "public, max-age=2592000"],
+  ["/sw.js", "no-cache"],
+  ["/workbox-:path*", "public, max-age=31536000, immutable"],
+];
+
 module.exports = withPWA({
   async headers() {
-    return [
-      {
-        // Hashed build output never changes for a given URL.
-        source: "/_next/static/:path*",
-        headers: cacheHeaders("public, max-age=31536000, immutable"),
-      },
-      {
-        // Logos, favicons and PWA icons can be replaced from the admin UI.
-        source: "/img/:path*",
-        headers: cacheHeaders("public, max-age=2592000"),
-      },
-      {
-        source: "/favicon.ico",
-        headers: cacheHeaders("public, max-age=2592000"),
-      },
-      {
-        // The service worker must be revalidated so new builds are picked up.
-        source: "/sw.js",
-        headers: cacheHeaders("no-cache"),
-      },
-      {
-        // Workbox bundles are content-hashed.
-        source: "/workbox-:path*",
-        headers: cacheHeaders("public, max-age=31536000, immutable"),
-      },
-    ];
+    return CACHE_RULES.map(([source, value]) => ({
+      source,
+      headers: cacheHeaders(value),
+    }));
   },
   transpilePackages: ["@uiw/react-md-editor", "@uiw/react-markdown-preview"],
   output: "standalone",

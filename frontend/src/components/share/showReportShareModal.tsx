@@ -20,12 +20,7 @@ const REPORT_REASONS = [
   "Other",
 ] as const;
 
-const REPORT_OTHER = "Other";
-
-const showReportShareModal = (
-  modals: ModalsContextProps,
-  shareId: string,
-) => {
+const showReportShareModal = (modals: ModalsContextProps, shareId: string) => {
   const t = translateOutsideContext();
   return modals.openModal({
     title: t("share.report.modal.title"),
@@ -40,9 +35,10 @@ const Body = ({ shareId }: { shareId: string }) => {
   const form = useForm({
     initialValues: { reason: null as string | null, message: "" },
     validate: {
-      reason: (value) => (value ? null : t("share.report.modal.error.no-reason")),
+      reason: (value) =>
+        value ? null : t("share.report.modal.error.no-reason"),
       message: (value, values) =>
-        values.reason === REPORT_OTHER && !value.trim()
+        values.reason === "Other" && !value.trim()
           ? t("share.report.modal.error.no-message")
           : null,
     },

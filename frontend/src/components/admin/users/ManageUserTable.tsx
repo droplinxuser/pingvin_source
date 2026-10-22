@@ -33,54 +33,45 @@ const ManageUserTable = ({
   const showDisplayName = users.some((user) => !!user.displayName);
   const showStorageQuota = users.some((user) => !!user.storageQuotaLimit);
   const showMaxShareSize = users.some((user) => !!user.shareSizeLimit);
+  const columns: [id: string, property: string][] = [
+    ...(showDisplayName
+      ? [["admin.users.table.displayName", "displayName"] as [string, string]]
+      : []),
+    ["admin.users.table.username", "username"],
+    ["admin.users.table.email", "email"],
+    ["admin.users.table.admin", "isAdmin"],
+    ...(showStorageQuota
+      ? [
+          ["admin.users.table.storageQuota", "storageQuotaLimit"] as [
+            string,
+            string,
+          ],
+        ]
+      : []),
+    ...(showMaxShareSize
+      ? [
+          ["admin.users.table.maxShareSize", "shareSizeLimit"] as [
+            string,
+            string,
+          ],
+        ]
+      : []),
+  ];
 
   return (
     <Box sx={{ display: "block", overflowX: "auto" }}>
       <Table verticalSpacing="sm">
         <thead>
           <tr>
-            {showDisplayName && (
+            {columns.map(([id, property]) => (
               <SortableTh
-                id="admin.users.table.displayName"
-                property="displayName"
+                key={property}
+                id={id}
+                property={property}
                 sort={sort}
                 setSort={setSort}
               />
-            )}
-            <SortableTh
-              id="admin.users.table.username"
-              property="username"
-              sort={sort}
-              setSort={setSort}
-            />
-            <SortableTh
-              id="admin.users.table.email"
-              property="email"
-              sort={sort}
-              setSort={setSort}
-            />
-            <SortableTh
-              id="admin.users.table.admin"
-              property="isAdmin"
-              sort={sort}
-              setSort={setSort}
-            />
-            {showStorageQuota && (
-              <SortableTh
-                id="admin.users.table.storageQuota"
-                property="storageQuotaLimit"
-                sort={sort}
-                setSort={setSort}
-              />
-            )}
-            {showMaxShareSize && (
-              <SortableTh
-                id="admin.users.table.maxShareSize"
-                property="shareSizeLimit"
-                sort={sort}
-                setSort={setSort}
-              />
-            )}
+            ))}
             <th></th>
           </tr>
         </thead>

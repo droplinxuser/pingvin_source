@@ -277,7 +277,6 @@ export default {
   "admin.shares.diskUsage": "Dung lượng đĩa đã dùng",
   "admin.shares.table.id": "ID chia sẻ",
   "admin.shares.table.username": "Người tạo",
-  "admin.shares.table.uploadDate": "Ngày tải lên",
   "admin.shares.table.visitors": "Lượng truy cập",
   "admin.shares.table.expires": "Hết hạn vào",
   "admin.shares.table.deletes": "Xóa vào",

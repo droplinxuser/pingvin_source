@@ -277,7 +277,6 @@ export default {
   "admin.shares.diskUsage": "Diskforbrug",
   "admin.shares.table.id": "Delings-ID",
   "admin.shares.table.username": "Ejer",
-  "admin.shares.table.uploadDate": "Uploaddato",
   "admin.shares.table.visitors": "Besøgende",
   "admin.shares.table.expires": "Udløber",
   "admin.shares.table.deletes": "Slettes den",

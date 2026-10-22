@@ -51,7 +51,7 @@ export const SortableTh = ({
   setSort: Dispatch<SetStateAction<TableSort>>;
 }) => (
   <th>
-    <Group spacing="xs">
+    <Group spacing="xs" noWrap>
       <FormattedMessage id={id} />
       <TableSortIcon sort={sort} setSort={setSort} property={property} />
     </Group>

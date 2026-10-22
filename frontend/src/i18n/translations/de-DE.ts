@@ -277,7 +277,6 @@ export default {
   "admin.shares.diskUsage": "Festplattenbelegung",
   "admin.shares.table.id": "Freigabe ID",
   "admin.shares.table.username": "Ersteller",
-  "admin.shares.table.uploadDate": "Hochladedatum",
   "admin.shares.table.visitors": "Besucher",
   "admin.shares.table.expires": "Läuft ab am",
   "admin.shares.table.deletes": "Wird gelöscht am",

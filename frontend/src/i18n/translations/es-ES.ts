@@ -277,7 +277,6 @@ export default {
   "admin.shares.diskUsage": "Uso del disco",
   "admin.shares.table.id": "ID de compartición",
   "admin.shares.table.username": "Creador",
-  "admin.shares.table.uploadDate": "Fecha de subida",
   "admin.shares.table.visitors": "Visitantes",
   "admin.shares.table.expires": "Vence el",
   "admin.shares.table.deletes": "Borrado el",

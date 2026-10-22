@@ -35,9 +35,11 @@ if [ -f backend/.env ]; then
 fi
 git pull --ff-only
 if [ -n "$ENV_BACKUP" ]; then
-  cp "$ENV_BACKUP" backend/.env
+  cp -p "$ENV_BACKUP" backend/.env
   rm -f "$ENV_BACKUP"
 fi
+# An untracked manifest.json from older builds would shadow the dynamic route.
+rm -f frontend/public/manifest.json
 
 # Re-exec the freshly pulled version of this script so the remainder always
 # runs the up-to-date code (the pull may have updated this file itself).
@@ -65,6 +67,7 @@ echo "==> Preparing data directory and backend/.env"
 mkdir -p "$DATA_DIR"
 ENV_FILE="$SRC_DIR/backend/.env"
 touch "$ENV_FILE"
+chmod 600 "$ENV_FILE"
 set_env() {
   if grep -q "^$1=" "$ENV_FILE"; then
     sed -i "s|^$1=.*|$1=$2|" "$ENV_FILE"

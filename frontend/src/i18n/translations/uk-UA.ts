@@ -277,7 +277,6 @@ export default {
   "admin.shares.diskUsage": "Використання диска",
   "admin.shares.table.id": "ID Завантаження",
   "admin.shares.table.username": "Автор",
-  "admin.shares.table.uploadDate": "Дата завантаження",
   "admin.shares.table.visitors": "Відвідувачі",
   "admin.shares.table.expires": "Діє до",
   "admin.shares.table.deletes": "Видалиться",
