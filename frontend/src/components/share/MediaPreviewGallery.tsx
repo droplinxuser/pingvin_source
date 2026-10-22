@@ -19,6 +19,7 @@ import {
   byteToHumanSizeString,
   MAX_INLINE_FILE_SIZE,
 } from "../../utils/fileSize.util";
+import { getBaseName } from "../../utils/file.util";
 import { HoverTip } from "../core/HoverTip";
 import {
   AudioPreview,
@@ -26,17 +27,6 @@ import {
   ImagePreview,
   VideoPreview,
 } from "./FilePreview";
-
-const renderFileName = (name: string) => {
-  const separator = name.lastIndexOf("/");
-  if (separator == -1) return name;
-  return (
-    <span>
-      <span style={{ opacity: 0.5 }}>{name.slice(0, separator + 1)}</span>
-      <span style={{ fontWeight: 600 }}>{name.slice(separator + 1)}</span>
-    </span>
-  );
-};
 
 // Images are fully fetched by the browser as soon as they are rendered, so
 // they are only embedded when reasonably small; videos and audio are streamed
@@ -144,6 +134,7 @@ const MediaPreviewCard = ({
 }) => {
   const [isNotSupported, setIsNotSupported] = useState(false);
   const t = useTranslate();
+  const fileName = getBaseName(file.name);
 
   const fileUrl = `/api/shares/${shareId}/files/${file.id}?download=false`;
 
@@ -168,8 +159,8 @@ const MediaPreviewCard = ({
 
       <Group position="apart" spacing="xs" mt="sm" noWrap>
         <Box sx={{ minWidth: 0 }}>
-          <Text size="sm" truncate title={file.name}>
-            {renderFileName(file.name)}
+          <Text size="sm" truncate title={fileName}>
+            {fileName}
           </Text>
           <Text size="xs" color="dimmed">
             {byteToHumanSizeString(parseInt(file.size))}

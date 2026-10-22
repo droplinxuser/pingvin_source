@@ -3,6 +3,9 @@ export const getNormalizedFileName = (file: File): string => {
   return pathName.replace(/\\/g, "/").replace(/^\//, "");
 };
 
+export const getBaseName = (pathName: string): string =>
+  pathName.replace(/\\/g, "/").split("/").pop() || pathName;
+
 export const filterDuplicateFiles = <T extends File>(
   newFiles: T[],
   existingFilesList: Array<{

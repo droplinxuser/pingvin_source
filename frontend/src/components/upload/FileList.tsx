@@ -1,9 +1,10 @@
-import { ActionIcon, Table, Group } from "@mantine/core";
+import { ActionIcon, Table, Group, Text } from "@mantine/core";
 import { useModals } from "@mantine/modals";
 import { TbTrash, TbEdit } from "react-icons/tb";
 import { GrUndo } from "react-icons/gr";
 import { FileListItem } from "../../types/File.type";
 import { byteToHumanSizeString } from "../../utils/fileSize.util";
+import { getBaseName } from "../../utils/file.util";
 import UploadProgressIndicator from "./UploadProgressIndicator";
 import { FormattedMessage } from "react-intl";
 import useTranslate from "../../hooks/useTranslate.hook";
@@ -12,15 +13,11 @@ import showTextEditorModal from "./modals/showTextEditorModal";
 import shareService from "../../services/share.service";
 
 const renderFileName = (name: string) => {
-  const parts = name.split("/");
-  if (parts.length === 1) return name;
-  const fileName = parts.pop();
-  const folderPath = parts.join("/");
+  const fileName = getBaseName(name);
   return (
-    <span>
-      <span style={{ opacity: 0.5 }}>{folderPath}/</span>
-      <span style={{ fontWeight: 600 }}>{fileName}</span>
-    </span>
+    <Text size="sm" truncate title={fileName}>
+      {fileName}
+    </Text>
   );
 };
 
@@ -65,8 +62,10 @@ const FileListRow = ({
           textDecoration: deleted ? "line-through" : "none",
         }}
       >
-        <td>{renderFileName(fileNameOrPath)}</td>
-        <td>{byteToHumanSizeString(+file.size)}</td>
+        <td style={{ maxWidth: 0 }}>{renderFileName(fileNameOrPath)}</td>
+        <td style={{ whiteSpace: "nowrap" }}>
+          {byteToHumanSizeString(+file.size)}
+        </td>
         <td>
           <Group position="right" spacing="xs" noWrap>
             {editable && (
@@ -168,7 +167,7 @@ const FileList = <T extends FileListItem = FileListItem>({
     <Table>
       <thead>
         <tr>
-          <th>
+          <th style={{ width: "100%" }}>
             <FormattedMessage id="upload.filelist.name" />
           </th>
           <th>

@@ -5,6 +5,7 @@ import {
   Skeleton,
   Stack,
   Table,
+  Text,
   TextInput,
 } from "@mantine/core";
 import { useClipboard } from "@mantine/hooks";
@@ -21,6 +22,7 @@ import {
   byteToHumanSizeString,
   MAX_INLINE_FILE_SIZE,
 } from "../../utils/fileSize.util";
+import { getBaseName } from "../../utils/file.util";
 import toast from "../../utils/toast.util";
 import TableSortIcon, { TableSort } from "../core/SortIcon";
 import showFilePreviewModal from "./modals/showFilePreviewModal";
@@ -28,15 +30,11 @@ import { HoverTip } from "../core/HoverTip";
 import api from "../../services/api.service";
 
 const renderFileName = (name: string) => {
-  const parts = name.split("/");
-  if (parts.length === 1) return name;
-  const fileName = parts.pop();
-  const folderPath = parts.join("/");
+  const fileName = getBaseName(name);
   return (
-    <span>
-      <span style={{ opacity: 0.5 }}>{folderPath}/</span>
-      <span style={{ fontWeight: 600 }}>{fileName}</span>
-    </span>
+    <Text size="sm" truncate title={fileName}>
+      {fileName}
+    </Text>
   );
 };
 
@@ -114,14 +112,14 @@ const FileList = ({
       <Table>
         <thead>
           <tr>
-            <th>
-              <Group spacing="xs">
+            <th style={{ width: "100%" }}>
+              <Group spacing="xs" noWrap>
                 <FormattedMessage id="share.table.name" />
                 <TableSortIcon sort={sort} setSort={setSort} property="name" />
               </Group>
             </th>
             <th>
-              <Group spacing="xs">
+              <Group spacing="xs" noWrap>
                 <FormattedMessage id="share.table.size" />
                 <TableSortIcon sort={sort} setSort={setSort} property="size" />
               </Group>
@@ -134,8 +132,10 @@ const FileList = ({
             ? skeletonRows
             : files!.map((file) => (
                 <tr key={file.name}>
-                  <td>{renderFileName(file.name)}</td>
-                  <td>{byteToHumanSizeString(parseInt(file.size))}</td>
+                  <td style={{ maxWidth: 0 }}>{renderFileName(file.name)}</td>
+                  <td style={{ whiteSpace: "nowrap" }}>
+                    {byteToHumanSizeString(parseInt(file.size))}
+                  </td>
                   <td>
                     <Group position="right" noWrap>
                       {shareService.isShareTextFile(file.name) && (
