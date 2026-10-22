@@ -1,4 +1,5 @@
 import { Logger } from "@nestjs/common";
+import * as Bowser from "bowser";
 import { Request } from "express";
 import { promises as fs } from "fs";
 import { dirname, join } from "path";
@@ -41,31 +42,13 @@ export type UploaderInfo = Partial<Record<(typeof FIELDS)[number], string>> & {
   visitors?: ShareVisitor[];
 };
 
-type Rule = [RegExp, string, string?];
-
-const OS_RULES: Rule[] = [
-  [/Windows NT 10\.0/, "Windows", "10/11"],
-  [/Windows NT ([\d.]+)/, "Windows"],
-  [/(?:iPhone|iPad|iPod).*OS ([\d_]+)/, "iOS"],
-  [/Android[ /]([\d.]+)/, "Android"],
-  [/Mac OS X ([\d_]+)/, "macOS"],
-  [/CrOS/, "ChromeOS"],
-  [/Linux/, "Linux"],
-];
-
-const BROWSER_RULES: Rule[] = [
-  [/Edg(?:e|A|iOS)?\/([\d.]+)/, "Edge"],
-  [/OPR\/([\d.]+)/, "Opera"],
-  [/SamsungBrowser\/([\d.]+)/, "Samsung Internet"],
-  [/Brave\/([\d.]+)/, "Brave"],
-  [/CriOS\/([\d.]+)/, "Chrome"],
-  [/FxiOS\/([\d.]+)/, "Firefox"],
-  [/Firefox\/([\d.]+)/, "Firefox"],
-  [/Chrome\/([\d.]+)/, "Chrome"],
-  [/Version\/([\d.]+).*Safari/, "Safari"],
-  [/Safari\/([\d.]+)/, "Safari"],
-];
-
+const OS_NAMES: Record<string, string> = {
+  "chrome os": "ChromeOS",
+};
+const BROWSER_NAMES: Record<string, string> = {
+  "Microsoft Edge": "Edge",
+  "Samsung Internet for Android": "Samsung Internet",
+};
 const PLATFORM_NAMES: Record<string, string> = {
   windows: "Windows",
   macos: "macOS",
@@ -104,38 +87,42 @@ function getHeader(request: Request, name: string): string | undefined {
   return header ? decodeText(header) : undefined;
 }
 
-function matchRule(userAgent: string, rules: Rule[]) {
-  for (const [pattern, name, fixedVersion] of rules) {
-    const match = userAgent.match(pattern);
-    if (match) {
-      return {
-        name,
-        version: fixedVersion ?? match[1]?.replaceAll("_", "."),
-      };
-    }
-  }
-}
-
 function parseUserAgent(
   userAgent = "",
   platform?: string,
   mobileHint?: string,
 ) {
-  const os = matchRule(userAgent, OS_RULES);
-  const browser = matchRule(userAgent, BROWSER_RULES);
-  const platformName = platform?.replaceAll('"', "").toLowerCase();
-  const finalOs = os?.name ?? PLATFORM_NAMES[platformName ?? ""];
+  const parsed = userAgent ? Bowser.parse(userAgent) : undefined;
+  const platformName = platform?.replaceAll('"', "").trim().toLowerCase();
+  const parsedOs = parsed?.os.name;
+  const osName = parsedOs
+    ? (OS_NAMES[parsedOs.toLowerCase()] ?? parsedOs)
+    : PLATFORM_NAMES[platformName ?? ""];
+  const braveVersion = userAgent.match(/Brave\/([\d.]+)/)?.[1];
+  const parsedBrowser = parsed?.browser.name;
+  const browserName = braveVersion
+    ? "Brave"
+    : parsedBrowser
+      ? (BROWSER_NAMES[parsedBrowser] ?? parsedBrowser)
+      : undefined;
 
   return {
-    browser: browser?.name,
-    browserVersion: browser?.version,
-    os: finalOs,
-    osVersion: os && finalOs === os.name ? os.version : undefined,
-    deviceType: /iPad|Tablet/i.test(userAgent)
-      ? "tablet"
-      : mobileHint === "?1" || /Mobi|Android|iPhone/i.test(userAgent)
-        ? "mobile"
-        : "desktop",
+    browser: browserName,
+    browserVersion: braveVersion ?? parsed?.browser.version,
+    os: osName,
+    osVersion:
+      osName === "Windows"
+        ? "10/11"
+        : parsedOs
+          ? parsed.os.version
+          : undefined,
+    deviceType:
+      parsed?.platform.type ??
+      (/iPad|Tablet/i.test(userAgent)
+        ? "tablet"
+        : mobileHint === "?1" || /Mobi|Android|iPhone/i.test(userAgent)
+          ? "mobile"
+          : "desktop"),
   };
 }
 
@@ -240,65 +227,48 @@ export async function readUploaderInfo(
   const filePath = getUploaderInfoPath(shareId);
   if (!filePath) return null;
 
+  let parsed: Record<string, unknown>;
   try {
-    const parsed = JSON.parse(await fs.readFile(filePath, "utf8")) as Record<
-      string,
-      unknown
-    >;
-    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed))
-      return null;
-
-    let repaired = false;
-    const decode = (value: string) => {
-      const decoded = decodeText(value);
-      if (decoded !== value) repaired = true;
-      return decoded;
-    };
-    const getText = (field: string) => {
-      const value = parsed[field];
-      return typeof value === "string" ? decode(value) : undefined;
-    };
-    const readVisitor = (value: unknown): ShareVisitor | null => {
-      if (!value || typeof value !== "object" || Array.isArray(value))
-        return null;
-
-      const record = value as Record<string, unknown>;
-      const visitor = Object.fromEntries(
-        VISITOR_FIELDS.flatMap((field) => {
-          const text = record[field];
-          return typeof text === "string" ? [[field, decode(text)]] : [];
-        }),
-      ) as ShareVisitor;
-
-      return visitor.createdAt ? visitor : null;
-    };
-
-    // Keep only supported Cloudflare fields and repair older mojibake values.
-    const info = Object.fromEntries(
-      FIELDS.flatMap((field) => {
-        const value = getText(field);
-        return value !== undefined ? [[field, value]] : [];
-      }),
-    ) as unknown as UploaderInfo;
-
-    info.createdAt = info.createdAt ?? new Date().toISOString();
-    if (
-      typeof parsed.views === "number" &&
-      Number.isFinite(parsed.views) &&
-      parsed.views >= 0
-    ) {
-      info.views = Math.floor(parsed.views);
-    }
-    if (Array.isArray(parsed.visitors)) {
-      info.visitors = parsed.visitors
-        .map(readVisitor)
-        .filter((visitor): visitor is ShareVisitor => visitor !== null)
-        .slice(-MAX_VISITORS);
-    }
-
-    if (repaired) await writeUploaderInfo(shareId, info);
-    return info;
+    parsed = JSON.parse(await fs.readFile(filePath, "utf8"));
   } catch {
     return null;
   }
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed))
+    return null;
+
+  let repaired = false;
+  const pick = (fields: readonly string[], source: Record<string, unknown>) =>
+    Object.fromEntries(
+      fields.flatMap((field) => {
+        const value = source[field];
+        if (typeof value !== "string") return [];
+        const decoded = decodeText(value);
+        if (decoded !== value) repaired = true;
+        return [[field, decoded]];
+      }),
+    );
+
+  // Keep only supported Cloudflare fields and repair older mojibake values.
+  const info = pick(FIELDS, parsed) as unknown as UploaderInfo;
+  info.createdAt = info.createdAt ?? new Date().toISOString();
+  if (
+    typeof parsed.views === "number" &&
+    Number.isFinite(parsed.views) &&
+    parsed.views >= 0
+  ) {
+    info.views = Math.floor(parsed.views);
+  }
+  if (Array.isArray(parsed.visitors)) {
+    info.visitors = parsed.visitors
+      .filter(
+        (visitor): visitor is Record<string, unknown> =>
+          !!visitor && typeof visitor === "object" && !Array.isArray(visitor),
+      )
+      .map((visitor) => pick(VISITOR_FIELDS, visitor) as ShareVisitor)
+      .filter((visitor) => !!visitor.createdAt)
+      .slice(-MAX_VISITORS);
+  }
+
+  if (repaired) await writeUploaderInfo(shareId, info);
+  return info;
 }

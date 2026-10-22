@@ -12,7 +12,7 @@ import { ConfigService } from "src/config/config.service";
 import { FileService } from "src/file/file.service";
 import { PrismaService } from "src/prisma/prisma.service";
 import { getDefaultShareExpiration } from "src/utils/date.util";
-import { invalidateShareCaches } from "src/utils/shareCache.util";
+import { invalidateShareDataCache } from "src/utils/cache.util";
 import { CreateReverseShareDTO } from "./dto/createReverseShare.dto";
 
 @Injectable()
@@ -159,7 +159,7 @@ export class ReverseShareService {
 
     await this.prisma.reverseShare.delete({ where: { id } });
     await Promise.all(
-      shares.map((share) => invalidateShareCaches(this.cache, share.id)),
+      shares.map((share) => invalidateShareDataCache(this.cache, share.id)),
     );
   }
 }

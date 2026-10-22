@@ -16,7 +16,7 @@ so `git merge upstream/main` stays small.
 | Inline media gallery | `frontend/src/components/share/MediaPreviewGallery.tsx` reuses `FilePreview.tsx` |
 | Cache headers / hotlink protection | `backend/src/utils/cache.util.ts`, `backend/src/utils/referrer.util.ts`, `frontend/src/middleware.ts`, `frontend/next.config.js` |
 | Per-visitor rate limiting | `backend/src/utils/visitorIdentity.util.ts`, `backend/src/cache/valkeyThrottler.storage.ts`, `backend/src/cache/throttler.config.ts`, `backend/src/main.ts` |
-| Valkey/Redis share cache | `backend/src/utils/shareCache.util.ts`, `backend/src/share/shareState.service.ts`, `backend/src/cache/cache.module.ts` |
+| Valkey/Redis share cache | `backend/src/utils/cache.util.ts`, `backend/src/share/shareState.service.ts`, `backend/src/cache/cache.module.ts` |
 | Site stats and footer | `backend/src/system/system.service.ts`, `frontend/src/components/footer/Footer.tsx` |
 | Home copy and ads | `frontend/src/pages/index.tsx` (upstream layout), `home.custom.*` keys in `en-US.ts`, `frontend/src/components/Ads.tsx` |
 | Fork branding / deployment | `frontend/public/img/**`, `frontend/src/pages/manifest.json.tsx`, `pingvin-*.service`, `update.sh` |
@@ -71,11 +71,11 @@ other languages show the upstream copy instead of the English fallback.
 - Valkey/Redis is optional but recommended: set `CACHE_REDIS_ENABLED=true` and
   `CACHE_REDIS_URL=redis://127.0.0.1:6379` in `backend/.env` (`update.sh`
   enables both automatically when a local `valkey-server` is active). Share-page data
-  is cached for 30s; uploader metadata is cached for 5min; visitor writes to
-  `uploader.json` are debounced to at most one write per 5s per share. All
-  cache operations fail open, and share updates/deletes/expiry/ClamAV removal
-  invalidate the cache. View increments remain one SQLite write per page view;
-  the rolling expiration write is reduced to one per 30s cache miss.
+  is cached for 30s; visitor writes to `uploader.json` are debounced to at most
+  one write per 5s per share. All cache operations fail open, and share
+  updates/deletes/expiry/ClamAV removal invalidate the cache. View increments
+  remain one SQLite write per page view; the rolling expiration write is
+  reduced to one per 30s cache miss.
 - `update.sh` pulls origin/main, preserves `backend/.env`, reinstalls and
   rebuilds both packages, syncs legacy view counts, installs the systemd units,
   runs migrations/seeding through the backend restart, and restarts the
@@ -104,6 +104,11 @@ login can loop between `/upload` and `/auth/signIn`.
 - Backend started with `npm run prod` against a copy of
   `/home/rt/Documents/pingvin-share.db`; migrations were already current and
   the seed completed. The source backup passes `PRAGMA integrity_check`.
+- Refactor regression suite (2026-10-23): 9 backend unit tests and production
+  builds pass on Node `22.23.3`; 15 Playwright checks against a copy of the live
+  database cover guest/user/admin flows, upload, analytics, reporting, the
+  max-view limit and admin delete. Reverse-share creation, the 429 UI, hotlink
+  protection and year-long file cache headers were also verified.
 - Browser tests (48 guest/user/admin checks plus 24 security/reverse-share
   checks): home, guest + password sign-in, upload, file and ZIP downloads,
   text and image previews, inline gallery, uploader badges, share report

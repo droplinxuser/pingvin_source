@@ -8,3 +8,20 @@ export function parsePagination(page: string, pageSize: string) {
   const size = Math.min(Math.max(parseInt(pageSize) || 20, 1), 100);
   return { page: pageNum, pageSize: size, skip: (pageNum - 1) * size };
 }
+
+/**
+ * Maps the sortBy query parameter to a Prisma orderBy clause. Unknown fields
+ * return undefined so the caller can use its default order.
+ */
+export function tableOrderBy<T extends string>(
+  fields: Record<string, T>,
+  sortBy?: string,
+  sortDirection?: string,
+): Record<T, "asc" | "desc"> | undefined {
+  const field = sortBy ? fields[sortBy] : undefined;
+  return field
+    ? ({
+        [field]: sortDirection === "asc" ? "asc" : "desc",
+      } as Record<T, "asc" | "desc">)
+    : undefined;
+}

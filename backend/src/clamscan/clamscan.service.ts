@@ -6,7 +6,7 @@ import * as fs from "fs";
 import { Readable } from "stream";
 import { FileService } from "src/file/file.service";
 import { PrismaService } from "src/prisma/prisma.service";
-import { invalidateShareCaches } from "src/utils/shareCache.util";
+import { invalidateShareDataCache } from "src/utils/cache.util";
 import { CLAMAV_HOST, CLAMAV_PORT, SHARE_DIRECTORY } from "../constants";
 
 const clamscanConfig = {
@@ -147,7 +147,7 @@ export class ClamScanService {
             removedReason: `Your share got removed because the file(s) ${fileNames} are malicious.`,
           },
         });
-        await invalidateShareCaches(this.cache, shareId);
+        await invalidateShareDataCache(this.cache, shareId);
 
         this.logger.warn(
           `Share ${shareId} deleted because it contained ${infectedFiles.length} malicious file(s)`,

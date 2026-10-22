@@ -4,6 +4,7 @@ import { Cache } from "cache-manager";
 import checkDiskSpace from "check-disk-space";
 import { DATA_DIRECTORY } from "src/constants";
 import { PrismaService } from "src/prisma/prisma.service";
+import { getCachedValue, setCachedValue } from "src/utils/cache.util";
 import { SystemInfoDTO } from "./dto/systemInfo.dto";
 import { ConfigService } from "src/config/config.service";
 import * as path from "path";
@@ -29,12 +30,11 @@ export class SystemService {
   ) {}
 
   async getSystemStats(): Promise<SystemStats> {
-    try {
-      const cached = await this.cache.get<SystemStats>(SYSTEM_STATS_CACHE_KEY);
-      if (cached) return cached;
-    } catch {
-      // The stats endpoint must keep working if Valkey is unavailable.
-    }
+    const cached = await getCachedValue<SystemStats>(
+      this.cache,
+      SYSTEM_STATS_CACHE_KEY,
+    );
+    if (cached) return cached;
 
     const [userCount, shareCount, fileCount] = await Promise.all([
       this.prisma.user.count(),
@@ -53,11 +53,12 @@ export class SystemService {
       storageSizeBytes: Number(sizeRows[0]?.total ?? 0),
     };
 
-    try {
-      await this.cache.set(SYSTEM_STATS_CACHE_KEY, stats, SYSTEM_STATS_CACHE_TTL);
-    } catch {
-      // The stats endpoint must keep working if Valkey is unavailable.
-    }
+    await setCachedValue(
+      this.cache,
+      SYSTEM_STATS_CACHE_KEY,
+      stats,
+      SYSTEM_STATS_CACHE_TTL,
+    );
     return stats;
   }
 

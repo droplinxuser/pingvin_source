@@ -1,5 +1,4 @@
 import { BadRequestException, Injectable, Logger } from "@nestjs/common";
-import { Prisma } from "@prisma/client";
 import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library";
 import * as argon from "argon2";
 import * as crypto from "crypto";
@@ -11,6 +10,7 @@ import { PrismaService } from "src/prisma/prisma.service";
 import { inspect } from "util";
 import { ConfigService } from "../config/config.service";
 import { FileService } from "../file/file.service";
+import { tableOrderBy } from "../utils/pagination.util";
 import { CreateUserDTO } from "./dto/createUser.dto";
 import { UpdateUserDto } from "./dto/updateUser.dto";
 
@@ -62,21 +62,10 @@ export class UserSevice {
     return await this.prisma.user.findMany({
       take,
       skip,
-      orderBy: this.getUsersOrderBy(sortBy, sortDirection) ?? {
+      orderBy: tableOrderBy(USER_SORT_FIELDS, sortBy, sortDirection) ?? {
         createdAt: "desc",
       },
     });
-  }
-
-  private getUsersOrderBy(
-    sortBy?: string,
-    sortDirection?: string,
-  ): Prisma.UserOrderByWithRelationInput | undefined {
-    const direction = sortDirection === "asc" ? "asc" : "desc";
-    const field = USER_SORT_FIELDS[sortBy as keyof typeof USER_SORT_FIELDS];
-    return field
-      ? ({ [field]: direction } as Prisma.UserOrderByWithRelationInput)
-      : undefined;
   }
 
   async count() {

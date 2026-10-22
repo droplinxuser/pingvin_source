@@ -2,10 +2,10 @@ import {
   Badge,
   Box,
   Card,
-  createStyles,
   Divider,
   Group,
   Paper,
+  SimpleGrid,
   Text,
   ThemeIcon,
 } from "@mantine/core";
@@ -22,36 +22,6 @@ import {
   getOsIcon,
 } from "./UploaderInfoBadges";
 
-const useStyles = createStyles((theme) => ({
-  panel: {
-    position: "relative",
-    background:
-      theme.colorScheme === "dark"
-        ? `linear-gradient(145deg, ${theme.colors.dark[6]} 0%, ${theme.colors.dark[7]} 100%)`
-        : `linear-gradient(145deg, ${theme.white} 0%, ${theme.colors.gray[0]} 100%)`,
-  },
-
-  visitor: {
-    backgroundColor:
-      theme.colorScheme === "dark"
-        ? theme.fn.rgba(theme.colors.dark[5], 0.55)
-        : theme.fn.rgba(theme.white, 0.75),
-    transition: "transform 160ms ease, border-color 160ms ease",
-    "&:hover": {
-      transform: "translateY(-1px)",
-      borderColor:
-        theme.colors[theme.primaryColor][theme.colorScheme === "dark" ? 6 : 5],
-    },
-  },
-
-  flag: {
-    fontSize: 20,
-    lineHeight: 1,
-    fontFamily:
-      "Apple Color Emoji, Segoe UI Emoji, Noto Color Emoji, Twemoji Mozilla, sans-serif",
-  },
-}));
-
 const MAX_VISITORS = 20;
 
 const iconStyle = {
@@ -61,14 +31,13 @@ const iconStyle = {
 } as const;
 
 const ShareStats = ({ share }: { share: Share }) => {
-  const { classes } = useStyles();
   const t = useTranslate();
   const intl = useIntl();
   const visitors = [...(share.uploaderInfo?.visitors ?? [])].reverse();
   const views = share.views ?? 0;
 
   return (
-    <Paper className={classes.panel} radius="md" p="sm" mt="lg" withBorder>
+    <Paper radius="md" p="sm" mt="lg" withBorder>
       <Group position="apart" align="center" spacing="md">
         <Group spacing="xs" align="center" noWrap>
           <ThemeIcon size={34} radius="sm" variant="light">
@@ -106,13 +75,10 @@ const ShareStats = ({ share }: { share: Share }) => {
           </Text>
         </Box>
       ) : (
-        <Box
-          sx={(theme) => ({
-            display: "grid",
-            gridTemplateColumns:
-              "repeat(auto-fill, minmax(min(100%, 290px), 1fr))",
-            gap: theme.spacing.xs,
-          })}
+        <SimpleGrid
+          cols={1}
+          spacing="xs"
+          breakpoints={[{ minWidth: "sm", cols: 2 }]}
         >
           {visitors.map((visitor, index) => {
             const countryName = visitor.country
@@ -125,7 +91,6 @@ const ShareStats = ({ share }: { share: Share }) => {
             return (
               <Card
                 key={`${visitor.createdAt}-${index}`}
-                className={classes.visitor}
                 radius="sm"
                 px="xs"
                 py={7}
@@ -133,7 +98,7 @@ const ShareStats = ({ share }: { share: Share }) => {
               >
                 <Group position="apart" align="center" noWrap spacing="xs">
                   <Group spacing={8} noWrap sx={{ minWidth: 0, flex: 1 }}>
-                    <Text className={classes.flag} aria-hidden>
+                    <Text size="lg" aria-hidden>
                       {countryCodeToFlag(visitor.country)}
                     </Text>
                     <Box sx={{ minWidth: 0 }}>
@@ -178,7 +143,7 @@ const ShareStats = ({ share }: { share: Share }) => {
               </Card>
             );
           })}
-        </Box>
+        </SimpleGrid>
       )}
     </Paper>
   );

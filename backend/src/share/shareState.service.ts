@@ -22,14 +22,11 @@ import {
 } from "src/utils/uploaderInfo.util";
 import {
   SHARE_DATA_CACHE_TTL_MS,
-  SHARE_UPLOADER_CACHE_TTL_MS,
   getCachedValue,
-  invalidateShareCaches,
   invalidateShareDataCache,
   setCachedValue,
   shareDataCacheKey,
-  shareUploaderCacheKey,
-} from "src/utils/shareCache.util";
+} from "src/utils/cache.util";
 
 @Injectable()
 export class ShareStateService implements OnApplicationShutdown {
@@ -116,7 +113,7 @@ export class ShareStateService implements OnApplicationShutdown {
     if (timer) clearTimeout(timer);
     this.uploaderWriteTimers.delete(shareId);
     this.pendingUploaderWrites.delete(shareId);
-    await invalidateShareCaches(this.cache, shareId);
+    await invalidateShareDataCache(this.cache, shareId);
   }
 
   async recordView(
@@ -176,40 +173,21 @@ export class ShareStateService implements OnApplicationShutdown {
     return result;
   }
 
-  private async loadUploaderInfo(shareId: string): Promise<UploaderInfo | null> {
-    const key = shareUploaderCacheKey(shareId);
-    const cached = await getCachedValue<UploaderInfo>(this.cache, key);
-    if (cached) return cached;
-
-    const info = await readUploaderInfo(shareId);
-    if (info)
-      await setCachedValue(
-        this.cache,
-        key,
-        info,
-        SHARE_UPLOADER_CACHE_TTL_MS,
-      );
-    return info;
-  }
-
   private async recordVisitor(
     shareId: string,
     request: Request,
   ): Promise<UploaderInfo> {
     return this.withVisitorLock(shareId, async () => {
-      const info = (await this.loadUploaderInfo(shareId)) ?? {
-        createdAt: new Date().toISOString(),
-      };
+      // Read the pending copy first so visitors recorded during the 5s write
+      // debounce are not lost.
+      const info = this.pendingUploaderWrites.get(shareId) ??
+        (await readUploaderInfo(shareId)) ?? {
+          createdAt: new Date().toISOString(),
+        };
       info.visitors = [...(info.visitors ?? []), getVisitorInfo(request)].slice(
         -MAX_VISITORS,
       );
 
-      await setCachedValue(
-        this.cache,
-        shareUploaderCacheKey(shareId),
-        info,
-        SHARE_UPLOADER_CACHE_TTL_MS,
-      );
       this.queueUploaderInfoWrite(shareId, info);
       return info;
     });

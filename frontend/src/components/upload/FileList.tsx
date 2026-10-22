@@ -4,13 +4,13 @@ import { TbTrash, TbEdit } from "react-icons/tb";
 import { GrUndo } from "react-icons/gr";
 import { FileListItem } from "../../types/File.type";
 import { byteToHumanSizeString } from "../../utils/fileSize.util";
-import { getBaseName } from "../../utils/file.util";
+import { getBaseName, getNormalizedFileName } from "../../utils/file.util";
+import { isShareTextFile } from "../../utils/mime.util";
 import UploadProgressIndicator from "./UploadProgressIndicator";
 import { FormattedMessage } from "react-intl";
 import useTranslate from "../../hooks/useTranslate.hook";
 import { HoverTip } from "../core/HoverTip";
 import showTextEditorModal from "./modals/showTextEditorModal";
-import shareService from "../../services/share.service";
 
 const renderFileName = (name: string) => {
   const fileName = getBaseName(name);
@@ -19,14 +19,6 @@ const renderFileName = (name: string) => {
       {fileName}
     </Text>
   );
-};
-
-const getFileNameOrPath = (file: FileListItem) => {
-  const pathName =
-    "webkitRelativePath" in file && file.webkitRelativePath
-      ? file.webkitRelativePath
-      : file.name;
-  return pathName.replace(/\\/g, "/").replace(/^\//, "");
 };
 
 const FileListRow = ({
@@ -49,8 +41,8 @@ const FileListRow = ({
     const restorable = onRestore && !uploadable && !!file.deleted;
     const deleted = !uploadable && !!file.deleted;
 
-    const fileNameOrPath = getFileNameOrPath(file);
-    const isTextFile = shareService.isShareTextFile(fileNameOrPath);
+    const fileNameOrPath = getNormalizedFileName(file);
+    const isTextFile = isShareTextFile(fileNameOrPath);
     const editable = isTextFile && uploadable && file.uploadingProgress === 0;
 
     const t = useTranslate();

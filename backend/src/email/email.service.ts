@@ -305,7 +305,6 @@ export class EmailService {
 
     const shareUrl = `${this.config.get("general.appUrl")}/s/${shareId}`;
     const vars = {
-      appName: this.config.get("general.appName"),
       shareId,
       shareName: shareName?.trim() || shareId,
       shareUrl,

@@ -11,14 +11,11 @@ export function isRequestFromApp(req: Request, appUrl: string): boolean {
   try {
     const ref = new URL(referrer);
     const app = new URL(appUrl);
-    const isHttp = (protocol: string) =>
-      protocol === "http:" || protocol === "https:";
+    // TLS may terminate at the proxy, so compare hosts and paths only.
     const appPath = app.pathname.replace(/\/+$/, "");
 
     return (
       ref.host === app.host &&
-      (ref.protocol === app.protocol ||
-        (isHttp(ref.protocol) && isHttp(app.protocol))) &&
       (!appPath ||
         ref.pathname === appPath ||
         ref.pathname.startsWith(`${appPath}/`))

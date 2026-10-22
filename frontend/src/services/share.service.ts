@@ -11,7 +11,6 @@ import {
   UpdateShare,
 } from "../types/share.type";
 import { generateUUID } from "../utils/crypto.util";
-import { doesFileSupportPreview, isShareTextFile } from "../utils/mime.util";
 import {
   type UploadProgressHandler,
   withUploadInactivityTimeout,
@@ -66,8 +65,10 @@ const revertComplete = async (id: string) => {
   return (await api.delete(`shares/${id}/complete`)).data;
 };
 
-const get = async (id: string, referrer?: string): Promise<Share> => {
+const get = async (id: string): Promise<Share> => {
   if (!isValidId(id)) throw new Error("Invalid ID");
+  const referrer =
+    typeof document !== "undefined" ? document.referrer : undefined;
   return (
     await api.get(`shares/${id}`, {
       headers: referrer
@@ -428,8 +429,6 @@ export default {
   report,
   expire,
   getMetaData,
-  doesFileSupportPreview,
-  isShareTextFile,
   getMyShares,
   getReceivedShares,
   isShareIdAvailable,

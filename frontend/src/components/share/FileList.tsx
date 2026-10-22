@@ -13,6 +13,10 @@ import {
   MAX_INLINE_FILE_SIZE,
 } from "../../utils/fileSize.util";
 import { getBaseName } from "../../utils/file.util";
+import {
+  doesFileSupportPreview,
+  isShareTextFile,
+} from "../../utils/mime.util";
 import toast from "../../utils/toast.util";
 import TableSortIcon, { TableSort } from "../core/SortIcon";
 import showFilePreviewModal from "./modals/showFilePreviewModal";
@@ -104,7 +108,7 @@ const FileList = ({
                   </td>
                   <td>
                     <Group position="right" noWrap>
-                      {shareService.isShareTextFile(file.name) && (
+                      {isShareTextFile(file.name) && (
                         <HoverTip label={t("share.copy-text-contents")}>
                           <ActionIcon
                             color="blue"
@@ -133,7 +137,7 @@ const FileList = ({
                           </ActionIcon>
                         </HoverTip>
                       )}
-                      {shareService.doesFileSupportPreview(file.name) &&
+                      {doesFileSupportPreview(file.name) &&
                         parseInt(file.size) <= MAX_INLINE_FILE_SIZE && (
                           <HoverTip label={t("common.button.preview")}>
                             <ActionIcon

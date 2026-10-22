@@ -1,4 +1,7 @@
-export const getNormalizedFileName = (file: File): string => {
+export const getNormalizedFileName = (file: {
+  name: string;
+  webkitRelativePath?: string;
+}): string => {
   const pathName = file.webkitRelativePath || file.name;
   return pathName.replace(/\\/g, "/").replace(/^\//, "");
 };
@@ -18,10 +21,7 @@ export const filterDuplicateFiles = <T extends File>(
   const existingNames = new Set(
     existingFilesList
       .filter((file) => !file.deleted)
-      .map((file) => {
-        const pathName = file.webkitRelativePath || file.name;
-        return pathName.replace(/\\/g, "/").replace(/^\//, "");
-      }),
+      .map(getNormalizedFileName),
   );
 
   const filtered: T[] = [];

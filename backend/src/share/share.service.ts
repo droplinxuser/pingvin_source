@@ -31,6 +31,7 @@ import { ReportShareDTO } from "./dto/reportShare.dto";
 import { UpdateShareDTO } from "./dto/updateShare.dto";
 import { ShareStateService } from "./shareState.service";
 import { isViewLimitExceeded } from "./share.util";
+import { tableOrderBy } from "src/utils/pagination.util";
 
 const SHARE_SORT_FIELDS = {
   id: "id",
@@ -447,27 +448,18 @@ export class ShareService {
 
     const shares = await this.prisma.share.findMany({
       where,
-      orderBy: this.getSharesOrderBy(sortBy, sortDirection) ?? {
-        expiration: "desc",
-      },
+      orderBy:
+        (sortBy === "username"
+          ? { creator: { username: sortDirection === "asc" ? "asc" : "desc" } }
+          : tableOrderBy(SHARE_SORT_FIELDS, sortBy, sortDirection)) ?? {
+          expiration: "desc",
+        },
       take,
       skip,
       include,
     });
 
     return shares.map((share) => this.transformShare(share));
-  }
-
-  private getSharesOrderBy(
-    sortBy?: string,
-    sortDirection?: string,
-  ): Prisma.ShareOrderByWithRelationInput | undefined {
-    const direction = sortDirection === "asc" ? "asc" : "desc";
-    if (sortBy === "username") return { creator: { username: direction } };
-    const field = SHARE_SORT_FIELDS[sortBy as keyof typeof SHARE_SORT_FIELDS];
-    return field
-      ? ({ [field]: direction } as Prisma.ShareOrderByWithRelationInput)
-      : undefined;
   }
 
   async countShares(search?: string) {

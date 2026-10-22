@@ -11,7 +11,6 @@ const mimeTypeOverrides: Record<string, string> = {
   jif: "image/jpeg",
   jxl: "image/jxl",
   j2k: "image/jp2",
-  ogx: "video/ogg",
   ogm: "video/ogg",
   m2ts: "video/mp2t",
   mts: "video/mp2t",

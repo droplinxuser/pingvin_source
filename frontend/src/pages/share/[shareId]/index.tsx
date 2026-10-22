@@ -21,7 +21,6 @@ import { Share as ShareType } from "../../../types/share.type";
 import toast from "../../../utils/toast.util";
 import { byteToHumanSizeString } from "../../../utils/fileSize.util";
 import { getQueryString } from "../../../utils/router.util";
-import { getExternalReferrer } from "../../../utils/share.util";
 
 export async function getServerSideProps(context: GetServerSidePropsContext) {
   const shareId = context.params!.shareId as string;
@@ -111,7 +110,7 @@ const Share = ({
 
   const getFiles = async () => {
     shareService
-      .get(shareId, getExternalReferrer())
+      .get(shareId)
       .then((share) => {
         setPageError(null);
         setShare(share);
