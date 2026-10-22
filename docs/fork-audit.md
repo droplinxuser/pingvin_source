@@ -116,9 +116,13 @@ login can loop between `/upload` and `/auth/signIn`.
   admin shares (search/sort/pagination), admin users (sort/pagination), admin
   delete, missing-share/unknown-route 404s, language fallback, dynamic
   manifest, site stats footer and service-worker registration.
-- Live `https://dropmb.com` check (18 checks): guest home/share/404/manifest
-  and the `thuoct222026` account sign-in, session, account and reverse-share
-  pages pass without JavaScript errors.
+- Live `https://dropmb.com` redeploy (2026-10-23, commit `ea200c0b`): the JWT
+  visitor cookie and visitor-grid markup confirm the new build. Home, share,
+  404 and manifest pages, `thuoct222026` sign-in, account and reverse-share
+  pages pass without JavaScript errors. A live upload -> share -> file access
+  -> delete cycle also passed, and the deleted share returned 404. The source
+  backup still passes `PRAGMA integrity_check`; live counts match it apart from
+  the one-file difference explained by normal share cleanup.
 - `bash -n update.sh` passes; its env writer produces the exact live
   `DATABASE_URL` above.
 
