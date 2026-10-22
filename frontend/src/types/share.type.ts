@@ -13,6 +13,15 @@ export type Share = {
   uploaderInfo?: UploaderInfo;
 };
 
+export type ShareVisitor = {
+  country?: string;
+  city?: string;
+  os?: string;
+  browser?: string;
+  referrer?: string;
+  createdAt: string;
+};
+
 export type UploaderInfo = {
   country?: string;
   city?: string;
@@ -24,6 +33,8 @@ export type UploaderInfo = {
   osVersion?: string;
   deviceType?: string;
   createdAt: string;
+  views?: number;
+  visitors?: ShareVisitor[];
 };
 
 export type CompletedShare = Share & {

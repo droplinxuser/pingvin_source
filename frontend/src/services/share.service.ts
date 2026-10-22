@@ -66,9 +66,15 @@ const revertComplete = async (id: string) => {
   return (await api.delete(`shares/${id}/complete`)).data;
 };
 
-const get = async (id: string): Promise<Share> => {
+const get = async (id: string, referrer?: string): Promise<Share> => {
   if (!isValidId(id)) throw new Error("Invalid ID");
-  return (await api.get(`shares/${id}`)).data;
+  return (
+    await api.get(`shares/${id}`, {
+      headers: referrer
+        ? { "x-visitor-referrer": encodeURIComponent(referrer.slice(0, 2048)) }
+        : undefined,
+    })
+  ).data;
 };
 
 const getFromOwner = async (id: string): Promise<Share> => {

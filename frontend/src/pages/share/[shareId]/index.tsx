@@ -10,6 +10,7 @@ import Meta from "../../../components/Meta";
 import FileList from "../../../components/share/FileList";
 import MediaPreviewGallery from "../../../components/share/MediaPreviewGallery";
 import ShareActions from "../../../components/share/ShareActions";
+import ShareStats from "../../../components/share/ShareStats";
 import UploaderInfoBadges from "../../../components/share/UploaderInfoBadges";
 import Ads from "../../../components/Ads";
 import showEnterPasswordModal from "../../../components/share/showEnterPasswordModal";
@@ -20,6 +21,7 @@ import { Share as ShareType } from "../../../types/share.type";
 import toast from "../../../utils/toast.util";
 import { byteToHumanSizeString } from "../../../utils/fileSize.util";
 import { getQueryString } from "../../../utils/router.util";
+import { getExternalReferrer } from "../../../utils/share.util";
 
 export async function getServerSideProps(context: GetServerSidePropsContext) {
   const shareId = context.params!.shareId as string;
@@ -96,7 +98,7 @@ const Share = ({
 
   const getFiles = async () => {
     shareService
-      .get(shareId)
+      .get(shareId, getExternalReferrer())
       .then((share) => {
         setPageError(null);
         setShare(share);
@@ -114,6 +116,16 @@ const Share = ({
                   title: t("share.error.not-found.title"),
                   description: t("share.error.not-found.description"),
                 },
+          );
+        } else if (
+          e.response.status == 403 &&
+          error == "share_max_views_exceeded"
+        ) {
+          showErrorModal(
+            modals,
+            t("share.error.visitor-limit-exceeded.title"),
+            t("share.error.visitor-limit-exceeded.description"),
+            "go-home",
           );
         } else if (
           e.response.status == 403 &&
@@ -219,13 +231,6 @@ const Share = ({
           )}
           {share && (
             <Group spacing="xs" mt={5}>
-              <Text size="sm" color="dimmed">
-                <FormattedMessage
-                  id="share.viewCount"
-                  defaultMessage="{count, plural, =1 {# view} other {# views}}"
-                  values={{ count: share.views }}
-                />
-              </Text>
               <UploaderInfoBadges share={share} info={share.uploaderInfo} />
             </Group>
           )}
@@ -251,6 +256,8 @@ const Share = ({
         isLoading={!share}
         recipientId={recipientId}
       />
+
+      {share && <ShareStats share={share} />}
     </>
   );
 };

@@ -35,14 +35,14 @@ const ICONS: Record<string, ReactNode> = {
   Brave: <SiBrave {...iconProps} />,
 };
 
-const countryCodeToFlag = (code: string) =>
-  /^[A-Z]{2}$/.test(code) && code !== "T1"
+export const countryCodeToFlag = (code?: string) =>
+  code && /^[A-Z]{2}$/.test(code) && code !== "T1"
     ? String.fromCodePoint(
         ...Array.from(code).map((char) => 127397 + char.charCodeAt(0)),
       )
     : "🌐";
 
-const getCountryName = (code: string, locale: string) => {
+export const getCountryName = (code: string, locale: string) => {
   if (code === "T1") return "Tor";
   try {
     return new Intl.DisplayNames([locale], { type: "region" }).of(code) ?? code;
@@ -50,6 +50,12 @@ const getCountryName = (code: string, locale: string) => {
     return code;
   }
 };
+
+export const getOsIcon = (os?: string) =>
+  ICONS[os ?? ""] ?? <TbDeviceLaptop {...iconProps} />;
+
+export const getBrowserIcon = (browser?: string) =>
+  ICONS[browser ?? ""] ?? <TbBrowser {...iconProps} />;
 
 const iconStyle = {
   display: "inline-flex",
@@ -112,12 +118,12 @@ const UploaderInfoBadges = ({
     {
       label: t("share.uploader.os"),
       tooltip: osLabel,
-      icon: ICONS[info?.os ?? ""] ?? <TbDeviceLaptop {...iconProps} />,
+      icon: getOsIcon(info?.os),
     },
     {
       label: t("share.uploader.browser"),
       tooltip: browserLabel,
-      icon: ICONS[info?.browser ?? ""] ?? <TbBrowser {...iconProps} />,
+      icon: getBrowserIcon(info?.browser),
     },
   ];
 
