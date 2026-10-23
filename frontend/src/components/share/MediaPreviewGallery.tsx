@@ -1,13 +1,23 @@
-import { Box, Card, SimpleGrid, Text } from "@mantine/core";
+import {
+  Box,
+  Card,
+  Center,
+  SimpleGrid,
+  Text,
+  ThemeIcon,
+  UnstyledButton,
+} from "@mantine/core";
+import { useModals } from "@mantine/modals";
+import { TbPlayerPlay } from "react-icons/tb";
 import { FileMetaData } from "../../types/File.type";
 import { MAX_INLINE_FILE_SIZE } from "../../utils/fileSize.util";
 import { getBaseName } from "../../utils/file.util";
-import { getFileMimeType, getInlinePreviewKind } from "../../utils/mime.util";
-import FilePreview from "./FilePreview";
+import { getGalleryMediaKind } from "../../utils/mime.util";
+import useTranslate from "../../hooks/useTranslate.hook";
+import showFilePreviewModal from "./modals/showFilePreviewModal";
 
-// Images are fully fetched by the browser as soon as they are rendered, so
-// only reasonably small ones are embedded. Videos and audio stream on demand.
-const MAX_GALLERY_ITEMS = 6;
+const MAX_GALLERY_ITEMS = 30;
+const GALLERY_MEDIA_HEIGHT = 250;
 
 const MediaPreviewGallery = ({
   shareId,
@@ -16,16 +26,20 @@ const MediaPreviewGallery = ({
   shareId: string;
   files?: FileMetaData[];
 }) => {
+  const modals = useModals();
+  const t = useTranslate();
+
   const mediaFiles = files
     .filter((file) => {
-      const kind = getInlinePreviewKind(file.name);
+      const kind = getGalleryMediaKind(file.name);
       return (
-        kind && (kind != "image" || parseInt(file.size) <= MAX_INLINE_FILE_SIZE)
+        kind &&
+        (kind !== "image" || parseInt(file.size) <= MAX_INLINE_FILE_SIZE)
       );
     })
     .slice(0, MAX_GALLERY_ITEMS);
 
-  if (mediaFiles.length == 0) return null;
+  if (mediaFiles.length === 0) return null;
 
   return (
     <SimpleGrid
@@ -37,35 +51,87 @@ const MediaPreviewGallery = ({
         { minWidth: "lg", cols: Math.min(3, mediaFiles.length) },
       ]}
     >
-      {mediaFiles.map((file) => (
-        <Card key={file.id} withBorder radius="md" p="sm">
-          <Box
-            sx={(theme) => ({
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              minHeight: 120,
-              borderRadius: theme.radius.sm,
-              overflow: "hidden",
-              backgroundColor:
-                theme.colorScheme == "dark"
-                  ? theme.colors.dark[8]
-                  : theme.colors.gray[2],
-              "& img, & video": { maxHeight: "70vh" },
-            })}
-          >
-            <FilePreview
-              shareId={shareId}
-              fileId={file.id}
-              mimeType={getFileMimeType(file.name)}
-              showOriginalFileButton={false}
-            />
-          </Box>
-          <Text size="sm" truncate title={getBaseName(file.name)} mt="sm">
-            {getBaseName(file.name)}
-          </Text>
-        </Card>
-      ))}
+      {mediaFiles.map((file) => {
+        const kind = getGalleryMediaKind(file.name);
+        const name = getBaseName(file.name);
+        const url = `/api/shares/${shareId}/files/${file.id}?download=false`;
+
+        return (
+          <Card key={file.id} withBorder radius="md" p="sm">
+            <UnstyledButton
+              onClick={() => showFilePreviewModal(shareId, file, modals)}
+              aria-label={`${t("common.button.preview")}: ${name}`}
+              title={name}
+              sx={{
+                display: "block",
+                width: "100%",
+                padding: 0,
+                cursor: "pointer",
+                color: "inherit",
+                textAlign: "left",
+              }}
+            >
+              <Box
+                sx={(theme) => ({
+                  position: "relative",
+                  height: GALLERY_MEDIA_HEIGHT,
+                  maxHeight: GALLERY_MEDIA_HEIGHT,
+                  overflow: "hidden",
+                  borderRadius: theme.radius.sm,
+                  backgroundColor:
+                    theme.colorScheme === "dark"
+                      ? theme.colors.dark[8]
+                      : theme.colors.gray[2],
+                  "& img, & video": {
+                    display: "block",
+                    width: "100%",
+                    height: "100%",
+                    maxHeight: GALLERY_MEDIA_HEIGHT,
+                    objectFit: "cover",
+                  },
+                })}
+              >
+                {kind === "image" ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={url} alt="" loading="lazy" />
+                ) : (
+                  <>
+                    <video
+                      src={url}
+                      muted
+                      playsInline
+                      preload="none"
+                      aria-hidden="true"
+                    />
+                    <Center
+                      sx={{
+                        position: "absolute",
+                        inset: 0,
+                        pointerEvents: "none",
+                      }}
+                    >
+                      <ThemeIcon
+                        size={46}
+                        radius="xl"
+                        variant="filled"
+                        sx={{
+                          backgroundColor: "rgba(0, 0, 0, 0.55)",
+                          color: "white",
+                        }}
+                      >
+                        <TbPlayerPlay size={22} />
+                      </ThemeIcon>
+                    </Center>
+                  </>
+                )}
+              </Box>
+              <Text size="sm" truncate mt="sm">
+                {name}
+              </Text>
+            </UnstyledButton>
+          </Card>
+        );
+      })}
     </SimpleGrid>
   );
 };

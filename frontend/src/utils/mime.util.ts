@@ -1,51 +1,67 @@
 import mime from "mime-types";
+import { getBaseName } from "./file.util";
 
-export type InlinePreviewKind = "image" | "video" | "audio";
+export type GalleryMediaKind = "image" | "video";
 
 // Extensions that browsers can render but that the installed mime-db version
-// misses or misclassifies. Lookups use only the extension so folder names
-// containing "/" cannot be mistaken for MIME types.
+// misses or misclassifies.
 const mimeTypeOverrides: Record<string, string> = {
   jfif: "image/jpeg",
   jfi: "image/jpeg",
   jif: "image/jpeg",
-  jxl: "image/jxl",
-  j2k: "image/jp2",
-  ogm: "video/ogg",
-  m2ts: "video/mp2t",
-  mts: "video/mp2t",
-  "3gpp2": "video/3gpp2",
+  m4v: "video/mp4",
 };
 
-const PREVIEW_TYPES = ["image/", "video/", "audio/"] as const;
+// Only formats with reliable native browser support are embedded. QuickTime,
+// JPEG XL, JPEG 2000, Matroska, MPEG-TS and similar formats are intentionally
+// excluded because they often end in the "preview not supported" notice.
+const GALLERY_IMAGE_EXTENSIONS = new Set([
+  "jpg",
+  "jpeg",
+  "jpe",
+  "jfif",
+  "jfi",
+  "jif",
+  "png",
+  "apng",
+  "gif",
+  "webp",
+  "avif",
+  "bmp",
+  "svg",
+]);
 
-const getFileExtension = (fileName: string) =>
-  fileName.slice(fileName.lastIndexOf(".") + 1).toLowerCase();
+const GALLERY_VIDEO_EXTENSIONS = new Set(["mp4", "m4v", "webm"]);
 
-export const getFileMimeType = (fileName: string) =>
-  mimeTypeOverrides[getFileExtension(fileName)] ||
-  mime.lookup(getFileExtension(fileName)) ||
-  "";
+const getFileExtension = (fileName: string) => {
+  const baseName = getBaseName(fileName);
+  const dot = baseName.lastIndexOf(".");
+  return dot === -1 ? "" : baseName.slice(dot + 1).toLowerCase();
+};
+
+export const getFileMimeType = (fileName: string) => {
+  const extension = getFileExtension(fileName);
+  return mimeTypeOverrides[extension] || mime.lookup(extension) || "";
+};
+
+export const getGalleryMediaKind = (
+  fileName: string,
+): GalleryMediaKind | undefined => {
+  const extension = getFileExtension(fileName);
+  if (GALLERY_IMAGE_EXTENSIONS.has(extension)) return "image";
+  if (GALLERY_VIDEO_EXTENSIONS.has(extension)) return "video";
+  return undefined;
+};
 
 export const doesFileSupportPreview = (fileName: string) => {
   const mimeType = getFileMimeType(fileName);
   return (
-    !!mimeType &&
-    (PREVIEW_TYPES.some((type) => mimeType.startsWith(type)) ||
-      mimeType.startsWith("text/") ||
-      mimeType == "application/pdf")
+    !!getGalleryMediaKind(fileName) ||
+    mimeType.startsWith("audio/") ||
+    mimeType.startsWith("text/") ||
+    mimeType === "application/pdf"
   );
 };
 
 export const isShareTextFile = (fileName: string) =>
   getFileMimeType(fileName).startsWith("text/");
-
-export const getInlinePreviewKind = (
-  fileName: string,
-): InlinePreviewKind | undefined => {
-  const mimeType = getFileMimeType(fileName);
-  return PREVIEW_TYPES.find((type) => mimeType.startsWith(type))?.slice(
-    0,
-    -1,
-  ) as InlinePreviewKind | undefined;
-};
