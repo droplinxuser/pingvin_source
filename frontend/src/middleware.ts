@@ -152,7 +152,9 @@ export async function middleware(request: NextRequest) {
     isPublicPage(route) &&
     !user &&
     !isConfigFallback &&
-    !request.nextUrl.searchParams.has("lang") &&
+    // Query strings can carry recipient identifiers or language/theme
+    // overrides; only clean, anonymous URLs may be shared between visitors.
+    !request.nextUrl.search &&
     language === defaultLanguage
   ) {
     setCacheHeaders(response, PUBLIC_CACHE);

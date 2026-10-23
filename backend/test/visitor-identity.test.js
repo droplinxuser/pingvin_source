@@ -9,9 +9,9 @@ const jwt = new JwtService({});
 const secret = "test-secret";
 const middleware = createVisitorIdentityMiddleware(jwt, secret, false);
 
-function run(cookies = {}) {
+function run(cookies = {}, path = "/", method = "GET") {
   return new Promise((resolve) => {
-    const req = { cookies, headers: {}, ip: "203.0.113.7" };
+    const req = { cookies, headers: {}, ip: "203.0.113.7", path, method };
     const res = {
       cookies: [],
       cookie(name, value) {
@@ -40,4 +40,17 @@ test("ignores forged cookies and keys signed-in users by account ID", async () =
   const accessToken = await jwt.signAsync({ sub: "user-1" }, { secret });
   const user = await run({ access_token: accessToken });
   assert.equal(user.req.visitorKey, "user:user-1");
+});
+
+test("keeps cacheable file downloads cookie-free", async () => {
+  const sharePage = await run({}, "/api/shares/abc123");
+  assert.equal(sharePage.res.cookies.length, 1);
+
+  const file = await run({}, "/api/shares/abc123/files/file456");
+  assert.equal(file.req.visitorKey, "ip:203.0.113.7");
+  assert.equal(file.res.cookies.length, 0);
+
+  const zip = await run({}, "/api/shares/abc123/files/zip");
+  assert.equal(zip.req.visitorKey, "ip:203.0.113.7");
+  assert.equal(zip.res.cookies.length, 0);
 });

@@ -39,8 +39,9 @@ const cacheHeaders = (value) => [
 
 // Hashed build output and content-hashed Workbox bundles never change for a
 // given URL. Logos, favicons and PWA icons can be replaced from the admin UI,
-// so they use a shorter TTL. The service worker must be revalidated so new
-// builds are picked up.
+// so they use a shorter TTL when Next serves them directly (the production
+// Angie vhost serves public files from disk and applies its own TTL). The
+// service worker must be revalidated so new builds are picked up.
 const CACHE_RULES = [
   ["/_next/static/:path*", "public, max-age=31536000, immutable"],
   ["/img/:path*", "public, max-age=86400, stale-while-revalidate=604800"],

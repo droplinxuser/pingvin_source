@@ -85,6 +85,13 @@ async function deleteCachedValue(cache: Cache, key: string): Promise<void> {
   }
 }
 
+export async function invalidateShareMetaCache(
+  cache: Cache,
+  shareId: string,
+): Promise<void> {
+  await deleteCachedValue(cache, shareMetaCacheKey(shareId));
+}
+
 export async function invalidateShareDataCache(
   cache: Cache,
   shareId: string,
@@ -92,6 +99,6 @@ export async function invalidateShareDataCache(
   await Promise.all([
     deleteCachedValue(cache, shareDataCacheKey(shareId)),
     deleteCachedValue(cache, shareGuardCacheKey(shareId)),
-    deleteCachedValue(cache, shareMetaCacheKey(shareId)),
+    invalidateShareMetaCache(cache, shareId),
   ]);
 }

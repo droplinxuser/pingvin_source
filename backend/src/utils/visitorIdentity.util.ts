@@ -6,13 +6,16 @@ const COOKIE_NAME = "pingvin_visitor";
 const COOKIE_MAX_AGE = 1000 * 60 * 60 * 24 * 365;
 
 // These responses must stay free of Set-Cookie so Cloudflare can cache them.
-// HEAD is only used for share existence checks, and its route skips the visitor
-// limiter. Without a cookie the visitor key falls back to the IP address.
+// HEAD is only used for share existence checks. Public file and ZIP responses
+// are cacheable too, so their GET requests also skip the visitor cookie; their
+// limiter key falls back to the IP address. Without a cookie the visitor key
+// falls back to the IP on that request.
 const IDENTITY_FREE_PATHS = new Set([
   "/api/configs",
   "/api/health",
   "/api/system/stats",
 ]);
+const FILE_DOWNLOAD_PATH = /^\/api\/shares\/[^/]+\/files(?:\/|$)/;
 
 type VisitorRequest = Request & {
   cookies?: Record<string, string>;
@@ -20,12 +23,11 @@ type VisitorRequest = Request & {
 };
 
 function skipsVisitorIdentity(req: Request) {
-  return (
-    req.method === "HEAD" ||
-    req.method === "OPTIONS" ||
-    (req.method === "GET" &&
-      IDENTITY_FREE_PATHS.has(req.path.replace(/\/+$/, "")))
-  );
+  if (req.method === "HEAD" || req.method === "OPTIONS") return true;
+  if (req.method !== "GET") return false;
+
+  const path = req.path.replace(/\/+$/, "");
+  return IDENTITY_FREE_PATHS.has(path) || FILE_DOWNLOAD_PATH.test(path);
 }
 
 async function verifyVisitorId(

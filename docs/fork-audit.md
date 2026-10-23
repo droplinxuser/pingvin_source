@@ -14,7 +14,7 @@ so `git merge upstream/main` stays small.
 | Share reports | `backend/src/share/dto/reportShare.dto.ts`, `backend/src/email/email.service.ts`, `frontend/src/components/share/showReportShareModal.tsx` |
 | Uploader metadata / visitors | `backend/src/utils/uploaderInfo.util.ts`, `ShareDTO.uploaderInfo`, `frontend/src/components/share/UploaderInfoBadges.tsx`, `ShareStats.tsx`; view counts stay in `Share.views` |
 | Inline media gallery | `frontend/src/components/share/MediaPreviewGallery.tsx` (up to 30 supported image/video thumbnails at 250px, opening `FilePreview.tsx` in the full-size modal) |
-| Cache headers / hotlink protection | `backend/src/utils/cache.util.ts` (shared `Cache-Control`, `CDN-Cache-Control`, `Cloudflare-CDN-Cache-Control`, public-file `ETag`), `backend/src/utils/referrer.util.ts`, `frontend/src/middleware.ts`, `frontend/next.config.js` |
+| Cache headers / hotlink protection | `backend/src/utils/cache.util.ts` (shared `Cache-Control`, `CDN-Cache-Control`, `Cloudflare-CDN-Cache-Control`, public-file `ETag`), `backend/src/utils/referrer.util.ts`, `frontend/src/middleware.ts` (query-free anonymous page shells), `frontend/next.config.js` |
 | Per-visitor rate limiting | `backend/src/utils/visitorIdentity.util.ts`, `backend/src/cache/valkeyThrottler.storage.ts`, `backend/src/cache/throttler.config.ts`, `backend/src/main.ts` |
 | Valkey/Redis cache | `backend/src/utils/cache.util.ts`, `backend/src/share/shareState.service.ts`, `backend/src/cache/cache.module.ts`, `backend/src/cache/valkey.service.ts` |
 | Site stats and footer | `backend/src/system/system.service.ts`, `backend/src/cache/metrics.service.ts`, `frontend/src/components/footer/Footer.tsx`; `POST /api/system/pageview` |
@@ -67,17 +67,20 @@ other languages show the upstream copy instead of the English fallback.
   per-route/per-IP `THROTTLE_LIMIT` limiter remains in place. When
   `CACHE_REDIS_ENABLED=true`, both limiter buckets are stored atomically in
   Valkey (shared across instances/restarts); if Valkey is unavailable they
-  fall back to the in-memory store. `/api/configs`, share `HEAD` checks and
-  every upload request (init, chunk, complete, abort) skip the visitor bucket
-  so SSR and large uploads keep working.
+  fall back to the in-memory store. `/api/configs`, `GET /api/system/stats`,
+  share `HEAD` checks and every upload request (init, chunk, complete, abort)
+  skip the visitor bucket so SSR and large uploads keep working. File/ZIP GETs
+  skip the visitor cookie so a public response never carries `Set-Cookie`;
+  their limiter key falls back to the IP.
 - Valkey/Redis is optional but recommended: set `CACHE_REDIS_ENABLED=true` and
   `CACHE_REDIS_URL=redis://127.0.0.1:6379` in `backend/.env` (`update.sh`
   enables both automatically when a local `valkey-server` is active). Share-page
-  data, guard data and metadata are cached for 30s/30s/5s. A data-cache miss
-  also resets the rolling expiration to 100 days. Share views and visitor
-  metadata are written directly to SQLite and `uploader.json` on each view;
-  shares without a view limit use a single atomic update instead of a
-  transaction.
+  data, guard data and metadata are cached for 30s/30s/5s; the metadata entry
+  contains only `{ id, isZipReady }`. A data-cache miss also resets the rolling
+  expiration to 100 days. Share views and visitor metadata are written directly
+  to SQLite and `uploader.json` on each view; shares without a view limit use a
+  single atomic update instead of a transaction. The footer's base counters use
+  a 60-second in-process cache and do not add a Valkey key.
 - The footer posts to `POST /api/system/pageview` on every rendered page. The
   endpoint increments a per-hour Valkey hash atomically (one total field plus
   one field per country), expires each hourly bucket after 25 hours and reads
@@ -86,14 +89,15 @@ other languages show the upstream copy instead of the English fallback.
   hash reads. Only the 24 hourly hashes are stored; no per-visitor sets are
   kept. The POST response is never cached. `GET /api/system/stats` remains a
   read-only fallback and is edge-cacheable for 60s; its user/share/file/storage
-  totals are fetched in one SQL query and cached for 60s.
+  totals are fetched in one SQL query and cached in-process for 60s.
 - `GET /api/configs` is edge-cacheable for 30s and the server-side
   `fetchConfig` helper keeps a 30s in-process copy (5s for bundled defaults),
   so middleware and SSR do not call the backend on every page. Anonymous HTML
   shells for `/`, `/share/*`, `/imprint` and `/privacy` are edge-cacheable for
-  60s with stale-while-revalidate; authenticated, non-default-language and
-  `?lang=` responses are `no-store`. Public files are cached for a day with an
-  `ETag`; protected files are `private`.
+  60s with stale-while-revalidate only when the URL has no query string;
+  authenticated, non-default-language, `?lang=` and other query variants
+  (including `?recipient=`) are `no-store`. Public files are cached for a day
+  with an `ETag`; protected files are `private`.
 - Public shares no longer require a share token, so their page makes a single
   data request instead of the old `403 -> token -> retry` cycle. Password,
   max-view, recipient-restricted and private reverse shares still require a
@@ -111,9 +115,12 @@ other languages show the upstream copy instead of the English fallback.
 - Keep an up-to-date database copy at `/home/rt/Documents/pingvin-share.db`
   (`sqlite3 ... "PRAGMA integrity_check;"` must return `ok`).
 - Cloudflare: bypass cache for `/sw.js` and purge old HTML/service-worker
-  responses after deployments. Page HTML is cached for at most 60s; hashed
-  `/_next/static` assets stay immutable, and `/img` assets use a one-day TTL
-  so admin logo changes appear without a purge.
+  responses after deployments. Page HTML is cached for at most 60s and hashed
+  `/_next/static` assets stay immutable. Angie/h5bp serves `/img` and
+  `/favicon.ico` directly with its own long TTL (one year / one week), so the
+  Next.js one-day rules do not apply there; purge the logo, favicon and PWA
+  icon URLs after an admin branding change. If `/sw.js` was previously cached
+  long-term, purge it once; `_app` also registers it with a build-hash query.
 
 ## Auth redirects
 
@@ -125,11 +132,17 @@ sign-in redirect for a protected page and loop between `/upload` and
 ## Verified locally
 
 - Node `22.23.3` production builds pass for backend and frontend. `npm run
-  test:unit` passes all 12 tests, covering view limits, visitor identity,
+  test:unit` passes all 13 tests, covering view limits, visitor identity,
   throttler fallback, uploader metadata and page-view metrics. A local smoke
   run rechecked config/stats cache headers, share `HEAD`/token/view flow and
   rolling expiration; the aggregate cache and upload-throttle exemptions were
   reviewed without a live Valkey instance.
+- A follow-up caching review (local Node `26.12.1`; the server remains on
+  `22.23.3`) rechecked that only query-free page shells are public, cacheable
+  file/ZIP GETs stay free of `Set-Cookie`, the share-metadata cache contains
+  only `{ id, isZipReady }`, and the footer's base counters no longer add a
+  Valkey key. Query-string page variants remain `no-store`; missing share URLs
+  still return their normal 404 status.
 - The gallery was verified with a 40-file fixture: 30 cards from 35 supported
   files, 250px media boxes, unsupported formats excluded, video first-frame
   thumbnails rendered, and image/video thumbnails opened the full-size modal.

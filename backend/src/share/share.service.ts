@@ -28,6 +28,7 @@ import { SystemService } from "src/system/system.service";
 import {
   SHARE_META_CACHE_TTL_MS,
   getCachedValue,
+  invalidateShareMetaCache,
   setCachedValue,
   shareMetaCacheKey,
 } from "src/utils/cache.util";
@@ -79,9 +80,10 @@ const SHARE_INCLUDE = {
   recipients: { select: { email: true } },
 } satisfies Prisma.ShareInclude;
 
-type ShareMetaData = Prisma.ShareGetPayload<{
-  include: { _count: { select: { files: true } } };
-}>;
+type ShareMetaData = {
+  id: string;
+  isZipReady: boolean;
+};
 
 @Injectable()
 export class ShareService {
@@ -275,6 +277,7 @@ export class ShareService {
             error,
           );
         });
+      await invalidateShareMetaCache(this.cache, shareId);
       this.activeZipBuilds.delete(shareId);
       return;
     }
@@ -301,6 +304,7 @@ export class ShareService {
         where: { id: shareId },
         data: { isZipReady: true },
       });
+      await invalidateShareMetaCache(this.cache, shareId);
     } catch (error) {
       this.logger.error(`Failed to create zip for share ${shareId}`, error);
       await fs.promises.rm(zipPath, { force: true }).catch(() => {});
@@ -558,7 +562,10 @@ export class ShareService {
 
     const share = await this.prisma.share.findUnique({
       where: { id },
-      include: {
+      select: {
+        id: true,
+        isZipReady: true,
+        uploadLocked: true,
         _count: {
           select: { files: true },
         },
@@ -568,6 +575,15 @@ export class ShareService {
     if (!share || !share.uploadLocked)
       throw new NotFoundException(this.i18n.t("share.notFound"));
 
+    // The DTO only exposes these two fields; keep the cache payload minimal.
+    const metaData = { id: share.id, isZipReady: share.isZipReady };
+    await setCachedValue(
+      this.cache,
+      cacheKey,
+      metaData,
+      SHARE_META_CACHE_TTL_MS,
+    );
+
     if (
       !share.isZipReady &&
       share._count.files > 1 &&
@@ -576,8 +592,7 @@ export class ShareService {
       void this.createZip(id);
     }
 
-    await setCachedValue(this.cache, cacheKey, share, SHARE_META_CACHE_TTL_MS);
-    return share;
+    return metaData;
   }
 
   async report(id: string, report: ReportShareDTO) {

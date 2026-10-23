@@ -8,6 +8,7 @@ import {
   UseGuards,
 } from "@nestjs/common";
 import { Request, Response } from "express";
+import { SkipThrottle } from "@nestjs/throttler";
 import { AdministratorGuard } from "src/auth/guard/isAdmin.guard";
 import { JwtGuard } from "src/auth/guard/jwt.guard";
 import { SystemService, SystemStats } from "./system.service";
@@ -25,6 +26,7 @@ export class SystemController {
   }
 
   @Get("stats")
+  @SkipThrottle({ visitor: true })
   async getSystemStats(
     @Res({ passthrough: true }) response: Response,
   ): Promise<SystemStats> {

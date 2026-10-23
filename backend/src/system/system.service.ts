@@ -1,16 +1,12 @@
-import { Inject, Injectable, Logger } from "@nestjs/common";
-import { CACHE_MANAGER } from "@nestjs/cache-manager";
-import { Cache } from "cache-manager";
+import { Injectable, Logger } from "@nestjs/common";
 import checkDiskSpace from "check-disk-space";
 import { DATA_DIRECTORY } from "src/constants";
 import { MetricsService, PageViewMetrics } from "src/cache/metrics.service";
 import { PrismaService } from "src/prisma/prisma.service";
-import { getCachedValue, setCachedValue } from "src/utils/cache.util";
 import { SystemInfoDTO } from "./dto/systemInfo.dto";
 import { ConfigService } from "src/config/config.service";
 import * as path from "path";
 
-const SYSTEM_STATS_CACHE_KEY = "system:stats";
 const SYSTEM_STATS_CACHE_TTL = 60 * 1000;
 
 type BaseSystemStats = {
@@ -25,12 +21,12 @@ export type SystemStats = BaseSystemStats & PageViewMetrics;
 @Injectable()
 export class SystemService {
   private readonly logger = new Logger(SystemService.name);
+  private baseStats?: { at: number; value: BaseSystemStats };
 
   constructor(
     private configService: ConfigService,
     private prisma: PrismaService,
     private readonly metrics: MetricsService,
-    @Inject(CACHE_MANAGER) private cache: Cache,
   ) {}
 
   async getSystemStats(): Promise<SystemStats> {
@@ -50,11 +46,12 @@ export class SystemService {
   }
 
   private async getBaseSystemStats(): Promise<BaseSystemStats> {
-    const cached = await getCachedValue<BaseSystemStats>(
-      this.cache,
-      SYSTEM_STATS_CACHE_KEY,
-    );
-    if (cached) return cached;
+    if (
+      this.baseStats &&
+      Date.now() - this.baseStats.at < SYSTEM_STATS_CACHE_TTL
+    ) {
+      return this.baseStats.value;
+    }
 
     // One query for every counter keeps the 60-second cache miss cheap.
     const rows = await this.prisma.$queryRaw<
@@ -80,12 +77,7 @@ export class SystemService {
       storageSizeBytes: Number(row?.storageSizeBytes ?? 0),
     };
 
-    await setCachedValue(
-      this.cache,
-      SYSTEM_STATS_CACHE_KEY,
-      stats,
-      SYSTEM_STATS_CACHE_TTL,
-    );
+    this.baseStats = { at: Date.now(), value: stats };
     return stats;
   }
 
