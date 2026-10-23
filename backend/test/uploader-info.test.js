@@ -7,7 +7,7 @@ const {
 
 const request = (userAgent, headers = {}) => ({
   headers: { "user-agent": userAgent, ...headers },
-  hostname: "dropmb.com",
+  hostname: "site.com",
 });
 
 test("handles requests without a user agent", () => {
@@ -36,7 +36,7 @@ test("records only external referrer domains", () => {
   assert.equal(external.referrer, "example.com");
 
   const internal = getVisitorInfo(
-    request("Mozilla/5.0", { referer: "https://dropmb.com/share/0000" }),
+    request("Mozilla/5.0", { referer: "https://site.com/share/0000" }),
   );
   assert.equal(internal.referrer, undefined);
 });
