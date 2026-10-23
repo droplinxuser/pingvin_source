@@ -78,6 +78,10 @@ const useStyles = createStyles((theme) => {
             theme.colorScheme === "dark" ? 5 : 4
           ],
       },
+
+      "&:hover img, &:hover video": {
+        filter: "blur(0)",
+      },
     },
 
     media: {
@@ -88,6 +92,7 @@ const useStyles = createStyles((theme) => {
       backgroundColor: "#000",
       filter: "blur(2px)",
       transform: "scale(1.01)",
+      transition: "filter 120ms ease",
     },
 
     views: {

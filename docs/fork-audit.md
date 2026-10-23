@@ -235,9 +235,9 @@ sign-in redirect for a protected page and loop between `/upload` and
   server-side with nine 250px-tall cards spanning the content width in a 3x3
   desktop grid, a 2-column tablet grid, one column at 390px and zero measured
   layout shift;
-  the homepage made no client-side trending request. Thumbnails use a 2px blur,
-  the view badge is 14px, dark mode was checked, and click-through to
-  `/share/<id>` was verified.
+  the homepage made no client-side trending request. Thumbnails use a 2px blur
+  that clears on hover, the view badge is 14px, dark mode was checked, and
+  click-through to `/share/<id>` was verified.
 - Navigating between share pages on the client now remounts the share view by
   share ID. Previously the page only fetched its files on mount, so clicking a
   trending thumbnail could leave the previous share's name, files and visitor
