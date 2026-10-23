@@ -23,6 +23,36 @@ git checkout main
 # restore it so the pull below can never conflict (the file was replaced by
 # a dynamic route in pages/manifest.json.tsx).
 git checkout -- frontend/public/manifest.json 2>/dev/null || true
+# Admin-uploaded branding overwrites tracked files. Preserve only locally
+# modified assets so the pull can fast-forward without discarding branding.
+BRAND_BACKUP=""
+if [ -d frontend/public/img ] && ! git diff --quiet -- frontend/public/img; then
+  BRAND_BACKUP="$(mktemp -d)"
+  cp -a frontend/public/img "$BRAND_BACKUP/img"
+  git checkout -- frontend/public/img 2>/dev/null || true
+fi
+FAVICON_BACKUP=""
+if [ -f frontend/public/favicon.ico ] && ! git diff --quiet -- frontend/public/favicon.ico; then
+  FAVICON_BACKUP="$(mktemp)"
+  cp -a frontend/public/favicon.ico "$FAVICON_BACKUP"
+  git checkout -- frontend/public/favicon.ico 2>/dev/null || true
+fi
+restore_branding() {
+  if [ -n "$BRAND_BACKUP" ]; then
+    rm -rf frontend/public/img
+    cp -a "$BRAND_BACKUP/img" frontend/public/img
+    rm -rf "$BRAND_BACKUP"
+    BRAND_BACKUP=""
+    # Older logo uploads wrote this file; the runtime uses the root favicon.
+    rm -f frontend/public/img/favicon.ico
+  fi
+  if [ -n "$FAVICON_BACKUP" ]; then
+    cp -a "$FAVICON_BACKUP" frontend/public/favicon.ico
+    rm -f "$FAVICON_BACKUP"
+    FAVICON_BACKUP=""
+  fi
+}
+trap restore_branding EXIT
 # backend/.env used to be tracked and is now ignored. Keep the server copy
 # (which may contain local values) safe across the pull that removes it from
 # the index: back it up, drop local modifications so the pull cannot refuse,
@@ -38,6 +68,8 @@ if [ -n "$ENV_BACKUP" ]; then
   cp -p "$ENV_BACKUP" backend/.env
   rm -f "$ENV_BACKUP"
 fi
+restore_branding
+trap - EXIT
 # An untracked manifest.json from older builds would shadow the dynamic route.
 rm -f frontend/public/manifest.json
 
