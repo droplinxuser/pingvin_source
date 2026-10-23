@@ -229,9 +229,15 @@ sign-in redirect for a protected page and loop between `/upload` and
   eligible shares in view order, excluded all other cases, and dropped a share
   immediately after it was switched to password-protected, added back after it
   was made public again. The four pages rendered the widget server-side with
-  nine 250x250 cards in a 3x3 desktop grid, a 2-column tablet grid, one column
-  at 390px and zero measured layout shift; the homepage made no client-side
-  trending request. Dark mode and click-through to `/share/<id>` were checked.
+  nine 250px-tall cards spanning the content width in a 3x3 desktop grid, a
+  2-column tablet grid, one column at 390px and zero measured layout shift;
+  the homepage made no client-side trending request. Thumbnails use a 2px blur,
+  the view badge is 14px, dark mode was checked, and click-through to
+  `/share/<id>` was verified.
+- Navigating between share pages on the client now remounts the share view by
+  share ID. Previously the page only fetched its files on mount, so clicking a
+  trending thumbnail could leave the previous share's name, files and visitor
+  data on screen under the new URL.
 - Reset-password pages now set a browser title, and a missing local
   `archive.zip` returns `404` instead of `500` (both verified locally).
 - `bash -n update.sh` passes; its env writer produces the exact live

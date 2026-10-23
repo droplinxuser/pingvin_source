@@ -46,7 +46,7 @@ export async function getServerSideProps(context: GetServerSidePropsContext) {
   return { props: { shareId, initialNotFound } };
 }
 
-const Share = ({
+const SharePage = ({
   shareId,
   initialNotFound = false,
 }: {
@@ -287,5 +287,11 @@ const Share = ({
     </>
   );
 };
+
+// Remount when navigating between shares so the previous share's files and
+// visitor data cannot stay on screen under the new share URL.
+const Share = (props: { shareId: string; initialNotFound?: boolean }) => (
+  <SharePage key={props.shareId} {...props} />
+);
 
 export default Share;
