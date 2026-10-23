@@ -11,6 +11,7 @@ import {
   Res,
   UseGuards,
 } from "@nestjs/common";
+import { SkipThrottle } from "@nestjs/throttler";
 import { User } from "@prisma/client";
 import { Response } from "express";
 import { GetUser } from "src/auth/decorator/getUser.decorator";
@@ -32,7 +33,11 @@ export class UserController {
   ) {}
 
   // Own user operations
+  // The frontend calls this from SSR, where the IP/User-Agent belong to the
+  // frontend process rather than the visitor. Keep the JWT and per-route
+  // limiters, but do not share a visitor bucket between different users.
   @Get("me")
+  @SkipThrottle({ visitor: true })
   @UseGuards(JwtGuard)
   async getCurrentUser(@GetUser() user?: User) {
     if (!user) return null;

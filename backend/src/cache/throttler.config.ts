@@ -1,5 +1,6 @@
 import { createHash } from "crypto";
 import { ThrottlerModuleOptions } from "@nestjs/throttler";
+import { getVisitorKey } from "src/utils/visitorIdentity.util";
 import { ValkeyService } from "./valkey.service";
 import { ValkeyThrottlerStorage } from "./valkeyThrottler.storage";
 
@@ -34,8 +35,11 @@ export const createThrottlerOptions = (
       ttl: VISITOR_RATE_TTL_MS,
       limit: VISITOR_RATE_LIMIT,
       blockDuration: VISITOR_RATE_BLOCK_MS,
+      // IP + browser User-Agent, hashed before the bucket key is stored.
       getTracker: (req) =>
-        typeof req.visitorKey === "string" ? req.visitorKey : `ip:${req.ip}`,
+        typeof req.visitorKey === "string"
+          ? req.visitorKey
+          : getVisitorKey(req),
       generateKey: (_context, tracker) =>
         createHash("sha256").update(`visitor:${tracker}`).digest("hex"),
     },

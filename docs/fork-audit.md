@@ -15,7 +15,7 @@ so `git merge upstream/main` stays small.
 | Uploader metadata / visitors | `backend/src/utils/uploaderInfo.util.ts`, `ShareDTO.uploaderInfo`, `frontend/src/components/share/UploaderInfoBadges.tsx`, `ShareStats.tsx`; view counts stay in `Share.views` |
 | Inline media gallery | `frontend/src/components/share/MediaPreviewGallery.tsx` (up to 30 supported image/video thumbnails at 250px, opening `FilePreview.tsx` in the full-size modal) |
 | Cache headers / hotlink protection | `backend/src/utils/cache.util.ts` (shared `Cache-Control`, `CDN-Cache-Control`, `Cloudflare-CDN-Cache-Control`, public-file `ETag`), `backend/src/utils/referrer.util.ts`, `frontend/src/middleware.ts` (query-free anonymous page shells), `frontend/next.config.js` |
-| Per-visitor rate limiting | `backend/src/utils/visitorIdentity.util.ts`, `backend/src/cache/valkeyThrottler.storage.ts`, `backend/src/cache/throttler.config.ts`, `backend/src/main.ts` |
+| Per-IP+User-Agent rate limiting | `backend/src/utils/visitorIdentity.util.ts`, `backend/src/cache/valkeyThrottler.storage.ts`, `backend/src/cache/throttler.config.ts`, `backend/src/main.ts` |
 | Valkey/Redis cache | `backend/src/utils/cache.util.ts`, `backend/src/share/shareState.service.ts`, `backend/src/cache/cache.module.ts`, `backend/src/cache/valkey.service.ts` |
 | Site stats and footer | `backend/src/system/system.service.ts`, `backend/src/cache/metrics.service.ts`, `frontend/src/components/footer/Footer.tsx`; `POST /api/system/pageview` |
 | Home copy and ads | `frontend/src/pages/index.tsx` (upstream layout), `home.custom.*` keys in `en-US.ts`, `frontend/src/components/Ads.tsx` |
@@ -59,19 +59,20 @@ other languages show the upstream copy instead of the English fallback.
 - `DATA_DIRECTORY="/var/www/pingvin_data"`; uploader/visitor metadata is stored
   per share at `uploads/shares/<shareId>/uploader.json` with mode `600`. View
   counts live in `Share.views` and are updated directly in SQLite.
-- Global rate limiting is 90 requests per 60 seconds per visitor, blocking for
-  60 seconds after the limit. Configure it with `VISITOR_RATE_LIMIT`,
-  `VISITOR_RATE_TTL_MS` and `VISITOR_RATE_BLOCK_MS`. Guests use a signed,
-  HttpOnly `pingvin_visitor` cookie; signed-in users use their account ID;
-  cookie-less/forged-cookie requests fall back to the client IP. The existing
-  per-route/per-IP `THROTTLE_LIMIT` limiter remains in place. When
-  `CACHE_REDIS_ENABLED=true`, both limiter buckets are stored atomically in
-  Valkey (shared across instances/restarts); if Valkey is unavailable they
-  fall back to the in-memory store. `/api/configs`, `GET /api/system/stats`,
-  share `HEAD` checks and every upload request (init, chunk, complete, abort)
-  skip the visitor bucket so SSR and large uploads keep working. File/ZIP GETs
-  skip the visitor cookie so a public response never carries `Set-Cookie`;
-  their limiter key falls back to the IP.
+- Global rate limiting is 90 requests per 60 seconds per client, identified by
+  client IP + browser `User-Agent`, blocking for 60 seconds after the limit.
+  Configure it with `VISITOR_RATE_LIMIT`, `VISITOR_RATE_TTL_MS` and
+  `VISITOR_RATE_BLOCK_MS`. No visitor cookie is issued; legacy
+  `pingvin_visitor` cookies are ignored and expire naturally. The throttler
+  hashes `IP + User-Agent` with SHA-256 before using it as a key, so raw
+  identifiers are not stored. The existing per-route/per-IP `THROTTLE_LIMIT`
+  limiter remains in place. When `CACHE_REDIS_ENABLED=true`, both limiter
+  buckets are stored atomically in Valkey (shared across instances/restarts);
+  if Valkey is unavailable they fall back to the in-memory store. `/api/configs`,
+  `GET /api/system/stats`, `GET /api/users/me` (called by SSR), share `HEAD`
+  checks and every upload request (init, chunk, complete, abort) skip the
+  visitor bucket so SSR and large uploads keep working. File/ZIP GETs are
+  still cache-friendly because the response never needs a visitor cookie.
 - Valkey/Redis is optional but recommended: set `CACHE_REDIS_ENABLED=true` and
   `CACHE_REDIS_URL=redis://127.0.0.1:6379` in `backend/.env` (`update.sh`
   enables both automatically when a local `valkey-server` is active). Share-page
@@ -143,8 +144,8 @@ sign-in redirect for a protected page and loop between `/upload` and
 ## Verified locally
 
 - Node `22.23.3` production builds pass for backend and frontend. `npm run
-  test:unit` passes all 13 tests, covering view limits, visitor identity,
-  throttler fallback, uploader metadata and page-view metrics. A local smoke
+  test:unit` passes all 15 tests, covering view limits, IP+User-Agent identity,
+  Valkey/fallback throttling, uploader metadata and page-view metrics. A local smoke
   run rechecked config/stats cache headers, share `HEAD`/token/view flow and
   rolling expiration; the aggregate cache and upload-throttle exemptions were
   reviewed without a live Valkey instance.
@@ -161,6 +162,12 @@ sign-in redirect for a protected page and loop between `/upload` and
   server-side. A public file stayed cookie-free with a day-long `ETag` response,
   a protected file stayed `private`, and a local Prisma migration used the
   explicitly passed test `DATABASE_URL` instead of `backend/prisma/.env`.
+- A cookie-free limiter pass sent 91 requests with the same IP + User-Agent:
+  exactly 90 succeeded, the 91st returned `429`, a request with a different
+  User-Agent succeeded, and no response carried `Set-Cookie`. A browser visit
+  had no `pingvin_visitor` cookie and the home page stayed publicly cacheable.
+  The Valkey bucket-key path is covered by a unit test; this sandbox has no
+  Valkey server, so the live Valkey round trip was not repeated here.
 - The gallery was verified with a 40-file fixture: 30 cards from 35 supported
   files, 250px media boxes, unsupported formats excluded, video first-frame
   thumbnails rendered, and image/video thumbnails opened the full-size modal.
@@ -188,10 +195,10 @@ sign-in redirect for a protected page and loop between `/upload` and
 - API checks: reverse-share creation without an expiration field uses the
   100-day rolling expiration; 20 concurrent share views increment exactly 20;
   20 concurrent views against a 5-view limit yield exactly 5 successes and 15
-  `403` responses; the visitor limiter returns `429` after 90 requests and the
-  hotlink guard redirects direct file requests to the share page. With the
-  backend stopped, the frontend still renders the home page from its bundled
-  default config.
+  `403` responses; the IP+User-Agent visitor limiter returns `429` after 90
+  requests and the hotlink guard redirects direct file requests to the share
+  page. With the backend stopped, the frontend still renders the home page from
+  its bundled default config.
 - The current sandbox ran without Valkey, so the in-memory page-view and
   throttler fallbacks were exercised.
 - The live deployment was audited as a guest and as a test admin account:

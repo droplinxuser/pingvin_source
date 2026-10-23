@@ -2,7 +2,6 @@
 import "./constants";
 import { ClassSerializerInterceptor, Logger, LogLevel } from "@nestjs/common";
 import { NestFactory, Reflector } from "@nestjs/core";
-import { JwtService } from "@nestjs/jwt";
 import { NestExpressApplication } from "@nestjs/platform-express";
 import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
 import * as bodyParser from "body-parser";
@@ -68,13 +67,7 @@ async function bootstrap() {
 
   app.use(cookieParser());
   app.set("trust proxy", process.env.TRUST_PROXY === "true");
-  app.use(
-    createVisitorIdentityMiddleware(
-      app.get(JwtService),
-      config.get("internal.jwtSecret"),
-      config.get("security.secureCookies"),
-    ),
-  );
+  app.use(createVisitorIdentityMiddleware());
 
   await fs.promises.mkdir(`${DATA_DIRECTORY}/uploads/_temp`, {
     recursive: true,

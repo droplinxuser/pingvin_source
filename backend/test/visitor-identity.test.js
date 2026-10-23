@@ -1,56 +1,64 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { JwtService } = require("@nestjs/jwt");
 const {
   createVisitorIdentityMiddleware,
 } = require("../dist/src/utils/visitorIdentity.util.js");
 
-const jwt = new JwtService({});
-const secret = "test-secret";
-const middleware = createVisitorIdentityMiddleware(jwt, secret, false);
+const middleware = createVisitorIdentityMiddleware();
 
-function run(cookies = {}, path = "/", method = "GET") {
+function run({
+  ip = "203.0.113.7",
+  userAgent = "Mozilla/5.0 Test",
+  omitUserAgent = false,
+  headers = {},
+} = {}) {
   return new Promise((resolve) => {
-    const req = { cookies, headers: {}, ip: "203.0.113.7", path, method };
-    const res = {
-      cookies: [],
-      cookie(name, value) {
-        this.cookies.push([name, value]);
+    const request = {
+      ip,
+      headers: {
+        ...(omitUserAgent ? {} : { "user-agent": userAgent }),
+        ...headers,
+      },
+      socket: { remoteAddress: ip },
+    };
+    const response = {
+      cookie() {
+        throw new Error("rate-limit identity must not set cookies");
       },
     };
-    middleware(req, res, () => resolve({ req, res }));
+    middleware(request, response, () => resolve(request));
   });
 }
 
-test("issues a signed visitor cookie and keys the first request by IP", async () => {
-  const { req, res } = await run();
-  assert.equal(req.visitorKey, "ip:203.0.113.7");
-  assert.equal(res.cookies.length, 1);
-  assert.equal(res.cookies[0][0], "pingvin_visitor");
+test("keys by IP and user agent without setting a cookie", async () => {
+  const first = await run();
+  const same = await run();
 
-  const visitor = await run({ pingvin_visitor: res.cookies[0][1] });
-  assert.match(visitor.req.visitorKey, /^visitor:[0-9a-f-]{36}$/);
-  assert.equal(visitor.res.cookies.length, 0);
+  assert.equal(first.visitorKey, "ipua:203.0.113.7\nMozilla/5.0 Test");
+  assert.equal(same.visitorKey, first.visitorKey);
 });
 
-test("ignores forged cookies and keys signed-in users by account ID", async () => {
-  const forged = await run({ pingvin_visitor: "not-a-jwt" });
-  assert.equal(forged.req.visitorKey, "ip:203.0.113.7");
+test("separates different IPs and user agents", async () => {
+  const base = await run();
+  const otherUserAgent = await run({ userAgent: "Other/1.0" });
+  const otherIp = await run({ ip: "198.51.100.9" });
 
-  const accessToken = await jwt.signAsync({ sub: "user-1" }, { secret });
-  const user = await run({ access_token: accessToken });
-  assert.equal(user.req.visitorKey, "user:user-1");
+  assert.notEqual(otherUserAgent.visitorKey, base.visitorKey);
+  assert.notEqual(otherIp.visitorKey, base.visitorKey);
 });
 
-test("keeps cacheable file downloads cookie-free", async () => {
-  const sharePage = await run({}, "/api/shares/abc123");
-  assert.equal(sharePage.res.cookies.length, 1);
+test("uses a stable placeholder when the user agent is missing", async () => {
+  const first = await run({ omitUserAgent: true });
+  const second = await run({ omitUserAgent: true });
 
-  const file = await run({}, "/api/shares/abc123/files/file456");
-  assert.equal(file.req.visitorKey, "ip:203.0.113.7");
-  assert.equal(file.res.cookies.length, 0);
+  assert.equal(first.visitorKey, "ipua:203.0.113.7\nunknown");
+  assert.equal(second.visitorKey, first.visitorKey);
+});
 
-  const zip = await run({}, "/api/shares/abc123/files/zip");
-  assert.equal(zip.req.visitorKey, "ip:203.0.113.7");
-  assert.equal(zip.res.cookies.length, 0);
+test("ignores legacy visitor cookies", async () => {
+  const request = await run({
+    headers: { cookie: "pingvin_visitor=forged" },
+  });
+
+  assert.equal(request.visitorKey, "ipua:203.0.113.7\nMozilla/5.0 Test");
 });

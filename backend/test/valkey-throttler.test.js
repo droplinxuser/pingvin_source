@@ -24,3 +24,29 @@ test("falls back to in-memory throttling when Valkey is disabled", async () => {
   assert.equal(third.isBlocked, true);
   storage.onApplicationShutdown();
 });
+
+test("stores hashed tracker buckets in Valkey when available", async () => {
+  const keys = [];
+  const storage = new ValkeyThrottlerStorage({
+    run: async (operation) =>
+      operation({
+        eval: async (_script, options) => {
+          keys.push(options.keys[0]);
+          return [1, 60000, 0, 0];
+        },
+      }),
+  });
+
+  const result = await storage.increment(
+    "hashed-ip-user-agent",
+    60000,
+    90,
+    60000,
+    "visitor",
+  );
+
+  assert.deepEqual(keys, ["pingvin:throttle:visitor:hashed-ip-user-agent"]);
+  assert.equal(result.totalHits, 1);
+  assert.equal(result.isBlocked, false);
+  storage.onApplicationShutdown();
+});
