@@ -1,21 +1,14 @@
 import { Injectable } from "@nestjs/common";
 import { ValkeyClient, ValkeyService } from "./valkey.service";
 
-const METRICS_PREFIX = "pingvin:metrics:pageviews:";
-const COUNTRY_VISITORS_PREFIX = "pingvin:metrics:visitors:";
-const WINDOW_MINUTES = 60;
-const WINDOW_MS = WINDOW_MINUTES * 60 * 1000;
-const BUCKET_TTL_SECONDS = 2 * 60 * 60;
+const METRICS_PREFIX = "pingvin:metrics:pageviews:hour:";
+const WINDOW_HOURS = 24;
+const BUCKET_TTL_SECONDS = (WINDOW_HOURS + 1) * 60 * 60;
 const MAX_TOP_COUNTRIES = 5;
 const TOTAL_FIELD = "total";
 const COUNTRY_FIELD = "c:";
 
 type Bucket = {
-  total: number;
-  countries: Map<string, number>;
-};
-
-type Aggregate = {
   total: number;
   countries: Map<string, number>;
 };
@@ -26,164 +19,99 @@ export type CountryCount = {
 };
 
 export type PageViewMetrics = {
-  pageViewsLastHour: number;
-  topCountriesLastHour: CountryCount[];
+  pageViewsLastDay: number;
+  topCountriesLastDay: CountryCount[];
 };
 
 @Injectable()
 export class MetricsService {
   private readonly memory = new Map<number, Bucket>();
-  private readonly memoryVisitors = new Map<string, Map<string, number>>();
 
   constructor(private readonly valkey: ValkeyService) {}
 
-  async recordPageView(
-    country?: string,
-    visitorKey?: string,
-  ): Promise<PageViewMetrics> {
-    const normalizedCountry = normalizeCountry(country);
-    const minute = currentMinute();
-    const now = Date.now();
+  async recordPageView(country?: string): Promise<PageViewMetrics> {
+    const code = normalizeCountry(country);
+    const hour = currentHour();
 
     const result = await this.valkey.run(async (client) => {
-      const key = bucketKey(minute);
+      const key = bucketKey(hour);
       const multi = client.multi();
       multi.hIncrBy(key, TOTAL_FIELD, 1);
-      if (normalizedCountry)
-        multi.hIncrBy(key, `${COUNTRY_FIELD}${normalizedCountry}`, 1);
+      if (code) multi.hIncrBy(key, `${COUNTRY_FIELD}${code}`, 1);
       multi.expire(key, BUCKET_TTL_SECONDS);
-
-      if (normalizedCountry && visitorKey) {
-        const visitorsKey = countryVisitorsKey(normalizedCountry);
-        multi.zAdd(visitorsKey, { score: now, value: visitorKey });
-        multi.zRemRangeByScore(visitorsKey, "-inf", String(now - WINDOW_MS));
-        multi.expire(visitorsKey, BUCKET_TTL_SECONDS);
-      }
       await multi.exec();
 
-      return this.readValkey(client, minute);
+      return this.readValkey(client, hour);
     });
 
-    return (
-      result ?? this.recordMemory(normalizedCountry, visitorKey, minute, now)
-    );
+    return result ?? this.recordMemory(code, hour);
   }
 
-  async getLastHour(): Promise<PageViewMetrics> {
-    const minute = currentMinute();
+  async getLastDay(): Promise<PageViewMetrics> {
+    const hour = currentHour();
     const result = await this.valkey.run((client) =>
-      this.readValkey(client, minute),
+      this.readValkey(client, hour),
     );
-    return result ?? this.readMemory(minute);
+    return result ?? this.readMemory(hour);
   }
 
   private async readValkey(
     client: ValkeyClient,
-    minute: number,
+    hour: number,
   ): Promise<PageViewMetrics> {
     const multi = client.multi();
-    for (let offset = 0; offset < WINDOW_MINUTES; offset++)
-      multi.hGetAll(bucketKey(minute - offset));
+    for (let offset = 0; offset < WINDOW_HOURS; offset++)
+      multi.hGetAll(bucketKey(hour - offset));
 
     const buckets = (await multi.exec()) as unknown as (Record<
       string,
       string
     > | null)[];
-    const aggregate = aggregateBuckets(buckets);
-    const visitors = await this.readValkeyVisitors(client, aggregate.countries);
-    return toMetrics(aggregate, visitors);
-  }
-
-  private async readValkeyVisitors(
-    client: ValkeyClient,
-    pageViewsByCountry: Map<string, number>,
-  ): Promise<Map<string, number>> {
-    const countries = [...pageViewsByCountry.keys()];
-    if (countries.length === 0) return new Map();
-
-    const multi = client.multi();
-    for (const country of countries) multi.zCard(countryVisitorsKey(country));
-    const counts = (await multi.exec()) as unknown as number[];
-    return new Map(
-      countries.map((country, index) => [country, Number(counts[index]) || 0]),
-    );
+    return toMetrics(aggregateBuckets(buckets));
   }
 
   private recordMemory(
     country: string | undefined,
-    visitorKey: string | undefined,
-    minute: number,
-    now: number,
+    hour: number,
   ): PageViewMetrics {
     for (const key of this.memory.keys()) {
-      if (key <= minute - WINDOW_MINUTES) this.memory.delete(key);
+      if (key <= hour - WINDOW_HOURS) this.memory.delete(key);
     }
 
-    const bucket = this.memory.get(minute) ?? {
+    const bucket = this.memory.get(hour) ?? {
       total: 0,
       countries: new Map<string, number>(),
     };
     bucket.total++;
     if (country)
       bucket.countries.set(country, (bucket.countries.get(country) ?? 0) + 1);
-    this.memory.set(minute, bucket);
+    this.memory.set(hour, bucket);
 
-    if (country && visitorKey) {
-      const visitors =
-        this.memoryVisitors.get(country) ?? new Map<string, number>();
-      visitors.set(visitorKey, now);
-      this.memoryVisitors.set(country, visitors);
-    }
-    this.pruneMemoryVisitors(now);
-
-    return this.readMemory(minute, now);
+    return this.readMemory(hour);
   }
 
-  private readMemory(minute: number, now = Date.now()): PageViewMetrics {
+  private readMemory(hour: number): PageViewMetrics {
     const countries = new Map<string, number>();
     let total = 0;
 
-    for (let offset = 0; offset < WINDOW_MINUTES; offset++) {
-      const bucket = this.memory.get(minute - offset);
+    for (let offset = 0; offset < WINDOW_HOURS; offset++) {
+      const bucket = this.memory.get(hour - offset);
       if (!bucket) continue;
       total += bucket.total;
       for (const [code, count] of bucket.countries)
         countries.set(code, (countries.get(code) ?? 0) + count);
     }
 
-    const visitors = new Map<string, number>();
-    for (const [country, entries] of this.memoryVisitors) {
-      let count = 0;
-      for (const timestamp of entries.values()) {
-        if (timestamp >= now - WINDOW_MS) count++;
-      }
-      if (count > 0) visitors.set(country, count);
-    }
-
-    return toMetrics({ total, countries }, visitors);
-  }
-
-  private pruneMemoryVisitors(now: number) {
-    const cutoff = now - WINDOW_MS;
-    for (const [country, visitors] of this.memoryVisitors) {
-      for (const [key, timestamp] of visitors) {
-        if (timestamp < cutoff) visitors.delete(key);
-      }
-      if (visitors.size === 0) this.memoryVisitors.delete(country);
-    }
+    return toMetrics({ total, countries });
   }
 }
 
-function currentMinute() {
-  return Math.floor(Date.now() / 60_000);
+function currentHour() {
+  return Math.floor(Date.now() / 3_600_000);
 }
 
-function bucketKey(minute: number) {
-  return `${METRICS_PREFIX}${minute}`;
-}
-
-function countryVisitorsKey(country: string) {
-  return `${COUNTRY_VISITORS_PREFIX}${country}`;
+function bucketKey(hour: number) {
+  return `${METRICS_PREFIX}${hour}`;
 }
 
 function normalizeCountry(country?: string) {
@@ -193,7 +121,7 @@ function normalizeCountry(country?: string) {
 
 function aggregateBuckets(
   buckets: (Record<string, string> | null | undefined)[],
-): Aggregate {
+): Bucket {
   const countries = new Map<string, number>();
   let total = 0;
 
@@ -213,27 +141,16 @@ function aggregateBuckets(
   return { total, countries };
 }
 
-function toMetrics(
-  aggregate: Aggregate,
-  uniqueVisitors: Map<string, number>,
-): PageViewMetrics {
+function toMetrics(aggregate: Bucket): PageViewMetrics {
   const countries = [...aggregate.countries.entries()]
-    .map(([country, pageViews]) => ({
-      country,
-      count: uniqueVisitors.get(country) || pageViews,
-      pageViews,
-    }))
-    .sort(
-      (a, b) =>
-        b.count - a.count ||
-        b.pageViews - a.pageViews ||
-        a.country.localeCompare(b.country),
-    )
+    .sort(([aCode, aCount], [bCode, bCount]) => {
+      return bCount - aCount || aCode.localeCompare(bCode);
+    })
     .slice(0, MAX_TOP_COUNTRIES)
-    .map(({ country, count }) => ({ country, count }));
+    .map(([country, count]) => ({ country, count }));
 
   return {
-    pageViewsLastHour: aggregate.total,
-    topCountriesLastHour: countries,
+    pageViewsLastDay: aggregate.total,
+    topCountriesLastDay: countries,
   };
 }

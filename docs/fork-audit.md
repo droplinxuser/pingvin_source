@@ -76,14 +76,15 @@ other languages show the upstream copy instead of the English fallback.
   resets the rolling expiration to 100 days. Share views and visitor metadata
   are written directly to SQLite and `uploader.json` on each view.
 - The footer posts to `POST /api/system/pageview` on every rendered page. The
-  endpoint increments per-minute Valkey buckets atomically, expires them after
-  two hours and returns the last 60 minutes of page views plus the top five
-  countries by unique visitor (`visitorKey`) count. The stats response is never
-  cached; the older
-  `GET /api/system/stats` remains available as a read-only fallback and caches
-  the SQLite-derived user/share/file totals for 60s.
+  endpoint increments a per-hour Valkey hash atomically (one total field plus
+  one field per country), expires each hourly bucket after 25 hours and returns
+  the last 24 hours of page views plus the top five countries by page views.
+  Only the 24 hourly hashes are stored; no per-visitor sets are kept. The stats
+  response is never cached; the older `GET /api/system/stats` remains available
+  as a read-only fallback and caches the SQLite-derived user/share/file totals
+  for 60s.
 - Fallbacks: if Valkey is disabled or unreachable, page-view metrics and the
-  top-country list move to a per-process 60-minute memory window. The Valkey
+  top-country list move to a per-process 24-hour memory window. The Valkey
   connection retries after 30s; cache reads fail open to SQLite. All Redis
   clients have error handlers and `disableOfflineQueue` so a dead Valkey
   server never hangs a request or crashes the backend.
@@ -115,6 +116,11 @@ login can loop between `/upload` and `/auth/signIn`.
   the last permitted max-view is allowed for file access while the next page
   view returns `403 share_max_views_exceeded`; visitor country, city, browser,
   OS and referrer are written to `uploader.json`.
+- The footer 24-hour metrics were verified against a local Valkey 9.1
+  instance: page views and country counts aggregate from the 24 hourly hashes,
+  the hour-24 bucket is excluded while hour-23 is included, each bucket gets a
+  25-hour TTL, and the endpoint falls back to the in-memory window when Valkey
+  stops.
 - Playwright against that database (11 smoke checks plus a 5-check upload
   flow): home page, footer stats, dynamic manifest, sign-in, account shares,
   share page with visitor badges and text preview, report modal, admin shares

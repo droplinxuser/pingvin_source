@@ -25,7 +25,7 @@ export default {
   "footer.custom.files": "Files",
   "footer.custom.storage": "Storage",
   "footer.custom.views":
-    "{count, plural, one {# view} other {# views}} in the last hour",
+    "{count, plural, one {# view} other {# views}} in the last 24 hours",
   "footer.custom.loading": "Loading activity…",
   "footer.custom.contact": "Contact",
   "footer.custom.copyright": "© {year} {siteName}",

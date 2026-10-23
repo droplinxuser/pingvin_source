@@ -36,18 +36,15 @@ export class SystemService {
   async getSystemStats(): Promise<SystemStats> {
     const [base, pageViews] = await Promise.all([
       this.getBaseSystemStats(),
-      this.metrics.getLastHour(),
+      this.metrics.getLastDay(),
     ]);
     return { ...base, ...pageViews };
   }
 
-  async recordPageView(
-    country?: string,
-    visitorKey?: string,
-  ): Promise<SystemStats> {
+  async recordPageView(country?: string): Promise<SystemStats> {
     const [base, pageViews] = await Promise.all([
       this.getBaseSystemStats(),
-      this.metrics.recordPageView(country, visitorKey),
+      this.metrics.recordPageView(country),
     ]);
     return { ...base, ...pageViews };
   }

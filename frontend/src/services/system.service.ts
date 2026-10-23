@@ -15,8 +15,8 @@ export interface SystemStats {
   shareCount: number;
   fileCount: number;
   storageSizeBytes: number;
-  pageViewsLastHour: number;
-  topCountriesLastHour: CountryCount[];
+  pageViewsLastDay: number;
+  topCountriesLastDay: CountryCount[];
 }
 
 const getSystemInfo = async (): Promise<SystemInfo | null> => {

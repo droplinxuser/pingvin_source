@@ -37,8 +37,6 @@ export class SystemController {
   async recordPageView(@Req() request: Request): Promise<SystemStats> {
     const header = request.headers["cf-ipcountry"];
     const country = Array.isArray(header) ? header[0] : header;
-    const visitorKey = (request as Request & { visitorKey?: string })
-      .visitorKey;
-    return await this.systemService.recordPageView(country, visitorKey);
+    return await this.systemService.recordPageView(country);
   }
 }

@@ -209,8 +209,8 @@ const Footer = () => {
     },
   ];
 
-  const views = stats?.pageViewsLastHour ?? 0;
-  const countries = stats?.topCountriesLastHour?.slice(0, 5) ?? [];
+  const views = stats?.pageViewsLastDay ?? 0;
+  const countries = stats?.topCountriesLastDay?.slice(0, 5) ?? [];
 
   return (
     <MFooter height="auto" className={classes.footer} zIndex={100}>
