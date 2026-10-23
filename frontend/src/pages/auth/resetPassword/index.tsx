@@ -17,6 +17,7 @@ import { useRouter } from "next/router";
 import { TbArrowLeft } from "react-icons/tb";
 import { FormattedMessage } from "react-intl";
 import * as yup from "yup";
+import Meta from "../../../components/Meta";
 import useTranslate from "../../../hooks/useTranslate.hook";
 import authService from "../../../services/auth.service";
 import toast from "../../../utils/toast.util";
@@ -63,6 +64,7 @@ const ResetPassword = () => {
 
   return (
     <Container size={460} my={30}>
+      <Meta title={t("resetPassword.title")} />
       <Title order={2} weight={900} align="center">
         <FormattedMessage id="resetPassword.title" />
       </Title>

@@ -137,10 +137,14 @@ login can loop between `/upload` and `/auth/signIn`.
   default config.
 - The local sandbox ran without Valkey, so the in-memory page-view and
   throttler fallbacks were exercised.
-- Live `https://dropmb.com` was checked for test-account sign-in, account
-  shares, public share stats and the dynamic manifest. The origin host is not
-  reachable from this workstation, so the new commit still needs
-  `sudo bash /var/www/pingvin_source/update.sh` on the server.
+- Live `https://dropmb.com` was audited on 2026-10-23 as a guest and as
+  `thuoct222026`: home, sign-in, upload, account pages, public/password/
+  max-view/multi-file share pages, ZIP download, report modal, 404s, dynamic
+  manifest, imprint/privacy and admin redirects. No console errors or broken
+  assets; 390px mobile and dark mode showed no horizontal overflow. Temporary
+  QA shares were removed after the run.
+- Reset-password pages now set a browser title, and a missing local
+  `archive.zip` returns `404` instead of `500` (both verified locally).
 - `bash -n update.sh` passes; its env writer produces the exact live
   `DATABASE_URL` above.
 

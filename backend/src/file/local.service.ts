@@ -257,8 +257,12 @@ export class LocalFileService {
         `${SHARE_DIRECTORY}/${shareId}/archive.zip`,
       );
 
-      zipStream.on("error", (err) => {
-        reject(new InternalServerErrorException(err));
+      zipStream.on("error", (err: NodeJS.ErrnoException) => {
+        reject(
+          err.code === "ENOENT"
+            ? new NotFoundException(this.i18n.t("file.notFound"))
+            : new InternalServerErrorException(err),
+        );
       });
 
       zipStream.on("open", () => {
