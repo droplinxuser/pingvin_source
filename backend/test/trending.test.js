@@ -9,7 +9,7 @@ function createMockValkey(execute) {
       const queue = [];
       const chain = {};
       for (const method of [
-        "zIncrBy",
+        "zAdd",
         "expire",
         "hSet",
         "hDel",
@@ -41,7 +41,7 @@ function createMockValkey(execute) {
 
 const now = Date.now();
 const recent = new Date(now - 60 * 60 * 1000).toISOString();
-const old = new Date(now - 49 * 60 * 60 * 1000).toISOString();
+const old = new Date(now - 8 * 24 * 60 * 60 * 1000).toISOString();
 
 function meta(id, views, createdAt, kind = "image") {
   return JSON.stringify({
@@ -54,7 +54,7 @@ function meta(id, views, createdAt, kind = "image") {
   });
 }
 
-test("ranks the last 24h views and filters stale shares", async () => {
+test("ranks the last seven days by total views and filters stale shares", async () => {
   const ranked = [
     { value: "a", score: 40 },
     { value: "old", score: 30 },
@@ -62,7 +62,11 @@ test("ranks the last 24h views and filters stale shares", async () => {
     { value: "broken", score: 10 },
   ];
   const today = [meta("a", 400, recent), null];
-  const yesterday = [meta("old", 300, old), meta("b", 200, recent, "video")];
+  const yesterday = [
+    meta("old", 300, old),
+    meta("a", 350, recent),
+    meta("b", 200, recent, "video"),
+  ];
 
   const mock = createMockValkey((queue) =>
     queue[0][0] === "zUnionStore" ? [1, ranked, 1] : [today, yesterday],
@@ -98,7 +102,7 @@ test("records only recent public shares with image or video media", async () => 
 
   await service.recordView({
     ...base,
-    createdAt: new Date(Date.now() - 49 * 60 * 60 * 1000),
+    createdAt: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000),
     files: [{ id: "image", name: "photo.jpg" }],
   });
   assert.equal(mock.calls.length, 0);
@@ -113,7 +117,8 @@ test("records only recent public shares with image or video media", async () => 
   assert.equal(mock.calls.length, 1);
 
   const methods = mock.calls[0].map(([method]) => method);
-  assert.deepEqual(methods, ["zIncrBy", "expire", "hSet", "expire"]);
+  assert.deepEqual(methods, ["zAdd", "expire", "hSet", "expire"]);
+  assert.deepEqual(mock.calls[0][0][1][1], { score: 7, value: "share" });
 
   const stored = JSON.parse(mock.calls[0][2][1][2]);
   assert.equal(stored.previewFileId, "video");
@@ -136,5 +141,5 @@ test("invalidates cached rankings and share metadata", async () => {
   await service.invalidate("a");
 
   const calls = mock.calls.map((queue) => queue.map(([method]) => method));
-  assert.deepEqual(calls.at(-1), ["hDel", "hDel"]);
+  assert.deepEqual(calls.at(-1), Array(7).fill("hDel"));
 });

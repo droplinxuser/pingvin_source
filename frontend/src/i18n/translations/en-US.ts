@@ -35,7 +35,7 @@ export default {
   // Trending today
   "trending.custom.title": "Trending today",
   "trending.custom.description":
-    "Most-viewed public shares in the last 24 hours.",
+    "Most-viewed public shares from the last 7 days.",
   "trending.custom.item": "{name}: {count} views",
   // END trending
 

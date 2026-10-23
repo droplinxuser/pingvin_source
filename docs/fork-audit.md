@@ -85,17 +85,19 @@ other languages show the upstream copy instead of the English fallback.
   single atomic update instead of a transaction. The footer's base counters use
   a 60-second in-process cache and do not add a Valkey key.
 - "Trending today" is stored entirely in Valkey. A public share `GET` records
-  the view in a per-hour sorted set (`pingvin:trending:views:<hour>`, 25-hour
-  TTL) and writes `{ id, name, views, previewFileId, previewKind, createdAt }`
-  to a per-day hash (`pingvin:trending:meta:<day>`, 50-hour TTL) in the same
-  `MULTI`. Shares older than 48 hours and shares without an image/video are
-  skipped before writing. `GET /api/shares/trending` unions the 24 hourly
-  sets, drops entries without current metadata or older than 48 hours, and
-  returns the top nine without any SQLite query. The result is cached
-  in-process for 30 seconds and is edge-cacheable for 60 seconds. Editing,
-  expiring or deleting a share (including removing its files or reverse-share
-  parent) clears its metadata immediately. If Valkey is unavailable the
-  endpoint returns an empty list and the widget is hidden.
+  the share's total view count as its score in a per-day sorted set
+  (`pingvin:trending:views:<day>`, 8-day TTL) and writes
+  `{ id, name, views, previewFileId, previewKind, createdAt }` to a per-day
+  hash (`pingvin:trending:meta:<day>`, 8-day TTL) in the same `MULTI`. Shares
+  older than seven days and shares without an image/video are skipped before
+  writing. `GET /api/shares/trending` unions the seven daily sets with
+  `AGGREGATE MAX`, drops entries without current metadata or older than seven
+  days, and returns the top nine ordered by total views without any SQLite
+  query. The result is cached in-process for 30 seconds and is edge-cacheable
+  for 60 seconds. Editing, expiring or deleting a share (including removing
+  its files or reverse-share parent) clears its metadata immediately. If
+  Valkey is unavailable the endpoint returns an empty list and the widget is
+  hidden.
 - The footer posts to `POST /api/system/pageview` on every rendered page. The
   endpoint increments a per-hour Valkey hash atomically (one total field plus
   one field per country), expires each hourly bucket after 25 hours and reads
@@ -224,13 +226,15 @@ sign-in redirect for a protected page and loop between `/upload` and
   390px mobile and dark mode showed no horizontal overflow. Temporary QA shares
   were removed after the run.
 - The trending widget was verified with 11 recent public media shares, a
-  password share, a max-view share, a text-only share, a 49-hour-old share and
-  a share whose media was deleted. The endpoint returned the nine newest
-  eligible shares in view order, excluded all other cases, and dropped a share
-  immediately after it was switched to password-protected, added back after it
-  was made public again. The four pages rendered the widget server-side with
-  nine 250px-tall cards spanning the content width in a 3x3 desktop grid, a
-  2-column tablet grid, one column at 390px and zero measured layout shift;
+  password share, a max-view share, a text-only share, a 6-day-23-hour-old
+  share, an 8-day-old share and a share whose media was deleted. The endpoint
+  returned the nine eligible shares ordered by total views, included the
+  seven-day-old share, excluded the eight-day-old share and all other cases,
+  and dropped a share immediately after it was switched to password-protected,
+  added back after it was made public again. The four pages rendered the widget
+  server-side with nine 250px-tall cards spanning the content width in a 3x3
+  desktop grid, a 2-column tablet grid, one column at 390px and zero measured
+  layout shift;
   the homepage made no client-side trending request. Thumbnails use a 2px blur,
   the view badge is 14px, dark mode was checked, and click-through to
   `/share/<id>` was verified.

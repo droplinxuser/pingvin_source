@@ -5,11 +5,12 @@ import { ValkeyClient, ValkeyService } from "./valkey.service";
 const VIEW_KEY_PREFIX = "pingvin:trending:views:";
 const META_KEY_PREFIX = "pingvin:trending:meta:";
 const RANK_KEY = "pingvin:trending:rank";
-const WINDOW_HOURS = 24;
-const VIEW_TTL_SECONDS = (WINDOW_HOURS + 1) * 60 * 60;
-const META_TTL_SECONDS = 50 * 60 * 60;
-const MAX_SHARE_AGE_MS = 48 * 60 * 60 * 1000;
-const CANDIDATE_LIMIT = 100;
+const WINDOW_DAYS = 7;
+const DAY_MS = 24 * 60 * 60 * 1000;
+const VIEW_TTL_SECONDS = (WINDOW_DAYS + 1) * 24 * 60 * 60;
+const META_TTL_SECONDS = (WINDOW_DAYS + 1) * 24 * 60 * 60;
+const MAX_SHARE_AGE_MS = WINDOW_DAYS * DAY_MS;
+const CANDIDATE_LIMIT = 200;
 const RESULT_LIMIT = 9;
 const RESULT_CACHE_MS = 30 * 1000;
 
@@ -36,9 +37,9 @@ type TrendingSource = {
 };
 
 /**
- * Ranks public shares by their views over the last 24 hours. Both the counters
- * and the ranking are kept in Valkey; SQLite is only read by the share page
- * that produced the view, never by this service.
+ * Ranks public shares from the last seven days by their total view count.
+ * Both the counters and the ranking are kept in Valkey; SQLite is only read by
+ * the share page that produced the view, never by this service.
  */
 @Injectable()
 export class TrendingService {
@@ -63,10 +64,10 @@ export class TrendingService {
     };
 
     const stored = await this.valkey.run(async (client) => {
-      const viewKey = viewKeyFor(currentHour());
+      const viewKey = viewKeyFor(currentDay());
       const metaKey = metaKeyFor(currentDay());
       const multi = client.multi();
-      multi.zIncrBy(viewKey, 1, share.id);
+      multi.zAdd(viewKey, { score: share.views, value: share.id });
       multi.expire(viewKey, VIEW_TTL_SECONDS);
       multi.hSet(metaKey, share.id, JSON.stringify(meta));
       multi.expire(metaKey, META_TTL_SECONDS);
@@ -99,21 +100,19 @@ export class TrendingService {
     const day = currentDay();
     await this.valkey.run(async (client) => {
       const multi = client.multi();
-      for (const id of ids) {
-        multi.hDel(metaKeyFor(day), id);
-        multi.hDel(metaKeyFor(day - 1), id);
-      }
+      for (let offset = 0; offset < WINDOW_DAYS; offset++)
+        multi.hDel(metaKeyFor(day - offset), ids);
       await multi.exec();
     });
   }
 
   private async read(client: ValkeyClient): Promise<TrendingShare[]> {
-    const hour = currentHour();
-    const keys = Array.from({ length: WINDOW_HOURS }, (_, offset) =>
-      viewKeyFor(hour - offset),
+    const day = currentDay();
+    const keys = Array.from({ length: WINDOW_DAYS }, (_, offset) =>
+      viewKeyFor(day - offset),
     );
     const multi = client.multi();
-    multi.zUnionStore(RANK_KEY, keys);
+    multi.zUnionStore(RANK_KEY, keys, { AGGREGATE: "MAX" });
     multi.zRangeWithScores(RANK_KEY, 0, CANDIDATE_LIMIT - 1, { REV: true });
     multi.del(RANK_KEY);
     const replies = await multi.exec();
@@ -126,10 +125,9 @@ export class TrendingService {
     if (!ranked?.length) return [];
 
     const ids = ranked.map((item) => item.value);
-    const day = currentDay();
     const metaMulti = client.multi();
-    metaMulti.hmGet(metaKeyFor(day), ids);
-    metaMulti.hmGet(metaKeyFor(day - 1), ids);
+    for (let offset = 0; offset < WINDOW_DAYS; offset++)
+      metaMulti.hmGet(metaKeyFor(day - offset), ids);
     const metaReplies = await metaMulti.exec();
     const metas = new Map<string, TrendingMeta>();
 
@@ -138,7 +136,11 @@ export class TrendingService {
         if (!value) continue;
         try {
           const meta = JSON.parse(value) as TrendingMeta;
-          if (meta?.id) metas.set(meta.id, meta);
+          if (!meta?.id) continue;
+          const current = metas.get(meta.id);
+          // A share can be viewed on several days; keep its highest view count
+          // so the badge matches the MAX score used for the ranking.
+          if (!current || meta.views >= current.views) metas.set(meta.id, meta);
         } catch {
           // Ignore malformed cache entries; they expire with the day key.
         }
@@ -159,9 +161,11 @@ export class TrendingService {
         previewFileId: meta.previewFileId,
         previewKind: meta.previewKind,
       });
-      if (items.length === RESULT_LIMIT) break;
     }
-    return items;
+
+    // Keep the visible order in lockstep with the view badge.
+    items.sort((a, b) => b.views - a.views);
+    return items.slice(0, RESULT_LIMIT);
   }
 }
 
@@ -176,16 +180,12 @@ function findPreview(files?: { id: string; name: string }[]) {
   return undefined;
 }
 
-function currentHour() {
-  return Math.floor(Date.now() / 3_600_000);
-}
-
 function currentDay() {
-  return Math.floor(Date.now() / 86_400_000);
+  return Math.floor(Date.now() / DAY_MS);
 }
 
-function viewKeyFor(hour: number) {
-  return `${VIEW_KEY_PREFIX}${hour}`;
+function viewKeyFor(day: number) {
+  return `${VIEW_KEY_PREFIX}${day}`;
 }
 
 function metaKeyFor(day: number) {
