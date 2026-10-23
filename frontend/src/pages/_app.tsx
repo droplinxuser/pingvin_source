@@ -30,6 +30,7 @@ import globalStyle from "../styles/mantine.style";
 import Config from "../types/config.type";
 import { CurrentUser } from "../types/user.type";
 import i18nUtil from "../utils/i18n.util";
+import { isPublicPageRoute } from "../utils/router.util";
 import userPreferences from "../utils/userPreferences.util";
 import Footer from "../components/footer/Footer";
 import { fetchConfig } from "../utils/config.server.util";
@@ -219,8 +220,8 @@ function App({ Component, pageProps }: AppProps) {
       .catch(() => {});
   }, []);
 
-  // Public pages can be served from the CDN as an anonymous shell. Restore
-  // the real user immediately when a logged-in visitor receives such a copy.
+  // Public pages are rendered as anonymous shells. Restore the real user
+  // immediately in the browser so the header and owner actions stay correct.
   useEffect(() => {
     if (pageProps.user || !getCookie("access_token")) return;
 
@@ -411,7 +412,11 @@ App.getInitialProps = async ({ ctx }: { ctx: GetServerSidePropsContext }) => {
     const apiURL = process.env.API_URL || "http://localhost:8080";
     const cookieHeader = ctx.req.headers.cookie;
 
-    if (ctx.req.cookies.access_token) {
+    // Never put account data in a shell that may be cached by the CDN, even
+    // when an edge Cache Rule ignores the origin's no-store header. The client
+    // restores the signed-in user from the access token after hydration.
+    const requestPath = (ctx.req.url || "/").split("?")[0];
+    if (!isPublicPageRoute(requestPath) && ctx.req.cookies.access_token) {
       pageProps.user = await fetch(`${apiURL}/api/users/me`, {
         headers: cookieHeader ? { cookie: cookieHeader } : undefined,
         signal: AbortSignal.timeout(2000),

@@ -94,12 +94,14 @@ other languages show the upstream copy instead of the English fallback.
   `fetchConfig` helper keeps a 30s in-process copy (5s for bundled defaults),
   so middleware and SSR do not call the backend on every page. Anonymous HTML
   shells for `/`, `/share/*`, `/imprint` and `/privacy` are edge-cacheable for
-  60s with stale-while-revalidate only when the URL has no query string and no
-  theme cookie; authenticated, non-default-language, `?lang=` and other query
-  variants (including `?recipient=`) are `no-store` at the origin. A Cloudflare
-  cache hit can still deliver the anonymous `/` shell to a signed-in visitor;
-  `_app` restores the session client-side. Public files are cached for a day
-  with an `ETag`; protected files are `private`.
+  60s with stale-while-revalidate only when the URL has no query string, the
+  language is the default and the theme is unset or light (the light shell is
+  identical to the default); authenticated, non-default-language, `?lang=` and
+  other query variants (including `?recipient=`) are `no-store` at the origin.
+  These public routes never put account data in `__NEXT_DATA__`; `_app`
+  restores the signed-in user client-side, so an edge cache hit cannot expose
+  another visitor's account. Public files are cached for a day with an `ETag`;
+  protected files are `private`.
 - Public shares no longer require a share token, so their page makes a single
   data request instead of the old `403 -> token -> retry` cycle. Password,
   max-view, recipient-restricted and private reverse shares still require a
@@ -112,17 +114,24 @@ other languages show the upstream copy instead of the English fallback.
 - `update.sh` pulls origin/main, preserves `backend/.env` and locally modified
   branding assets, reinstalls and rebuilds both packages, installs the systemd
   units, runs migrations/seeding through the backend restart, and restarts the
-  frontend. It must run as root:
-  `sudo bash /var/www/pingvin_source/update.sh`.
+  frontend. The standalone Prisma migration passes the production
+  `DATABASE_URL` explicitly because Prisma CLI loads `backend/prisma/.env` after
+  `backend/.env`; the systemd unit gets the same value from `backend/.env`. It
+  must run as root: `sudo bash /var/www/pingvin_source/update.sh`.
 - Keep an up-to-date database copy at `/home/rt/Documents/pingvin-share.db`
   (`sqlite3 ... "PRAGMA integrity_check;"` must return `ok`).
 - Cloudflare: bypass cache for `/sw.js` and purge old HTML/service-worker
-  responses after deployments. Page HTML is cached for at most 60s and hashed
-  `/_next/static` assets stay immutable. Angie/h5bp serves `/img` and
-  `/favicon.ico` directly with its own long TTL (one year / one week), so the
-  Next.js one-day rules do not apply there; purge the logo, favicon and PWA
-  icon URLs after an admin branding change. If `/sw.js` was previously cached
-  long-term, purge it once; `_app` also registers it with a build-hash query.
+  responses after deployments. Cloudflare does not cache HTML or JSON by
+  default, so the origin headers only apply where a Cache Rule makes those
+  paths eligible; scope that rule to the public HTML routes (and the public
+  config/stats APIs) rather than the whole site, and bypass requests carrying
+  an `access_token` cookie if the rule uses an Edge TTL. Page HTML is cached
+  for at most 60s and hashed `/_next/static` assets stay immutable. Angie/h5bp serves
+  `/img` and `/favicon.ico` directly with its own long TTL (one year / one
+  week), so the Next.js one-day rules do not apply there; purge the logo,
+  favicon and PWA icon URLs after an admin branding change. If `/sw.js` was
+  previously cached long-term, purge it once; `_app` also registers it with a
+  build-hash query.
 
 ## Auth redirects
 
@@ -145,6 +154,13 @@ sign-in redirect for a protected page and loop between `/upload` and
   only `{ id, isZipReady }`, and the footer's base counters no longer add a
   Valkey key. Query-string page variants remain `no-store`; missing share URLs
   still return their normal 404 status.
+- A later cache/privacy pass confirmed that a light theme cookie still receives
+  the public shell while a dark one is `no-store`; a signed-in request to a
+  public share has no `user` in `__NEXT_DATA__` and restores the header/owner
+  actions from `/api/users/me`; `/upload` and `/account` still render the user
+  server-side. A public file stayed cookie-free with a day-long `ETag` response,
+  a protected file stayed `private`, and a local Prisma migration used the
+  explicitly passed test `DATABASE_URL` instead of `backend/prisma/.env`.
 - The gallery was verified with a 40-file fixture: 30 cards from 35 supported
   files, 250px media boxes, unsupported formats excluded, video first-frame
   thumbnails rendered, and image/video thumbnails opened the full-size modal.

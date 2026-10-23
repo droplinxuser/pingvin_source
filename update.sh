@@ -14,6 +14,7 @@ set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")"
 SRC_DIR="$(pwd -P)"
 DATA_DIR="/var/www/pingvin_data"
+DB_URL="file:$DATA_DIR/pingvin-share.db?connection_limit=1"
 
 [ "$(id -u)" -eq 0 ] || { echo "Error: run as root" >&2; exit 1; }
 
@@ -111,7 +112,7 @@ ensure_env() {
   grep -q "^$1=" "$ENV_FILE" || printf '%s=%s\n' "$1" "$2" >>"$ENV_FILE"
 }
 # The database location is fixed for this deployment.
-set_env DATABASE_URL "\"file:$DATA_DIR/pingvin-share.db?connection_limit=1\""
+set_env DATABASE_URL "\"$DB_URL\""
 set_env DATA_DIRECTORY "\"$DATA_DIR\""
 # Keep existing custom values; add defaults on first deploy.
 ensure_env TRUST_PROXY "true"
@@ -129,7 +130,10 @@ fi
 systemctl stop pingvin-back.service 2>/dev/null || true
 echo "==> Applying database migrations"
 cd "$SRC_DIR/backend"
-npx prisma migrate deploy
+# Prisma CLI loads backend/prisma/.env after backend/.env, which would point
+# migrations at the local development database. Pass the production URL
+# explicitly; the systemd unit gets it from backend/.env on restart.
+DATABASE_URL="$DB_URL" npx prisma migrate deploy
 
 echo "==> Installing systemd units"
 install -m 644 "$SRC_DIR/pingvin-back.service" /etc/systemd/system/pingvin-back.service

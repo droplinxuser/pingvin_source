@@ -2,6 +2,7 @@ import { jwtDecode } from "jwt-decode";
 import { NextRequest, NextResponse } from "next/server";
 import { getConfig as readConfig } from "./utils/config.util";
 import { fetchConfig } from "./utils/config.server.util";
+import { isPublicPageRoute } from "./utils/router.util";
 
 // This middleware redirects based on different conditions:
 // - Authentication state
@@ -12,13 +13,6 @@ export const config = {
   matcher: "/((?!api|static|.*\\..*|_next).*)",
 };
 
-// Anonymous page shells are safe to share between visitors. The share page
-// only renders the share ID; its data is fetched from the API after hydration.
-const isPublicPage = (route: string) =>
-  route === "/" ||
-  /^\/share\/[^/]+\/?$/.test(route) ||
-  route === "/imprint" ||
-  route === "/privacy";
 // Keep this short: the HTML contains the build ID used by client navigation.
 // A long CDN TTL serves an old build after a deployment and breaks navigation.
 const PUBLIC_CACHE =
@@ -147,17 +141,20 @@ export async function middleware(request: NextRequest) {
   const response = NextResponse.next();
   const defaultLanguage = getConfig("general.defaultLanguage") || "en-US";
   const language = request.cookies.get("language")?.value || defaultLanguage;
+  const colorSchemeCookie = request.cookies.get(
+    "mantine-color-scheme",
+  )?.value;
 
   if (
-    isPublicPage(route) &&
+    isPublicPageRoute(route) &&
     !user &&
     !isConfigFallback &&
     // Query strings can carry recipient identifiers or language/theme
     // overrides; only clean, anonymous URLs may be shared between visitors.
     !request.nextUrl.search &&
-    // The shell embeds colorScheme in __NEXT_DATA__; do not cache a visitor's
-    // theme preference even though the client would correct it after hydration.
-    !request.cookies.has("mantine-color-scheme") &&
+    // The shell embeds colorScheme in __NEXT_DATA__. The default is light, so
+    // a light preference produces the same shell; other themes bypass cache.
+    (colorSchemeCookie === undefined || colorSchemeCookie === "light") &&
     language === defaultLanguage
   ) {
     setCacheHeaders(response, PUBLIC_CACHE);
