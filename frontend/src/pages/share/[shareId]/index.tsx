@@ -278,7 +278,6 @@ const Share = ({
 
       <FileList
         files={share?.files}
-        setShare={setShare}
         share={share!}
         isLoading={!share}
         recipientId={recipientId}

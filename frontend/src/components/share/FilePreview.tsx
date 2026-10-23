@@ -1,6 +1,7 @@
 import {
-  Button,
+  ActionIcon,
   Center,
+  Group,
   Stack,
   Text,
   Title,
@@ -9,7 +10,10 @@ import {
 import Markdown, { MarkdownToJSX } from "markdown-to-jsx";
 import React, { Dispatch, SetStateAction, useEffect, useState } from "react";
 import { FormattedMessage } from "react-intl";
+import { TbDownload, TbExternalLink } from "react-icons/tb";
+import useTranslate from "../../hooks/useTranslate.hook";
 import api from "../../services/api.service";
+import { HoverTip } from "../core/HoverTip";
 
 const FilePreviewContext = React.createContext<{
   shareId: string;
@@ -27,15 +31,52 @@ const FilePreview = ({
   shareId,
   fileId,
   mimeType,
-  showOriginalFileButton = true,
 }: {
   shareId: string;
   fileId: string;
   mimeType: string;
-  showOriginalFileButton?: boolean;
 }) => {
+  const t = useTranslate();
   const [isNotSupported, setIsNotSupported] = useState(false);
-  if (isNotSupported) return <UnSupportedFile />;
+
+  const actions = (
+    <Group position="right" spacing="xs">
+      <HoverTip label={t("share.modal.file-preview.original_file")}>
+        <ActionIcon
+          component="a"
+          href={`/api/shares/${shareId}/files/${fileId}?download=false`}
+          target="_blank"
+          rel="noopener"
+          variant="light"
+          color="gray"
+          size="lg"
+          aria-label={t("share.modal.file-preview.original_file")}
+        >
+          <TbExternalLink size={18} />
+        </ActionIcon>
+      </HoverTip>
+      <HoverTip label={t("common.button.download")}>
+        <ActionIcon
+          component="a"
+          href={`/api/shares/${shareId}/files/${fileId}?download=true`}
+          variant="light"
+          color="cyan"
+          size="lg"
+          aria-label={t("common.button.download")}
+        >
+          <TbDownload size={18} />
+        </ActionIcon>
+      </HoverTip>
+    </Group>
+  );
+
+  if (isNotSupported)
+    return (
+      <Stack>
+        <UnSupportedFile />
+        {actions}
+      </Stack>
+    );
 
   return (
     <Stack>
@@ -44,17 +85,7 @@ const FilePreview = ({
       >
         <FileDecider />
       </FilePreviewContext.Provider>
-      {showOriginalFileButton && (
-        <Button
-          variant="subtle"
-          component="a"
-          target="_blank"
-          rel="noopener"
-          href={`/api/shares/${shareId}/files/${fileId}?download=false`}
-        >
-          <FormattedMessage id="share.modal.file-preview.original_file" />
-        </Button>
-      )}
+      {actions}
     </Stack>
   );
 };
@@ -96,16 +127,12 @@ const AudioPreview = () => {
 };
 
 const VideoPreview = () => {
-  const { shareId, fileId, mimeType, setIsNotSupported } =
+  const { shareId, fileId, setIsNotSupported } =
     React.useContext(FilePreviewContext);
   return (
     <video width="100%" controls playsInline preload="metadata">
       <source
         src={`/api/shares/${shareId}/files/${fileId}?download=false`}
-        // QuickTime (.mov) files are served as video/mp4 so browsers can play
-        // them; other types are left untyped so the browser can fall back to
-        // content sniffing when canPlayType() is inconclusive.
-        type={mimeType == "video/quicktime" ? "video/mp4" : undefined}
         onError={() => setIsNotSupported(true)}
       />
     </video>

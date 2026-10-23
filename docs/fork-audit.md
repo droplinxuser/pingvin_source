@@ -133,6 +133,9 @@ sign-in redirect for a protected page and loop between `/upload` and
 - The gallery was verified with a 40-file fixture: 30 cards from 35 supported
   files, 250px media boxes, unsupported formats excluded, video first-frame
   thumbnails rendered, and image/video thumbnails opened the full-size modal.
+  The file list was checked at 1366px and 390px with no horizontal overflow;
+  Ogg video rows expose only download, and the preview modal has view/download
+  icon actions.
 - Refactor checks against a copy of `/home/rt/Documents/pingvin-share.db`:
   share `HEAD` does not change the view count; a share `GET` increments
   `Share.views` immediately in SQLite and refreshes the rolling expiration;

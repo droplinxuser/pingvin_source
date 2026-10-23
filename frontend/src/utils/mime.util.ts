@@ -96,13 +96,18 @@ const getFileExtension = (fileName: string) => {
 
 const canPlayVideo = (mimeType: string) => {
   if (!mimeType) return false;
-  const cached = videoSupport.get(mimeType);
+  // Chrome advertises the Ogg container but not Theora, which is what .ogv
+  // and .ogm files normally use. Probe the codec so they are only embedded
+  // where the browser can actually play them.
+  const probe =
+    mimeType === "video/ogg" ? `video/ogg; codecs="theora"` : mimeType;
+  const cached = videoSupport.get(probe);
   if (cached !== undefined) return cached;
 
   const supported =
     typeof document !== "undefined" &&
-    !!document.createElement("video").canPlayType(mimeType);
-  videoSupport.set(mimeType, supported);
+    !!document.createElement("video").canPlayType(probe);
+  videoSupport.set(probe, supported);
   return supported;
 };
 
