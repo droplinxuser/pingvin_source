@@ -103,9 +103,10 @@ other languages show the upstream copy instead of the English fallback.
   connection retries after 30s; cache reads fail open to SQLite. All Redis
   clients have error handlers and `disableOfflineQueue` so a dead Valkey
   server never hangs a request or crashes the backend.
-- `update.sh` pulls origin/main, preserves `backend/.env`, reinstalls and
-  rebuilds both packages, installs the systemd units, runs migrations/seeding
-  through the backend restart, and restarts the frontend. It must run as root:
+- `update.sh` pulls origin/main, preserves `backend/.env` and locally modified
+  branding assets, reinstalls and rebuilds both packages, installs the systemd
+  units, runs migrations/seeding through the backend restart, and restarts the
+  frontend. It must run as root:
   `sudo bash /var/www/pingvin_source/update.sh`.
 - Keep an up-to-date database copy at `/home/rt/Documents/pingvin-share.db`
   (`sqlite3 ... "PRAGMA integrity_check;"` must return `ok`).
