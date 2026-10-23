@@ -94,12 +94,12 @@ other languages show the upstream copy instead of the English fallback.
   `fetchConfig` helper keeps a 30s in-process copy (5s for bundled defaults),
   so middleware and SSR do not call the backend on every page. Anonymous HTML
   shells for `/`, `/share/*`, `/imprint` and `/privacy` are edge-cacheable for
-  60s with stale-while-revalidate only when the URL has no query string;
-  authenticated, non-default-language, `?lang=` and other query variants
-  (including `?recipient=`) are `no-store` at the origin. A Cloudflare cache
-  hit can still deliver the anonymous `/` shell to a signed-in visitor; `_app`
-  restores the session client-side. Public files are cached for a day with an
-  `ETag`; protected files are `private`.
+  60s with stale-while-revalidate only when the URL has no query string and no
+  theme cookie; authenticated, non-default-language, `?lang=` and other query
+  variants (including `?recipient=`) are `no-store` at the origin. A Cloudflare
+  cache hit can still deliver the anonymous `/` shell to a signed-in visitor;
+  `_app` restores the session client-side. Public files are cached for a day
+  with an `ETag`; protected files are `private`.
 - Public shares no longer require a share token, so their page makes a single
   data request instead of the old `403 -> token -> retry` cycle. Password,
   max-view, recipient-restricted and private reverse shares still require a

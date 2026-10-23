@@ -155,6 +155,9 @@ export async function middleware(request: NextRequest) {
     // Query strings can carry recipient identifiers or language/theme
     // overrides; only clean, anonymous URLs may be shared between visitors.
     !request.nextUrl.search &&
+    // The shell embeds colorScheme in __NEXT_DATA__; do not cache a visitor's
+    // theme preference even though the client would correct it after hydration.
+    !request.cookies.has("mantine-color-scheme") &&
     language === defaultLanguage
   ) {
     setCacheHeaders(response, PUBLIC_CACHE);
