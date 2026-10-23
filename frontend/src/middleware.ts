@@ -159,8 +159,9 @@ export async function middleware(request: NextRequest) {
   ) {
     setCacheHeaders(response, PUBLIC_CACHE);
     // Do not vary on Cookie: Cloudflare ignores it for its cache key, and the
-    // anonymous shell is intentionally shared. Logged-in users are excluded
-    // above and the client restores their session after hydration.
+    // anonymous shell is intentionally shared. Signed-in requests are excluded
+    // at the origin, but an edge cache hit can still deliver this shell to a
+    // signed-in visitor; the client restores their session after hydration.
     response.headers.set("Vary", "Accept-Encoding, Accept-Language");
   } else {
     setCacheHeaders(response, "no-store");

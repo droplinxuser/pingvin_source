@@ -96,8 +96,10 @@ other languages show the upstream copy instead of the English fallback.
   shells for `/`, `/share/*`, `/imprint` and `/privacy` are edge-cacheable for
   60s with stale-while-revalidate only when the URL has no query string;
   authenticated, non-default-language, `?lang=` and other query variants
-  (including `?recipient=`) are `no-store`. Public files are cached for a day
-  with an `ETag`; protected files are `private`.
+  (including `?recipient=`) are `no-store` at the origin. A Cloudflare cache
+  hit can still deliver the anonymous `/` shell to a signed-in visitor; `_app`
+  restores the session client-side. Public files are cached for a day with an
+  `ETag`; protected files are `private`.
 - Public shares no longer require a share token, so their page makes a single
   data request instead of the old `403 -> token -> retry` cycle. Password,
   max-view, recipient-restricted and private reverse shares still require a
