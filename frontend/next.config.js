@@ -38,12 +38,13 @@ const cacheHeaders = (value) => [
 ];
 
 // Hashed build output and content-hashed Workbox bundles never change for a
-// given URL. Logos, favicons and PWA icons can be replaced from the admin UI.
-// The service worker must be revalidated so new builds are picked up.
+// given URL. Logos, favicons and PWA icons can be replaced from the admin UI,
+// so they use a shorter TTL. The service worker must be revalidated so new
+// builds are picked up.
 const CACHE_RULES = [
   ["/_next/static/:path*", "public, max-age=31536000, immutable"],
-  ["/img/:path*", "public, max-age=2592000"],
-  ["/favicon.ico", "public, max-age=2592000"],
+  ["/img/:path*", "public, max-age=86400, stale-while-revalidate=604800"],
+  ["/favicon.ico", "public, max-age=86400, stale-while-revalidate=604800"],
   ["/sw.js", "no-cache"],
   ["/workbox-:path*", "public, max-age=31536000, immutable"],
 ];

@@ -2,7 +2,6 @@ import {
   ActionIcon,
   Box,
   Group,
-  MediaQuery,
   Skeleton,
   Table,
   Text,
@@ -187,11 +186,9 @@ const skeletonRows = (fileRetentionEnabled: boolean) =>
       <td>
         <Skeleton key={i} height={20} />
       </td>
-      <MediaQuery smallerThan="md" styles={{ display: "none" }}>
-        <td>
-          <Skeleton key={i} height={20} />
-        </td>
-      </MediaQuery>
+      <td>
+        <Skeleton key={i} height={20} />
+      </td>
       <td>
         <Skeleton key={i} height={20} />
       </td>

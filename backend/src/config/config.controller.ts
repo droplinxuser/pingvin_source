@@ -9,6 +9,7 @@ import {
   ParseFilePipe,
   Patch,
   Post,
+  Res,
   UploadedFile,
   UseGuards,
   UseInterceptors,
@@ -16,10 +17,12 @@ import {
 import { FileInterceptor } from "@nestjs/platform-express";
 import { SkipThrottle } from "@nestjs/throttler";
 import { createKeyv } from "@keyv/redis";
+import { Response } from "express";
 import { I18nService } from "nestjs-i18n";
 import { AdministratorGuard } from "src/auth/guard/isAdmin.guard";
 import { JwtGuard } from "src/auth/guard/jwt.guard";
 import { EmailService } from "src/email/email.service";
+import { getEdgeCacheHeaders } from "src/utils/cache.util";
 import { ConfigService } from "./config.service";
 import { AdminConfigDTO } from "./dto/adminConfig.dto";
 import { ConfigDTO } from "./dto/config.dto";
@@ -37,8 +40,11 @@ export class ConfigController {
   ) {}
 
   @Get()
-  @SkipThrottle({ default: true, visitor: true })
-  async list() {
+  @SkipThrottle({ visitor: true })
+  async list(@Res({ passthrough: true }) response: Response) {
+    // The public config is identical for every visitor. A short CDN TTL keeps
+    // middleware/SSR reads off the backend without delaying admin changes.
+    response.set(getEdgeCacheHeaders(30));
     return new ConfigDTO().fromList(await this.configService.list());
   }
 

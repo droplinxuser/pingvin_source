@@ -69,10 +69,18 @@ const get = async (id: string): Promise<Share> => {
   if (!isValidId(id)) throw new Error("Invalid ID");
   const referrer =
     typeof document !== "undefined" ? document.referrer : undefined;
+  let encodedReferrer: string | undefined;
+  if (referrer) {
+    try {
+      encodedReferrer = encodeURIComponent(referrer.slice(0, 2048));
+    } catch {
+      // A malformed referrer must not break the share request.
+    }
+  }
   return (
     await api.get(`shares/${id}`, {
-      headers: referrer
-        ? { "x-visitor-referrer": encodeURIComponent(referrer.slice(0, 2048)) }
+      headers: encodedReferrer
+        ? { "x-visitor-referrer": encodedReferrer }
         : undefined,
     })
   ).data;

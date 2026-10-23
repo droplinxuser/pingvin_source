@@ -30,8 +30,8 @@ let lastCacheErrorLog = 0;
           stores: [],
         };
 
-        if (useRedis) {
-          const redisUrl = configService.get("cache.redis-url");
+        const redisUrl = configService.get("cache.redis-url");
+        if (useRedis && redisUrl) {
           const redisStore = createKeyv({
             url: redisUrl,
             disableOfflineQueue: true,

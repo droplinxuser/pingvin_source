@@ -31,7 +31,7 @@ import {
   setCachedValue,
   shareMetaCacheKey,
 } from "src/utils/cache.util";
-import { getDefaultShareExpiration } from "src/utils/date.util";
+import { parseRelativeDateToAbsolute } from "src/utils/date.util";
 import { byteToHumanSizeString } from "src/utils/fileSize.util";
 import { getUserActiveStorageUsage } from "src/utils/storageQuota.util";
 import { SHARE_DIRECTORY } from "../constants";
@@ -39,8 +39,16 @@ import { CreateShareDTO } from "./dto/createShare.dto";
 import { ReportShareDTO } from "./dto/reportShare.dto";
 import { UpdateShareDTO } from "./dto/updateShare.dto";
 import { GuardShare, ShareStateService } from "./shareState.service";
-import { isViewLimitExceeded } from "./share.util";
+import {
+  SHARE_EXPIRATION,
+  isViewLimitExceeded,
+} from "./share.util";
 import { tableOrderBy } from "src/utils/pagination.util";
+
+type ShareSecurityFields = Pick<
+  ShareSecurity,
+  "password" | "maxViews" | "restrictToRecipients"
+>;
 
 const SHARE_SORT_FIELDS = {
   id: "id",
@@ -50,12 +58,26 @@ const SHARE_SORT_FIELDS = {
   createdAt: "createdAt",
 } as const;
 
+// Admin/account lists only need the fields exposed by the DTOs.
 const SHARE_INCLUDE = {
-  files: true,
-  creator: true,
-  security: true,
-  recipients: true,
-} as const;
+  files: { select: { id: true, name: true, size: true } },
+  creator: {
+    select: {
+      id: true,
+      username: true,
+      displayName: true,
+      shareSizeLimit: true,
+    },
+  },
+  security: {
+    select: {
+      password: true,
+      maxViews: true,
+      restrictToRecipients: true,
+    },
+  },
+  recipients: { select: { email: true } },
+} satisfies Prisma.ShareInclude;
 
 type ShareMetaData = Prisma.ShareGetPayload<{
   include: { _count: { select: { files: true } } };
@@ -181,7 +203,7 @@ export class ShareService {
 
     // Expiration is automatic and immutable: every share starts with a rolling
     // expiration of 100 days, which is extended on every visit of the share page.
-    const expirationDate = getDefaultShareExpiration();
+    const expirationDate = parseRelativeDateToAbsolute(SHARE_EXPIRATION);
 
     fs.mkdirSync(`${SHARE_DIRECTORY}/${share.id}`, {
       recursive: true,
@@ -191,7 +213,6 @@ export class ShareService {
       size: _size,
       security: _security,
       recipients: _recipients,
-      expiration: _expiration,
       ...shareData
     } = share;
 
@@ -587,9 +608,11 @@ export class ShareService {
     if (!share.creatorId && !isDeleterAdmin)
       throw new ForbiddenException(this.i18n.t("share.anonymousNoDelete"));
 
-    await this.shareState.clear(shareId);
+    await this.shareState.invalidateData(shareId);
     await this.fileService.deleteAllFiles(shareId);
     await this.prisma.share.delete({ where: { id: shareId } });
+    // A concurrent read can repopulate the cache between the steps above.
+    await this.shareState.invalidateData(shareId);
   }
 
   async expire(shareId: string) {
@@ -607,7 +630,7 @@ export class ShareService {
       where: { id: shareId },
       data: { expiration: moment().toDate() },
     });
-    await this.shareState.clear(shareId);
+    await this.shareState.invalidateData(shareId);
   }
 
   async update(
@@ -776,14 +799,18 @@ export class ShareService {
       }
     }
 
-    this.assertViewLimit(
-      await this.getCurrentViews(share.id),
-      share.security?.maxViews,
-    );
+    if (share.security?.maxViews) {
+      this.assertViewLimit(
+        await this.getCurrentViews(share.id),
+        share.security.maxViews,
+      );
+    }
     return await this.generateShareToken(share);
   }
 
-  async generateShareToken(share: Share & { security?: ShareSecurity | null }) {
+  async generateShareToken(
+    share: Share & { security?: ShareSecurityFields | null },
+  ) {
     const { id: shareId, expiration, createdAt, security } = share;
 
     const tokenPayload = {
@@ -809,7 +836,7 @@ export class ShareService {
   }
 
   async verifyShareToken(
-    share: Share & { security?: ShareSecurity | null },
+    share: Share & { security?: ShareSecurityFields | null },
     token: string,
   ) {
     const { expiration, createdAt, security } = share;

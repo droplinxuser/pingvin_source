@@ -1,5 +1,8 @@
 import { ShareSecurity } from "@prisma/client";
 
+// Every share gets a rolling expiration which is reset on each visit.
+export const SHARE_EXPIRATION = "100-days";
+
 type ShareVisibility = {
   security?: Pick<
     ShareSecurity,

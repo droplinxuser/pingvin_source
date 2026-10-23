@@ -28,7 +28,9 @@ export async function getServerSideProps(context: GetServerSidePropsContext) {
   let initialNotFound = false;
 
   try {
-    await axios.head(`${apiURL}/api/shares/${encodeURIComponent(shareId)}`);
+    await axios.head(`${apiURL}/api/shares/${encodeURIComponent(shareId)}`, {
+      timeout: 1000,
+    });
   } catch (e) {
     if (axios.isAxiosError(e)) {
       const status = e.response?.status;
@@ -87,7 +89,11 @@ const Share = ({
         getFiles();
       })
       .catch((e) => {
-        if (e.response?.status == 429) {
+        if (!e.response) {
+          toast.axiosError(e);
+          return;
+        }
+        if (e.response.status == 429) {
           showRateLimitModal();
           return;
         }
@@ -116,7 +122,11 @@ const Share = ({
         setShare(share);
       })
       .catch((e) => {
-        if (e.response?.status == 429) {
+        if (!e.response) {
+          toast.axiosError(e);
+          return;
+        }
+        if (e.response.status == 429) {
           showRateLimitModal();
           return;
         }

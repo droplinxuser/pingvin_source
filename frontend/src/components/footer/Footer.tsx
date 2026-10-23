@@ -10,7 +10,7 @@ import {
   Text,
 } from "@mantine/core";
 import { useRouter } from "next/router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useIntl } from "react-intl";
 import { TbEye } from "react-icons/tb";
 import useConfig from "../../hooks/config.hook";
@@ -174,7 +174,7 @@ const Footer = () => {
     };
   }, [router.asPath]);
 
-  const siteName = (config.get("general.appName") as string) || "DropMB";
+  const siteName = (config.get("general.appName") as string) || "Pingvin Share";
   const hasImprint = !!(
     config.get("legal.imprintUrl") || config.get("legal.imprintText")
   );
@@ -191,13 +191,16 @@ const Footer = () => {
     "/privacy";
   const contactUrl = "mailto:contactwebph@gmail.com";
 
+  const numberFormat = useMemo(
+    () =>
+      new Intl.NumberFormat(intl.locale, {
+        notation: "compact",
+        maximumFractionDigits: 1,
+      }),
+    [intl.locale],
+  );
   const compact = (value?: number) =>
-    value == null
-      ? "—"
-      : Intl.NumberFormat(intl.locale, {
-          notation: "compact",
-          maximumFractionDigits: 1,
-        }).format(value);
+    value == null ? "—" : numberFormat.format(value);
 
   const overview = [
     { value: compact(stats?.userCount), label: t("footer.custom.users") },

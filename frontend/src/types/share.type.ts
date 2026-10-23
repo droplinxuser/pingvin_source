@@ -10,6 +10,7 @@ export type Share = {
   views: number;
   size: number;
   hasPassword: boolean;
+  isZipReady?: boolean;
   uploaderInfo?: UploaderInfo;
 };
 
@@ -70,7 +71,6 @@ export type ShareMetaData = {
 };
 
 export type MyShare = Omit<Share, "hasPassword"> & {
-  views: number;
   createdAt: Date;
   recipients: string[];
   security: MyShareSecurity;

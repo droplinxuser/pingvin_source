@@ -1,7 +1,9 @@
 import type { Cache } from "cache-manager";
 
 const NO_STORE = "no-store";
-const PUBLIC_CACHE_MAX_AGE = 60 * 60 * 24 * 365;
+// Long enough for effective edge caching, short enough that a share becoming
+// password-protected or deleted stops being served from caches within a day.
+const PUBLIC_CACHE_MAX_AGE = 60 * 60 * 24;
 
 export const SHARE_DATA_CACHE_TTL_MS = 30 * 1000;
 export const SHARE_META_CACHE_TTL_MS = 5 * 1000;
@@ -25,17 +27,29 @@ export function getPublicCacheHeaders(maxAge: number, immutable = false) {
 }
 
 /**
- * Cache headers for a successful file or ZIP response. Files belonging to a
- * public share can be stored on Cloudflare and in browsers for a year;
- * protected shares stay private so CDN edges never serve them to other
- * visitors.
+ * Cache headers for API responses that are safe to store on the CDN but should
+ * be revalidated by browsers (config, public counters).
+ */
+export function getEdgeCacheHeaders(maxAge: number) {
+  return cacheHeaders(
+    `public, max-age=0, s-maxage=${maxAge}, stale-while-revalidate=${maxAge}`,
+  );
+}
+
+/**
+ * Cache headers for a successful file response. Files belonging to a public
+ * share can be stored on Cloudflare and in browsers for a day; protected
+ * shares stay private so CDN edges never serve them to other visitors.
  */
 export function getDownloadCacheHeaders(
   isPublicShare: boolean,
+  etag?: string,
 ): Record<string, string> {
-  return isPublicShare
+  const headers: Record<string, string> = isPublicShare
     ? getPublicCacheHeaders(PUBLIC_CACHE_MAX_AGE, true)
     : cacheHeaders("private");
+  if (isPublicShare && etag) headers.ETag = etag;
+  return headers;
 }
 
 export async function getCachedValue<T>(

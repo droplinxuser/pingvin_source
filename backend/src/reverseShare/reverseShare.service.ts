@@ -11,8 +11,9 @@ import { I18nService } from "nestjs-i18n";
 import { ConfigService } from "src/config/config.service";
 import { FileService } from "src/file/file.service";
 import { PrismaService } from "src/prisma/prisma.service";
-import { getDefaultShareExpiration } from "src/utils/date.util";
+import { parseRelativeDateToAbsolute } from "src/utils/date.util";
 import { invalidateShareDataCache } from "src/utils/cache.util";
+import { SHARE_EXPIRATION } from "src/share/share.util";
 import { CreateReverseShareDTO } from "./dto/createReverseShare.dto";
 
 @Injectable()
@@ -27,7 +28,7 @@ export class ReverseShareService {
 
   async create(data: CreateReverseShareDTO, creatorId: string) {
     // Expiration is automatic and immutable: reverse shares default to 100 days
-    const expirationDate = getDefaultShareExpiration();
+    const expirationDate = parseRelativeDateToAbsolute(SHARE_EXPIRATION);
 
     const creator = await this.prisma.user.findUnique({
       where: { id: creatorId },

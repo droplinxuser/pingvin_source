@@ -29,10 +29,6 @@ export class UpdateShareDTO {
   @IsOptional()
   name?: string | null;
 
-  @IsString()
-  @IsOptional()
-  expiration?: string;
-
   @MaxLength(512)
   @IsOptional()
   description?: string | null;

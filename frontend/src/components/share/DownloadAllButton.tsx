@@ -6,11 +6,13 @@ import shareService from "../../services/share.service";
 const DownloadAllButton = ({
   shareId,
   recipientId,
+  isZipReady: initialIsZipReady = false,
 }: {
   shareId: string;
   recipientId?: string;
+  isZipReady?: boolean;
 }) => {
-  const [isZipReady, setIsZipReady] = useState(false);
+  const [isZipReady, setIsZipReady] = useState(initialIsZipReady);
   const [isLoading, setIsLoading] = useState(false);
 
   const downloadAll = async () => {
@@ -21,10 +23,12 @@ const DownloadAllButton = ({
   };
 
   useEffect(() => {
-    shareService
-      .getMetaData(shareId)
-      .then((share) => setIsZipReady(share.isZipReady))
-      .catch(() => {});
+    // The share response already carries the zip state, so only poll while it
+    // is still being prepared.
+    if (initialIsZipReady) {
+      setIsZipReady(true);
+      return;
+    }
 
     const timer = setInterval(() => {
       shareService
@@ -38,7 +42,7 @@ const DownloadAllButton = ({
     return () => {
       clearInterval(timer);
     };
-  }, []);
+  }, [initialIsZipReady, shareId]);
 
   // The button is only shown once the zip has been prepared
   if (!isZipReady) return null;

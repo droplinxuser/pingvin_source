@@ -26,7 +26,7 @@ export const createThrottlerOptions = (
     {
       name: "default",
       ttl: 60 * 1000,
-      limit: parseInt(process.env.THROTTLE_LIMIT || "100"),
+      limit: positiveInt(process.env.THROTTLE_LIMIT, 100),
       blockDuration: 60 * 1000,
     },
     {

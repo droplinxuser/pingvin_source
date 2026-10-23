@@ -1,6 +1,6 @@
 import { jwtDecode } from "jwt-decode";
 import { NextRequest, NextResponse } from "next/server";
-import configService from "./services/config.service";
+import { getConfig as readConfig } from "./utils/config.util";
 import { fetchConfig } from "./utils/config.server.util";
 
 // This middleware redirects based on different conditions:
@@ -12,11 +12,17 @@ export const config = {
   matcher: "/((?!api|static|.*\\..*|_next).*)",
 };
 
-const PUBLIC_PAGES = new Set(["/", "/imprint", "/privacy"]);
+// Anonymous page shells are safe to share between visitors. The share page
+// only renders the share ID; its data is fetched from the API after hydration.
+const isPublicPage = (route: string) =>
+  route === "/" ||
+  /^\/share\/[^/]+\/?$/.test(route) ||
+  route === "/imprint" ||
+  route === "/privacy";
 // Keep this short: the HTML contains the build ID used by client navigation.
 // A long CDN TTL serves an old build after a deployment and breaks navigation.
 const PUBLIC_CACHE =
-  "public, max-age=0, s-maxage=60, stale-while-revalidate=30";
+  "public, max-age=0, s-maxage=60, stale-while-revalidate=30, stale-if-error=300";
 const CACHE_HEADERS = [
   "Cache-Control",
   "CDN-Cache-Control",
@@ -40,7 +46,7 @@ export async function middleware(request: NextRequest) {
   const { config, fallback: isConfigFallback } = await fetchConfig(apiUrl);
 
   const getConfig = (key: string) => {
-    return configService.get(key, config);
+    return readConfig(key, config);
   };
 
   const route = request.nextUrl.pathname;
@@ -143,13 +149,17 @@ export async function middleware(request: NextRequest) {
   const language = request.cookies.get("language")?.value || defaultLanguage;
 
   if (
-    PUBLIC_PAGES.has(route) &&
+    isPublicPage(route) &&
     !user &&
     !isConfigFallback &&
+    !request.nextUrl.searchParams.has("lang") &&
     language === defaultLanguage
   ) {
     setCacheHeaders(response, PUBLIC_CACHE);
-    response.headers.set("Vary", "Accept-Encoding, Accept-Language, Cookie");
+    // Do not vary on Cookie: Cloudflare ignores it for its cache key, and the
+    // anonymous shell is intentionally shared. Logged-in users are excluded
+    // above and the client restores their session after hydration.
+    response.headers.set("Vary", "Accept-Encoding, Accept-Language");
   } else {
     setCacheHeaders(response, "no-store");
   }

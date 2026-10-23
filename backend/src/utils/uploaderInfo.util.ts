@@ -28,6 +28,7 @@ const VISITOR_FIELDS = [
   "createdAt",
 ] as const;
 const logger = new Logger("UploaderInfo");
+const UTF8_DECODER = new TextDecoder("utf-8", { fatal: true });
 
 export type ShareVisitor = Partial<
   Record<(typeof VISITOR_FIELDS)[number], string>
@@ -68,9 +69,7 @@ function decodeText(value: string): string {
   // correct values such as "Dasmariñas" are left untouched.
   if (/[\u0080-\u00ff]/.test(value)) {
     try {
-      return new TextDecoder("utf-8", { fatal: true }).decode(
-        Buffer.from(value, "latin1"),
-      );
+      return UTF8_DECODER.decode(Buffer.from(value, "latin1"));
     } catch {
       // Already valid text; keep it.
     }
@@ -206,7 +205,6 @@ export async function writeUploaderInfo(shareId: string, info: UploaderInfo) {
       mode: 0o600,
     });
     await fs.rename(tempPath, filePath);
-    await fs.chmod(filePath, 0o600);
   } catch (error) {
     await fs.rm(tempPath, { force: true }).catch(() => {});
     logger.warn(

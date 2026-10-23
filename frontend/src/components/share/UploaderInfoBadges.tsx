@@ -42,7 +42,7 @@ export const getOsIcon = (os?: string) =>
 export const getBrowserIcon = (browser?: string) =>
   ICONS[browser ?? ""] ?? <TbBrowser {...iconProps} />;
 
-const iconStyle = {
+export const iconStyle = {
   display: "inline-flex",
   alignItems: "center",
   cursor: "help",

@@ -9,6 +9,7 @@ import useConfirmLeave from "../../../hooks/confirm-leave.hook";
 import useTranslate from "../../../hooks/useTranslate.hook";
 import shareService from "../../../services/share.service";
 import { Share as ShareType } from "../../../types/share.type";
+import toast from "../../../utils/toast.util";
 
 export function getServerSideProps(context: GetServerSidePropsContext) {
   return {
@@ -35,7 +36,11 @@ const Share = ({ shareId }: { shareId: string }) => {
         setShare(share);
       })
       .catch((e) => {
-        if (e.response?.status == 429) {
+        if (!e.response) {
+          toast.axiosError(e);
+          return;
+        }
+        if (e.response.status == 429) {
           showErrorModal(
             modals,
             t("common.custom.rate-limit.title"),

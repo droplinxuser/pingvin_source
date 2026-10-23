@@ -16,15 +16,13 @@ import useTranslate from "../../hooks/useTranslate.hook";
 import { Share } from "../../types/share.type";
 import { HoverTip } from "../core/HoverTip";
 import { countryCodeToFlag, getCountryName } from "../../utils/country.util";
-import { getBrowserIcon, getOsIcon } from "./UploaderInfoBadges";
+import {
+  getBrowserIcon,
+  getOsIcon,
+  iconStyle,
+} from "./UploaderInfoBadges";
 
 const MAX_VISITORS = 20;
-
-const iconStyle = {
-  display: "inline-flex",
-  alignItems: "center",
-  opacity: 0.85,
-} as const;
 
 const ShareStats = ({ share }: { share: Share }) => {
   const t = useTranslate();
@@ -116,7 +114,7 @@ const ShareStats = ({ share }: { share: Share }) => {
                       label={visitor.os || t("share.custom.uploader.unknown")}
                     >
                       <span
-                        style={iconStyle}
+                        style={{ ...iconStyle, opacity: 0.85 }}
                         aria-label={t("share.custom.uploader.os")}
                       >
                         {getOsIcon(visitor.os)}
@@ -128,7 +126,7 @@ const ShareStats = ({ share }: { share: Share }) => {
                       }
                     >
                       <span
-                        style={iconStyle}
+                        style={{ ...iconStyle, opacity: 0.85 }}
                         aria-label={t("share.custom.uploader.browser")}
                       >
                         {getBrowserIcon(visitor.browser)}

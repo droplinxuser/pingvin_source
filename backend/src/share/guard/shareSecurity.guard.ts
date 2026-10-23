@@ -117,6 +117,10 @@ export class ShareSecurityGuard extends JwtGuard {
       );
     }
 
+    // Public shares need no token: their files are already readable without
+    // one by the file guard. This saves the 403 -> token -> retry round trip.
+    if (isPublicShare(share)) return true;
+
     if (share.security?.password && !shareToken)
       throw new ForbiddenException(
         this.i18n.t("file.passwordProtected"),

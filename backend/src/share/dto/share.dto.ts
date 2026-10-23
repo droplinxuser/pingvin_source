@@ -31,6 +31,9 @@ export class ShareDTO {
   hasPassword: boolean;
 
   @Expose()
+  isZipReady: boolean;
+
+  @Expose()
   size: number;
 
   @Expose()

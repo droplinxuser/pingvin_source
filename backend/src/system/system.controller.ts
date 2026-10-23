@@ -11,7 +11,7 @@ import { Request, Response } from "express";
 import { AdministratorGuard } from "src/auth/guard/isAdmin.guard";
 import { JwtGuard } from "src/auth/guard/jwt.guard";
 import { SystemService, SystemStats } from "./system.service";
-import { getPublicCacheHeaders } from "src/utils/cache.util";
+import { getEdgeCacheHeaders } from "src/utils/cache.util";
 import { SystemInfoDTO } from "./dto/systemInfo.dto";
 
 @Controller("system")
@@ -28,7 +28,7 @@ export class SystemController {
   async getSystemStats(
     @Res({ passthrough: true }) response: Response,
   ): Promise<SystemStats> {
-    response.set(getPublicCacheHeaders(60));
+    response.set(getEdgeCacheHeaders(60));
     return await this.systemService.getSystemStats();
   }
 

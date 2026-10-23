@@ -149,7 +149,11 @@ const ShareActions = ({
         </HoverTip>
       )}
       {share && share.files.length > 1 && (
-        <DownloadAllButton shareId={shareId} recipientId={recipientId} />
+        <DownloadAllButton
+          shareId={shareId}
+          recipientId={recipientId}
+          isZipReady={share.isZipReady}
+        />
       )}
     </Group>
   );

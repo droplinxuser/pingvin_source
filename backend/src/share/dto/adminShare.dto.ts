@@ -9,9 +9,6 @@ export class AdminShareDTO extends OmitType(ShareDTO, [
   "fromList",
 ] as const) {
   @Expose()
-  views: number;
-
-  @Expose()
   createdAt: Date;
 
   @Expose()

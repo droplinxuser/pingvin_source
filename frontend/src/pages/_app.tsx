@@ -414,12 +414,13 @@ App.getInitialProps = async ({ ctx }: { ctx: GetServerSidePropsContext }) => {
     if (ctx.req.cookies.access_token) {
       pageProps.user = await fetch(`${apiURL}/api/users/me`, {
         headers: cookieHeader ? { cookie: cookieHeader } : undefined,
+        signal: AbortSignal.timeout(2000),
       })
         .then((response) => (response.ok ? response.json() : null))
         .catch(() => null);
     }
 
-    const { config, fallback } = await fetchConfig(apiURL, cookieHeader);
+    const { config, fallback } = await fetchConfig(apiURL);
     pageProps.configVariables = config;
     pageProps.isConfigFallback = fallback;
 

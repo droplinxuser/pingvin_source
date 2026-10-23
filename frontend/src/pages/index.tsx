@@ -84,7 +84,8 @@ export default function Home() {
     }
   }, [user]);
 
-  const siteName = (config.get("general.appName") as string) || "SiteName";
+  const siteName =
+    (config.get("general.appName") as string) || "Pingvin Share";
   const aboutHref = (config.get("legal.imprintUrl") as string) || "/imprint";
   const aboutIsExternal = /^https?:\/\//i.test(aboutHref);
 

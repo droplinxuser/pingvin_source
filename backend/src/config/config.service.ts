@@ -96,7 +96,7 @@ export class ConfigService extends EventEmitter {
     if (!value) return;
 
     const variable = this.configVariables.find(
-      (v) => `${v.category}.${v.name}` == key,
+      (v) => `${v.category}.${v.name}` === key,
     );
     if (!variable) return;
 

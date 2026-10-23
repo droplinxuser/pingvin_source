@@ -42,7 +42,7 @@ export class FileController {
   ) {}
 
   @Post("upload-init")
-  @SkipThrottle()
+  @SkipThrottle({ default: true, visitor: true })
   @UseGuards(IdValidation, CreateShareGuard, StrictShareOwnerGuard)
   async uploadInit(
     @Body()
@@ -61,7 +61,7 @@ export class FileController {
   }
 
   @Post("upload-complete")
-  @SkipThrottle()
+  @SkipThrottle({ default: true, visitor: true })
   @UseGuards(IdValidation, CreateShareGuard, StrictShareOwnerGuard)
   async uploadComplete(
     @Body()
@@ -83,7 +83,7 @@ export class FileController {
   }
 
   @Post("upload-abort")
-  @SkipThrottle()
+  @SkipThrottle({ default: true, visitor: true })
   @UseGuards(IdValidation, CreateShareGuard, StrictShareOwnerGuard)
   async uploadAbort(
     @Body()
@@ -249,7 +249,10 @@ export class FileController {
 
     Object.assign(
       headers,
-      getDownloadCacheHeaders((req as FileRequest).shareIsPublic === true),
+      getDownloadCacheHeaders(
+        (req as FileRequest).shareIsPublic === true,
+        `"${shareId}-${fileId}-${totalSize}"`,
+      ),
     );
 
     res.set(headers);
@@ -266,7 +269,7 @@ export class FileController {
   }
 
   @Delete(":fileId")
-  @SkipThrottle()
+  @SkipThrottle({ default: true, visitor: true })
   @UseGuards(IdValidation, CreateShareGuard, StrictShareOwnerGuard)
   async remove(
     @Param("fileId") fileId: string,

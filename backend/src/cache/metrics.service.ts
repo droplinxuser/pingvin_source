@@ -4,6 +4,7 @@ import { ValkeyClient, ValkeyService } from "./valkey.service";
 const METRICS_PREFIX = "pingvin:metrics:pageviews:hour:";
 const WINDOW_HOURS = 24;
 const BUCKET_TTL_SECONDS = (WINDOW_HOURS + 1) * 60 * 60;
+const AGGREGATE_CACHE_MS = 10 * 1000;
 const MAX_TOP_COUNTRIES = 5;
 const TOTAL_FIELD = "total";
 const COUNTRY_FIELD = "c:";
@@ -26,6 +27,7 @@ export type PageViewMetrics = {
 @Injectable()
 export class MetricsService {
   private readonly memory = new Map<number, Bucket>();
+  private aggregate?: { at: number; value: PageViewMetrics };
 
   constructor(private readonly valkey: ValkeyService) {}
 
@@ -33,26 +35,40 @@ export class MetricsService {
     const code = normalizeCountry(country);
     const hour = currentHour();
 
-    const result = await this.valkey.run(async (client) => {
+    const incremented = await this.valkey.run(async (client) => {
       const key = bucketKey(hour);
       const multi = client.multi();
       multi.hIncrBy(key, TOTAL_FIELD, 1);
       if (code) multi.hIncrBy(key, `${COUNTRY_FIELD}${code}`, 1);
       multi.expire(key, BUCKET_TTL_SECONDS);
       await multi.exec();
-
-      return this.readValkey(client, hour);
+      return true;
     });
 
-    return result ?? this.recordMemory(code, hour);
+    if (incremented) return this.getLastDay();
+    this.aggregate = undefined;
+    return this.recordMemory(code, hour);
   }
 
   async getLastDay(): Promise<PageViewMetrics> {
+    if (
+      this.aggregate &&
+      Date.now() - this.aggregate.at < AGGREGATE_CACHE_MS
+    ) {
+      return this.aggregate.value;
+    }
+
     const hour = currentHour();
     const result = await this.valkey.run((client) =>
       this.readValkey(client, hour),
     );
-    return result ?? this.readMemory(hour);
+    if (result) {
+      this.aggregate = { at: Date.now(), value: result };
+      return result;
+    }
+
+    this.aggregate = undefined;
+    return this.readMemory(hour);
   }
 
   private async readValkey(

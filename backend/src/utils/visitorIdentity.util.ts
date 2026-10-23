@@ -5,10 +5,28 @@ import { NextFunction, Request, Response } from "express";
 const COOKIE_NAME = "pingvin_visitor";
 const COOKIE_MAX_AGE = 1000 * 60 * 60 * 24 * 365;
 
+// These responses must stay free of Set-Cookie so Cloudflare can cache them.
+// HEAD is only used for share existence checks, and its route skips the visitor
+// limiter. Without a cookie the visitor key falls back to the IP address.
+const IDENTITY_FREE_PATHS = new Set([
+  "/api/configs",
+  "/api/health",
+  "/api/system/stats",
+]);
+
 type VisitorRequest = Request & {
   cookies?: Record<string, string>;
   visitorKey?: string;
 };
+
+function skipsVisitorIdentity(req: Request) {
+  return (
+    req.method === "HEAD" ||
+    req.method === "OPTIONS" ||
+    (req.method === "GET" &&
+      IDENTITY_FREE_PATHS.has(req.path.replace(/\/+$/, "")))
+  );
+}
 
 async function verifyVisitorId(
   jwt: JwtService,
@@ -38,6 +56,13 @@ export function createVisitorIdentityMiddleware(
 ) {
   return async (request: Request, response: Response, next: NextFunction) => {
     const req = request as VisitorRequest;
+
+    if (skipsVisitorIdentity(req)) {
+      req.visitorKey = `ip:${req.ip || "unknown"}`;
+      next();
+      return;
+    }
+
     const cookies = req.cookies ?? {};
     const cookieVisitorId = await verifyVisitorId(
       jwt,

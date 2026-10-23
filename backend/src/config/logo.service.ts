@@ -3,25 +3,29 @@ import * as fs from "fs";
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const sharp = require("sharp");
 
-const IMAGES_PATH = "../frontend/public/img";
+const PUBLIC_PATH = "../frontend/public";
+const IMAGES_PATH = `${PUBLIC_PATH}/img`;
 
 @Injectable()
 export class LogoService {
   async create(file: Buffer) {
-    const resized = await sharp(file).resize(900).toBuffer();
+    const resized = await sharp(file).resize(400).toBuffer();
     fs.writeFileSync(`${IMAGES_PATH}/logo.png`, resized, "binary");
-    this.createFavicon(file);
-    this.createPWAIcons(file);
+    await Promise.all([this.createFavicon(file), this.createPWAIcons(file)]);
   }
 
   async createDark(file: Buffer) {
-    const resized = await sharp(file).resize(900).toBuffer();
+    const resized = await sharp(file).resize(400).toBuffer();
     fs.writeFileSync(`${IMAGES_PATH}/logo-dark.png`, resized, "binary");
   }
 
   async createFavicon(file: Buffer) {
     const resized = await sharp(file).resize(16).toBuffer();
-    fs.promises.writeFile(`${IMAGES_PATH}/favicon.ico`, resized, "binary");
+    await fs.promises.writeFile(
+      `${PUBLIC_PATH}/favicon.ico`,
+      resized,
+      "binary",
+    );
   }
 
   async createPWAIcons(file: Buffer) {
@@ -29,7 +33,7 @@ export class LogoService {
 
     for (const size of sizes) {
       const resized = await sharp(file).resize(size).toBuffer();
-      fs.promises.writeFile(
+      await fs.promises.writeFile(
         `${IMAGES_PATH}/icons/icon-${size}x${size}.png`,
         resized,
         "binary",

@@ -121,6 +121,7 @@ const ImagePreview = () => {
       src={`/api/shares/${shareId}/files/${fileId}?download=false`}
       alt={`${fileId}_preview`}
       width="100%"
+      loading="lazy"
       onError={() => setIsNotSupported(true)}
     />
   );

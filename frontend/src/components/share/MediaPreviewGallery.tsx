@@ -7,6 +7,8 @@ import FilePreview from "./FilePreview";
 
 // Images are fully fetched by the browser as soon as they are rendered, so
 // only reasonably small ones are embedded. Videos and audio stream on demand.
+const MAX_GALLERY_ITEMS = 6;
+
 const MediaPreviewGallery = ({
   shareId,
   files = [],
@@ -14,12 +16,14 @@ const MediaPreviewGallery = ({
   shareId: string;
   files?: FileMetaData[];
 }) => {
-  const mediaFiles = files.filter((file) => {
-    const kind = getInlinePreviewKind(file.name);
-    return (
-      kind && (kind != "image" || parseInt(file.size) <= MAX_INLINE_FILE_SIZE)
-    );
-  });
+  const mediaFiles = files
+    .filter((file) => {
+      const kind = getInlinePreviewKind(file.name);
+      return (
+        kind && (kind != "image" || parseInt(file.size) <= MAX_INLINE_FILE_SIZE)
+      );
+    })
+    .slice(0, MAX_GALLERY_ITEMS);
 
   if (mediaFiles.length == 0) return null;
 

@@ -110,7 +110,7 @@ export class ShareController {
   // shares get a real 404 status without touching the share (no view count,
   // no rolling expiration, no token required).
   @Head(":id")
-  @SkipThrottle({ default: true, visitor: true })
+  @SkipThrottle({ visitor: true })
   async exists(@Param("id") id: string) {
     if (!(await this.shareService.shareExists(id)))
       throw new NotFoundException();

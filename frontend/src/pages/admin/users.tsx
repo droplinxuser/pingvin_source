@@ -1,6 +1,6 @@
 import { Button, Group, Pagination, Space, Text, Title } from "@mantine/core";
 import { useModals } from "@mantine/modals";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { TbPlus } from "react-icons/tb";
 import { FormattedMessage } from "react-intl";
 import Meta from "../../components/Meta";
@@ -21,6 +21,7 @@ const Users = () => {
   const pageSize = 20;
   const [isLoading, setIsLoading] = useState(true);
   const [sort, setSort] = useState<TableSort>({ direction: "desc" });
+  const requestIdRef = useRef(0);
 
   const config = useConfig();
   const modals = useModals();
@@ -49,16 +50,19 @@ const Users = () => {
   };
 
   const getUsers = (targetPage = page) => {
+    const requestId = ++requestIdRef.current;
     setIsLoading(true);
     userService
       .list(targetPage, pageSize, sort.property, sort.direction)
       .then(({ users, total }) => {
+        if (requestId !== requestIdRef.current) return;
         setUsers(users);
         setTotal(total);
         setPage(targetPage);
         setIsLoading(false);
       })
       .catch((e) => {
+        if (requestId !== requestIdRef.current) return;
         setIsLoading(false);
         toast.axiosError(e);
       });

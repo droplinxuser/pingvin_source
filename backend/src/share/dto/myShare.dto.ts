@@ -10,9 +10,6 @@ export class MyShareDTO extends OmitType(ShareDTO, [
   "fromList",
 ] as const) {
   @Expose()
-  views: number;
-
-  @Expose()
   createdAt: Date;
 
   @Expose()

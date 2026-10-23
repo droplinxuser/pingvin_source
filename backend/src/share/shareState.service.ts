@@ -11,7 +11,7 @@ import { Request } from "express";
 import * as moment from "moment";
 import { I18nService } from "nestjs-i18n";
 import { PrismaService } from "src/prisma/prisma.service";
-import { getDefaultShareExpiration } from "src/utils/date.util";
+import { parseRelativeDateToAbsolute } from "src/utils/date.util";
 import {
   MAX_VISITORS,
   getVisitorInfo,
@@ -27,11 +27,18 @@ import {
   shareDataCacheKey,
   shareGuardCacheKey,
 } from "src/utils/cache.util";
-import { isViewLimitExceeded } from "./share.util";
+import { SHARE_EXPIRATION, isViewLimitExceeded } from "./share.util";
 
 const GUARD_INCLUDE = {
-  security: true,
-  reverseShare: true,
+  security: {
+    select: {
+      password: true,
+      maxViews: true,
+      restrictToRecipients: true,
+    },
+  },
+  // Only the visibility check needs the reverse share, not its token.
+  reverseShare: { select: { publicAccess: true, creatorId: true } },
   userRecipients: { select: { userId: true } },
   recipients: { select: { email: true } },
 } satisfies Prisma.ShareInclude;
@@ -62,6 +69,7 @@ export class ShareStateService {
       where: { id },
       include: {
         files: {
+          select: { id: true, name: true, size: true },
           orderBy: {
             name: "asc",
           },
@@ -92,7 +100,7 @@ export class ShareStateService {
     // Refresh the rolling expiration on a cache miss. A cached share is served
     // for 30 seconds, so this writes at most once per cache window.
     if (!moment(share.expiration).isSame(0)) {
-      share.expiration = getDefaultShareExpiration();
+      share.expiration = parseRelativeDateToAbsolute(SHARE_EXPIRATION);
       await this.prisma.share.updateMany({
         where: { id },
         data: { expiration: share.expiration },
@@ -116,19 +124,27 @@ export class ShareStateService {
   async getGuardShare(shareId: string): Promise<GuardShare | null> {
     const key = shareGuardCacheKey(shareId);
     const cached = await getCachedValue<GuardShare>(this.cache, key);
-    if (cached) return cached;
+    const share =
+      cached ??
+      (await this.prisma.share.findUnique({
+        where: { id: shareId },
+        include: GUARD_INCLUDE,
+      }));
 
-    const share = await this.prisma.share.findUnique({
-      where: { id: shareId },
-      include: GUARD_INCLUDE,
-    });
-    if (share)
+    if (!share || share.removedReason || !share.uploadLocked) return null;
+
+    if (!cached)
       await setCachedValue(this.cache, key, share, SHARE_DATA_CACHE_TTL_MS);
     return share;
   }
 
   async shareExists(shareId: string): Promise<boolean> {
-    return !!(await this.getGuardShare(shareId));
+    const share = await this.getGuardShare(shareId);
+    return (
+      !!share &&
+      (moment(share.expiration).isSame(0) ||
+        !moment().isAfter(share.expiration))
+    );
   }
 
   async getCurrentViews(shareId: string): Promise<number> {
@@ -139,12 +155,40 @@ export class ShareStateService {
     return share?.views ?? 0;
   }
 
-  async clear(shareId: string) {
-    await invalidateShareDataCache(this.cache, shareId);
+  async recordView(id: string, request: Request, maxViews?: number | null) {
+    const views = maxViews
+      ? await this.recordLimitedView(id, maxViews)
+      : await this.recordUnlimitedView(id);
+
+    const uploaderInfo = await this.recordVisitor(id, request);
+    return { views, uploaderInfo };
   }
 
-  async recordView(id: string, request: Request, maxViews?: number | null) {
-    const views = await this.prisma.$transaction(async (tx) => {
+  // The common case has no view limit, so a single atomic update is enough.
+  private async recordUnlimitedView(id: string): Promise<number> {
+    try {
+      const share = await this.prisma.share.update({
+        where: { id },
+        data: { views: { increment: 1 } },
+        select: { views: true },
+      });
+      return share.views;
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === "P2025"
+      ) {
+        throw new NotFoundException(this.i18n.t("share.notFound"));
+      }
+      throw error;
+    }
+  }
+
+  private async recordLimitedView(
+    id: string,
+    maxViews: number,
+  ): Promise<number> {
+    return this.prisma.$transaction(async (tx) => {
       const share = await tx.share.findUnique({
         where: { id },
         select: { views: true },
@@ -165,9 +209,6 @@ export class ShareStateService {
       });
       return updated.views;
     });
-
-    const uploaderInfo = await this.recordVisitor(id, request);
-    return { views, uploaderInfo };
   }
 
   private withVisitorLock<T>(

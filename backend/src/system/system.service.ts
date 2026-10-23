@@ -56,21 +56,28 @@ export class SystemService {
     );
     if (cached) return cached;
 
-    const [userCount, shareCount, fileCount] = await Promise.all([
-      this.prisma.user.count(),
-      this.prisma.share.count(),
-      this.prisma.file.count(),
-    ]);
-
-    const sizeRows = await this.prisma.$queryRaw<{ total: number | bigint }[]>`
-      SELECT COALESCE(SUM(CAST(size AS INTEGER)), 0) AS total FROM "File"
+    // One query for every counter keeps the 60-second cache miss cheap.
+    const rows = await this.prisma.$queryRaw<
+      {
+        userCount: number | bigint;
+        shareCount: number | bigint;
+        fileCount: number | bigint;
+        storageSizeBytes: number | bigint;
+      }[]
+    >`
+      SELECT
+        (SELECT COUNT(*) FROM "User") AS userCount,
+        (SELECT COUNT(*) FROM "Share") AS shareCount,
+        (SELECT COUNT(*) FROM "File") AS fileCount,
+        (SELECT COALESCE(SUM(CAST(size AS INTEGER)), 0) FROM "File") AS storageSizeBytes
     `;
+    const row = rows[0];
 
     const stats: BaseSystemStats = {
-      userCount,
-      shareCount,
-      fileCount,
-      storageSizeBytes: Number(sizeRows[0]?.total ?? 0),
+      userCount: Number(row?.userCount ?? 0),
+      shareCount: Number(row?.shareCount ?? 0),
+      fileCount: Number(row?.fileCount ?? 0),
+      storageSizeBytes: Number(row?.storageSizeBytes ?? 0),
     };
 
     await setCachedValue(
