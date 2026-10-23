@@ -137,7 +137,7 @@ login can loop between `/upload` and `/auth/signIn`.
   default config.
 - The local sandbox ran without Valkey, so the in-memory page-view and
   throttler fallbacks were exercised.
-- Live `https://dropmb.com` was audited on 2026-10-23 as a guest and as
+- Live `https://site.com` was audited on 2026-10-23 as a guest and as
   `thuoct222026`: home, sign-in, upload, account pages, public/password/
   max-view/multi-file share pages, ZIP download, report modal, 404s, dynamic
   manifest, imprint/privacy and admin redirects. No console errors or broken
