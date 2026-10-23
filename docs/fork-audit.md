@@ -14,6 +14,7 @@ so `git merge upstream/main` stays small.
 | Share reports | `backend/src/share/dto/reportShare.dto.ts`, `backend/src/email/email.service.ts`, `frontend/src/components/share/showReportShareModal.tsx` |
 | Uploader metadata / visitors | `backend/src/utils/uploaderInfo.util.ts`, `ShareDTO.uploaderInfo`, `frontend/src/components/share/UploaderInfoBadges.tsx`, `ShareStats.tsx`; view counts stay in `Share.views` |
 | Inline media gallery | `frontend/src/components/share/MediaPreviewGallery.tsx` (up to 30 supported image/video thumbnails at 250px, opening `FilePreview.tsx` in the full-size modal) |
+| Trending today | `backend/src/cache/trending.service.ts`, `GET /api/shares/trending`, `frontend/src/components/share/TrendingToday.tsx`, `frontend/src/pages/_app.tsx` |
 | Cache headers / hotlink protection | `backend/src/utils/cache.util.ts` (shared `Cache-Control`, `CDN-Cache-Control`, `Cloudflare-CDN-Cache-Control`, public-file `ETag`), `backend/src/utils/referrer.util.ts`, `frontend/src/middleware.ts` (query-free anonymous page shells), `frontend/next.config.js` |
 | Per-IP+User-Agent rate limiting | `backend/src/utils/visitorIdentity.util.ts`, `backend/src/cache/valkeyThrottler.storage.ts`, `backend/src/cache/throttler.config.ts`, `backend/src/main.ts` |
 | Valkey/Redis cache | `backend/src/utils/cache.util.ts`, `backend/src/share/shareState.service.ts`, `backend/src/cache/cache.module.ts`, `backend/src/cache/valkey.service.ts` |
@@ -38,10 +39,11 @@ other languages show the upstream copy instead of the English fallback.
    - frontend: `npm ci && npm run build`
    - lint: `npm run lint` in both packages (backend warnings are upstream-only)
 5. Smoke-test locally: home page, sign-in, upload, share page, admin
-   shares/users (search, sort, pagination), missing share (404), file download
-   headers, report modal, footer page-view/top-country metrics, and the
-   dynamic `/manifest.json`. Repeat once with Valkey stopped to confirm the
-   fallbacks.
+   shares/users (search, sort, pagination), missing share (404), trending
+   widget on `/`, `/upload`, `/share/*` and 404 pages (plus no widget on other
+   pages), file download headers, report modal, footer page-view/top-country
+   metrics, and the dynamic `/manifest.json`. Repeat once with Valkey stopped
+   to confirm the fallbacks (the trending widget is hidden without Valkey).
 
 ## Production settings
 
@@ -82,6 +84,18 @@ other languages show the upstream copy instead of the English fallback.
   to SQLite and `uploader.json` on each view; shares without a view limit use a
   single atomic update instead of a transaction. The footer's base counters use
   a 60-second in-process cache and do not add a Valkey key.
+- "Trending today" is stored entirely in Valkey. A public share `GET` records
+  the view in a per-hour sorted set (`pingvin:trending:views:<hour>`, 25-hour
+  TTL) and writes `{ id, name, views, previewFileId, previewKind, createdAt }`
+  to a per-day hash (`pingvin:trending:meta:<day>`, 50-hour TTL) in the same
+  `MULTI`. Shares older than 48 hours and shares without an image/video are
+  skipped before writing. `GET /api/shares/trending` unions the 24 hourly
+  sets, drops entries without current metadata or older than 48 hours, and
+  returns the top nine without any SQLite query. The result is cached
+  in-process for 30 seconds and is edge-cacheable for 60 seconds. Editing,
+  expiring or deleting a share (including removing its files or reverse-share
+  parent) clears its metadata immediately. If Valkey is unavailable the
+  endpoint returns an empty list and the widget is hidden.
 - The footer posts to `POST /api/system/pageview` on every rendered page. The
   endpoint increments a per-hour Valkey hash atomically (one total field plus
   one field per country), expires each hourly bucket after 25 hours and reads
@@ -124,10 +138,11 @@ other languages show the upstream copy instead of the English fallback.
 - Cloudflare: bypass cache for `/sw.js` and purge old HTML/service-worker
   responses after deployments. Cloudflare does not cache HTML or JSON by
   default, so the origin headers only apply where a Cache Rule makes those
-  paths eligible; scope that rule to the public HTML routes (and the public
-  config/stats APIs) rather than the whole site, and bypass requests carrying
-  an `access_token` cookie if the rule uses an Edge TTL. Page HTML is cached
-  for at most 60s and hashed `/_next/static` assets stay immutable. Angie/h5bp serves
+  paths eligible; scope that rule to the public HTML routes and the public
+  config, stats and `/api/shares/trending` APIs rather than the whole site, and
+  bypass requests carrying an `access_token` cookie if the rule uses an Edge
+  TTL. Page HTML is cached for at most 60s and hashed `/_next/static` assets
+  stay immutable. Angie/h5bp serves
   `/img` and `/favicon.ico` directly with its own long TTL (one year / one
   week), so the Next.js one-day rules do not apply there; purge the logo,
   favicon and PWA icon URLs after an admin branding change. If `/sw.js` was
@@ -144,11 +159,11 @@ sign-in redirect for a protected page and loop between `/upload` and
 ## Verified locally
 
 - Node `22.23.3` production builds pass for backend and frontend. `npm run
-  test:unit` passes all 15 tests, covering view limits, IP+User-Agent identity,
-  Valkey/fallback throttling, uploader metadata and page-view metrics. A local smoke
-  run rechecked config/stats cache headers, share `HEAD`/token/view flow and
-  rolling expiration; the aggregate cache and upload-throttle exemptions were
-  reviewed without a live Valkey instance.
+  test:unit` passes all 18 tests, covering view limits, IP+User-Agent identity,
+  Valkey/fallback throttling, uploader metadata, page-view metrics and trending
+  ranking/eligibility. A local smoke run rechecked config/stats cache headers,
+  share `HEAD`/token/view flow and rolling expiration; the aggregate cache and
+  upload-throttle exemptions were reviewed without a live Valkey instance.
 - A follow-up caching review (local Node `26.12.1`; the server remains on
   `22.23.3`) rechecked that only query-free page shells are public, cacheable
   file/ZIP GETs stay free of `Set-Cookie`, the share-metadata cache contains
@@ -199,14 +214,24 @@ sign-in redirect for a protected page and loop between `/upload` and
   requests and the hotlink guard redirects direct file requests to the share
   page. With the backend stopped, the frontend still renders the home page from
   its bundled default config.
-- The current sandbox ran without Valkey, so the in-memory page-view and
-  throttler fallbacks were exercised.
+- An earlier sandbox run without Valkey exercised the in-memory page-view and
+  throttler fallbacks. The trending pass ran against a local Valkey 9.1
+  instance.
 - The live deployment was audited as a guest and as a test admin account:
   home, sign-in, upload, account pages, public/password/max-view/multi-file
   share pages, ZIP download, report modal, 404s, dynamic manifest,
   imprint/privacy and admin redirects. No console errors or broken assets;
   390px mobile and dark mode showed no horizontal overflow. Temporary QA shares
   were removed after the run.
+- The trending widget was verified with 11 recent public media shares, a
+  password share, a max-view share, a text-only share, a 49-hour-old share and
+  a share whose media was deleted. The endpoint returned the nine newest
+  eligible shares in view order, excluded all other cases, and dropped a share
+  immediately after it was switched to password-protected, added back after it
+  was made public again. The four pages rendered the widget server-side with
+  nine 250x250 cards in a 3x3 desktop grid, a 2-column tablet grid, one column
+  at 390px and zero measured layout shift; the homepage made no client-side
+  trending request. Dark mode and click-through to `/share/<id>` were checked.
 - Reset-password pages now set a browser title, and a missing local
   `archive.zip` returns `404` instead of `500` (both verified locally).
 - `bash -n update.sh` passes; its env writer produces the exact live

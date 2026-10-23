@@ -23,6 +23,8 @@ import { GetUser } from "src/auth/decorator/getUser.decorator";
 import { AdministratorGuard } from "src/auth/guard/isAdmin.guard";
 import { JwtGuard } from "src/auth/guard/jwt.guard";
 import { ConfigService } from "src/config/config.service";
+import { TrendingService, TrendingShare } from "src/cache/trending.service";
+import { getEdgeCacheHeaders } from "src/utils/cache.util";
 import { parsePagination } from "src/utils/pagination.util";
 import {
   getUploaderInfo,
@@ -54,6 +56,7 @@ export class ShareController {
     private shareService: ShareService,
     private jwtService: JwtService,
     private config: ConfigService,
+    private trending: TrendingService,
   ) {}
 
   @Get("all")
@@ -106,6 +109,15 @@ export class ShareController {
     );
   }
 
+  @Get("trending")
+  @SkipThrottle({ default: true, visitor: true })
+  async getTrending(
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<TrendingShare[]> {
+    response.set(getEdgeCacheHeaders(60));
+    return this.trending.getTrending();
+  }
+
   // Lightweight existence check used by the share page SSR so that missing
   // shares get a real 404 status without touching the share (no view count,
   // no rolling expiration, no token required).
@@ -125,6 +137,8 @@ export class ShareController {
       request,
       share.maxViews,
     );
+    if ((request as Request & { shareIsPublic?: boolean }).shareIsPublic)
+      void this.trending.recordView({ ...share, views }).catch(() => {});
     return new ShareDTO().from({
       ...share,
       views,

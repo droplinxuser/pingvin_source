@@ -32,6 +32,13 @@ export default {
 
   // END footer
 
+  // Trending today
+  "trending.custom.title": "Trending today",
+  "trending.custom.description":
+    "Most-viewed public shares in the last 24 hours.",
+  "trending.custom.item": "{name}: {count} views",
+  // END trending
+
   // /
   "home.title": "A <h>self-hosted</h> file sharing platform.",
 

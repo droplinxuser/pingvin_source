@@ -11,6 +11,7 @@ import { Request } from "express";
 import * as moment from "moment";
 import { I18nService } from "nestjs-i18n";
 import { PrismaService } from "src/prisma/prisma.service";
+import { TrendingService } from "src/cache/trending.service";
 import { parseRelativeDateToAbsolute } from "src/utils/date.util";
 import {
   MAX_VISITORS,
@@ -54,6 +55,7 @@ export class ShareStateService {
   constructor(
     private prisma: PrismaService,
     private readonly i18n: I18nService,
+    private readonly trending: TrendingService,
     @Inject(CACHE_MANAGER) private cache: Cache,
   ) {}
 
@@ -118,7 +120,10 @@ export class ShareStateService {
   }
 
   async invalidateData(shareId: string) {
-    await invalidateShareDataCache(this.cache, shareId);
+    await Promise.all([
+      invalidateShareDataCache(this.cache, shareId),
+      this.trending.invalidate(shareId),
+    ]);
   }
 
   async getGuardShare(shareId: string): Promise<GuardShare | null> {

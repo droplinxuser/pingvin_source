@@ -10,6 +10,7 @@ import { Cache } from "cache-manager";
 import { I18nService } from "nestjs-i18n";
 import { ConfigService } from "src/config/config.service";
 import { FileService } from "src/file/file.service";
+import { TrendingService } from "src/cache/trending.service";
 import { PrismaService } from "src/prisma/prisma.service";
 import { parseRelativeDateToAbsolute } from "src/utils/date.util";
 import { invalidateShareDataCache } from "src/utils/cache.util";
@@ -23,6 +24,7 @@ export class ReverseShareService {
     private prisma: PrismaService,
     private fileService: FileService,
     private readonly i18n: I18nService,
+    private readonly trending: TrendingService,
     @Inject(CACHE_MANAGER) private cache: Cache,
   ) {}
 
@@ -159,8 +161,12 @@ export class ReverseShareService {
     });
 
     await this.prisma.reverseShare.delete({ where: { id } });
-    await Promise.all(
-      shares.map((share) => invalidateShareDataCache(this.cache, share.id)),
-    );
+    const shareIds = shares.map((share) => share.id);
+    await Promise.all([
+      ...shareIds.map((shareId) =>
+        invalidateShareDataCache(this.cache, shareId),
+      ),
+      this.trending.invalidate(shareIds),
+    ]);
   }
 }

@@ -70,6 +70,14 @@ export type ShareMetaData = {
   isZipReady: boolean;
 };
 
+export type TrendingShare = {
+  id: string;
+  name?: string;
+  views: number;
+  previewFileId: string;
+  previewKind: "image" | "video";
+};
+
 export type MyShare = Omit<Share, "hasPassword"> & {
   createdAt: Date;
   recipients: string[];

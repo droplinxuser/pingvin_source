@@ -14,6 +14,7 @@ import { Readable } from "stream";
 import { PrismaService } from "../prisma/prisma.service";
 import { EmailService } from "src/email/email.service";
 import { I18nService } from "nestjs-i18n";
+import { TrendingService } from "src/cache/trending.service";
 import { invalidateShareDataCache } from "src/utils/cache.util";
 
 const UPDATED_AT_THROTTLE_MS = 5 * 60 * 1000;
@@ -28,6 +29,7 @@ export class FileService {
     private configService: ConfigService,
     private emailService: EmailService,
     private readonly i18n: I18nService,
+    private readonly trending: TrendingService,
     @Inject(CACHE_MANAGER) private cache: Cache,
   ) {}
   private readonly logger = new Logger(FileService.name);
@@ -175,7 +177,10 @@ export class FileService {
     });
     const storageService = this.getStorageService(share?.storageProvider);
     await storageService.remove(shareId, fileId);
-    await invalidateShareDataCache(this.cache, shareId);
+    await Promise.all([
+      invalidateShareDataCache(this.cache, shareId),
+      this.trending.invalidate(shareId),
+    ]);
   }
 
   async deleteAllFiles(shareId: string) {
@@ -185,7 +190,10 @@ export class FileService {
     });
     const storageService = this.getStorageService(share?.storageProvider);
     await storageService.deleteAllFiles(shareId);
-    await invalidateShareDataCache(this.cache, shareId);
+    await Promise.all([
+      invalidateShareDataCache(this.cache, shareId),
+      this.trending.invalidate(shareId),
+    ]);
   }
 
   async getZip(shareId: string): Promise<Readable> {

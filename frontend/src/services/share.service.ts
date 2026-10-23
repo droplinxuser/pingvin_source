@@ -8,6 +8,7 @@ import {
   MyShare,
   Share,
   ShareMetaData,
+  TrendingShare,
   UpdateShare,
 } from "../types/share.type";
 import { generateUUID } from "../utils/crypto.util";
@@ -94,6 +95,10 @@ const getFromOwner = async (id: string): Promise<Share> => {
 const getMetaData = async (id: string): Promise<ShareMetaData> => {
   if (!isValidId(id)) throw new Error("Invalid ID");
   return (await api.get(`shares/${id}/metaData`)).data;
+};
+
+const getTrending = async (): Promise<TrendingShare[]> => {
+  return (await api.get("shares/trending")).data;
 };
 
 const remove = async (id: string) => {
@@ -437,6 +442,7 @@ export default {
   report,
   expire,
   getMetaData,
+  getTrending,
   getMyShares,
   getReceivedShares,
   isShareIdAvailable,

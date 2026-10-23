@@ -28,11 +28,13 @@ import userService from "../services/user.service";
 import GlobalStyle from "../styles/global.style";
 import globalStyle from "../styles/mantine.style";
 import Config from "../types/config.type";
+import { TrendingShare } from "../types/share.type";
 import { CurrentUser } from "../types/user.type";
 import i18nUtil from "../utils/i18n.util";
 import { isPublicPageRoute } from "../utils/router.util";
 import userPreferences from "../utils/userPreferences.util";
 import Footer from "../components/footer/Footer";
+import TrendingToday from "../components/share/TrendingToday";
 import { fetchConfig } from "../utils/config.server.util";
 import AdminNoticeModal, {
   AdminNotice,
@@ -40,6 +42,7 @@ import AdminNoticeModal, {
 import adminNoticeService from "../services/adminNotice.service";
 
 const excludeDefaultLayoutRoutes = ["/admin/config/[category]"];
+const trendingRoutes = ["/", "/upload", "/share/[shareId]", "/404"];
 const availableMantineColors = [
   "dark",
   "gray",
@@ -304,6 +307,8 @@ function App({ Component, pageProps }: AppProps) {
     }
   }, [user?.id, user?.isAdmin]);
 
+  const showTrending = trendingRoutes.includes(router.pathname);
+
   const handleDismissNotice = async (noticeId: string) => {
     setPendingNotices((prev) => prev.filter((n) => n.id !== noticeId));
     try {
@@ -378,6 +383,9 @@ function App({ Component, pageProps }: AppProps) {
                             <Component {...pageProps} />
                           </Container>
                         </div>
+                        {showTrending && (
+                          <TrendingToday initialItems={pageProps.trending} />
+                        )}
                         <Footer />
                       </Stack>
                     </>
@@ -394,7 +402,11 @@ function App({ Component, pageProps }: AppProps) {
 
 // Fetch user and config variables on server side when the first request is made
 // These will get passed as a page prop to the App component and stored in the contexts
-App.getInitialProps = async ({ ctx }: { ctx: GetServerSidePropsContext }) => {
+App.getInitialProps = async ({
+  ctx,
+}: {
+  ctx: GetServerSidePropsContext & { pathname?: string };
+}) => {
   let pageProps: {
     user?: CurrentUser;
     configVariables?: Config[];
@@ -402,6 +414,7 @@ App.getInitialProps = async ({ ctx }: { ctx: GetServerSidePropsContext }) => {
     colorScheme: ColorScheme;
     language?: string;
     isConfigFallback?: boolean;
+    trending?: TrendingShare[];
   } = {
     route: ctx.resolvedUrl,
     colorScheme:
@@ -411,6 +424,19 @@ App.getInitialProps = async ({ ctx }: { ctx: GetServerSidePropsContext }) => {
   if (ctx.req) {
     const apiURL = process.env.API_URL || "http://localhost:8080";
     const cookieHeader = ctx.req.headers.cookie;
+    const trendingRequest =
+      ctx.pathname && trendingRoutes.includes(ctx.pathname)
+        ? fetch(`${apiURL}/api/shares/trending`, {
+            cache: "no-store",
+            signal: AbortSignal.timeout(1500),
+          })
+            .then((response) =>
+              response.ok
+                ? (response.json() as Promise<TrendingShare[]>)
+                : undefined,
+            )
+            .catch(() => undefined)
+        : undefined;
 
     // Never put account data in a shell that may be cached by the CDN, even
     // when an edge Cache Rule ignores the origin's no-store header. The client
@@ -428,6 +454,7 @@ App.getInitialProps = async ({ ctx }: { ctx: GetServerSidePropsContext }) => {
     const { config, fallback } = await fetchConfig(apiURL);
     pageProps.configVariables = config;
     pageProps.isConfigFallback = fallback;
+    if (trendingRequest) pageProps.trending = await trendingRequest;
 
     pageProps.route = ctx.req.url;
 
