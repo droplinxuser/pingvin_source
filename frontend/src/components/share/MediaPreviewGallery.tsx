@@ -88,20 +88,31 @@ const MediaPreviewGallery = ({
                     height: "100%",
                     maxHeight: GALLERY_MEDIA_HEIGHT,
                     objectFit: "cover",
+                    backgroundColor: "#000",
                   },
                 })}
               >
                 {kind === "image" ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={url} alt="" loading="lazy" />
+                  <img
+                    src={url}
+                    alt=""
+                    loading="lazy"
+                    onError={(event) => {
+                      event.currentTarget.style.display = "none";
+                    }}
+                  />
                 ) : (
                   <>
                     <video
-                      src={url}
+                      src={`${url}#t=0.1`}
                       muted
                       playsInline
-                      preload="none"
+                      preload="metadata"
                       aria-hidden="true"
+                      onError={(event) => {
+                        event.currentTarget.style.display = "none";
+                      }}
                     />
                     <Center
                       sx={{

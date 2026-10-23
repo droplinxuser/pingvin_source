@@ -9,12 +9,35 @@ const mimeTypeOverrides: Record<string, string> = {
   jfif: "image/jpeg",
   jfi: "image/jpeg",
   jif: "image/jpeg",
+  pjpeg: "image/jpeg",
+  pjp: "image/jpeg",
+  dib: "image/bmp",
+  mov: "video/mp4",
+  f4v: "video/mp4",
   m4v: "video/mp4",
+  ogv: "video/ogg",
+  ogm: "video/ogg",
+  mkv: "video/x-matroska",
+  "3gp": "video/3gpp",
+  "3gpp": "video/3gpp",
+  "3gpp2": "video/3gpp2",
+  mpeg: "video/mpeg",
+  mpg: "video/mpeg",
+  m2v: "video/mpeg",
+  vob: "video/mpeg",
+  m2ts: "video/mp2t",
+  mts: "video/mp2t",
+  ts: "video/mp2t",
+  avi: "video/x-msvideo",
+  divx: "video/x-msvideo",
+  wmv: "video/x-ms-wmv",
+  asf: "video/x-ms-asf",
+  flv: "video/x-flv",
 };
 
-// Only formats with reliable native browser support are embedded. QuickTime,
-// JPEG XL, JPEG 2000, Matroska, MPEG-TS and similar formats are intentionally
-// excluded because they often end in the "preview not supported" notice.
+// Formats with reliable native rendering across current Chrome, Firefox,
+// Safari and Edge. TIFF, HEIC, JPEG XL and JPEG 2000 are intentionally omitted
+// because they are not natively rendered by all of those browsers.
 const GALLERY_IMAGE_EXTENSIONS = new Set([
   "jpg",
   "jpeg",
@@ -22,21 +45,65 @@ const GALLERY_IMAGE_EXTENSIONS = new Set([
   "jfif",
   "jfi",
   "jif",
+  "pjpeg",
+  "pjp",
   "png",
   "apng",
   "gif",
   "webp",
   "avif",
   "bmp",
+  "dib",
+  "ico",
   "svg",
 ]);
 
-const GALLERY_VIDEO_EXTENSIONS = new Set(["mp4", "m4v", "webm"]);
+// The browser's own canPlayType() check filters these further, so Safari and
+// Chromium only get containers they actually advertise.
+const GALLERY_VIDEO_EXTENSIONS = new Set([
+  "mp4",
+  "m4v",
+  "mov",
+  "f4v",
+  "webm",
+  "ogv",
+  "ogm",
+  "mkv",
+  "3gp",
+  "3gpp",
+  "3gpp2",
+  "mpeg",
+  "mpg",
+  "m2v",
+  "vob",
+  "m2ts",
+  "mts",
+  "ts",
+  "avi",
+  "divx",
+  "wmv",
+  "asf",
+  "flv",
+]);
+
+const videoSupport = new Map<string, boolean>();
 
 const getFileExtension = (fileName: string) => {
   const baseName = getBaseName(fileName);
   const dot = baseName.lastIndexOf(".");
   return dot === -1 ? "" : baseName.slice(dot + 1).toLowerCase();
+};
+
+const canPlayVideo = (mimeType: string) => {
+  if (!mimeType) return false;
+  const cached = videoSupport.get(mimeType);
+  if (cached !== undefined) return cached;
+
+  const supported =
+    typeof document !== "undefined" &&
+    !!document.createElement("video").canPlayType(mimeType);
+  videoSupport.set(mimeType, supported);
+  return supported;
 };
 
 export const getFileMimeType = (fileName: string) => {
@@ -49,7 +116,11 @@ export const getGalleryMediaKind = (
 ): GalleryMediaKind | undefined => {
   const extension = getFileExtension(fileName);
   if (GALLERY_IMAGE_EXTENSIONS.has(extension)) return "image";
-  if (GALLERY_VIDEO_EXTENSIONS.has(extension)) return "video";
+  if (
+    GALLERY_VIDEO_EXTENSIONS.has(extension) &&
+    canPlayVideo(getFileMimeType(fileName))
+  )
+    return "video";
   return undefined;
 };
 

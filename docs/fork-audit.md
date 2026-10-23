@@ -13,7 +13,7 @@ so `git merge upstream/main` stays small.
 | Admin pagination, search and sorting | `backend/src/share/share.service.ts`, `backend/src/user/user.service.ts`, `frontend/src/pages/admin/*`, `frontend/src/components/core/SortIcon.tsx` |
 | Share reports | `backend/src/share/dto/reportShare.dto.ts`, `backend/src/email/email.service.ts`, `frontend/src/components/share/showReportShareModal.tsx` |
 | Uploader metadata / visitors | `backend/src/utils/uploaderInfo.util.ts`, `ShareDTO.uploaderInfo`, `frontend/src/components/share/UploaderInfoBadges.tsx`, `ShareStats.tsx`; view counts stay in `Share.views` |
-| Inline media gallery | `frontend/src/components/share/MediaPreviewGallery.tsx` reuses `FilePreview.tsx` |
+| Inline media gallery | `frontend/src/components/share/MediaPreviewGallery.tsx` (up to 30 supported image/video thumbnails at 250px, opening `FilePreview.tsx` in the full-size modal) |
 | Cache headers / hotlink protection | `backend/src/utils/cache.util.ts` (shared `Cache-Control`, `CDN-Cache-Control`, `Cloudflare-CDN-Cache-Control`, public-file `ETag`), `backend/src/utils/referrer.util.ts`, `frontend/src/middleware.ts`, `frontend/next.config.js` |
 | Per-visitor rate limiting | `backend/src/utils/visitorIdentity.util.ts`, `backend/src/cache/valkeyThrottler.storage.ts`, `backend/src/cache/throttler.config.ts`, `backend/src/main.ts` |
 | Valkey/Redis cache | `backend/src/utils/cache.util.ts`, `backend/src/share/shareState.service.ts`, `backend/src/cache/cache.module.ts`, `backend/src/cache/valkey.service.ts` |
@@ -130,6 +130,9 @@ sign-in redirect for a protected page and loop between `/upload` and
   run rechecked config/stats cache headers, share `HEAD`/token/view flow and
   rolling expiration; the aggregate cache and upload-throttle exemptions were
   reviewed without a live Valkey instance.
+- The gallery was verified with a 40-file fixture: 30 cards from 35 supported
+  files, 250px media boxes, unsupported formats excluded, video first-frame
+  thumbnails rendered, and image/video thumbnails opened the full-size modal.
 - Refactor checks against a copy of `/home/rt/Documents/pingvin-share.db`:
   share `HEAD` does not change the view count; a share `GET` increments
   `Share.views` immediately in SQLite and refreshes the rolling expiration;
