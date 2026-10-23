@@ -256,7 +256,10 @@ const Footer = () => {
                 {isLoadingStats && !stats
                   ? t("footer.custom.loading")
                   : stats
-                    ? t("footer.custom.views", { count: views })
+                    ? t("footer.custom.views", {
+                        count: views,
+                        compact: compact(views),
+                      })
                     : "—"}
               </Text>
             </Group>
@@ -268,7 +271,9 @@ const Footer = () => {
                     <HoverTip key={country} label={name}>
                       <Group spacing={3} noWrap aria-label={name}>
                         <span aria-hidden>{countryCodeToFlag(country)}</span>
-                        <Text className={classes.country}>{count}</Text>
+                        <Text className={classes.country}>
+                          {compact(count)}
+                        </Text>
                       </Group>
                     </HoverTip>
                   );
