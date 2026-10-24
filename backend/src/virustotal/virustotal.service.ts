@@ -5,6 +5,9 @@ import {
   OnModuleInit,
 } from "@nestjs/common";
 import * as crypto from "crypto";
+import * as FormDataNode from "form-data";
+import * as http from "http";
+import * as https from "https";
 import { Readable } from "stream";
 import { ValkeyService } from "src/cache/valkey.service";
 import { ClamScanService } from "src/clamscan/clamscan.service";
@@ -30,7 +33,11 @@ const API_BASE_DEFAULT = "https://www.virustotal.com/api/v3";
 const RATE_LIMIT_MS = 173 * 1000;
 const REQUEST_TIMEOUT_MS = 30 * 1000;
 const UPLOAD_TIMEOUT_MS = 2 * 60 * 1000;
-const MAX_UPLOAD_BYTES = 32 * 1024 * 1024;
+const LARGE_UPLOAD_TIMEOUT_MS = 15 * 60 * 1000;
+const MAX_STANDARD_UPLOAD_BYTES = 32 * 1024 * 1024;
+// The site caps individual files at 512 MB; VirusTotal accepts large uploads
+// through /files/upload_url up to 650 MB.
+const MAX_LARGE_UPLOAD_BYTES = 512 * 1024 * 1024;
 const MAX_ATTEMPTS = 3;
 const MAX_ANALYSIS_POLLS = 20;
 const IDLE_MS = 5 * 1000;
@@ -49,6 +56,16 @@ type VirusTotalResponse = {
     attributes?: Record<string, unknown>;
   };
 };
+
+type VirusTotalUploadUrlResponse = {
+  data?: string;
+};
+
+type UploadResult =
+  | { kind: "response"; response: Response }
+  | { kind: "network" }
+  | { kind: "drop"; detail: string }
+  | { kind: "retry"; detail: string };
 
 function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : "unknown error";
@@ -348,15 +365,15 @@ export class VirusTotalService implements OnModuleInit, OnApplicationShutdown {
       );
       return undefined;
     }
-    if (job.size > MAX_UPLOAD_BYTES) {
+    if (job.size > MAX_LARGE_UPLOAD_BYTES) {
       this.audit.recordEvent({
         type: "skipped",
         stage: "upload",
         ...this.jobEvent(job),
-        detail: "File exceeds the free-tier upload limit",
+        detail: "File exceeds the VirusTotal upload limit",
       });
       this.logger.log(
-        `VirusTotal skipped ${job.name}: file exceeds the free-tier upload limit`,
+        `VirusTotal skipped ${job.name}: file exceeds the VirusTotal upload limit`,
       );
       return undefined;
     }
@@ -369,48 +386,43 @@ export class VirusTotalService implements OnModuleInit, OnApplicationShutdown {
   }
 
   private async uploadJob(job: ScanJob): Promise<ScanJob | undefined> {
-    if (job.size > MAX_UPLOAD_BYTES) {
+    if (job.size > MAX_LARGE_UPLOAD_BYTES) {
       this.audit.recordEvent({
         type: "skipped",
         stage: "upload",
         ...this.jobEvent(job),
-        detail: "File exceeds the free-tier upload limit",
+        detail: "File exceeds the VirusTotal upload limit",
       });
       return undefined;
     }
     if (!(await this.waitForRequestSlot())) return job;
     if (!(await this.ensureJobExists(job, "upload"))) return undefined;
 
-    let buffer: Buffer;
-    try {
-      buffer = await this.readFileBuffer(job);
-    } catch (error) {
+    const result = await this.sendUpload(job);
+    if (result.kind === "network") return this.networkError(job, "upload");
+    if (result.kind === "retry") {
       this.audit.recordEvent({
         type: "error",
         stage: "upload",
         ...this.jobEvent(job),
-        detail: errorMessage(error),
+        detail: result.detail,
+      });
+      return this.retry(job, result.detail);
+    }
+    if (result.kind === "drop") {
+      this.audit.recordEvent({
+        type: "error",
+        stage: "upload",
+        ...this.jobEvent(job),
+        detail: result.detail,
       });
       this.logger.warn(
-        `VirusTotal could not read ${job.name}: ${errorMessage(error)}`,
+        `VirusTotal could not read ${job.name}: ${result.detail}`,
       );
       return undefined;
     }
 
-    const form = new FormData();
-    form.append(
-      "file",
-      new Blob([buffer], { type: "application/octet-stream" }),
-      job.name || job.fileId,
-    );
-
-    const response = await this.fetchApi(
-      "/files",
-      { method: "POST", body: form },
-      UPLOAD_TIMEOUT_MS,
-    );
-    if (!response) return this.networkError(job, "upload");
-
+    const response = result.response;
     if (response.status === 200 || response.status === 201) {
       const body = await this.readJson(response);
       const analysisId = body?.data?.id;
@@ -456,15 +468,173 @@ export class VirusTotalService implements OnModuleInit, OnApplicationShutdown {
         stage: "upload",
         ...this.jobEvent(job),
         status: response.status,
-        detail: "File exceeds the free-tier upload limit",
+        detail: "File exceeds the VirusTotal upload limit",
       });
       this.logger.log(
-        `VirusTotal skipped ${job.name}: file exceeds the free-tier upload limit`,
+        `VirusTotal skipped ${job.name}: file exceeds the VirusTotal upload limit`,
       );
       return undefined;
     }
 
     return this.handleResponseError(job, response, "upload");
+  }
+
+  /**
+   * Small files use POST /files directly. Files above 32 MB first request a
+   * one-time upload URL and are streamed to it, so a 512 MB scan never has to
+   * sit in process memory.
+   */
+  private async sendUpload(job: ScanJob): Promise<UploadResult> {
+    if (job.size <= MAX_STANDARD_UPLOAD_BYTES) {
+      let buffer: Buffer;
+      try {
+        buffer = await this.readFileBuffer(job);
+      } catch (error) {
+        return { kind: "drop", detail: errorMessage(error) };
+      }
+
+      const form = new FormData();
+      form.append(
+        "file",
+        new Blob([buffer], { type: "application/octet-stream" }),
+        job.name || job.fileId,
+      );
+      const response = await this.fetchApi(
+        "/files",
+        { method: "POST", body: form },
+        UPLOAD_TIMEOUT_MS,
+      );
+      return response ? { kind: "response", response } : { kind: "network" };
+    }
+
+    const urlResponse = await this.fetchApi(
+      "/files/upload_url",
+      {},
+      REQUEST_TIMEOUT_MS,
+      "upload",
+    );
+    if (!urlResponse) return { kind: "network" };
+    if (urlResponse.status !== 200)
+      return { kind: "response", response: urlResponse };
+
+    const body = (await this.readJson(urlResponse)) as
+      | VirusTotalUploadUrlResponse
+      | undefined;
+    if (typeof body?.data !== "string")
+      return {
+        kind: "retry",
+        detail: "Upload URL response did not include a URL",
+      };
+
+    return this.sendLargeUpload(job, body.data);
+  }
+
+  private async sendLargeUpload(
+    job: ScanJob,
+    uploadUrl: string,
+  ): Promise<UploadResult> {
+    let file: Awaited<ReturnType<FileService["get"]>>;
+    try {
+      file = await this.fileService.get(job.shareId, job.fileId);
+    } catch (error) {
+      return { kind: "drop", detail: errorMessage(error) };
+    }
+    if (!file.file)
+      return { kind: "drop", detail: "file stream is unavailable" };
+
+    this.currentStream = file.file;
+    const form = new FormDataNode();
+    form.append("file", file.file, {
+      filename: job.name || job.fileId,
+      knownLength: job.size,
+      contentType: "application/octet-stream",
+    });
+
+    const controller = new AbortController();
+    this.currentAbort = controller;
+    const timeout = setTimeout(
+      () => controller.abort(),
+      LARGE_UPLOAD_TIMEOUT_MS,
+    );
+    timeout.unref();
+    this.lastRequestAt = Date.now();
+    this.lastRequestKind = "upload";
+    this.audit.recordApiCall("upload");
+
+    try {
+      const headers = form.getHeaders();
+      if (form.hasKnownLength())
+        headers["Content-Length"] = form.getLengthSync();
+
+      const response = await this.postLargeUpload(
+        uploadUrl,
+        form,
+        headers,
+        controller.signal,
+      );
+      return { kind: "response", response };
+    } catch (error) {
+      if (
+        this.running &&
+        (!(error instanceof Error) || error.name !== "AbortError")
+      )
+        this.logger.warn(
+          `VirusTotal large upload failed: ${errorMessage(error)}`,
+        );
+      return { kind: "network" };
+    } finally {
+      clearTimeout(timeout);
+      if (this.currentAbort === controller) this.currentAbort = undefined;
+      form.destroy();
+      file.file.destroy();
+      if (this.currentStream === file.file) this.currentStream = undefined;
+    }
+  }
+
+  /**
+   * Streams the multipart form with node:http instead of undici. This keeps
+   * the 512 MB upload out of process memory and lets the request honor the
+   * same AbortController as the rest of the scanner.
+   */
+  private postLargeUpload(
+    uploadUrl: string,
+    form: FormDataNode,
+    headers: FormDataNode.Headers,
+    signal: AbortSignal,
+  ): Promise<Response> {
+    return new Promise((resolve, reject) => {
+      const target = new URL(uploadUrl);
+      const transport = target.protocol === "https:" ? https : http;
+      const request = transport.request(
+        target,
+        { method: "POST", headers, signal },
+        (response) => {
+          const chunks: Buffer[] = [];
+          response.on("data", (chunk) => chunks.push(Buffer.from(chunk)));
+          response.on("end", () => {
+            const responseHeaders = new Headers();
+            for (const [key, value] of Object.entries(response.headers)) {
+              if (value === undefined) continue;
+              responseHeaders.set(
+                key,
+                Array.isArray(value) ? value.join(", ") : value,
+              );
+            }
+            resolve(
+              new Response(Buffer.concat(chunks), {
+                status: response.statusCode ?? 500,
+                statusText: response.statusMessage,
+                headers: responseHeaders,
+              }),
+            );
+          });
+          response.on("error", reject);
+        },
+      );
+      request.on("error", reject);
+      form.on("error", reject);
+      form.pipe(request);
+    });
   }
 
   private async analysisJob(job: ScanJob): Promise<ScanJob | undefined> {
@@ -613,13 +783,15 @@ export class VirusTotalService implements OnModuleInit, OnApplicationShutdown {
     path: string,
     init: RequestInit,
     timeoutMs: number,
+    kindOverride?: "lookup" | "upload" | "analysis",
   ): Promise<Response | undefined> {
     const kind: "lookup" | "upload" | "analysis" =
-      path === "/files"
+      kindOverride ??
+      (path === "/files"
         ? "upload"
         : path.startsWith("/analyses/")
           ? "analysis"
-          : "lookup";
+          : "lookup");
     this.lastRequestAt = Date.now();
     this.lastRequestKind = kind;
     this.audit.recordApiCall(kind);
@@ -672,8 +844,8 @@ export class VirusTotalService implements OnModuleInit, OnApplicationShutdown {
       for await (const chunk of file.file) {
         const buffer = Buffer.from(chunk);
         size += buffer.length;
-        if (size > MAX_UPLOAD_BYTES)
-          throw new Error("file grew beyond the upload limit");
+        if (size > MAX_STANDARD_UPLOAD_BYTES)
+          throw new Error("file grew beyond the standard upload limit");
         chunks.push(buffer);
       }
     } finally {

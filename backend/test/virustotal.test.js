@@ -335,6 +335,63 @@ test("drops a queued job when the file or share was deleted", async () => {
   }
 });
 
+test("requests a large-file upload URL and streams files over 32 MB", async () => {
+  const { service, auditEvents } = createService();
+  const originalFetch = global.fetch;
+  const calls = [];
+  let uploadedTo;
+  service.postLargeUpload = async (url) => {
+    uploadedTo = url;
+    return jsonResponse({ data: { id: "analysis-large" } });
+  };
+  global.fetch = async (url, init) => {
+    calls.push({ url: String(url), method: init?.method ?? "GET" });
+    if (String(url).endsWith("/files/upload_url"))
+      return jsonResponse({ data: "https://upload.example/large" });
+    throw new Error(`unexpected fetch ${url}`);
+  };
+
+  try {
+    const next = await service.uploadJob(
+      job({ stage: "upload", size: 40 * 1024 * 1024 }),
+    );
+    assert.equal(next.stage, "analysis");
+    assert.equal(next.analysisId, "analysis-large");
+    assert.deepEqual(calls, [
+      {
+        url: "https://www.virustotal.com/api/v3/files/upload_url",
+        method: "GET",
+      },
+    ]);
+    assert.equal(uploadedTo, "https://upload.example/large");
+    assert.equal(auditEvents.at(-1).type, "uploaded");
+  } finally {
+    global.fetch = originalFetch;
+  }
+});
+
+test("skips files above the 512 MB VirusTotal upload limit", async () => {
+  const { service, auditEvents } = createService();
+  const originalFetch = global.fetch;
+  let requested = false;
+  global.fetch = async () => {
+    requested = true;
+    return jsonResponse({});
+  };
+
+  try {
+    const next = await service.uploadJob(
+      job({ stage: "upload", size: 513 * 1024 * 1024 }),
+    );
+    assert.equal(next, undefined);
+    assert.equal(requested, false);
+    assert.equal(auditEvents.at(-1).type, "skipped");
+    assert.match(auditEvents.at(-1).detail, /VirusTotal upload limit/);
+  } finally {
+    global.fetch = originalFetch;
+  }
+});
+
 test("removes queued work for a deleted share or file", async () => {
   const { service, queue } = createService();
   queue.jobs.push(
