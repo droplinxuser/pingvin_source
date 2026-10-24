@@ -23,10 +23,15 @@ import { GetUser } from "src/auth/decorator/getUser.decorator";
 import { AdministratorGuard } from "src/auth/guard/isAdmin.guard";
 import { JwtGuard } from "src/auth/guard/jwt.guard";
 import { ConfigService } from "src/config/config.service";
-import { TrendingService, TrendingShare } from "src/cache/trending.service";
+import {
+  TrendingCountry,
+  TrendingService,
+  TrendingShare,
+} from "src/cache/trending.service";
 import { getEdgeCacheHeaders } from "src/utils/cache.util";
 import { parsePagination } from "src/utils/pagination.util";
 import {
+  getRequestCountry,
   getUploaderInfo,
   writeUploaderInfo,
 } from "src/utils/uploaderInfo.util";
@@ -122,6 +127,17 @@ export class ShareController {
     );
   }
 
+  // Country aggregates only change as views arrive; five minutes matches the
+  // in-process cache and keeps Cloudflare and the origin in sync.
+  @Get("trending/countries")
+  @SkipThrottle({ default: true, visitor: true })
+  async getTrendingCountries(
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<TrendingCountry[]> {
+    response.set(getEdgeCacheHeaders(300));
+    return this.trending.getTrendingCountries();
+  }
+
   // Lightweight existence check used by external monitors and the share page
   // SSR so missing shares get a real 404 without recording a view.
   @Head(":id")
@@ -141,7 +157,9 @@ export class ShareController {
       share.maxViews,
     );
     if ((request as Request & { shareIsPublic?: boolean }).shareIsPublic)
-      void this.trending.recordView({ ...share, views }).catch(() => {});
+      void this.trending
+        .recordView({ ...share, views }, getRequestCountry(request))
+        .catch(() => {});
     return new ShareDTO().from({
       ...share,
       views,

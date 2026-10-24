@@ -91,6 +91,12 @@ export type TrendingShare = {
   createdAt: string;
 };
 
+export type TrendingCountry = {
+  country: string;
+  views: number;
+  shares: TrendingShare[];
+};
+
 export type MyShare = Omit<Share, "hasPassword"> & {
   createdAt: Date;
   recipients: string[];

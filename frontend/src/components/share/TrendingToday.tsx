@@ -9,7 +9,7 @@ import {
   UnstyledButton,
 } from "@mantine/core";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { ReactNode, useEffect, useState } from "react";
 import { useIntl } from "react-intl";
 import {
   TbCalendar,
@@ -219,10 +219,12 @@ const TrendingToday = ({
   initialItems,
   embedded = false,
   limit = 12,
+  children,
 }: {
   initialItems?: TrendingShare[];
   embedded?: boolean;
   limit?: number;
+  children?: ReactNode;
 }) => {
   const { classes } = useStyles();
   const t = useTranslate();
@@ -275,6 +277,7 @@ const TrendingToday = ({
               : t("trending.custom.empty")}
           </Text>
         </section>
+        {children}
       </Container>
     );
   }
@@ -301,6 +304,8 @@ const TrendingToday = ({
           {t("trending.custom.description")}
         </Text>
       </Group>
+
+      {children}
 
       <div className={classes.grid}>
         {visibleItems.map((item) => {

@@ -121,7 +121,17 @@ function parseUserAgent(
 
 function normalizeCountry(country?: string) {
   const normalized = country?.trim().toUpperCase();
-  return normalized && normalized !== "XX" ? normalized : undefined;
+  return normalized && /^[A-Z]{2}$/.test(normalized) && normalized !== "XX"
+    ? normalized
+    : undefined;
+}
+
+/**
+ * Reads the two-letter country code supplied by Cloudflare. The same helper is
+ * used for share views and page views so the geo aggregates agree.
+ */
+export function getRequestCountry(request: Request): string | undefined {
+  return normalizeCountry(getHeader(request, "cf-ipcountry"));
 }
 
 function getReferrerDomain(referrer?: string, ownHost?: string) {
@@ -138,7 +148,7 @@ function getReferrerDomain(referrer?: string, ownHost?: string) {
 
 export function getUploaderInfo(request: Request): UploaderInfo {
   return {
-    country: normalizeCountry(getHeader(request, "cf-ipcountry")),
+    country: getRequestCountry(request),
     city: getHeader(request, "cf-ipcity"),
     region: getHeader(request, "cf-region"),
     timezone: getHeader(request, "cf-timezone"),
@@ -167,7 +177,7 @@ export function getVisitorInfo(request: Request): ShareVisitor {
   );
 
   return {
-    country: normalizeCountry(getHeader(request, "cf-ipcountry")),
+    country: getRequestCountry(request),
     city: getHeader(request, "cf-ipcity"),
     browser,
     os,

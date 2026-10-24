@@ -61,6 +61,15 @@ export default {
   "trending.custom.empty":
     "No public shares have been viewed in the last seven days yet.",
   "trending.custom.loading": "Loading trending shares…",
+  "trending.custom.countries.title": "Top countries today",
+  "trending.custom.countries.description":
+    "Public share views from the last 24 hours.",
+  "trending.custom.countries.views":
+    "{count, plural, one {# view from this country} other {# views from this country}}",
+  "trending.custom.countries.list":
+    "Most-viewed shares from {country} in the last 24 hours",
+  "trending.custom.countries.empty":
+    "No country data has been recorded in the last 24 hours yet.",
   // END trending
 
   // /

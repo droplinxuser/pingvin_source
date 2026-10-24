@@ -16,6 +16,8 @@ function createMockValkey(execute, metaValues = []) {
         "del",
         "zUnionStore",
         "zRangeWithScores",
+        "hIncrBy",
+        "hGetAll",
       ]) {
         chain[method] = (...args) => {
           queue.push([method, args]);
@@ -356,4 +358,181 @@ test("invalidates cached rankings and share metadata", async () => {
   const calls = mock.calls.map((queue) => queue.map(([method]) => method));
   assert.deepEqual(calls.at(-1), ["del"]);
   assert.deepEqual(mock.calls.at(-1)[0][1], ["pingvin:trending:meta:a"]);
+});
+
+test("records country views in one hourly hash", async () => {
+  const mock = createMockValkey(() => []);
+  const service = createService(mock);
+
+  await service.recordView(
+    {
+      id: "share",
+      name: "Share",
+      createdAt: new Date(),
+      views: 2,
+      files: [{ id: "image", name: "photo.jpg" }],
+    },
+    "ph",
+  );
+
+  const queue = mock.calls[0];
+  const geo = queue.filter(([method]) => method === "hIncrBy");
+  const hour = Math.floor(Date.now() / (60 * 60 * 1000));
+  assert.deepEqual(geo[0][1], [`pingvin:trending:geo:hour:${hour}`, "c:PH", 1]);
+  assert.deepEqual(geo[1][1], [
+    `pingvin:trending:geo:hour:${hour}`,
+    "PH:share",
+    1,
+  ]);
+
+  const geoExpire = queue.filter(([method]) => method === "expire").at(-1);
+  assert.deepEqual(geoExpire[1], [
+    `pingvin:trending:geo:hour:${hour}`,
+    25 * 60 * 60,
+  ]);
+});
+
+test("ignores invalid country codes", async () => {
+  const mock = createMockValkey(() => []);
+  const service = createService(mock);
+
+  await service.recordView(
+    {
+      id: "share",
+      createdAt: new Date(),
+      views: 1,
+      files: [{ id: "image", name: "photo.jpg" }],
+    },
+    "invalid",
+  );
+
+  assert.equal(
+    mock.calls[0].some(([method]) => method === "hIncrBy"),
+    false,
+  );
+});
+
+test("counts country views even when the share cannot be ranked", async () => {
+  const mock = createMockValkey(() => []);
+  const service = createService(mock);
+  const hour = Math.floor(Date.now() / (60 * 60 * 1000));
+
+  await service.recordView(
+    {
+      id: "text-share",
+      createdAt: new Date(),
+      views: 1,
+      files: [{ id: "note", name: "note.txt" }],
+    },
+    "ph",
+  );
+
+  assert.deepEqual(
+    mock.calls[0].map(([method]) => method),
+    ["hIncrBy", "expire"],
+  );
+  assert.deepEqual(mock.calls[0][0][1], [
+    `pingvin:trending:geo:hour:${hour}`,
+    "c:PH",
+    1,
+  ]);
+});
+
+test("returns the top five countries and their top shares", async () => {
+  const buckets = Array.from({ length: 24 }, () => null);
+  buckets[0] = {
+    "c:PH": "10",
+    "c:US": "5",
+    "c:CA": "2",
+    "c:DE": "1",
+    "c:FR": "1",
+    "c:XX": "9",
+    "PH:a": "5",
+    "PH:b": "3",
+    "US:a": "4",
+    "CA:c": "2",
+    "DE:d": "1",
+    "FR:e": "1",
+    "XX:x": "9",
+  };
+  buckets[1] = { "PH:b": "2", "US:a": "1" };
+  const mock = createMockValkey(
+    () => buckets,
+    [
+      meta("a", 10, recent),
+      meta("b", 5, recent),
+      meta("c", 2, recent),
+      meta("d", 1, recent),
+      meta("e", 1, recent),
+    ],
+  );
+  const service = createService(mock);
+
+  const countries = await service.getTrendingCountries();
+
+  assert.deepEqual(
+    countries.map((item) => item.country),
+    ["PH", "US", "CA", "DE", "FR"],
+  );
+  assert.equal(countries[0].views, 10);
+  assert.deepEqual(
+    countries[0].shares.map((item) => [item.id, item.views]),
+    [
+      ["a", 5],
+      ["b", 5],
+    ],
+  );
+  assert.equal(countries[1].views, 5);
+  assert.equal(countries[1].shares[0].views, 5);
+  assert.equal(countries[2].shares[0].id, "c");
+});
+
+test("limits each country to twenty shares", async () => {
+  const buckets = Array.from({ length: 24 }, () => null);
+  buckets[0] = {
+    "c:PH": "2200",
+    ...Object.fromEntries(
+      Array.from({ length: 25 }, (_, index) => [
+        `PH:s${index}`,
+        String(100 - index),
+      ]),
+    ),
+  };
+  const metas = Array.from({ length: 20 }, (_, index) =>
+    meta(`s${index}`, 100 - index, recent),
+  );
+  const mock = createMockValkey(() => buckets, metas);
+  const service = createService(mock);
+
+  const [country] = await service.getTrendingCountries();
+
+  assert.equal(country.views, 2200);
+  assert.equal(country.shares.length, 20);
+  assert.equal(country.shares[0].id, "s0");
+  assert.equal(country.shares.at(-1).id, "s19");
+});
+
+test("caches the country aggregate for five minutes", async () => {
+  const mock = createMockValkey(() => Array.from({ length: 24 }, () => null));
+  const service = createService(mock);
+
+  assert.deepEqual(await service.getTrendingCountries(), []);
+  const callsAfterFirstRead = mock.calls.length;
+  assert.deepEqual(await service.getTrendingCountries(), []);
+  assert.equal(mock.calls.length, callsAfterFirstRead);
+});
+
+test("drops country shares whose metadata is gone", async () => {
+  const buckets = Array.from({ length: 24 }, () => null);
+  buckets[0] = { "c:PH": "9", "PH:a": "5", "PH:deleted": "4" };
+  const mock = createMockValkey(() => buckets, [meta("a", 5, recent), null]);
+  const service = createService(mock);
+
+  const [country] = await service.getTrendingCountries();
+
+  assert.equal(country.views, 9);
+  assert.deepEqual(
+    country.shares.map((item) => item.id),
+    ["a"],
+  );
 });

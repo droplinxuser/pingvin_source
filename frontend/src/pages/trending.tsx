@@ -1,20 +1,33 @@
 import { GetServerSideProps } from "next";
 import Meta from "../components/Meta";
+import TrendingCountries from "../components/share/TrendingCountries";
 import TrendingToday from "../components/share/TrendingToday";
 import useConfig from "../hooks/config.hook";
 import useTranslate from "../hooks/useTranslate.hook";
-import { TrendingShare } from "../types/share.type";
-import { fetchTrending } from "../utils/trending.server.util";
+import { TrendingCountry, TrendingShare } from "../types/share.type";
+import {
+  fetchTrending,
+  fetchTrendingCountries,
+} from "../utils/trending.server.util";
 import { absoluteUrl, normalizeBaseUrl } from "../utils/seo.util";
 
 export const getServerSideProps: GetServerSideProps = async () => {
   const apiURL = process.env.API_URL || "http://localhost:8080";
-  const trending = await fetchTrending(apiURL, 48);
+  const [trending, countries] = await Promise.all([
+    fetchTrending(apiURL, 48),
+    fetchTrendingCountries(apiURL),
+  ]);
 
-  return { props: { trending } };
+  return { props: { trending, countries } };
 };
 
-const Trending = ({ trending }: { trending?: TrendingShare[] }) => {
+const Trending = ({
+  trending,
+  countries,
+}: {
+  trending?: TrendingShare[];
+  countries?: TrendingCountry[];
+}) => {
   const t = useTranslate();
   const config = useConfig();
   const siteName =
@@ -52,7 +65,9 @@ const Trending = ({ trending }: { trending?: TrendingShare[] }) => {
         canonicalPath="/trending"
         jsonLd={jsonLd}
       />
-      <TrendingToday initialItems={trending} embedded limit={48} />
+      <TrendingToday initialItems={trending} embedded limit={48}>
+        <TrendingCountries countries={countries} />
+      </TrendingToday>
     </>
   );
 };

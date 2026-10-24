@@ -14,6 +14,7 @@ import { AdministratorGuard } from "src/auth/guard/isAdmin.guard";
 import { JwtGuard } from "src/auth/guard/jwt.guard";
 import { SystemService, SystemStats } from "./system.service";
 import { getEdgeCacheHeaders } from "src/utils/cache.util";
+import { getRequestCountry } from "src/utils/uploaderInfo.util";
 import { SystemInfoDTO } from "./dto/systemInfo.dto";
 
 @Controller("system")
@@ -44,9 +45,7 @@ export class SystemController {
   @Post("pageview")
   @HttpCode(200)
   async recordPageView(@Req() request: Request): Promise<SystemStats> {
-    const header = request.headers["cf-ipcountry"];
-    const country = Array.isArray(header) ? header[0] : header;
-    return await this.systemService.recordPageView(country);
+    return await this.systemService.recordPageView(getRequestCountry(request));
   }
 
   @Get("robots.txt")
