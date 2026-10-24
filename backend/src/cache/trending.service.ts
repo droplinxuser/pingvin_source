@@ -1,4 +1,5 @@
 import { Injectable } from "@nestjs/common";
+import { PrismaService } from "src/prisma/prisma.service";
 import { sumFileSizes } from "src/share/share.util";
 import { getFileMimeType } from "src/utils/mime.util";
 import { ValkeyClient, ValkeyService } from "./valkey.service";
@@ -46,14 +47,17 @@ type TrendingSource = {
 
 /**
  * Ranks public shares from the last seven days by their total view count.
- * Both the counters and the ranking are kept in Valkey; SQLite is only read by
- * the share page that produced the view, never by this service.
+ * Both the counters and the ranking are kept in Valkey. SQLite is only read
+ * once to backfill metadata written before a field was added.
  */
 @Injectable()
 export class TrendingService {
   private cached?: { at: number; items: TrendingShare[] };
 
-  constructor(private readonly valkey: ValkeyService) {}
+  constructor(
+    private readonly valkey: ValkeyService,
+    private readonly prisma: PrismaService,
+  ) {}
 
   async recordView(share: TrendingSource): Promise<void> {
     if (Date.now() - new Date(share.createdAt).getTime() > MAX_SHARE_AGE_MS)
@@ -157,6 +161,19 @@ export class TrendingService {
       }
     }
 
+    // A deploy that adds metadata fields leaves active shares with the old
+    // shape until they are viewed again. Fill those entries from SQLite once
+    // and write the enriched copy back, so the normal path stays cache-only.
+    const legacyIds = ranked
+      .map(({ value }) => value)
+      .filter((id) => {
+        const meta = metas.get(id);
+        return (
+          !!meta && (meta.fileCount === undefined || meta.size === undefined)
+        );
+      });
+    if (legacyIds.length > 0) await this.backfill(client, legacyIds, metas);
+
     const now = Date.now();
     const items: TrendingShare[] = [];
     for (const { value: id, score } of ranked) {
@@ -183,6 +200,81 @@ export class TrendingService {
 
     // zRangeWithScores already returned the candidates by descending score.
     return items.slice(0, MAX_RESULT_LIMIT);
+  }
+
+  private async backfill(
+    client: ValkeyClient,
+    ids: string[],
+    metas: Map<string, TrendingMeta>,
+  ): Promise<void> {
+    const shares = await this.prisma.share
+      .findMany({
+        where: { id: { in: ids } },
+        select: {
+          id: true,
+          name: true,
+          description: true,
+          createdAt: true,
+          uploadLocked: true,
+          removedReason: true,
+          files: {
+            select: { id: true, name: true, size: true },
+            orderBy: { name: "asc" },
+          },
+        },
+      })
+      .catch(() => undefined);
+    if (!shares) return;
+
+    const multi = client.multi();
+    const found = new Set<string>();
+    let writes = 0;
+    const now = Date.now();
+
+    const remove = (id: string) => {
+      metas.delete(id);
+      multi.del(metaKeyFor(id));
+      writes += 1;
+    };
+
+    for (const share of shares) {
+      found.add(share.id);
+      const preview =
+        share.uploadLocked && !share.removedReason
+          ? findPreview(share.files)
+          : undefined;
+      if (!preview || now - share.createdAt.getTime() > MAX_SHARE_AGE_MS) {
+        remove(share.id);
+        continue;
+      }
+
+      const meta: TrendingMeta = {
+        id: share.id,
+        name: share.name || undefined,
+        description: normalizeDescription(share.description),
+        previewFileId: preview.id,
+        previewKind: preview.kind,
+        fileCount: share.files.length,
+        size: sumFileSizes(share.files),
+        createdAt: share.createdAt.toISOString(),
+      };
+      metas.set(share.id, meta);
+      multi.set(metaKeyFor(share.id), JSON.stringify(meta), {
+        EX: META_TTL_SECONDS,
+      });
+      writes += 1;
+    }
+
+    // Deleted shares may leave a ranking score behind until the daily buckets
+    // expire; drop their metadata while the IDs are already known.
+    for (const id of ids) if (!found.has(id)) remove(id);
+
+    if (writes === 0) return;
+    try {
+      await multi.exec();
+    } catch {
+      // Keep serving the enriched response even if the cache write fails.
+    }
   }
 }
 

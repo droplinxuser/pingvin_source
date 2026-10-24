@@ -172,16 +172,21 @@ other languages show the upstream copy instead of the English fallback.
   at 240 characters so one card cannot inflate the cache key. The small card
   payload is rewritten on each view (`SET ... EX`, which also refreshes the
   TTL), so entries cached before a field was added become current on their next
-  view without a second key or an extra read. The view badge still comes from
-  the sorted-set score. One metadata entry per share replaces the old per-day
-  copies. Shares older than seven days and shares without an image/video are
-  skipped before writing. `GET /api/shares/trending` unions the seven daily
-  sets with `AGGREGATE MAX`, reads every candidate's metadata with a single
-  `MGET`, drops entries without current metadata or older than seven days, and
-  returns the top twelve ordered by total views without any SQLite query. Each
-  item carries the share name, description, file count, total size, upload date
-  and preview kind, so the cards can show those details without additional
-  requests.
+  view. On the first ranking read after a deploy, entries that still lack
+  `fileCount`/`size` are backfilled in one SQLite query (name, description,
+  files and upload state), written back with the same `SET ... EX`, and then
+  served from cache; deleted, non-media and older-than-seven-days shares are
+  purged. This is the only SQLite read in the trending path. The view badge
+  still comes from the sorted-set score. One metadata entry per share replaces
+  the old per-day copies. Shares older than seven days and shares without an
+  image/video are skipped before writing. `GET /api/shares/trending` unions the
+  seven daily sets with `AGGREGATE MAX`, reads every candidate's metadata with
+  a single `MGET`, drops entries without current metadata or older than seven
+  days, and returns the top twelve ordered by total views from Valkey alone in
+  the normal path (legacy entries may trigger the one-time backfill above).
+  Each item carries the share name, description, file count, total size,
+  upload date and preview kind, so the cards can show those details without
+  additional requests.
   `?limit=48` returns the full list for the public `/trending` page; other
   values are clamped to 48. The result is cached in-process for 30 seconds and
   is edge-cacheable for 60 seconds. The frontend also caches the public list
@@ -497,13 +502,16 @@ sign-in redirect for a protected page and loop between `/upload` and
 - Trending card pass (2026-10-25): the Valkey metadata now also carries the
   whitespace-normalised, 240-character-capped description, file count and total
   size, and the API returns the upload date as well. The metadata is rewritten
-  with `SET ... EX` on each view so legacy entries and schema additions recover
-  without a second key or extra read. An isolated local database and a real
+  with `SET ... EX` on each view, and a legacy entry is enriched from SQLite
+  once on its first ranking read (then written back) so a deploy does not leave
+  active cards without details. An isolated local database and a real
   Valkey-compatible server produced eight `pingvin:trending:meta:<shareId>`
   keys and one daily sorted set for eight test shares; the capped description
   was exactly 240 characters, each metadata TTL was eight days, and the
   `/api/shares/trending?limit=48` response had the expected name, description,
-  file count, size, date, views and preview kind. Playwright covered guest and
+  file count, size, date, views and preview kind. A seeded legacy key with the
+  old shape was backfilled by one SQLite lookup and rewritten with the new
+  fields. Playwright covered guest and
   signed-in `/trending` and share/404 widgets at 1366, 1024 and 390px: the
   enriched cards rendered in 4/3/2/1 columns, images loaded via the WebP
   preview route, the preview stayed at `blur(14px) brightness(0.5)` with a dark

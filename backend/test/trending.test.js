@@ -38,6 +38,12 @@ function createMockValkey(execute, metaValues = []) {
   };
 }
 
+const emptyPrisma = { share: { findMany: async () => [] } };
+
+function createService(mock, prisma = emptyPrisma) {
+  return new TrendingService(mock.valkey, prisma);
+}
+
 const now = Date.now();
 const recent = new Date(now - 60 * 60 * 1000).toISOString();
 const old = new Date(now - 8 * 24 * 60 * 60 * 1000).toISOString();
@@ -71,7 +77,7 @@ test("ranks the last seven days by total views and filters stale shares", async 
       null,
     ],
   );
-  const service = new TrendingService(mock.valkey);
+  const service = createService(mock);
 
   const items = await service.getTrending();
 
@@ -99,7 +105,7 @@ test("returns twelve by default and caps the full list at forty-eight", async ()
   );
 
   const mock = createMockValkey(() => [1, ranked, 1], metas);
-  const service = new TrendingService(mock.valkey);
+  const service = createService(mock);
   const items = await service.getTrending();
 
   assert.equal(items.length, 12);
@@ -118,7 +124,7 @@ test("returns twelve by default and caps the full list at forty-eight", async ()
 
 test("records only recent public shares with image or video media", async () => {
   const mock = createMockValkey(() => []);
-  const service = new TrendingService(mock.valkey);
+  const service = createService(mock);
   const base = {
     id: "share",
     name: "Share",
@@ -165,7 +171,7 @@ test("records only recent public shares with image or video media", async () => 
 
 test("stores compact metadata and truncates long descriptions", async () => {
   const mock = createMockValkey(() => []);
-  const service = new TrendingService(mock.valkey);
+  const service = createService(mock);
 
   await service.recordView({
     id: "share",
@@ -186,7 +192,101 @@ test("stores compact metadata and truncates long descriptions", async () => {
   assert.equal(stored.size, 4634);
 });
 
-test("keeps legacy metadata readable until its next view", async () => {
+test("backfills legacy metadata from SQLite once", async () => {
+  const ranked = [{ value: "a", score: 4 }];
+  const legacy = JSON.stringify({
+    id: "a",
+    name: "Share a",
+    previewFileId: "file-a",
+    previewKind: "image",
+    createdAt: recent,
+  });
+  let lookups = 0;
+  const prisma = {
+    share: {
+      findMany: async ({ where }) => {
+        lookups += 1;
+        assert.deepEqual(where.id.in, ["a"]);
+        return [
+          {
+            id: "a",
+            name: "Share a",
+            description: "  Hello\nworld ",
+            createdAt: new Date(recent),
+            uploadLocked: true,
+            removedReason: null,
+            files: [
+              { id: "file-a", name: "photo.jpg", size: "1500" },
+              { id: "note", name: "note.txt", size: "25" },
+            ],
+          },
+        ];
+      },
+    },
+  };
+  const mock = createMockValkey(
+    (queue) =>
+      queue.some(([method]) => method === "zRangeWithScores")
+        ? [1, ranked, 1]
+        : [1],
+    [legacy],
+  );
+  const service = createService(mock, prisma);
+
+  const [item] = await service.getTrending();
+  assert.equal(item.id, "a");
+  assert.equal(item.name, "Share a");
+  assert.equal(item.description, "Hello world");
+  assert.equal(item.fileCount, 2);
+  assert.equal(item.size, 1525);
+  assert.equal(item.createdAt, recent);
+  assert.equal(lookups, 1);
+
+  const setCall = mock.calls
+    .flat()
+    .find(
+      ([method, args]) =>
+        method === "set" && args[0] === "pingvin:trending:meta:a",
+    );
+  assert.ok(setCall);
+  assert.equal(JSON.parse(setCall[1][1]).fileCount, 2);
+  assert.equal(setCall[1][2].EX, 8 * 24 * 60 * 60);
+
+  // The enriched result is cached in-process, so a second read is cache-only.
+  await service.getTrending();
+  assert.equal(lookups, 1);
+});
+
+test("keeps legacy metadata readable when the backfill query fails", async () => {
+  const legacy = JSON.stringify({
+    id: "a",
+    name: "Share a",
+    previewFileId: "file-a",
+    previewKind: "image",
+    createdAt: recent,
+  });
+  const prisma = {
+    share: {
+      findMany: async () => {
+        throw new Error("database unavailable");
+      },
+    },
+  };
+  const mock = createMockValkey(
+    () => [1, [{ value: "a", score: 4 }], 1],
+    [legacy],
+  );
+  const service = createService(mock, prisma);
+
+  const [item] = await service.getTrending();
+  assert.equal(item.id, "a");
+  assert.equal(item.createdAt, recent);
+  assert.equal(item.description, undefined);
+  assert.equal(item.fileCount, 0);
+  assert.equal(item.size, 0);
+});
+
+test("drops metadata for shares that no longer exist", async () => {
   const legacy = JSON.stringify({
     id: "a",
     name: "Share a",
@@ -198,14 +298,16 @@ test("keeps legacy metadata readable until its next view", async () => {
     () => [1, [{ value: "a", score: 4 }], 1],
     [legacy],
   );
-  const service = new TrendingService(mock.valkey);
+  const service = createService(mock);
 
-  const [item] = await service.getTrending();
-  assert.equal(item.id, "a");
-  assert.equal(item.createdAt, recent);
-  assert.equal(item.description, undefined);
-  assert.equal(item.fileCount, 0);
-  assert.equal(item.size, 0);
+  assert.deepEqual(await service.getTrending(), []);
+  const delCall = mock.calls
+    .flat()
+    .find(
+      ([method, args]) =>
+        method === "del" && args[0] === "pingvin:trending:meta:a",
+    );
+  assert.ok(delCall);
 });
 
 test("keeps the short ranking cache between views", async () => {
@@ -213,7 +315,7 @@ test("keeps the short ranking cache between views", async () => {
     () => [1, [{ value: "a", score: 1 }], 1],
     [meta("a", 1, recent)],
   );
-  const service = new TrendingService(mock.valkey);
+  const service = createService(mock);
 
   assert.deepEqual(
     (await service.getTrending()).map((item) => item.id),
@@ -243,7 +345,7 @@ test("invalidates cached rankings and share metadata", async () => {
     () => [1, [{ value: "a", score: 1 }], 1],
     [meta("a", 1, recent)],
   );
-  const service = new TrendingService(mock.valkey);
+  const service = createService(mock);
   assert.deepEqual(
     (await service.getTrending()).map((item) => item.id),
     ["a"],
