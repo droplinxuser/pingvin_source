@@ -645,6 +645,17 @@ sign-in redirect for a protected page and loop between `/upload` and
   non-admin account still received `403` from both admin APIs and a `307` to
   `/upload` from both admin pages, and a real-ad share-page load produced no
   console errors or warnings. The temporary share was deleted afterwards.
+- Live NCQy download audit (2026-10-25, after deployment): with the non-admin
+  account only, the public 10-file share showed `10 files · 7.9 KB` without the
+  ZIP note. "Download all" opened the confirmation modal and produced all 10
+  downloads; every generated file link had an explicit `download` attribute,
+  no `/files/zip` request was made, and no extra tabs or page navigations
+  appeared. A second run with browser downloads disabled also produced zero
+  extra tabs and zero navigations, confirming that a denied/pending permission
+  no longer reloads the share page. A real-ad load of the same page produced no
+  console errors or warnings. `navigator.permissions.query` rejects
+  `automatic-downloads`, `multiple-downloads`, and `downloads` in Chromium, so
+  the UI cannot pre-check this browser setting.
 - Admin logs capture is runtime-only: a process restart clears the memory
   fallback, and startup errors logged before `app.useLogger` are only in
   systemd's journal. On the live deployment the backend captures errors from
