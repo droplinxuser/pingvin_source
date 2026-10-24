@@ -160,7 +160,7 @@ export class UserSevice {
       }
 
       const hash = user.password && (await argon.hash(user.password));
-      const { displayName, ...rest } = user;
+      const { displayName, isActivated, ...rest } = user;
 
       if (hash) {
         await this.prisma.refreshToken.deleteMany({
@@ -174,6 +174,11 @@ export class UserSevice {
           ...rest,
           ...(displayName !== undefined && {
             displayName: displayName?.trim() || null,
+          }),
+          ...(isActivated === true && {
+            isActivated: true,
+            activationToken: null,
+            activationTokenExpiresAt: null,
           }),
           password: hash,
         },
