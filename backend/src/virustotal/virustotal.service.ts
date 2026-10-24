@@ -9,6 +9,7 @@ import { Readable } from "stream";
 import { ValkeyService } from "src/cache/valkey.service";
 import { ClamScanService } from "src/clamscan/clamscan.service";
 import { FileService } from "src/file/file.service";
+import { VirusTotalAuditService } from "./virustotalAudit.service";
 import {
   AnalysisStats,
   ScanVerdict,
@@ -97,7 +98,10 @@ export class VirusTotalService implements OnModuleInit, OnApplicationShutdown {
   private loopPromise?: Promise<void>;
   private currentAbort?: AbortController;
   private currentStream?: Readable;
+  private currentJob?: ScanJob;
+  private currentJobStartedAt = 0;
   private lastRequestAt = 0;
+  private lastRequestKind?: "lookup" | "upload" | "analysis";
   private cooldownUntil = 0;
   private wakeResolve?: () => void;
   private wakeTimer?: NodeJS.Timeout;
@@ -106,6 +110,7 @@ export class VirusTotalService implements OnModuleInit, OnApplicationShutdown {
     private readonly fileService: FileService,
     private readonly clamScanService: ClamScanService,
     private readonly valkey: ValkeyService,
+    private readonly audit: VirusTotalAuditService,
   ) {}
 
   onModuleInit() {
@@ -165,6 +170,13 @@ export class VirusTotalService implements OnModuleInit, OnApplicationShutdown {
         name: file.name,
         size: Number(file.size) || 0,
         attempts: 0,
+      });
+      this.audit.recordEvent({
+        type: "queued",
+        shareId,
+        fileId: file.id,
+        fileName: file.name,
+        size: Number(file.size) || 0,
       });
     }
   }
@@ -238,16 +250,36 @@ export class VirusTotalService implements OnModuleInit, OnApplicationShutdown {
       }
 
       let requeue: ScanJob | undefined;
+      this.currentJob = job;
+      this.currentJobStartedAt = Date.now();
       try {
         requeue = await this.processJob(job);
       } catch (error) {
+        this.audit.recordEvent({
+          type: "error",
+          stage: job.stage,
+          ...this.jobEvent(job),
+          detail: errorMessage(error),
+        });
         this.logger.warn(
           `VirusTotal job failed for share ${job.shareId}: ${errorMessage(error)}`,
         );
-        requeue = this.retry(job);
+        requeue = this.retry(job, errorMessage(error));
+      } finally {
+        this.currentJob = undefined;
       }
       if (requeue) await this.pushJob(requeue);
     }
+  }
+
+  private jobEvent(job: ScanJob) {
+    return {
+      shareId: job.shareId,
+      fileId: job.fileId,
+      fileName: job.name,
+      size: job.size,
+      hash: job.hash,
+    };
   }
 
   private async processJob(job: ScanJob): Promise<ScanJob | undefined> {
@@ -274,10 +306,29 @@ export class VirusTotalService implements OnModuleInit, OnApplicationShutdown {
       const hash = await sha256Stream(stream);
       const cached = await this.getVerdict(hash);
       if (cached === "malicious") {
-        await this.removeMaliciousShare(job);
+        const uploader = await this.audit.captureUploader(job.shareId);
+        const removed = await this.removeMaliciousShare(job);
+        this.audit.recordEvent({
+          type: "malicious",
+          ...this.jobEvent(job),
+          hash,
+          verdict: "malicious",
+          cached: true,
+          removed,
+          uploader,
+        });
         return undefined;
       }
-      if (cached) return undefined;
+      if (cached) {
+        this.audit.recordEvent({
+          type: cached,
+          ...this.jobEvent(job),
+          hash,
+          verdict: cached,
+          cached: true,
+        });
+        return undefined;
+      }
 
       return { ...job, stage: "lookup", hash, attempts: 0 };
     } catch (error) {
@@ -300,7 +351,7 @@ export class VirusTotalService implements OnModuleInit, OnApplicationShutdown {
       {},
       REQUEST_TIMEOUT_MS,
     );
-    if (!response) return this.retry(job);
+    if (!response) return this.networkError(job, "lookup");
 
     if (response.status === 200) {
       const body = await this.readJson(response);
@@ -320,12 +371,24 @@ export class VirusTotalService implements OnModuleInit, OnApplicationShutdown {
   private beginUpload(job: ScanJob): ScanJob | undefined {
     const submissions = job.submissions ?? 0;
     if (submissions >= MAX_ATTEMPTS) {
+      this.audit.recordEvent({
+        type: "dropped",
+        stage: "upload",
+        ...this.jobEvent(job),
+        detail: `Upload submission limit reached (${MAX_ATTEMPTS})`,
+      });
       this.logger.warn(
         `VirusTotal dropped ${job.name} after ${MAX_ATTEMPTS} upload attempts`,
       );
       return undefined;
     }
     if (job.size > MAX_UPLOAD_BYTES) {
+      this.audit.recordEvent({
+        type: "skipped",
+        stage: "upload",
+        ...this.jobEvent(job),
+        detail: "File exceeds the free-tier upload limit",
+      });
       this.logger.log(
         `VirusTotal skipped ${job.name}: file exceeds the free-tier upload limit`,
       );
@@ -340,13 +403,27 @@ export class VirusTotalService implements OnModuleInit, OnApplicationShutdown {
   }
 
   private async uploadJob(job: ScanJob): Promise<ScanJob | undefined> {
-    if (job.size > MAX_UPLOAD_BYTES) return undefined;
+    if (job.size > MAX_UPLOAD_BYTES) {
+      this.audit.recordEvent({
+        type: "skipped",
+        stage: "upload",
+        ...this.jobEvent(job),
+        detail: "File exceeds the free-tier upload limit",
+      });
+      return undefined;
+    }
     if (!(await this.waitForRequestSlot())) return job;
 
     let buffer: Buffer;
     try {
       buffer = await this.readFileBuffer(job);
     } catch (error) {
+      this.audit.recordEvent({
+        type: "error",
+        stage: "upload",
+        ...this.jobEvent(job),
+        detail: errorMessage(error),
+      });
       this.logger.warn(
         `VirusTotal could not read ${job.name}: ${errorMessage(error)}`,
       );
@@ -365,14 +442,27 @@ export class VirusTotalService implements OnModuleInit, OnApplicationShutdown {
       { method: "POST", body: form },
       UPLOAD_TIMEOUT_MS,
     );
-    if (!response) return this.retry(job);
+    if (!response) return this.networkError(job, "upload");
 
     if (response.status === 200 || response.status === 201) {
       const body = await this.readJson(response);
       const analysisId = body?.data?.id;
-      if (typeof analysisId === "string")
+      if (typeof analysisId === "string") {
+        this.audit.recordEvent({
+          type: "uploaded",
+          stage: "upload",
+          ...this.jobEvent(job),
+          analysisId,
+        });
         return { ...job, stage: "analysis", analysisId, attempts: 0 };
+      }
 
+      this.audit.recordEvent({
+        type: "error",
+        stage: "upload",
+        ...this.jobEvent(job),
+        detail: "Upload response did not include an analysis ID",
+      });
       return { ...job, stage: "lookup", attempts: 0 };
     }
 
@@ -380,12 +470,27 @@ export class VirusTotalService implements OnModuleInit, OnApplicationShutdown {
     if (response.status === 409) {
       const body = await this.readJson(response);
       const analysisId = body?.data?.id;
-      if (typeof analysisId === "string")
+      if (typeof analysisId === "string") {
+        this.audit.recordEvent({
+          type: "uploaded",
+          stage: "upload",
+          ...this.jobEvent(job),
+          analysisId,
+          detail: "File already known to VirusTotal",
+        });
         return { ...job, stage: "analysis", analysisId, attempts: 0 };
+      }
       return { ...job, stage: "lookup", attempts: 0 };
     }
 
     if (response.status === 413) {
+      this.audit.recordEvent({
+        type: "skipped",
+        stage: "upload",
+        ...this.jobEvent(job),
+        status: response.status,
+        detail: "File exceeds the free-tier upload limit",
+      });
       this.logger.log(
         `VirusTotal skipped ${job.name}: file exceeds the free-tier upload limit`,
       );
@@ -403,7 +508,7 @@ export class VirusTotalService implements OnModuleInit, OnApplicationShutdown {
       {},
       REQUEST_TIMEOUT_MS,
     );
-    if (!response) return this.retry(job);
+    if (!response) return this.networkError(job, "analysis");
 
     if (response.status === 200) {
       const body = await this.readJson(response);
@@ -413,9 +518,25 @@ export class VirusTotalService implements OnModuleInit, OnApplicationShutdown {
 
       if (await this.applyVerdict(job, stats, verdict)) return undefined;
 
-      if (attributes?.status === "completed") return undefined;
+      if (attributes?.status === "completed") {
+        this.audit.recordEvent({
+          type: "dropped",
+          stage: "analysis",
+          ...this.jobEvent(job),
+          analysisId: job.analysisId,
+          detail: "Analysis completed without usable statistics",
+        });
+        return undefined;
+      }
 
       if (job.attempts >= MAX_ANALYSIS_POLLS) {
+        this.audit.recordEvent({
+          type: "dropped",
+          stage: "analysis",
+          ...this.jobEvent(job),
+          analysisId: job.analysisId,
+          detail: "Analysis polling limit reached",
+        });
         this.logger.log(
           `VirusTotal stopped polling ${job.name} before the analysis completed`,
         );
@@ -425,6 +546,14 @@ export class VirusTotalService implements OnModuleInit, OnApplicationShutdown {
     }
 
     if (response.status === 404) {
+      this.audit.recordEvent({
+        type: "dropped",
+        stage: "analysis",
+        ...this.jobEvent(job),
+        analysisId: job.analysisId,
+        status: response.status,
+        detail: "Analysis is no longer available",
+      });
       this.logger.debug(
         `VirusTotal analysis ${job.analysisId} for ${job.name} is no longer available`,
       );
@@ -440,11 +569,26 @@ export class VirusTotalService implements OnModuleInit, OnApplicationShutdown {
     stage: ScanStage,
   ): Promise<ScanJob | undefined> {
     if (response.status === 429) {
-      await this.startCooldown(response);
+      const wait = await this.startCooldown(response);
+      this.audit.recordEvent({
+        type: "rate_limited",
+        stage,
+        ...this.jobEvent(job),
+        status: response.status,
+        cooldownSeconds: Math.ceil(wait / 1000),
+        detail: `Paused for ${Math.ceil(wait / 60_000)} minute(s)`,
+      });
       return job;
     }
 
     if (response.status === 401 || response.status === 403) {
+      this.audit.recordEvent({
+        type: "auth_error",
+        stage,
+        ...this.jobEvent(job),
+        status: response.status,
+        detail: "VirusTotal rejected the API key",
+      });
       this.authFailed = true;
       this.running = false;
       this.logger.error(
@@ -453,7 +597,16 @@ export class VirusTotalService implements OnModuleInit, OnApplicationShutdown {
       return undefined;
     }
 
-    if (response.status >= 500) return this.retry(job);
+    this.audit.recordEvent({
+      type: "error",
+      stage,
+      ...this.jobEvent(job),
+      status: response.status,
+      detail: `HTTP ${response.status}`,
+    });
+
+    if (response.status >= 500)
+      return this.retry(job, `HTTP ${response.status}`);
 
     this.logger.warn(
       `VirusTotal ${stage} request for ${job.name} returned HTTP ${response.status}`,
@@ -461,8 +614,25 @@ export class VirusTotalService implements OnModuleInit, OnApplicationShutdown {
     return undefined;
   }
 
-  private retry(job: ScanJob): ScanJob | undefined {
+  private networkError(job: ScanJob, stage: ScanStage): ScanJob | undefined {
+    if (!this.running) return job;
+    this.audit.recordEvent({
+      type: "error",
+      stage,
+      ...this.jobEvent(job),
+      detail: "Network request failed",
+    });
+    return this.retry(job, "Network request failed");
+  }
+
+  private retry(job: ScanJob, detail?: string): ScanJob | undefined {
     if (job.attempts >= MAX_ATTEMPTS) {
+      this.audit.recordEvent({
+        type: "dropped",
+        stage: job.stage,
+        ...this.jobEvent(job),
+        detail: detail ?? `Dropped after ${MAX_ATTEMPTS} attempts`,
+      });
       this.logger.warn(
         `VirusTotal dropped ${job.name} after ${MAX_ATTEMPTS} failed attempts`,
       );
@@ -476,6 +646,16 @@ export class VirusTotalService implements OnModuleInit, OnApplicationShutdown {
     init: RequestInit,
     timeoutMs: number,
   ): Promise<Response | undefined> {
+    const kind: "lookup" | "upload" | "analysis" =
+      path === "/files"
+        ? "upload"
+        : path.startsWith("/analyses/")
+          ? "analysis"
+          : "lookup";
+    this.lastRequestAt = Date.now();
+    this.lastRequestKind = kind;
+    this.audit.recordApiCall(kind);
+
     const controller = new AbortController();
     this.currentAbort = controller;
     const timeout = setTimeout(() => controller.abort(), timeoutMs);
@@ -602,6 +782,7 @@ export class VirusTotalService implements OnModuleInit, OnApplicationShutdown {
     this.logger.warn(
       `VirusTotal rate limit reached; pausing requests for ${Math.ceil(wait / 60_000)} minute(s)`,
     );
+    return wait;
   }
 
   private verdictKey(hash: string) {
@@ -649,11 +830,28 @@ export class VirusTotalService implements OnModuleInit, OnApplicationShutdown {
 
     await this.setVerdict(job.hash, verdict);
     if (verdict === "malicious") {
-      await this.removeMaliciousShare(job);
-    } else if (verdict === "suspicious") {
-      this.logger.warn(
-        `VirusTotal marked ${job.name} as suspicious (${stats?.suspicious ?? 0} engine(s))`,
-      );
+      const uploader = await this.audit.captureUploader(job.shareId);
+      const removed = await this.removeMaliciousShare(job);
+      this.audit.recordEvent({
+        type: "malicious",
+        ...this.jobEvent(job),
+        verdict,
+        stats,
+        removed,
+        uploader,
+      });
+    } else {
+      this.audit.recordEvent({
+        type: verdict,
+        ...this.jobEvent(job),
+        verdict,
+        stats,
+      });
+      if (verdict === "suspicious") {
+        this.logger.warn(
+          `VirusTotal marked ${job.name} as suspicious (${stats?.suspicious ?? 0} engine(s))`,
+        );
+      }
     }
     return true;
   }
@@ -669,17 +867,54 @@ export class VirusTotalService implements OnModuleInit, OnApplicationShutdown {
     });
   }
 
-  private async removeMaliciousShare(job: ScanJob) {
+  private async removeMaliciousShare(job: ScanJob): Promise<boolean> {
     this.logger.warn(
       `VirusTotal flagged ${job.name} in share ${job.shareId}; removing the share files`,
     );
     try {
       await this.clamScanService.removeMaliciousShare(job.shareId, job.name);
+      return true;
     } catch (error) {
       this.logger.error(
         `VirusTotal could not remove malicious share ${job.shareId}: ${errorMessage(error)}`,
       );
+      return false;
     }
+  }
+
+  async getAdminStatus() {
+    const queued = await this.valkey.run((client) => client.lLen(QUEUE_KEY));
+    const queueBackend = typeof queued === "number" ? "valkey" : "memory";
+    const queueDepth =
+      (typeof queued === "number" ? queued : 0) + this.memoryQueue.length;
+    const cooldown = await this.cooldownRemaining();
+
+    return {
+      enabled: !!this.apiKey && !this.authFailed,
+      apiKeyConfigured: !!this.apiKey,
+      running: this.running,
+      authFailed: this.authFailed,
+      queueBackend,
+      queueDepth,
+      pendingJobs: queueDepth + (this.currentJob ? 1 : 0),
+      processing: this.currentJob
+        ? {
+            stage: this.currentJob.stage,
+            shareId: this.currentJob.shareId,
+            fileId: this.currentJob.fileId,
+            fileName: this.currentJob.name,
+            size: this.currentJob.size,
+            attempts: this.currentJob.attempts,
+            startedAt: new Date(this.currentJobStartedAt).toISOString(),
+          }
+        : undefined,
+      cooldownSeconds: Math.ceil(cooldown / 1000),
+      rateLimitSeconds: RATE_LIMIT_MS / 1000,
+      lastRequestAt: this.lastRequestAt
+        ? new Date(this.lastRequestAt).toISOString()
+        : undefined,
+      lastRequestKind: this.lastRequestKind,
+    };
   }
 
   private sleep(ms: number): Promise<void> {

@@ -342,8 +342,93 @@ export default {
   "admin.button.users": "User management",
   "admin.button.shares": "Share management",
   "admin.button.config": "Configuration",
+  "admin.button.virustotal": "VirusTotal",
   "admin.version": "Version",
   // END /admin
+
+  // /admin/virustotal
+  "admin.virustotal.custom.title": "VirusTotal scanning",
+  "admin.virustotal.custom.subtitle":
+    "Background scan status, API usage and recent detections.",
+  "admin.virustotal.custom.refresh": "Refresh",
+  "admin.virustotal.custom.updated-at": "Updated {time}",
+  "admin.virustotal.custom.storage": "State file: {file} (file-backed, no SQLite)",
+  "admin.virustotal.custom.status.title": "Scanner status",
+  "admin.virustotal.custom.status.enabled": "Enabled",
+  "admin.virustotal.custom.status.disabled": "Disabled",
+  "admin.virustotal.custom.status.running": "Worker running",
+  "admin.virustotal.custom.status.stopped": "Worker stopped",
+  "admin.virustotal.custom.status.auth-ok": "API key accepted",
+  "admin.virustotal.custom.status.auth-failed": "API key rejected",
+  "admin.virustotal.custom.status.api-key-missing":
+    "VIRUSTOTAL_API_KEY is not set. Scanning is disabled.",
+  "admin.virustotal.custom.status.auth-failed-message":
+    "VirusTotal rejected the API key. Scanning is paused until the backend restarts with a valid key.",
+  "admin.virustotal.custom.status.queue": "Queue",
+  "admin.virustotal.custom.status.queue-value": "{depth} pending",
+  "admin.virustotal.custom.status.queue-backend": "Queue backend",
+  "admin.virustotal.custom.status.valkey": "Valkey",
+  "admin.virustotal.custom.status.memory": "Process memory",
+  "admin.virustotal.custom.status.processing": "Processing",
+  "admin.virustotal.custom.status.idle": "Idle",
+  "admin.virustotal.custom.status.cooldown": "Rate-limit cooldown",
+  "admin.virustotal.custom.status.cooldown-value": "{seconds}s remaining",
+  "admin.virustotal.custom.status.last-request": "Last API request",
+  "admin.virustotal.custom.status.last-request-value": "{kind} at {time}",
+  "admin.virustotal.custom.status.never": "Never",
+  "admin.virustotal.custom.status.rate-limit": "Rate limit",
+  "admin.virustotal.custom.status.rate-limit-value": "1 request / {seconds}s",
+  "admin.virustotal.custom.stats.calls-last-hour": "API calls — last hour",
+  "admin.virustotal.custom.stats.calls-today": "API calls — today",
+  "admin.virustotal.custom.stats.calls-last-24h": "API calls — last 24h",
+  "admin.virustotal.custom.stats.breakdown":
+    "{lookup} lookup · {upload} upload · {analysis} analysis",
+  "admin.virustotal.custom.stats.detections-today": "Detections — today",
+  "admin.virustotal.custom.stats.detections-value":
+    "{malicious} malicious · {suspicious} suspicious",
+  "admin.virustotal.custom.stats.removed-today": "Removed — today",
+  "admin.virustotal.custom.stats.clean-today": "Clean — today",
+  "admin.virustotal.custom.stats.errors-today": "Errors — today",
+  "admin.virustotal.custom.stats.errors-value":
+    "{errors} HTTP · {rateLimited} rate limit · {authErrors} auth",
+  "admin.virustotal.custom.stats.queued-today": "Queued — today",
+  "admin.virustotal.custom.events.title": "Recent activity",
+  "admin.virustotal.custom.events.all": "All events",
+  "admin.virustotal.custom.events.detections": "Detections only",
+  "admin.virustotal.custom.events.empty":
+    "No VirusTotal activity recorded yet.",
+  "admin.virustotal.custom.events.empty-detections":
+    "No detections recorded yet.",
+  "admin.virustotal.custom.events.load-error":
+    "Could not load VirusTotal activity.",
+  "admin.virustotal.custom.events.time": "Time",
+  "admin.virustotal.custom.events.event": "Event",
+  "admin.virustotal.custom.events.file": "File",
+  "admin.virustotal.custom.events.share": "Share",
+  "admin.virustotal.custom.events.details": "Details",
+  "admin.virustotal.custom.events.user": "Uploaded by",
+  "admin.virustotal.custom.events.anonymous": "Anonymous",
+  "admin.virustotal.custom.events.via-reverse":
+    "via reverse share of {name}",
+  "admin.virustotal.custom.events.hash": "Hash {hash}",
+  "admin.virustotal.custom.events.cached": "Cached verdict",
+  "admin.virustotal.custom.events.removed": "Removed",
+  "admin.virustotal.custom.events.not-removed": "Removal failed",
+  "admin.virustotal.custom.events.detection-stats":
+    "{malicious} malicious · {suspicious} suspicious · {undetected} undetected",
+  "admin.virustotal.custom.events.uploader-meta":
+    "{country} · {browser} · {os}",
+  "admin.virustotal.custom.event.queued": "Queued",
+  "admin.virustotal.custom.event.uploaded": "Uploaded",
+  "admin.virustotal.custom.event.clean": "Clean",
+  "admin.virustotal.custom.event.suspicious": "Suspicious",
+  "admin.virustotal.custom.event.malicious": "Malicious",
+  "admin.virustotal.custom.event.error": "Error",
+  "admin.virustotal.custom.event.rate_limited": "Rate limited",
+  "admin.virustotal.custom.event.auth_error": "API key rejected",
+  "admin.virustotal.custom.event.skipped": "Skipped",
+  "admin.virustotal.custom.event.dropped": "Dropped",
+  // END /admin/virustotal
 
   // /admin/users
   "admin.users.title": "User management",

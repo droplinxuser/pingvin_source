@@ -10,7 +10,13 @@ import {
 } from "@mantine/core";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { TbLink, TbRefresh, TbSettings, TbUsers } from "react-icons/tb";
+import {
+  TbLink,
+  TbRefresh,
+  TbSettings,
+  TbUsers,
+  TbVirus,
+} from "react-icons/tb";
 import { FormattedMessage } from "react-intl";
 import Meta from "../../components/Meta";
 import useTranslate from "../../hooks/useTranslate.hook";
@@ -45,6 +51,11 @@ const Admin = () => {
       title: t("admin.button.shares"),
       icon: TbLink,
       route: "/admin/shares",
+    },
+    {
+      title: t("admin.button.virustotal"),
+      icon: TbVirus,
+      route: "/admin/virustotal",
     },
     {
       title: t("admin.button.config"),

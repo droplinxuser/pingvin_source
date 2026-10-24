@@ -45,7 +45,22 @@ function createValkey() {
 function createService(overrides = {}) {
   const content = Buffer.from("test payload");
   const removed = [];
+  const auditEvents = [];
+  const auditCalls = [];
   const valkeyMock = overrides.valkey ?? createValkey();
+  const audit = {
+    recordApiCall: (kind) => auditCalls.push(kind),
+    recordEvent: (event) => auditEvents.push(event),
+    captureUploader: async () => ({
+      anonymous: false,
+      creator: {
+        id: "user-1",
+        username: "tester",
+        displayName: "Test User",
+        email: "tester@example.com",
+      },
+    }),
+  };
   const service = new VirusTotalService(
     {
       get: async () => ({ file: Readable.from([content]) }),
@@ -56,11 +71,19 @@ function createService(overrides = {}) {
       },
     },
     valkeyMock.valkey,
+    audit,
   );
   service.waitForRequestSlot = async () => true;
   service.running = true;
 
-  return { service, content, removed, valkey: valkeyMock };
+  return {
+    service,
+    content,
+    removed,
+    auditEvents,
+    auditCalls,
+    valkey: valkeyMock,
+  };
 }
 
 const job = (overrides = {}) => ({
@@ -161,7 +184,7 @@ test("hashes a file and looks up its hash", async () => {
 });
 
 test("reuses a cached malicious verdict without an API request", async () => {
-  const { service, content, removed } = createService();
+  const { service, content, removed, auditEvents } = createService();
   const hash = crypto.createHash("sha256").update(content).digest("hex");
   await service.setVerdict(hash, "malicious");
 
@@ -170,10 +193,14 @@ test("reuses a cached malicious verdict without an API request", async () => {
   assert.deepEqual(removed, [
     { shareId: "share-1", fileNames: "document.pdf" },
   ]);
+  assert.equal(auditEvents.length, 1);
+  assert.equal(auditEvents[0].type, "malicious");
+  assert.equal(auditEvents[0].removed, true);
+  assert.equal(auditEvents[0].uploader.creator.username, "tester");
 });
 
 test("returns the clean verdict from a known file lookup", async () => {
-  const { service } = createService();
+  const { service, auditEvents, auditCalls } = createService();
   const originalFetch = global.fetch;
   global.fetch = async () =>
     jsonResponse({
@@ -187,17 +214,14 @@ test("returns the clean verdict from a known file lookup", async () => {
   try {
     const next = await service.lookupJob(job());
     assert.equal(next, undefined);
-    assert.equal(
-      await service.getVerdict("a".repeat(64)),
-      "clean",
-    );
+    assert.equal(await service.getVerdict("a".repeat(64)), "clean");
   } finally {
     global.fetch = originalFetch;
   }
 });
 
 test("uploads an unknown file and starts polling its analysis", async () => {
-  const { service } = createService();
+  const { service, auditEvents } = createService();
   const originalFetch = global.fetch;
   let captured;
   global.fetch = async (_url, init) => {
@@ -210,13 +234,15 @@ test("uploads an unknown file and starts polling its analysis", async () => {
     assert.ok(captured instanceof FormData);
     assert.equal(next.stage, "analysis");
     assert.equal(next.analysisId, "analysis-1");
+    assert.equal(auditEvents.at(-1).type, "uploaded");
+    assert.equal(auditEvents.at(-1).analysisId, "analysis-1");
   } finally {
     global.fetch = originalFetch;
   }
 });
 
 test("removes a share when the completed analysis is malicious", async () => {
-  const { service, removed } = createService();
+  const { service, removed, auditEvents } = createService();
   const originalFetch = global.fetch;
   global.fetch = async () =>
     jsonResponse({
@@ -236,13 +262,16 @@ test("removes a share when the completed analysis is malicious", async () => {
     assert.deepEqual(removed, [
       { shareId: "share-1", fileNames: "document.pdf" },
     ]);
+    assert.equal(auditEvents.at(-1).type, "malicious");
+    assert.equal(auditEvents.at(-1).removed, true);
+    assert.equal(auditEvents.at(-1).stats.malicious, 3);
   } finally {
     global.fetch = originalFetch;
   }
 });
 
 test("sets a cooldown and keeps the job after HTTP 429", async () => {
-  const { service, valkey } = createService();
+  const { service, valkey, auditEvents } = createService();
   const originalFetch = global.fetch;
   global.fetch = async () =>
     jsonResponse({ error: { code: "QuotaExceededError" } }, 429, {
@@ -254,6 +283,8 @@ test("sets a cooldown and keeps the job after HTTP 429", async () => {
     assert.equal(next.stage, "lookup");
     assert.equal(next.attempts, 0);
     assert.equal(valkey.values.get("pingvin:virustotal:cooldown"), "1");
+    assert.equal(auditEvents.at(-1).type, "rate_limited");
+    assert.equal(auditEvents.at(-1).cooldownSeconds, 120);
   } finally {
     global.fetch = originalFetch;
   }

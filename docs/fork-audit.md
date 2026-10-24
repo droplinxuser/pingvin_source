@@ -18,7 +18,7 @@ so `git merge upstream/main` stays small.
 | Cache headers / hotlink protection | `backend/src/utils/cache.util.ts` (shared `Cache-Control`, `CDN-Cache-Control`, `Cloudflare-CDN-Cache-Control`, public-file `ETag`), `backend/src/utils/referrer.util.ts`, `frontend/src/middleware.ts` (query-free anonymous page shells), `frontend/next.config.js` |
 | Per-IP+User-Agent rate limiting | `backend/src/utils/visitorIdentity.util.ts`, `backend/src/cache/valkeyThrottler.storage.ts`, `backend/src/cache/throttler.config.ts`, `backend/src/main.ts` |
 | Valkey/Redis cache | `backend/src/utils/cache.util.ts`, `backend/src/share/shareState.service.ts`, `backend/src/cache/cache.module.ts`, `backend/src/cache/valkey.service.ts` |
-| VirusTotal background scanning | `backend/src/virustotal/*`, `backend/src/share/share.service.ts` (completion hook), `backend/src/share/share.module.ts`, `backend/src/clamscan/clamscan.service.ts` (shared malicious-share removal), `backend/.env.example` |
+| VirusTotal background scanning | `backend/src/virustotal/*` (worker, file-backed audit, admin controller), `backend/src/share/share.service.ts` (completion hook), `backend/src/share/share.module.ts`, `backend/src/clamscan/clamscan.service.ts` (shared malicious-share removal), `frontend/src/pages/admin/virustotal.tsx`, `backend/.env.example` |
 | Site stats and footer | `backend/src/system/system.service.ts`, `backend/src/cache/metrics.service.ts`, `frontend/src/components/footer/Footer.tsx`; `POST /api/system/pageview` |
 | Home copy and ads | `frontend/src/pages/index.tsx` (upstream layout), `home.custom.*` keys in `en-US.ts`, `frontend/src/components/Ads.tsx` |
 | Fork branding / deployment | `frontend/public/img/**`, `frontend/public/favicon.ico`, `frontend/src/pages/manifest.json.tsx`, `pingvin-*.service`, `update.sh` |
@@ -42,12 +42,14 @@ other languages show the upstream copy instead of the English fallback.
    - frontend: `npm ci && npm run build`
    - lint: `npm run lint` in both packages (backend warnings are upstream-only)
 5. Smoke-test locally: home page, sign-in, upload, share page, admin
-   shares/users (search, sort, pagination), missing share (404), trending
-   widget on `/share/*` and 404 pages (no widget on home, upload or other
-   pages), the clickable widget title and full `/trending` page with up to 48
-   shares, file download headers, report modal, footer page-view/top-country
-   metrics, and the dynamic `/manifest.json`. Repeat once with Valkey stopped
-   to confirm the fallbacks (the trending widget is hidden without Valkey).
+   shares/users (search, sort, pagination), the `/admin/virustotal`
+   dashboard (status, API counts, detections, uploader identity, filter and
+   the file-backed state), missing share (404), trending widget on `/share/*`
+   and 404 pages (no widget on home, upload or other pages), the clickable
+   widget title and full `/trending` page with up to 48 shares, file download
+   headers, report modal, footer page-view/top-country metrics, and the dynamic
+   `/manifest.json`. Repeat once with Valkey stopped to confirm the fallbacks
+   (the trending widget is hidden without Valkey).
 
 ## Production settings
 
@@ -112,6 +114,17 @@ other languages show the upstream copy instead of the English fallback.
   the backend restarts, and 5xx/network failures retry up to three times. A
   malicious verdict uses the same file-deletion and `removedReason` path as
   ClamAV. No scan state is written to SQLite.
+  Operational history is file-backed at
+  `DATA_DIRECTORY/virustotal/state.json` (mode `600`): the latest 200 events,
+  48 hours of API-call timestamps and 30 days of daily counters. The
+  administrator page `/admin/virustotal` (API `GET /api/admin/virustotal`,
+  admin-only, auto-refreshes every 15s) shows scanner/queue/cooldown status,
+  API calls for the last hour/today/24h, scan and detection counters, and
+  recent events. Events record queued/uploaded/clean/suspicious/malicious
+  results, errors, 429 cooldowns and 401/403 pauses. A malicious event captures
+  the share creator, the reverse-share owner and the uploader metadata before
+  the files are deleted. This file is included in the data-directory backup;
+  no SQLite table or migration is used.
 - "Trending today" is stored entirely in Valkey. A public share `GET` records
   the share's total view count as its score in a per-day sorted set
   (`pingvin:trending:views:<day>`, 8-day TTL) and writes
@@ -464,6 +477,17 @@ sign-in redirect for a protected page and loop between `/upload` and
   returned the expected 30-second edge headers without `Set-Cookie`, and the
   share `HEAD` probe returned 200. The test account remains non-admin, so live
   admin pages were not audited.
+- VirusTotal administrator dashboard (2026-10-24): the file-backed audit state
+  (`DATA_DIRECTORY/virustotal/state.json`, mode `600`) was seeded and reloaded
+  across a backend restart; 17 events and 15 calls were served through the
+  admin-only API. The `/admin/virustotal` page rendered the status badges,
+  last-hour/today/24h call cards, detection/removal counts, all events, the
+  detections-only filter, creator/reverse-owner uploader details and the state
+  file path at 1366px and 390px with no console errors or page overflow. A real
+  local PDF scan added queued, uploaded and clean events and persisted them to
+  the JSON file. The admin link was added to `/admin`; anonymous API access
+  returned 403. All 36 backend tests pass (three new audit-state tests), and
+  both production builds pass. No SQLite schema or migration was added.
 
 ## Known non-issues
 
