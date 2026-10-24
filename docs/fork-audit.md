@@ -84,10 +84,10 @@ other languages show the upstream copy instead of the English fallback.
 - Valkey/Redis is optional but recommended: set `CACHE_REDIS_ENABLED=true` and
   `CACHE_REDIS_URL=redis://127.0.0.1:6379` in `backend/.env` (`update.sh`
   enables both automatically when a local `valkey-server` is active). Share-page
-  data, guard data and metadata are cached for 30s/30s/30s; the metadata entry
-  contains only `{ id, isZipReady }`, so the five-second ZIP poll is served
-  from cache and a finished ZIP invalidates it immediately. A data-cache miss
-  also resets the rolling expiration to 100 days. Share view counts are written
+  data and guard data are cached for 30s each; there is no separate ZIP metadata
+  key, so the five-second ZIP poll reads the share data cache and a finished ZIP
+  invalidates it immediately. A data-cache miss also resets the rolling
+  expiration to 100 days. Share view counts are written
   directly to SQLite; shares without a view limit use a single atomic update
   instead of a transaction. Visitor metadata is coalesced into one
   `uploader.json` write per second and per share, and pending entries are
@@ -229,11 +229,14 @@ sign-in redirect for a protected page and loop between `/upload` and
   ~356 kB after removing the static MDEditor command import.
 - Raster share images get a resized 300px WebP preview on first request
   (`?download=false&webp=300`, quality 82) cached under
-  `uploads/_previews/v300/<shareId>/<fileId>.webp`. Preview caches from older
-  dimensions are removed on backend startup. Original files remain untouched
-  for downloads and the full-size image modal; protected shares keep `private`
-  previews and public shares use the same day-long immutable CDN headers as
-  normal files. Preview files are removed with their share/file.
+  `uploads/_previews/v300/<shareId>/<fileId>.webp`. The backend checks the MIME
+  type and size before opening a storage stream, keeps a short negative cache
+  for unsupported formats (GIF/APNG/SVG/ICO and oversized files) and the
+  gallery only requests WebP for convertible extensions. Preview caches from
+  older dimensions are removed on backend startup. Original files remain
+  untouched for downloads and the full-size image modal; protected shares keep
+  `private` previews and public shares use the same day-long immutable CDN
+  headers as normal files. Preview files are removed with their share/file.
 - Gallery images use native lazy loading; videos use the shared `LazyVideo`
   component, which waits for `IntersectionObserver` before attaching `src` and
   requesting metadata. The logo remains eager because it is above the fold.
@@ -302,9 +305,9 @@ sign-in redirect for a protected page and loop between `/upload` and
   guests and Upload for signed-in users.
 - A follow-up caching review (local Node `26.12.1`; the server remains on
   `22.23.3`) rechecked that only query-free page shells are public, cacheable
-  file/ZIP GETs stay free of `Set-Cookie`, the share-metadata cache contains
-  only `{ id, isZipReady }`, and the footer's base counters no longer add a
-  Valkey key. Query-string page variants remain `no-store`; missing share URLs
+  file/ZIP GETs stay free of `Set-Cookie`, the ZIP poll reuses the share data
+  cache (no separate metadata key), and the footer's base counters no longer
+  add a Valkey key. Query-string page variants remain `no-store`; missing share URLs
   still return their normal 404 status.
 - A later cache/privacy pass confirmed that a light theme cookie still receives
   the public shell while a dark one is `no-store`; a signed-in request to a
@@ -401,6 +404,25 @@ sign-in redirect for a protected page and loop between `/upload` and
   first deploy after the metadata key change starts with an empty trending
   list until shares are viewed again; old per-day hash keys expire on their
   own.
+- Upstream-alignment/refactor pass (2026-10-24): the separate
+  `share:meta:<shareId>` key was removed (the ZIP poll now reuses the share
+  data cache), `getMetaData` no longer runs a query, share deletion invalidates
+  once after removing files, and upload chunks touch `Share.updatedAt` at most
+  once per five minutes per process. The admin share size sort is aggregated
+  and paginated in SQL instead of loading every share into memory (20 rows on
+  the 15.9k-share local database in ~20-40 ms), and the admin user list selects
+  only DTO fields instead of password hashes and TOTP secrets. Unsupported
+  gallery images no longer open a storage stream before the type check and are
+  negatively cached. Verified with Node `26.12.1`: both production builds and
+  all 23 unit tests pass; a Playwright guest/user run covered home, trending,
+  share, privacy, imprint, sign-in, upload, account, admin shares/users, mobile
+  width and the 404 page. An uploaded GIF+JPEG share requested a WebP preview
+  only for the JPEG, admin size sorting returned ascending 0-byte rows on page
+  1, page 2 and a filtered search returned 20 rows each, and the only console
+  message was the deliberate missing-page `404`. Public HTML shells kept the
+  60-second edge headers, public files kept the day-long immutable headers and
+  ETag, and the share `HEAD` probe still returned 200/404 without changing the
+  view count.
 
 ## Known non-issues
 
