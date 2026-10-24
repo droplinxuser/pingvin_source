@@ -630,6 +630,16 @@ sign-in redirect for a protected page and loop between `/upload` and
   remained `isZipReady=false`, and its legacy ZIP endpoint returned `404`,
   confirming that completion no longer builds archives. Backend tests pass
   (46) and both builds/lints pass.
+- Live individual-download audit (2026-10-25, after deployment): with the
+  non-admin account only, a temporary two-file public share completed with
+  `isZipReady=false`, no `archive.zip`, and a `404` from the legacy ZIP
+  endpoint. The share page showed `2 files · 21 B` without the ZIP note,
+  "Download all" opened the confirmation modal with the multiple-download
+  hint, and the browser received both files separately with no `/files/zip`
+  request and no page navigation. The mobile 390px view had no overflow, the
+  non-admin account still received `403` from both admin APIs and a `307` to
+  `/upload` from both admin pages, and a real-ad share-page load produced no
+  console errors or warnings. The temporary share was deleted afterwards.
 - Admin logs capture is runtime-only: a process restart clears the memory
   fallback, and startup errors logged before `app.useLogger` are only in
   systemd's journal. On the live deployment the backend captures errors from
