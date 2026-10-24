@@ -149,11 +149,7 @@ export class ShareController {
 
   @Get(":id")
   @UseGuards(IdValidation, ShareSecurityGuard)
-  async get(
-    @Param("id") id: string,
-    @Req() request: Request,
-    @GetUser() user?: User,
-  ) {
+  async get(@Param("id") id: string, @Req() request: Request) {
     const share = await this.shareService.get(id);
     const { views, uploaderInfo } = await this.shareService.recordView(
       id,
@@ -164,18 +160,10 @@ export class ShareController {
       void this.trending
         .recordView({ ...share, views }, getRequestCountry(request))
         .catch(() => {});
-
-    // Uploader badges are public, but the recent-visitor list contains other
-    // visitors' location/browser/referrer data. Only the share owner or an
-    // administrator receives it; guests get a smaller response.
-    const canSeeVisitors =
-      !!user && (user.isAdmin || share.creator?.id === user.id);
     return new ShareDTO().from({
       ...share,
       views,
-      uploaderInfo: canSeeVisitors
-        ? uploaderInfo
-        : { ...uploaderInfo, visitors: undefined },
+      uploaderInfo,
     });
   }
 

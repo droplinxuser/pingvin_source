@@ -12,7 +12,7 @@ so `git merge upstream/main` stays small.
 | Rolling 100-day expiration | `backend/src/share/share.util.ts` (`SHARE_EXPIRATION`), migrations `20261016000000` / `20261016000001`, share create/edit modals |
 | Admin pagination, search and sorting | `backend/src/share/share.service.ts`, `backend/src/user/user.service.ts`, `frontend/src/pages/admin/*`, `frontend/src/components/core/SortIcon.tsx` |
 | Share reports | `backend/src/share/dto/reportShare.dto.ts`, `backend/src/email/email.service.ts`, `frontend/src/components/share/showReportShareModal.tsx` |
-| Uploader metadata / visitors | `backend/src/utils/uploaderInfo.util.ts`, `ShareDTO.uploaderInfo`, `frontend/src/components/share/UploaderInfoBadges.tsx`, `ShareStats.tsx`; view counts stay in `Share.views`. The visitor history is returned only to the share owner or an administrator; guests still see the total view count |
+| Uploader metadata / visitors | `backend/src/utils/uploaderInfo.util.ts`, `ShareDTO.uploaderInfo`, `frontend/src/components/share/UploaderInfoBadges.tsx`, `ShareStats.tsx`; view counts stay in `Share.views`. The recent-visitor list is shown to every visitor (guest, owner, administrator) |
 | Inline media gallery | `frontend/src/components/share/MediaPreviewGallery.tsx` (up to 30 supported image/video thumbnails at 250px for any file size, opening `FilePreview.tsx` in the full-size modal) |
 | Individual downloads / legacy ZIP | `frontend/src/components/share/DownloadAllButton.tsx` (confirmation + sequential per-file downloads), `frontend/src/services/share.service.ts` (anchor-based downloads), `backend/src/share/share.service.ts` (no automatic archive creation); existing `archive.zip` files remain served by the legacy API. The share file count uses `share.custom.fileCount` without the old ZIP note. |
 | Share and file size limits | `backend/prisma/seed/config.seed.ts` (`share.maxSize` 5 GB, `share.maxFileSize` 512 MB), migration `20261025000000_raise_share_size_limit`, `backend/src/share/share.util.ts` (`resolveShareSizeLimit`), local/S3 upload guards, `frontend/src/components/upload/Dropzone.tsx` and upload pages |
@@ -760,9 +760,8 @@ sign-in redirect for a protected page and loop between `/upload` and
   backend unit tests pass (new storage aggregate, concurrent share-load,
   concurrent ranking-read and atomic view-limit cases). An isolated copy of the
   local database and a locally built Valkey 9.0.0 confirmed:
-  - a guest share response omits `uploaderInfo.visitors`, while the owner
-    response includes them; the share page shows "Recent visitors" only to the
-    owner/admin and still shows total views to guests;
+  - guest and owner share responses both include `uploaderInfo.visitors`; the
+    share page shows "Recent visitors" to every visitor;
   - a max-view share accepted exactly its two allowed views and the third
     returned `403 share_max_views_exceeded`, with the counter stored atomically;
   - the upload quota aggregate returned exactly the SQLite file-size total;
@@ -781,13 +780,13 @@ sign-in redirect for a protected page and loop between `/upload` and
   A Playwright guest/owner pass covered home, trending, public/protected shares,
   privacy, imprint, sign-in, upload, account shares, admin redirects, the
   404 page and 390px mobile width; the file-list header now aligns with the
-  name column, guest/owner visitor visibility behaved as intended, and the
-  browser console stayed clean.
+  name column, the recent-visitor list was visible to both guest and owner, and
+  the browser console stayed clean.
 - Live deployment pass (2026-10-25, after the update): the same checks were
   repeated against the live site with temporary QA shares, which were deleted
-  afterwards (share pages returned 404). Guest API responses omitted
-  `uploaderInfo.visitors` while the owner response included them; the guest
-  page showed total views only and the owner page showed "Recent visitors".
+  afterwards (share pages returned 404). Guest and owner API responses both
+  included `uploaderInfo.visitors`; the guest and owner pages both showed the
+  "Recent visitors" list.
   Absolute, protocol-relative and backslash `?redirect=` values all returned a
   307 to a clean `/auth/signIn` with no reflected external target. A max-view
   share accepted exactly its three allowed sequential views and returned
@@ -818,9 +817,9 @@ sign-in redirect for a protected page and loop between `/upload` and
   the application console.
 - Backend lint reports upstream warnings only.
 - A fresh data directory logs one `ENOENT` from the temporary-file cron.
-- A guest sees the share's total view count but not the recent-visitor list.
-  The owner (and administrators) still receive the visitor history; this keeps
-  other visitors' city/browser/referrer data out of public API responses.
+- The recent-visitor list is intentionally visible to every site visitor,
+  matching the original fork behavior. It contains the last 20 visitors'
+  country/city/browser/OS/referrer values.
 - The live CDN currently stores `/api/configs` with a stale duplicate
   `Cache-Control: no-store` beside the current public header. A cache-busting
   query returns the origin's single correct header and Cloudflare still reports
