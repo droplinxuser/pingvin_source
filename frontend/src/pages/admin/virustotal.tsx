@@ -7,17 +7,16 @@ import {
   Code,
   Group,
   Loader,
-  MediaQuery,
+  Pagination,
   Paper,
   SegmentedControl,
   SimpleGrid,
   Stack,
-  Table,
   Text,
   Title,
 } from "@mantine/core";
 import moment from "moment";
-import { useCallback, useEffect, useState } from "react";
+import { ReactNode, useCallback, useEffect, useState } from "react";
 import {
   TbAlertTriangle,
   TbRefresh,
@@ -38,6 +37,7 @@ import { byteToHumanSizeString } from "../../utils/fileSize.util";
 import toast from "../../utils/toast.util";
 
 const REFRESH_MS = 15_000;
+const EVENTS_PER_PAGE = 4;
 
 const EVENT_COLORS: Record<VirusTotalEventType, string> = {
   queued: "gray",
@@ -69,11 +69,26 @@ const StatCard = ({
       {value}
     </Text>
     {detail && (
-      <Text size="xs" color="dimmed" mt={2}>
+      <Text size="xs" color="dimmed" mt={2} sx={{ overflowWrap: "anywhere" }}>
         {detail}
       </Text>
     )}
   </Paper>
+);
+
+const StatusItem = ({
+  label,
+  children,
+}: {
+  label: ReactNode;
+  children: ReactNode;
+}) => (
+  <Box sx={{ minWidth: 0 }}>
+    <Text size="xs" color="dimmed" sx={{ overflowWrap: "anywhere" }}>
+      {label}
+    </Text>
+    {children}
+  </Box>
 );
 
 const VirusTotal = () => {
@@ -82,6 +97,7 @@ const VirusTotal = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [detectionsOnly, setDetectionsOnly] = useState(false);
+  const [eventsPage, setEventsPage] = useState(1);
 
   const load = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
@@ -146,6 +162,15 @@ const VirusTotal = () => {
         (event) => event.type === "malicious" || event.type === "suspicious",
       )
     : events;
+  const eventsPageCount = Math.max(
+    1,
+    Math.ceil(visibleEvents.length / EVENTS_PER_PAGE),
+  );
+  const safeEventsPage = Math.min(eventsPage, eventsPageCount);
+  const pagedEvents = visibleEvents.slice(
+    (safeEventsPage - 1) * EVENTS_PER_PAGE,
+    safeEventsPage * EVENTS_PER_PAGE,
+  );
   const scanErrors =
     stats.scans.errors + stats.scans.rateLimited + stats.scans.authErrors;
 
@@ -232,7 +257,13 @@ const VirusTotal = () => {
         </Text>
       )}
       {event.detail && (
-        <Text size="xs" color="dimmed" sx={{ overflowWrap: "anywhere" }}>
+        <Text
+          size="xs"
+          color="dimmed"
+          lineClamp={3}
+          title={event.detail}
+          sx={{ overflowWrap: "anywhere" }}
+        >
           {event.detail}
         </Text>
       )}
@@ -256,16 +287,32 @@ const VirusTotal = () => {
           {moment(event.at).format("L LTS")}
         </Text>
       </Group>
-      <Text size="sm" weight={600} mt={6} sx={{ overflowWrap: "anywhere" }}>
+      <Text
+        size="sm"
+        weight={600}
+        mt={6}
+        title={event.fileName || undefined}
+        lineClamp={3}
+        sx={{ overflowWrap: "anywhere" }}
+      >
         {event.fileName || "—"}
       </Text>
-      <Group spacing="xs" mt={2}>
+      <Group spacing="xs" mt={2} sx={{ rowGap: 4, minWidth: 0 }}>
         {typeof event.size === "number" && (
           <Text size="xs" color="dimmed">
             {byteToHumanSizeString(event.size)}
           </Text>
         )}
-        <Code>{event.shareId}</Code>
+        <Code
+          sx={{
+            maxWidth: "100%",
+            overflowWrap: "anywhere",
+            wordBreak: "break-word",
+            whiteSpace: "normal",
+          }}
+        >
+          {event.shareId}
+        </Code>
       </Group>
       <Box mt="xs">{renderDetails(event)}</Box>
       {event.uploader && (
@@ -390,14 +437,28 @@ const VirusTotal = () => {
       </SimpleGrid>
 
       <Paper withBorder p="md" radius="md" mb="md">
-        <Group position="apart" mb="sm">
-          <Group spacing="xs">
+        <Group
+          position="apart"
+          align="flex-start"
+          spacing="xs"
+          mb="sm"
+          sx={{ flexWrap: "wrap", rowGap: 8 }}
+        >
+          <Group spacing="xs" sx={{ minWidth: 0 }}>
             <TbShieldCheck size={20} />
             <Text weight={600}>
               <FormattedMessage id="admin.virustotal.custom.status.title" />
             </Text>
           </Group>
-          <Group spacing={4}>
+          <Group
+            spacing={4}
+            sx={{
+              flexWrap: "wrap",
+              justifyContent: "flex-end",
+              rowGap: 4,
+              minWidth: 0,
+            }}
+          >
             <Badge color={status.enabled ? "green" : "gray"}>
               {status.enabled
                 ? t("admin.virustotal.custom.status.enabled")
@@ -429,32 +490,46 @@ const VirusTotal = () => {
             { minWidth: "md", cols: 3 },
           ]}
         >
-          <Box>
-            <Text size="xs" color="dimmed">
+          <StatusItem
+            label={
               <FormattedMessage id="admin.virustotal.custom.status.queue" />
-            </Text>
+            }
+          >
             <Text size="sm">
               {t("admin.virustotal.custom.status.queue-value", {
                 depth: status.pendingJobs,
               })}
             </Text>
-            <Text size="xs" color="dimmed">
+            <Text size="xs" color="dimmed" sx={{ overflowWrap: "anywhere" }}>
               {t("admin.virustotal.custom.status.queue-backend")}:{" "}
               {status.queueBackend === "valkey"
                 ? t("admin.virustotal.custom.status.valkey")
                 : t("admin.virustotal.custom.status.memory")}
             </Text>
-          </Box>
-          <Box>
-            <Text size="xs" color="dimmed">
+          </StatusItem>
+          <StatusItem
+            label={
               <FormattedMessage id="admin.virustotal.custom.status.processing" />
-            </Text>
+            }
+          >
             {status.processing ? (
               <>
-                <Text size="sm">
+                <Text
+                  size="sm"
+                  title={status.processing.fileName}
+                  data-testid="virustotal-processing-file"
+                  lineClamp={3}
+                  sx={{ overflowWrap: "anywhere", wordBreak: "break-word" }}
+                >
                   {status.processing.fileName} · {status.processing.stage}
                 </Text>
-                <Text size="xs" color="dimmed">
+                <Text
+                  size="xs"
+                  color="dimmed"
+                  title={status.processing.shareId}
+                  lineClamp={2}
+                  sx={{ overflowWrap: "anywhere", wordBreak: "break-word" }}
+                >
                   {status.processing.shareId} · attempt{" "}
                   {status.processing.attempts + 1}
                 </Text>
@@ -464,28 +539,30 @@ const VirusTotal = () => {
                 <FormattedMessage id="admin.virustotal.custom.status.idle" />
               </Text>
             )}
-          </Box>
-          <Box>
-            <Text size="xs" color="dimmed">
+          </StatusItem>
+          <StatusItem
+            label={
               <FormattedMessage id="admin.virustotal.custom.status.rate-limit" />
-            </Text>
+            }
+          >
             <Text size="sm">
               {t("admin.virustotal.custom.status.rate-limit-value", {
                 seconds: status.rateLimitSeconds,
               })}
             </Text>
-            <Text size="xs" color="dimmed">
+            <Text size="xs" color="dimmed" sx={{ overflowWrap: "anywhere" }}>
               {t("admin.virustotal.custom.status.cooldown")}:{" "}
               {t("admin.virustotal.custom.status.cooldown-value", {
                 seconds: status.cooldownSeconds,
               })}
             </Text>
-          </Box>
-          <Box>
-            <Text size="xs" color="dimmed">
+          </StatusItem>
+          <StatusItem
+            label={
               <FormattedMessage id="admin.virustotal.custom.status.last-request" />
-            </Text>
-            <Text size="sm">
+            }
+          >
+            <Text size="sm" sx={{ overflowWrap: "anywhere" }}>
               {status.lastRequestAt
                 ? t("admin.virustotal.custom.status.last-request-value", {
                     kind: status.lastRequestKind ?? "—",
@@ -493,129 +570,82 @@ const VirusTotal = () => {
                   })
                 : t("admin.virustotal.custom.status.never")}
             </Text>
-          </Box>
-          <Box>
-            <Text size="xs" color="dimmed">
+          </StatusItem>
+          <StatusItem
+            label={
               <FormattedMessage
                 id="admin.virustotal.custom.storage"
                 values={{ file: data.storage }}
               />
-            </Text>
-            <Text size="xs" color="dimmed">
+            }
+          >
+            <Text size="xs" color="dimmed" sx={{ overflowWrap: "anywhere" }}>
               {data.timezone}
             </Text>
-          </Box>
+          </StatusItem>
         </SimpleGrid>
       </Paper>
 
-      <Group position="apart" mb="xs">
-        <Text weight={600}>
-          <FormattedMessage id="admin.virustotal.custom.events.title" />
-        </Text>
-        <SegmentedControl
-          size="xs"
-          value={detectionsOnly ? "detections" : "all"}
-          onChange={(value) => setDetectionsOnly(value === "detections")}
-          data={[
-            {
-              label: t("admin.virustotal.custom.events.all"),
-              value: "all",
-            },
-            {
-              label: t("admin.virustotal.custom.events.detections"),
-              value: "detections",
-            },
-          ]}
-        />
-      </Group>
+      <Paper withBorder radius="md" p="md" maw={920} mx="auto">
+        <Group
+          position="apart"
+          mb="sm"
+          spacing="xs"
+          sx={{ flexWrap: "wrap", rowGap: 8 }}
+        >
+          <Text weight={600}>
+            <FormattedMessage id="admin.virustotal.custom.events.title" />
+          </Text>
+          <SegmentedControl
+            size="xs"
+            value={detectionsOnly ? "detections" : "all"}
+            onChange={(value) => {
+              setDetectionsOnly(value === "detections");
+              setEventsPage(1);
+            }}
+            data={[
+              {
+                label: t("admin.virustotal.custom.events.all"),
+                value: "all",
+              },
+              {
+                label: t("admin.virustotal.custom.events.detections"),
+                value: "detections",
+              },
+            ]}
+          />
+        </Group>
 
-      {visibleEvents.length === 0 ? (
-        <Text size="sm" color="dimmed" align="center" py="md">
-          {detectionsOnly
-            ? t("admin.virustotal.custom.events.empty-detections")
-            : t("admin.virustotal.custom.events.empty")}
-        </Text>
-      ) : (
-        <>
-          <MediaQuery smallerThan="lg" styles={{ display: "none" }}>
-            <Table
-              data-testid="virustotal-events-table"
-              striped
-              highlightOnHover
-              verticalSpacing="sm"
-              sx={{ tableLayout: "fixed", width: "100%" }}
-            >
-              <colgroup>
-                <col style={{ width: "11%" }} />
-                <col style={{ width: "14%" }} />
-                <col style={{ width: "20%" }} />
-                <col style={{ width: "8%" }} />
-                <col style={{ width: "24%" }} />
-                <col style={{ width: "23%" }} />
-              </colgroup>
-              <thead>
-                <tr>
-                  <th>{t("admin.virustotal.custom.events.time")}</th>
-                  <th>{t("admin.virustotal.custom.events.event")}</th>
-                  <th>{t("admin.virustotal.custom.events.file")}</th>
-                  <th>{t("admin.virustotal.custom.events.share")}</th>
-                  <th>{t("admin.virustotal.custom.events.details")}</th>
-                  <th>{t("admin.virustotal.custom.events.user")}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {visibleEvents.map((event) => (
-                  <tr key={event.id}>
-                    <td>
-                      <Text size="xs" title={moment(event.at).format("LLLL")}>
-                        {moment(event.at).format("L LTS")}
-                      </Text>
-                    </td>
-                    <td>
-                      <Badge color={EVENT_COLORS[event.type]} variant="light">
-                        {eventLabel(event.type)}
-                      </Badge>
-                    </td>
-                    <td>
-                      {event.fileName ? (
-                        <>
-                          <Text size="sm" sx={{ overflowWrap: "anywhere" }}>
-                            {event.fileName}
-                          </Text>
-                          {typeof event.size === "number" && (
-                            <Text size="xs" color="dimmed">
-                              {byteToHumanSizeString(event.size)}
-                            </Text>
-                          )}
-                        </>
-                      ) : (
-                        <Text size="xs" color="dimmed">
-                          —
-                        </Text>
-                      )}
-                    </td>
-                    <td>
-                      <Code>{event.shareId}</Code>
-                    </td>
-                    <td>{renderDetails(event)}</td>
-                    <td>{renderUploader(event.uploader)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </Table>
-          </MediaQuery>
-          <MediaQuery largerThan="lg" styles={{ display: "none" }}>
+        {visibleEvents.length === 0 ? (
+          <Text size="sm" color="dimmed" align="center" py="md">
+            {detectionsOnly
+              ? t("admin.virustotal.custom.events.empty-detections")
+              : t("admin.virustotal.custom.events.empty")}
+          </Text>
+        ) : (
+          <>
             <SimpleGrid
               data-testid="virustotal-events-cards"
               cols={1}
               spacing="xs"
               breakpoints={[{ minWidth: "md", cols: 2 }]}
             >
-              {visibleEvents.map(renderEventCard)}
+              {pagedEvents.map(renderEventCard)}
             </SimpleGrid>
-          </MediaQuery>
-        </>
-      )}
+            {eventsPageCount > 1 && (
+              <Group position="center" mt="sm">
+                <Pagination
+                  data-testid="virustotal-events-pagination"
+                  size="sm"
+                  total={eventsPageCount}
+                  value={safeEventsPage}
+                  onChange={setEventsPage}
+                />
+              </Group>
+            )}
+          </>
+        )}
+      </Paper>
     </>
   );
 };

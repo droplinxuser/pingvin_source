@@ -11,6 +11,11 @@ import { ClamScanService } from "src/clamscan/clamscan.service";
 import { FileService } from "src/file/file.service";
 import { VirusTotalAuditService } from "./virustotalAudit.service";
 import {
+  ScanJob,
+  ScanStage,
+  VirusTotalQueueService,
+} from "./virustotalQueue.service";
+import {
   AnalysisStats,
   ScanVerdict,
   getScanVerdict,
@@ -32,10 +37,8 @@ const IDLE_MS = 5 * 1000;
 const MAX_COOLDOWN_MS = 24 * 60 * 60 * 1000;
 const RATE_LIMIT_FALLBACK_MS = 15 * 60 * 1000;
 const VERDICT_TTL_SECONDS = 7 * 24 * 60 * 60;
-const MAX_QUEUE_JOBS = 1000;
 const MAX_MEMORY_VERDICTS = 1000;
 
-const QUEUE_KEY = "pingvin:virustotal:queue";
 const REQUEST_LOCK_KEY = "pingvin:virustotal:request";
 const COOLDOWN_KEY = "pingvin:virustotal:cooldown";
 const VERDICT_KEY_PREFIX = "pingvin:virustotal:verdict:";
@@ -50,20 +53,6 @@ type VirusTotalResponse = {
 function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : "unknown error";
 }
-
-type ScanStage = "hash" | "lookup" | "upload" | "analysis";
-
-type ScanJob = {
-  stage: ScanStage;
-  shareId: string;
-  fileId: string;
-  name: string;
-  size: number;
-  hash?: string;
-  analysisId?: string;
-  attempts: number;
-  submissions?: number;
-};
 
 export type VirusTotalShare = {
   id: string;
@@ -87,7 +76,6 @@ export class VirusTotalService implements OnModuleInit, OnApplicationShutdown {
     process.env.VIRUSTOTAL_API_URL || API_BASE_DEFAULT
   ).replace(/\/+$/, "");
   private readonly instanceId = crypto.randomUUID();
-  private readonly memoryQueue: ScanJob[] = [];
   private readonly memoryVerdicts = new Map<
     string,
     { verdict: ScanVerdict; expiresAt: number }
@@ -95,7 +83,6 @@ export class VirusTotalService implements OnModuleInit, OnApplicationShutdown {
 
   private running = false;
   private authFailed = false;
-  private loggedMemoryFallback = false;
   private loopPromise?: Promise<void>;
   private currentAbort?: AbortController;
   private currentStream?: Readable;
@@ -112,6 +99,7 @@ export class VirusTotalService implements OnModuleInit, OnApplicationShutdown {
     private readonly clamScanService: ClamScanService,
     private readonly valkey: ValkeyService,
     private readonly audit: VirusTotalAuditService,
+    private readonly queue: VirusTotalQueueService,
   ) {}
 
   onModuleInit() {
@@ -183,62 +171,20 @@ export class VirusTotalService implements OnModuleInit, OnApplicationShutdown {
   }
 
   private async pushJob(job: ScanJob) {
-    const payload = JSON.stringify(job);
-    const length = await this.valkey.run((client) =>
-      client.rPush(QUEUE_KEY, payload),
-    );
-
-    if (length === undefined) {
-      if (this.memoryQueue.length >= MAX_QUEUE_JOBS) this.memoryQueue.shift();
-      this.memoryQueue.push(job);
-      if (!this.loggedMemoryFallback) {
-        this.loggedMemoryFallback = true;
-        this.logger.warn(
-          "VirusTotal queue is using process memory because Valkey is unavailable",
-        );
-      }
-    } else {
-      this.loggedMemoryFallback = false;
-      // Keep newest work instead of letting a large backlog occupy Valkey
-      // indefinitely. The trim is best-effort; the push already succeeded.
-      if (length > MAX_QUEUE_JOBS)
-        void this.valkey.run((client) =>
-          client.lTrim(QUEUE_KEY, -MAX_QUEUE_JOBS, -1),
-        );
-    }
+    await this.queue.push(job);
   }
 
   private async nextJob(): Promise<ScanJob | undefined> {
-    const local = this.memoryQueue.shift();
-    if (local) return local;
+    return this.queue.pop();
+  }
 
-    const raw = await this.valkey.run((client) => client.lPop(QUEUE_KEY));
-    if (typeof raw !== "string") return undefined;
+  async removeJobsForShare(shareIds: string | string[]) {
+    const ids = Array.isArray(shareIds) ? shareIds : [shareIds];
+    await Promise.all(ids.map((shareId) => this.queue.removeForShare(shareId)));
+  }
 
-    try {
-      const parsed = JSON.parse(raw);
-      if (
-        !parsed ||
-        !["hash", "lookup", "upload", "analysis"].includes(parsed.stage) ||
-        typeof parsed.shareId !== "string" ||
-        typeof parsed.fileId !== "string" ||
-        typeof parsed.name !== "string"
-      )
-        return undefined;
-      if (parsed.stage !== "hash" && typeof parsed.hash !== "string")
-        return undefined;
-      if (parsed.stage === "analysis" && typeof parsed.analysisId !== "string")
-        return undefined;
-
-      return {
-        ...parsed,
-        size: Number(parsed.size) || 0,
-        attempts: Number(parsed.attempts) || 0,
-        submissions: Number(parsed.submissions) || 0,
-      };
-    } catch {
-      return undefined;
-    }
+  async removeJobsForFile(shareId: string, fileId: string) {
+    await this.queue.removeForFile(shareId, fileId);
   }
 
   private async loop() {
@@ -284,6 +230,11 @@ export class VirusTotalService implements OnModuleInit, OnApplicationShutdown {
   }
 
   private async processJob(job: ScanJob): Promise<ScanJob | undefined> {
+    // File and share rows are removed together by the retention jobs and the
+    // owner/admin delete endpoints. Drop any job that survived that deletion
+    // in the queue instead of spending an API call on it.
+    if (!(await this.ensureJobExists(job, job.stage))) return undefined;
+
     switch (job.stage) {
       case "hash":
         return this.hashJob(job);
@@ -294,6 +245,18 @@ export class VirusTotalService implements OnModuleInit, OnApplicationShutdown {
       case "analysis":
         return this.analysisJob(job);
     }
+  }
+
+  private async ensureJobExists(job: ScanJob, stage: ScanStage) {
+    if (await this.fileService.exists(job.shareId, job.fileId)) return true;
+
+    this.audit.recordEvent({
+      type: "dropped",
+      stage,
+      ...this.jobEvent(job),
+      detail: "File or share was deleted before the scan completed",
+    });
+    return false;
   }
 
   private async hashJob(job: ScanJob): Promise<ScanJob | undefined> {
@@ -347,6 +310,7 @@ export class VirusTotalService implements OnModuleInit, OnApplicationShutdown {
 
   private async lookupJob(job: ScanJob): Promise<ScanJob | undefined> {
     if (!(await this.waitForRequestSlot())) return job;
+    if (!(await this.ensureJobExists(job, "lookup"))) return undefined;
 
     const response = await this.fetchApi(
       `/files/${encodeURIComponent(job.hash)}`,
@@ -415,6 +379,7 @@ export class VirusTotalService implements OnModuleInit, OnApplicationShutdown {
       return undefined;
     }
     if (!(await this.waitForRequestSlot())) return job;
+    if (!(await this.ensureJobExists(job, "upload"))) return undefined;
 
     let buffer: Buffer;
     try {
@@ -504,6 +469,7 @@ export class VirusTotalService implements OnModuleInit, OnApplicationShutdown {
 
   private async analysisJob(job: ScanJob): Promise<ScanJob | undefined> {
     if (!(await this.waitForRequestSlot())) return job;
+    if (!(await this.ensureJobExists(job, "analysis"))) return undefined;
 
     const response = await this.fetchApi(
       `/analyses/${encodeURIComponent(job.analysisId)}`,
@@ -899,10 +865,7 @@ export class VirusTotalService implements OnModuleInit, OnApplicationShutdown {
   }
 
   async getAdminStatus() {
-    const queued = await this.valkey.run((client) => client.lLen(QUEUE_KEY));
-    const queueBackend = typeof queued === "number" ? "valkey" : "memory";
-    const queueDepth =
-      (typeof queued === "number" ? queued : 0) + this.memoryQueue.length;
+    const queue = await this.queue.getDepth();
     const cooldown = await this.cooldownRemaining();
 
     return {
@@ -910,9 +873,9 @@ export class VirusTotalService implements OnModuleInit, OnApplicationShutdown {
       apiKeyConfigured: !!this.apiKey,
       running: this.running,
       authFailed: this.authFailed,
-      queueBackend,
-      queueDepth,
-      pendingJobs: queueDepth + (this.currentJob ? 1 : 0),
+      queueBackend: queue.backend,
+      queueDepth: queue.depth,
+      pendingJobs: queue.depth + (this.currentJob ? 1 : 0),
       processing: this.currentJob
         ? {
             stage: this.currentJob.stage,

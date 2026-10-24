@@ -48,6 +48,22 @@ function createService(overrides = {}) {
   const auditEvents = [];
   const auditCalls = [];
   const valkeyMock = overrides.valkey ?? createValkey();
+  const queue = overrides.queue ?? {
+    jobs: [],
+    push: async (job) => {
+      queue.jobs.push(job);
+    },
+    pop: async () => queue.jobs.shift(),
+    removeForShare: async (shareId) => {
+      queue.jobs = queue.jobs.filter((job) => job.shareId !== shareId);
+    },
+    removeForFile: async (shareId, fileId) => {
+      queue.jobs = queue.jobs.filter(
+        (job) => job.shareId !== shareId || job.fileId !== fileId,
+      );
+    },
+    getDepth: async () => ({ depth: queue.jobs.length, backend: "memory" }),
+  };
   const audit = {
     recordApiCall: (kind) => auditCalls.push(kind),
     recordEvent: (event) => auditEvents.push(event),
@@ -64,6 +80,7 @@ function createService(overrides = {}) {
   const service = new VirusTotalService(
     {
       get: async () => ({ file: Readable.from([content]) }),
+      exists: overrides.exists ?? (async () => true),
     },
     {
       removeMaliciousFile: async (shareId, fileId, fileNames) => {
@@ -73,6 +90,7 @@ function createService(overrides = {}) {
     },
     valkeyMock.valkey,
     audit,
+    queue,
   );
   service.waitForRequestSlot = async () => true;
   service.running = true;
@@ -84,6 +102,7 @@ function createService(overrides = {}) {
     auditEvents,
     auditCalls,
     valkey: valkeyMock,
+    queue,
   };
 }
 
@@ -291,4 +310,48 @@ test("sets a cooldown and keeps the job after HTTP 429", async () => {
   } finally {
     global.fetch = originalFetch;
   }
+});
+
+test("drops a queued job when the file or share was deleted", async () => {
+  const { service, auditEvents, auditCalls } = createService({
+    exists: async () => false,
+  });
+  const originalFetch = global.fetch;
+  let requested = false;
+  global.fetch = async () => {
+    requested = true;
+    return jsonResponse({});
+  };
+
+  try {
+    const next = await service.processJob(job());
+    assert.equal(next, undefined);
+    assert.equal(requested, false);
+    assert.equal(auditCalls.length, 0);
+    assert.equal(auditEvents.at(-1).type, "dropped");
+    assert.match(auditEvents.at(-1).detail, /deleted before the scan/);
+  } finally {
+    global.fetch = originalFetch;
+  }
+});
+
+test("removes queued work for a deleted share or file", async () => {
+  const { service, queue } = createService();
+  queue.jobs.push(
+    job({ shareId: "share-1", fileId: "file-1" }),
+    job({ shareId: "share-1", fileId: "file-2" }),
+    job({ shareId: "share-2", fileId: "file-3" }),
+  );
+
+  await service.removeJobsForFile("share-1", "file-1");
+  assert.deepEqual(
+    queue.jobs.map((item) => `${item.shareId}/${item.fileId}`),
+    ["share-1/file-2", "share-2/file-3"],
+  );
+
+  await service.removeJobsForShare("share-1");
+  assert.deepEqual(
+    queue.jobs.map((item) => `${item.shareId}/${item.fileId}`),
+    ["share-2/file-3"],
+  );
 });

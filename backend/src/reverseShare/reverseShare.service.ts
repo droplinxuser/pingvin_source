@@ -12,6 +12,7 @@ import { ConfigService } from "src/config/config.service";
 import { FileService } from "src/file/file.service";
 import { TrendingService } from "src/cache/trending.service";
 import { PrismaService } from "src/prisma/prisma.service";
+import { VirusTotalQueueService } from "src/virustotal/virustotalQueue.service";
 import { parseRelativeDateToAbsolute } from "src/utils/date.util";
 import { invalidateShareDataCache } from "src/utils/cache.util";
 import { SHARE_EXPIRATION } from "src/share/share.util";
@@ -25,6 +26,7 @@ export class ReverseShareService {
     private fileService: FileService,
     private readonly i18n: I18nService,
     private readonly trending: TrendingService,
+    private readonly virusTotalQueue: VirusTotalQueueService,
     @Inject(CACHE_MANAGER) private cache: Cache,
   ) {}
 
@@ -165,6 +167,9 @@ export class ReverseShareService {
     await Promise.all([
       ...shareIds.map((shareId) =>
         invalidateShareDataCache(this.cache, shareId),
+      ),
+      ...shareIds.map((shareId) =>
+        this.virusTotalQueue.removeForShare(shareId),
       ),
       this.trending.invalidate(shareIds),
     ]);

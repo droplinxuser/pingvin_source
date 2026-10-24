@@ -664,6 +664,7 @@ export class ShareService {
       data: { expiration: moment().toDate() },
     });
     await this.shareState.invalidateData(shareId);
+    await this.virusTotalService.removeJobsForShare(shareId);
   }
 
   async update(

@@ -20,6 +20,7 @@ import { PrismaService } from "../prisma/prisma.service";
 import { EmailService } from "src/email/email.service";
 import { I18nService } from "nestjs-i18n";
 import { TrendingService } from "src/cache/trending.service";
+import { VirusTotalQueueService } from "src/virustotal/virustotalQueue.service";
 import { invalidateShareDataCache } from "src/utils/cache.util";
 import { getFileMimeType } from "src/utils/mime.util";
 import { DATA_DIRECTORY } from "src/constants";
@@ -56,6 +57,7 @@ export class FileService implements OnModuleInit {
     private emailService: EmailService,
     private readonly i18n: I18nService,
     private readonly trending: TrendingService,
+    private readonly virusTotalQueue: VirusTotalQueueService,
     @Inject(CACHE_MANAGER) private cache: Cache,
   ) {}
   private readonly logger = new Logger(FileService.name);
@@ -362,7 +364,19 @@ export class FileService implements OnModuleInit {
     await fs.rm(target, { recursive: !fileId, force: true }).catch(() => {});
   }
 
+  async exists(shareId: string, fileId: string): Promise<boolean> {
+    const file = await this.prisma.file.findFirst({
+      where: { id: fileId, shareId },
+      select: { id: true },
+    });
+    return !!file;
+  }
+
   async remove(shareId: string, fileId: string) {
+    // Cancel any queued scan before removing the bytes so the worker cannot
+    // spend an API call on a file that no longer exists.
+    await this.virusTotalQueue.removeForFile(shareId, fileId);
+
     const share = await this.prisma.share.findFirst({
       where: { id: shareId },
       select: { storageProvider: true },
@@ -377,6 +391,8 @@ export class FileService implements OnModuleInit {
   }
 
   async deleteAllFiles(shareId: string, invalidateCaches = true) {
+    await this.virusTotalQueue.removeForShare(shareId);
+
     const share = await this.prisma.share.findFirst({
       where: { id: shareId },
       select: { id: true, storageProvider: true },
