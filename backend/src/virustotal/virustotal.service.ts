@@ -247,11 +247,6 @@ export class VirusTotalService implements OnModuleInit, OnApplicationShutdown {
   }
 
   private async processJob(job: ScanJob): Promise<ScanJob | undefined> {
-    // File and share rows are removed together by the retention jobs and the
-    // owner/admin delete endpoints. Drop any job that survived that deletion
-    // in the queue instead of spending an API call on it.
-    if (!(await this.ensureJobExists(job, job.stage))) return undefined;
-
     switch (job.stage) {
       case "hash":
         return this.hashJob(job);
@@ -277,6 +272,12 @@ export class VirusTotalService implements OnModuleInit, OnApplicationShutdown {
   }
 
   private async hashJob(job: ScanJob): Promise<ScanJob | undefined> {
+    // File and share rows are removed together by the retention jobs and the
+    // owner/admin delete endpoints. Drop any job that survived that deletion
+    // instead of spending an API call on it. The other stages check after
+    // waiting for their rate-limit slot.
+    if (!(await this.ensureJobExists(job, "hash"))) return undefined;
+
     let stream: Readable | undefined;
     try {
       const file = await this.fileService.get(job.shareId, job.fileId);

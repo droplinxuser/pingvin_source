@@ -63,20 +63,24 @@ const getFileVisual = (name: string) => {
   return { icon: <TbFile size={18} />, color: "gray" };
 };
 
-const rowStyle = (theme: MantineTheme) => ({
+const gridStyle = (theme: MantineTheme) => ({
   display: "grid",
   gridTemplateColumns: "34px minmax(0, 1fr) 70px auto",
   alignItems: "center",
   columnGap: theme.spacing.sm,
+  [theme.fn.smallerThan("sm")]: {
+    gridTemplateColumns: "34px minmax(0, 1fr) auto",
+  },
+});
+
+const rowStyle = (theme: MantineTheme) => ({
+  ...gridStyle(theme),
   transition: "background-color 120ms ease",
   "&:hover": {
     backgroundColor:
       theme.colorScheme === "dark"
         ? theme.colors.dark[6]
         : theme.colors.gray[0],
-  },
-  [theme.fn.smallerThan("sm")]: {
-    gridTemplateColumns: "34px minmax(0, 1fr) auto",
   },
 });
 
@@ -137,20 +141,34 @@ const FileList = ({
           }`,
         })}
       >
-        <Group spacing="lg" noWrap>
+        <Box sx={gridStyle}>
+          <Box component="span" aria-hidden />
           <Group spacing={4} noWrap>
             <Text size="xs" weight={700} tt="uppercase" color="dimmed">
               <FormattedMessage id="share.table.name" />
             </Text>
             <TableSortIcon sort={sort} setSort={setSort} property="name" />
           </Group>
-          <Group spacing={4} noWrap>
+          <Group
+            spacing={4}
+            noWrap
+            sx={(theme) => ({
+              [theme.fn.smallerThan("sm")]: { display: "none" },
+            })}
+          >
             <Text size="xs" weight={700} tt="uppercase" color="dimmed">
               <FormattedMessage id="share.table.size" />
             </Text>
             <TableSortIcon sort={sort} setSort={setSort} property="size" />
           </Group>
-        </Group>
+          <Box
+            component="span"
+            aria-hidden
+            sx={(theme) => ({
+              [theme.fn.smallerThan("sm")]: { display: "none" },
+            })}
+          />
+        </Box>
       </Box>
 
       <Stack spacing={0}>
@@ -218,22 +236,21 @@ const FileList = ({
                           size={28}
                           aria-label={t("share.copy-text-contents")}
                           onClick={() => {
+                            if (!window.isSecureContext) {
+                              toast.error(t("share.notify.copy-not-supported"));
+                              return;
+                            }
                             api
                               .get(
                                 `/shares/${share.id}/files/${file.id}?download=false`,
                               )
                               .then((res) => {
-                                if (window.isSecureContext) {
-                                  clipboard.copy(res.data);
-                                  toast.success(
-                                    t("share.notify.copied-contents"),
-                                  );
-                                } else {
-                                  toast.error(
-                                    t("share.notify.copy-not-supported"),
-                                  );
-                                }
-                              });
+                                clipboard.copy(res.data);
+                                toast.success(
+                                  t("share.notify.copied-contents"),
+                                );
+                              })
+                              .catch(toast.axiosError);
                           }}
                         >
                           <TbClipboard size={16} />

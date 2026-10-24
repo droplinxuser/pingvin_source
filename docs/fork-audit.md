@@ -12,7 +12,7 @@ so `git merge upstream/main` stays small.
 | Rolling 100-day expiration | `backend/src/share/share.util.ts` (`SHARE_EXPIRATION`), migrations `20261016000000` / `20261016000001`, share create/edit modals |
 | Admin pagination, search and sorting | `backend/src/share/share.service.ts`, `backend/src/user/user.service.ts`, `frontend/src/pages/admin/*`, `frontend/src/components/core/SortIcon.tsx` |
 | Share reports | `backend/src/share/dto/reportShare.dto.ts`, `backend/src/email/email.service.ts`, `frontend/src/components/share/showReportShareModal.tsx` |
-| Uploader metadata / visitors | `backend/src/utils/uploaderInfo.util.ts`, `ShareDTO.uploaderInfo`, `frontend/src/components/share/UploaderInfoBadges.tsx`, `ShareStats.tsx`; view counts stay in `Share.views` |
+| Uploader metadata / visitors | `backend/src/utils/uploaderInfo.util.ts`, `ShareDTO.uploaderInfo`, `frontend/src/components/share/UploaderInfoBadges.tsx`, `ShareStats.tsx`; view counts stay in `Share.views`. The visitor history is returned only to the share owner or an administrator; guests still see the total view count |
 | Inline media gallery | `frontend/src/components/share/MediaPreviewGallery.tsx` (up to 30 supported image/video thumbnails at 250px for any file size, opening `FilePreview.tsx` in the full-size modal) |
 | Individual downloads / legacy ZIP | `frontend/src/components/share/DownloadAllButton.tsx` (confirmation + sequential per-file downloads), `frontend/src/services/share.service.ts` (anchor-based downloads), `backend/src/share/share.service.ts` (no automatic archive creation); existing `archive.zip` files remain served by the legacy API. The share file count uses `share.custom.fileCount` without the old ZIP note. |
 | Share and file size limits | `backend/prisma/seed/config.seed.ts` (`share.maxSize` 5 GB, `share.maxFileSize` 512 MB), migration `20261025000000_raise_share_size_limit`, `backend/src/share/share.util.ts` (`resolveShareSizeLimit`), local/S3 upload guards, `frontend/src/components/upload/Dropzone.tsx` and upload pages |
@@ -106,15 +106,17 @@ other languages show the upstream copy instead of the English fallback.
 - Valkey/Redis is optional but recommended: set `CACHE_REDIS_ENABLED=true` and
   `CACHE_REDIS_URL=redis://127.0.0.1:6379` in `backend/.env` (`update.sh`
   enables both automatically when a local `valkey-server` is active). Share-page
-  data and guard data are cached for 30s each. A data-cache miss also resets
-  the rolling expiration to 100 days in the response; the corresponding SQLite
-  write is throttled to once per six hours per share and process, so a popular
-  share does not cause an `UPDATE` per view. Share view counts are written
-  directly to SQLite; shares without a view limit use a single atomic update
-  instead of a transaction. Visitor metadata is coalesced into one
-  `uploader.json` write per second and per share, and pending entries are
-  flushed on shutdown. The footer's base counters use a 60-second in-process
-  cache and do not add a Valkey key.
+  data and guard data are cached for 30s each, and a cold-cache burst shares one
+  in-flight load instead of issuing one query per request. A data-cache miss
+  also resets the rolling expiration to 100 days in the response; the
+  corresponding SQLite write is throttled to once per six hours per share and
+  process, so a popular share does not cause an `UPDATE` per view. Share view
+  counts are written directly to SQLite; shares without a view limit use a
+  single atomic update, while limited shares use one conditional
+  `UPDATE ... RETURNING` so the limit check and increment cannot race. Visitor
+  metadata is coalesced into one `uploader.json` write per second and per share,
+  and pending entries are flushed on shutdown. The footer's base counters use a
+  60-second in-process cache and do not add a Valkey key.
 - VirusTotal scanning is optional: `VIRUSTOTAL_API_KEY` in `backend/.env`
   enables it. The optional `VIRUSTOTAL_API_URL` exists only for a local stub or
   proxy. On completion, only non-media/plain-text files are queued; raster
@@ -184,15 +186,19 @@ other languages show the upstream copy instead of the English fallback.
   (`pingvin:trending:views:<day>`, 8-day TTL) and writes
   `{ id, name, description, previewFileId, previewKind, fileCount, size,
   createdAt }` to one per-share key (`pingvin:trending:meta:<shareId>`, 8-day
-  TTL) in the same `MULTI`. Descriptions are whitespace-normalised and capped
-  at 240 characters so one card cannot inflate the cache key. The small card
-  payload is rewritten on each view (`SET ... EX`, which also refreshes the
-  TTL), so entries cached before a field was added become current on their next
-  view. On the first ranking read after a deploy, entries that still lack
-  `fileCount`/`size` are backfilled in one SQLite query (name, description,
-  files and upload state), written back with the same `SET ... EX`, and then
-  served from cache; deleted, non-media and older-than-seven-days shares are
-  purged. This is the only SQLite read in the trending path. The view badge
+  TTL) in the same `MULTI` with `SET ... NX`. The metadata is immutable until
+  the share is edited, so a view only writes it once instead of sending the
+  payload on every visit; the eight-day TTL still covers the seven-day ranking
+  window. Ranking reads use a unique temporary `ZUNIONSTORE` key with a
+  one-minute TTL and delete it in the same `MULTI`, so two concurrent reads
+  cannot delete each other's union. Cold ranking/country reads are coalesced in
+  process so one request rebuilds the result and the rest share it.
+  Descriptions are whitespace-normalised and capped at 240 characters so one
+  card cannot inflate the cache key. On the first ranking read after a deploy,
+  entries that still lack `fileCount`/`size` or the current preview version are
+  backfilled in one SQLite query (name, description, files and upload state),
+  written back with `SET ... EX`, and then served from cache; deleted,
+  non-media and older-than-seven-days shares are purged. This is the only SQLite read in the trending path. The view badge
   still comes from the sorted-set score. One metadata entry per share replaces
   the old per-day copies. Shares older than seven days and shares without an
   image/video are skipped before writing. `GET /api/shares/trending` unions the
@@ -532,9 +538,9 @@ sign-in redirect for a protected page and loop between `/upload` and
   footer widget), and is edge-cacheable as an anonymous shell.
 - Trending card pass (2026-10-25): the Valkey metadata now also carries the
   whitespace-normalised, 240-character-capped description, file count and total
-  size, and the API returns the upload date as well. The metadata is rewritten
-  with `SET ... EX` on each view, and a legacy entry is enriched from SQLite
-  once on its first ranking read (then written back) so a deploy does not leave
+  size, and the API returns the upload date as well. The metadata is written
+  once with `SET ... EX ... NX`, and a legacy entry is enriched from SQLite once
+  on its first ranking read (then written back) so a deploy does not leave
   active cards without details. An isolated local database and a real
   Valkey-compatible server produced eight `pingvin:trending:meta:<shareId>`
   keys and one daily sorted set for eight test shares; the capped description
@@ -750,6 +756,33 @@ sign-in redirect for a protected page and loop between `/upload` and
   48.1 kB to 28.5 kB. The backend startup
   also passed after removing the redundant `AppCacheModule` import from the
   throttler factory.
+- Fork-delta/query pass (2026-10-25): both production builds pass and all 84
+  backend unit tests pass (new storage aggregate, concurrent share-load,
+  concurrent ranking-read and atomic view-limit cases). An isolated copy of the
+  local database and a locally built Valkey 9.0.0 confirmed:
+  - a guest share response omits `uploaderInfo.visitors`, while the owner
+    response includes them; the share page shows "Recent visitors" only to the
+    owner/admin and still shows total views to guests;
+  - a max-view share accepted exactly its two allowed views and the third
+    returned `403 share_max_views_exceeded`, with the counter stored atomically;
+  - the upload quota aggregate returned exactly the SQLite file-size total;
+  - trending metadata was written once with `SET ... NX` (its TTL decreased
+    instead of resetting on a second view), a public image share produced one
+    `pingvin:trending:views:<day>`, one `pingvin:trending:meta:<id>` and one
+    hourly geo hash, the temporary rank key was removed, and `/trending` plus
+    the share widget rendered the card with zero console errors;
+  - 90 requests with one IP + User-Agent were allowed and the next 5 returned
+    `429`, with both throttle buckets present in Valkey;
+  - stopping the backend made `/manifest.json`, `/robots.txt` and
+    `/sitemap.xml` fall back with a 60-second CDN TTL instead of their normal
+    day/hour TTL, and a share page returned `503` rather than a 200 noindex
+    page. A malicious `?redirect=https://…` sign-in URL was rejected with a
+    clean redirect to `/auth/signIn` and no reflected external target.
+  A Playwright guest/owner pass covered home, trending, public/protected shares,
+  privacy, imprint, sign-in, upload, account shares, admin redirects, the
+  404 page and 390px mobile width; the file-list header now aligns with the
+  name column, guest/owner visitor visibility behaved as intended, and the
+  browser console stayed clean.
 
 ## Known non-issues
 
@@ -764,6 +797,9 @@ sign-in redirect for a protected page and loop between `/upload` and
   the application console.
 - Backend lint reports upstream warnings only.
 - A fresh data directory logs one `ENOENT` from the temporary-file cron.
+- A guest sees the share's total view count but not the recent-visitor list.
+  The owner (and administrators) still receive the visitor history; this keeps
+  other visitors' city/browser/referrer data out of public API responses.
 - Chrome may log the expected `403` while a protected share page fetches its
   share token, and `404`s for intentionally missing shares. These are network
   status logs, not JavaScript exceptions; the page recovers and renders

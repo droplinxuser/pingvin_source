@@ -167,13 +167,25 @@ const ImagePreview = () => {
 const TextPreview = () => {
   const { shareId, fileId } = React.useContext(FilePreviewContext);
   const [text, setText] = useState<string>("");
+  const [failed, setFailed] = useState(false);
   const { colorScheme } = useMantineTheme();
+  const t = useTranslate();
 
   useEffect(() => {
+    const controller = new AbortController();
+    setFailed(false);
     api
-      .get(`/shares/${shareId}/files/${fileId}?download=false`)
-      .then((res) => setText(res.data ?? "Preview couldn't be fetched."));
+      .get(`/shares/${shareId}/files/${fileId}?download=false`, {
+        signal: controller.signal,
+      })
+      .then((res) => setText(res.data ?? ""))
+      .catch(() => {
+        if (!controller.signal.aborted) setFailed(true);
+      });
+    return () => controller.abort();
   }, [shareId, fileId]);
+
+  if (failed) return <Text color="dimmed">{t("common.error")}</Text>;
 
   const options: MarkdownToJSX.Options = {
     disableParsingRawHTML: true,

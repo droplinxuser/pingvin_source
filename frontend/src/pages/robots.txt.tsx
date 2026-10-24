@@ -31,7 +31,7 @@ export async function getServerSideProps({
   res,
 }: GetServerSidePropsContext) {
   const apiURL = process.env.API_URL || "http://localhost:8080";
-  const { config } = await fetchConfig(apiURL);
+  const { config, fallback } = await fetchConfig(apiURL);
   let text: string | undefined;
 
   try {
@@ -45,7 +45,10 @@ export async function getServerSideProps({
   }
 
   res.setHeader("Content-Type", "text/plain; charset=utf-8");
-  setPublicCacheHeaders(res, 86_400);
+  // A fallback generated while the backend is down must not be cached for a
+  // day with a possibly stale sitemap URL.
+  const maxAge = fallback ? 60 : 86_400;
+  setPublicCacheHeaders(res, maxAge, maxAge);
   res.end(text ?? buildFallbackRobots(resolveSiteUrl(req, config)));
   return { props: {} };
 }

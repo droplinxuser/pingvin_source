@@ -156,9 +156,7 @@ const Body = ({
       </Text>
       <Divider />
       <CopyTextField link={link} toggleQR={handleToggleQR} />
-      <Collapse in={showQR}>
-        <QRCode link={link} />
-      </Collapse>
+      <Collapse in={showQR}>{showQR && <QRCode link={link} />}</Collapse>
       <Divider />
       <Text size="sm">
         <b>

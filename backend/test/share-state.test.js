@@ -5,7 +5,10 @@ const {
   ShareStateService,
 } = require("../dist/src/share/shareState.service.js");
 
-const request = { headers: { "user-agent": "Mozilla/5.0 Test" }, hostname: "site.com" };
+const request = {
+  headers: { "user-agent": "Mozilla/5.0 Test" },
+  hostname: "site.com",
+};
 
 function createService() {
   return new ShareStateService(
@@ -149,4 +152,96 @@ test("keeps a non-expiring share's expiration untouched", async () => {
     cacheUtil.getCachedValue = originalGet;
     cacheUtil.setCachedValue = originalSet;
   }
+});
+
+test("coalesces concurrent cold share loads", async () => {
+  const cacheUtil = require("../dist/src/utils/cache.util.js");
+  const originalGet = cacheUtil.getCachedValue;
+  const originalSet = cacheUtil.setCachedValue;
+  cacheUtil.getCachedValue = async () => undefined;
+  cacheUtil.setCachedValue = async () => {};
+
+  let lookups = 0;
+  const prisma = {
+    share: {
+      findUnique: async () => {
+        lookups += 1;
+        await new Promise((resolve) => setTimeout(resolve, 20));
+        return {
+          id: "cold",
+          name: "Cold",
+          uploadLocked: true,
+          removedReason: null,
+          expiration: new Date(0),
+          files: [{ id: "file", name: "a.txt", size: "5" }],
+          creator: null,
+          security: null,
+        };
+      },
+    },
+  };
+  const service = new ShareStateService(
+    prisma,
+    { t: (key) => key },
+    { invalidate: async () => {} },
+    {},
+  );
+
+  try {
+    const [first, second] = await Promise.all([
+      service.getShare("cold"),
+      service.getShare("cold"),
+    ]);
+    assert.equal(lookups, 1);
+    assert.equal(first.size, 5);
+    assert.equal(second.size, 5);
+  } finally {
+    cacheUtil.getCachedValue = originalGet;
+    cacheUtil.setCachedValue = originalSet;
+  }
+});
+
+test("increments a limited view with one conditional update", async () => {
+  let lookups = 0;
+  const prisma = {
+    $queryRaw: async () => [{ views: 4 }],
+    share: {
+      findUnique: async () => {
+        lookups += 1;
+        return null;
+      },
+    },
+  };
+  const service = new ShareStateService(
+    prisma,
+    { t: (key) => key },
+    { invalidate: async () => {} },
+    {},
+  );
+
+  const views = await service.recordLimitedView("share", 5);
+  assert.equal(views, 4);
+  assert.equal(lookups, 0);
+});
+
+test("reports the view limit or a missing share after a failed update", async () => {
+  const serviceWith = (share) =>
+    new ShareStateService(
+      {
+        $queryRaw: async () => [],
+        share: { findUnique: async () => share },
+      },
+      { t: (key) => key },
+      { invalidate: async () => {} },
+      {},
+    );
+
+  await assert.rejects(
+    serviceWith({ views: 5 }).recordLimitedView("share", 5),
+    (error) => error.getStatus() === 403,
+  );
+  await assert.rejects(
+    serviceWith(null).recordLimitedView("share", 5),
+    (error) => error.getStatus() === 404,
+  );
 });

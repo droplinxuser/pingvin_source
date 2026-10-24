@@ -500,16 +500,6 @@ export class FileService implements OnModuleInit {
     if (!file) throw new NotFoundException(this.i18n.t("file.notFound"));
     return file.name;
   }
-
-  private async streamToUint8Array(stream: Readable): Promise<Uint8Array> {
-    const chunks: Buffer[] = [];
-
-    return new Promise((resolve, reject) => {
-      stream.on("data", (chunk) => chunks.push(Buffer.from(chunk)));
-      stream.on("end", () => resolve(new Uint8Array(Buffer.concat(chunks))));
-      stream.on("error", reject);
-    });
-  }
 }
 
 export interface File {

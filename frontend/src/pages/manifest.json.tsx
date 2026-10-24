@@ -26,7 +26,7 @@ const icons = [72, 96, 128, 144, 152, 192, 384, 512].flatMap((size) => [
 
 export async function getServerSideProps({ res }: GetServerSidePropsContext) {
   const apiURL = process.env.API_URL || "http://localhost:8080";
-  const { config } = await fetchConfig(apiURL);
+  const { config, fallback } = await fetchConfig(apiURL);
   const siteName =
     config.find((item) => item.key === "general.appName")?.value?.trim() ||
     DEFAULT_SITE_NAME;
@@ -35,7 +35,9 @@ export async function getServerSideProps({ res }: GetServerSidePropsContext) {
     "en-US";
 
   res.setHeader("Content-Type", "application/manifest+json; charset=utf-8");
-  setPublicCacheHeaders(res, 86_400);
+  // Do not let a configuration-fallback manifest stick in the CDN for a day.
+  const maxAge = fallback ? 60 : 86_400;
+  setPublicCacheHeaders(res, maxAge, maxAge);
   res.end(
     JSON.stringify(
       {

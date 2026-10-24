@@ -5,11 +5,20 @@ export const countryCodeToFlag = (code?: string) =>
       )
     : "🌐";
 
+const countryNames = new Map<string, Intl.DisplayNames | null>();
+
 export const getCountryName = (code: string, locale: string) => {
   if (code === "T1") return "Tor";
-  try {
-    return new Intl.DisplayNames([locale], { type: "region" }).of(code) ?? code;
-  } catch {
-    return code;
+
+  let displayNames = countryNames.get(locale);
+  if (displayNames === undefined) {
+    try {
+      displayNames = new Intl.DisplayNames([locale], { type: "region" });
+    } catch {
+      displayNames = null;
+    }
+    countryNames.set(locale, displayNames);
   }
+
+  return displayNames?.of(code) ?? code;
 };

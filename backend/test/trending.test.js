@@ -2,7 +2,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const { TrendingService } = require("../dist/src/cache/trending.service.js");
 
-function createMockValkey(execute, metaValues = []) {
+function createMockValkey(execute, metaValues = [], runDelay = 0) {
   const calls = [];
   const client = {
     mGet: async () => metaValues,
@@ -35,7 +35,11 @@ function createMockValkey(execute, metaValues = []) {
   return {
     calls,
     valkey: {
-      run: async (operation) => operation(client),
+      run: async (operation) => {
+        if (runDelay > 0)
+          await new Promise((resolve) => setTimeout(resolve, runDelay));
+        return operation(client);
+      },
     },
   };
 }
@@ -96,6 +100,40 @@ test("ranks the last seven days by total views and filters stale shares", async 
   assert.equal(items[0].fileCount, 3);
   assert.equal(items[0].size, 1234);
   assert.equal(items[0].createdAt, recent);
+
+  // The union uses a per-read temporary key, never the old shared key.
+  const [unionMethod, unionArgs] = mock.calls[0][0];
+  assert.equal(unionMethod, "zUnionStore");
+  assert.match(unionArgs[0], /^pingvin:trending:rank:/);
+});
+
+test("coalesces concurrent ranking reads", async () => {
+  const mock = createMockValkey(
+    () => [1, [{ value: "a", score: 4 }], 1],
+    [meta("a", 4, recent)],
+    20,
+  );
+  const service = createService(mock);
+
+  const [first, second] = await Promise.all([
+    service.getTrending(),
+    service.getTrending(),
+  ]);
+
+  assert.deepEqual(
+    first.map((item) => item.id),
+    ["a"],
+  );
+  assert.deepEqual(
+    second.map((item) => item.id),
+    ["a"],
+  );
+  assert.equal(
+    mock.calls.filter((queue) =>
+      queue.some(([method]) => method === "zUnionStore"),
+    ).length,
+    1,
+  );
 });
 
 test("returns twelve by default and caps the full list at forty-eight", async () => {
@@ -162,6 +200,7 @@ test("records only recent public shares with image or video media", async () => 
   assert.deepEqual(methods, ["zAdd", "expire", "set"]);
   assert.deepEqual(mock.calls[0][0][1][1], { score: 7, value: "share" });
   assert.equal(mock.calls[0][2][1][2].EX, 8 * 24 * 60 * 60);
+  assert.equal(mock.calls[0][2][1][2].NX, true);
 
   const stored = JSON.parse(mock.calls[0][2][1][1]);
   assert.equal(stored.previewFileId, "video");

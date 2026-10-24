@@ -47,8 +47,11 @@ export async function getServerSideProps(context: GetServerSidePropsContext) {
   const initialNotFound = result.status === "not-found";
 
   // Keep the share-specific "not found" message rendered by the page, but make
-  // the HTTP response itself a 404 so search engines do not index it.
+  // the HTTP response itself a 404 so search engines do not index it. A
+  // transient metadata failure gets a 503 instead of a 200 noindex page, so a
+  // short backend outage cannot deindex a valid public share.
   if (initialNotFound) context.res.statusCode = 404;
+  if (result.status === "error") context.res.statusCode = 503;
 
   return { props: { shareId, initialNotFound, seo } };
 }

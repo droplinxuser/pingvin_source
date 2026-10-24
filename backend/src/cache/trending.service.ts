@@ -1,14 +1,18 @@
 import { Injectable } from "@nestjs/common";
 import { PrismaService } from "src/prisma/prisma.service";
 import { sumFileSizes } from "src/share/share.util";
+import {
+  COUNTRY_FIELD_PREFIX,
+  isCountryCode,
+  normalizeCountryCode,
+} from "src/utils/country.util";
 import { getFileMimeType } from "src/utils/mime.util";
 import { ValkeyClient, ValkeyService } from "./valkey.service";
 
 const VIEW_KEY_PREFIX = "pingvin:trending:views:";
 const META_KEY_PREFIX = "pingvin:trending:meta:";
-const RANK_KEY = "pingvin:trending:rank";
+const RANK_KEY_PREFIX = "pingvin:trending:rank:";
 const GEO_KEY_PREFIX = "pingvin:trending:geo:hour:";
-const GEO_TOTAL_PREFIX = "c:";
 const WINDOW_DAYS = 7;
 const DAY_MS = 24 * 60 * 60 * 1000;
 const HOUR_MS = 60 * 60 * 1000;
@@ -77,6 +81,8 @@ type TrendingSource = {
 export class TrendingService {
   private cached?: { at: number; items: TrendingShare[] };
   private countriesCached?: { at: number; value: TrendingCountry[] };
+  private pendingRanking?: Promise<TrendingShare[] | undefined>;
+  private pendingCountries?: Promise<TrendingCountry[] | undefined>;
 
   constructor(
     private readonly valkey: ValkeyService,
@@ -84,7 +90,7 @@ export class TrendingService {
   ) {}
 
   async recordView(share: TrendingSource, country?: string): Promise<void> {
-    const code = normalizeCountry(country);
+    const code = normalizeCountryCode(country);
     const recent =
       Date.now() - new Date(share.createdAt).getTime() <= MAX_SHARE_AGE_MS;
     const preview = recent ? findPreview(share.files) : undefined;
@@ -118,10 +124,13 @@ export class TrendingService {
         multi.zAdd(viewKey, { score: share.views, value: share.id });
         multi.expire(viewKey, VIEW_TTL_SECONDS);
         // One metadata entry per share instead of one copy in every day
-        // bucket. Rewriting the small card payload on each view keeps older
-        // entries current after a deploy adds a field; SET EX also refreshes
-        // the TTL, so no separate EXPIRE is needed.
-        multi.set(metaKey, JSON.stringify(meta), { EX: META_TTL_SECONDS });
+        // bucket. The card payload is immutable until the share is edited
+        // (which deletes the key), so NX avoids rewriting it on every view.
+        // The eight-day TTL still covers the seven-day ranking window.
+        multi.set(metaKey, JSON.stringify(meta), {
+          EX: META_TTL_SECONDS,
+          NX: true,
+        });
       }
       if (code) {
         // Country totals cover every public share view; the per-share fields
@@ -146,10 +155,28 @@ export class TrendingService {
     if (this.cached && Date.now() - this.cached.at < RESULT_CACHE_MS)
       return this.cached.items.slice(0, resultLimit);
 
-    const items = await this.valkey.run((client) => this.read(client));
-    if (!items) return [];
-    this.cached = { at: Date.now(), items };
-    return items.slice(0, resultLimit);
+    // Coalesce a cold-cache burst into one Valkey read. The 30-second result
+    // cache normally makes this a non-issue, but a restart or expiry can
+    // otherwise produce one union per concurrent request.
+    const pendingItems = await (this.pendingRanking ?? this.startRankingRead());
+    if (!pendingItems) return [];
+    return pendingItems.slice(0, resultLimit);
+  }
+
+  private startRankingRead(): Promise<TrendingShare[] | undefined> {
+    const read = this.valkey
+      .run((client) => this.read(client))
+      .then((items) => {
+        if (items) this.cached = { at: Date.now(), items };
+        return items;
+      });
+    this.pendingRanking = read;
+    void read
+      .finally(() => {
+        if (this.pendingRanking === read) this.pendingRanking = undefined;
+      })
+      .catch(() => {});
+    return read;
   }
 
   /**
@@ -166,10 +193,24 @@ export class TrendingService {
     )
       return this.countriesCached.value;
 
-    const value = await this.valkey.run((client) => this.readCountries(client));
-    if (!value) return [];
-    this.countriesCached = { at: Date.now(), value };
-    return value;
+    const value = await (this.pendingCountries ?? this.startCountriesRead());
+    return value ?? [];
+  }
+
+  private startCountriesRead(): Promise<TrendingCountry[] | undefined> {
+    const read = this.valkey
+      .run((client) => this.readCountries(client))
+      .then((value) => {
+        if (value) this.countriesCached = { at: Date.now(), value };
+        return value;
+      });
+    this.pendingCountries = read;
+    void read
+      .finally(() => {
+        if (this.pendingCountries === read) this.pendingCountries = undefined;
+      })
+      .catch(() => {});
+    return read;
   }
 
   /**
@@ -194,10 +235,17 @@ export class TrendingService {
     const keys = Array.from({ length: WINDOW_DAYS }, (_, offset) =>
       viewKeyFor(day - offset),
     );
+    // A unique temporary key keeps concurrent ranking reads from deleting each
+    // other's union. The short TTL covers a process that dies between the
+    // union and the DEL; the normal path removes it immediately.
+    const rankKey = `${RANK_KEY_PREFIX}${process.pid}:${Date.now()}:${Math.random()
+      .toString(36)
+      .slice(2)}`;
     const multi = client.multi();
-    multi.zUnionStore(RANK_KEY, keys, { AGGREGATE: "MAX" });
-    multi.zRangeWithScores(RANK_KEY, 0, CANDIDATE_LIMIT - 1, { REV: true });
-    multi.del(RANK_KEY);
+    multi.zUnionStore(rankKey, keys, { AGGREGATE: "MAX" });
+    multi.zRangeWithScores(rankKey, 0, CANDIDATE_LIMIT - 1, { REV: true });
+    multi.expire(rankKey, 60);
+    multi.del(rankKey);
     const replies = await multi.exec();
     const ranked = replies?.[1] as unknown as
       | {
@@ -255,8 +303,8 @@ export class TrendingService {
         const count = Number(value);
         if (!Number.isFinite(count) || count <= 0) continue;
 
-        if (field.startsWith(GEO_TOTAL_PREFIX)) {
-          const country = field.slice(GEO_TOTAL_PREFIX.length);
+        if (field.startsWith(COUNTRY_FIELD_PREFIX)) {
+          const country = field.slice(COUNTRY_FIELD_PREFIX.length);
           if (!isCountryCode(country)) continue;
           views.set(country, (views.get(country) ?? 0) + count);
           continue;
@@ -510,18 +558,9 @@ function geoFieldFor(country: string, shareId: string) {
 }
 
 function geoTotalFieldFor(country: string) {
-  return `${GEO_TOTAL_PREFIX}${country}`;
+  return `${COUNTRY_FIELD_PREFIX}${country}`;
 }
 
 function metaKeyFor(shareId: string) {
   return `${META_KEY_PREFIX}${shareId}`;
-}
-
-function normalizeCountry(country?: string) {
-  const code = country?.trim().toUpperCase();
-  return isCountryCode(code) ? code : undefined;
-}
-
-function isCountryCode(code?: string): code is string {
-  return !!code && /^[A-Z]{2}$/.test(code) && code !== "XX";
 }

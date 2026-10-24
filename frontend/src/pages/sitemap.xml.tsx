@@ -38,7 +38,7 @@ export async function getServerSideProps({
   res,
 }: GetServerSidePropsContext) {
   const apiURL = process.env.API_URL || "http://localhost:8080";
-  const { config } = await fetchConfig(apiURL);
+  const { config, fallback } = await fetchConfig(apiURL);
   let xml: string | undefined;
 
   try {
@@ -52,7 +52,10 @@ export async function getServerSideProps({
   }
 
   res.setHeader("Content-Type", "application/xml; charset=utf-8");
-  setPublicCacheHeaders(res, 3_600);
+  // Do not cache the small fallback sitemap for an hour when the backend was
+  // unavailable; retry soon after it recovers.
+  const maxAge = fallback ? 60 : 3_600;
+  setPublicCacheHeaders(res, maxAge, maxAge);
   res.end(xml ?? buildFallbackSitemap(resolveSiteUrl(req, config), config));
   return { props: {} };
 }

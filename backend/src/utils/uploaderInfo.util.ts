@@ -4,6 +4,7 @@ import { Request } from "express";
 import { promises as fs } from "fs";
 import { dirname, join } from "path";
 import { SHARE_DIRECTORY } from "../constants";
+import { normalizeCountryCode } from "./country.util";
 
 const FILE_NAME = "uploader.json";
 export const MAX_VISITORS = 20;
@@ -119,19 +120,12 @@ function parseUserAgent(
   };
 }
 
-function normalizeCountry(country?: string) {
-  const normalized = country?.trim().toUpperCase();
-  return normalized && /^[A-Z]{2}$/.test(normalized) && normalized !== "XX"
-    ? normalized
-    : undefined;
-}
-
 /**
  * Reads the two-letter country code supplied by Cloudflare. The same helper is
  * used for share views and page views so the geo aggregates agree.
  */
 export function getRequestCountry(request: Request): string | undefined {
-  return normalizeCountry(getHeader(request, "cf-ipcountry"));
+  return normalizeCountryCode(getHeader(request, "cf-ipcountry"));
 }
 
 function getReferrerDomain(referrer?: string, ownHost?: string) {

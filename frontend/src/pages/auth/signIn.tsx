@@ -5,11 +5,21 @@ import SignInForm from "../../components/auth/SignInForm";
 import Meta from "../../components/Meta";
 import useUser from "../../hooks/user.hook";
 import useTranslate from "../../hooks/useTranslate.hook";
+import { getQueryString, safeRedirectPath } from "../../utils/router.util";
 
 export function getServerSideProps(context: GetServerSidePropsContext) {
-  return {
-    props: { redirectPath: context.query.redirect ?? null },
-  };
+  const requested = getQueryString(context.query.redirect);
+  const redirectPath = requested ? safeRedirectPath(requested) : null;
+
+  // Strip an unsafe target from the URL as well as from the sign-in form.
+  // Otherwise the rejected external URL is still reflected in __NEXT_DATA__.
+  if (requested && redirectPath === "/" && requested !== "/") {
+    return {
+      redirect: { destination: "/auth/signIn", permanent: false },
+    };
+  }
+
+  return { props: { redirectPath } };
 }
 
 const SignIn = ({ redirectPath }: { redirectPath?: string }) => {

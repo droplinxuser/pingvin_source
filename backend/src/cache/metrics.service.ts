@@ -1,4 +1,8 @@
 import { Injectable } from "@nestjs/common";
+import {
+  COUNTRY_FIELD_PREFIX,
+  normalizeCountryCode,
+} from "src/utils/country.util";
 import { ValkeyClient, ValkeyService } from "./valkey.service";
 
 const METRICS_PREFIX = "pingvin:metrics:pageviews:hour:";
@@ -10,7 +14,6 @@ const BUCKET_TTL_SECONDS = (WINDOW_HOURS + 1) * 60 * 60;
 const AGGREGATE_CACHE_MS = 30 * 1000;
 const MAX_TOP_COUNTRIES = 8;
 const TOTAL_FIELD = "total";
-const COUNTRY_FIELD = "c:";
 
 type Bucket = {
   total: number;
@@ -35,14 +38,14 @@ export class MetricsService {
   constructor(private readonly valkey: ValkeyService) {}
 
   async recordPageView(country?: string): Promise<PageViewMetrics> {
-    const code = normalizeCountry(country);
+    const code = normalizeCountryCode(country);
     const hour = currentHour();
 
     const incremented = await this.valkey.run(async (client) => {
       const key = bucketKey(hour);
       const multi = client.multi();
       multi.hIncrBy(key, TOTAL_FIELD, 1);
-      if (code) multi.hIncrBy(key, `${COUNTRY_FIELD}${code}`, 1);
+      if (code) multi.hIncrBy(key, `${COUNTRY_FIELD_PREFIX}${code}`, 1);
       multi.expire(key, BUCKET_TTL_SECONDS);
       await multi.exec();
       return true;
@@ -54,10 +57,7 @@ export class MetricsService {
   }
 
   async getLastDay(): Promise<PageViewMetrics> {
-    if (
-      this.aggregate &&
-      Date.now() - this.aggregate.at < AGGREGATE_CACHE_MS
-    ) {
+    if (this.aggregate && Date.now() - this.aggregate.at < AGGREGATE_CACHE_MS) {
       return this.aggregate.value;
     }
 
@@ -133,11 +133,6 @@ function bucketKey(hour: number) {
   return `${METRICS_PREFIX}${hour}`;
 }
 
-function normalizeCountry(country?: string) {
-  const code = country?.trim().toUpperCase();
-  return code && /^[A-Z]{2}$/.test(code) && code !== "XX" ? code : undefined;
-}
-
 function aggregateBuckets(
   buckets: (Record<string, string> | null | undefined)[],
 ): Bucket {
@@ -150,8 +145,8 @@ function aggregateBuckets(
       const count = Number(value);
       if (!Number.isFinite(count)) continue;
       if (field === TOTAL_FIELD) total += count;
-      else if (field.startsWith(COUNTRY_FIELD)) {
-        const country = field.slice(COUNTRY_FIELD.length);
+      else if (field.startsWith(COUNTRY_FIELD_PREFIX)) {
+        const country = field.slice(COUNTRY_FIELD_PREFIX.length);
         countries.set(country, (countries.get(country) ?? 0) + count);
       }
     }

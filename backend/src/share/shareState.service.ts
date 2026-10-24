@@ -29,11 +29,7 @@ import {
   shareDataCacheKey,
   shareGuardCacheKey,
 } from "src/utils/cache.util";
-import {
-  SHARE_EXPIRATION,
-  isViewLimitExceeded,
-  sumFileSizes,
-} from "./share.util";
+import { SHARE_EXPIRATION, sumFileSizes } from "./share.util";
 
 // Collapse bursts of share views into one metadata write per share. The
 // returned visitor list is updated immediately; only the disk write is delayed.
@@ -69,6 +65,14 @@ export class ShareStateService implements OnApplicationShutdown {
   private readonly visitorWrites = new Map<string, Promise<void>>();
   private readonly dirtyVisitors = new Set<string>();
   private readonly expirationWrites = new Map<string, number>();
+  private readonly pendingShareLoads = new Map<
+    string,
+    Promise<Record<string, unknown>>
+  >();
+  private readonly pendingGuardLoads = new Map<
+    string,
+    Promise<GuardShare | null>
+  >();
   private shuttingDown = false;
 
   constructor(
@@ -86,6 +90,27 @@ export class ShareStateService implements OnApplicationShutdown {
     );
     if (cached) return cached;
 
+    // A cold share page is requested by the HTML shell and the client API at
+    // nearly the same time. Reuse the in-flight load so both requests share one
+    // database read instead of racing to fill the cache.
+    const pending = this.pendingShareLoads.get(id);
+    if (pending) return pending;
+
+    const load = this.loadShare(id, cacheKey);
+    this.pendingShareLoads.set(id, load);
+    void load
+      .finally(() => {
+        if (this.pendingShareLoads.get(id) === load)
+          this.pendingShareLoads.delete(id);
+      })
+      .catch(() => {});
+    return load;
+  }
+
+  private async loadShare(
+    id: string,
+    cacheKey: string,
+  ): Promise<Record<string, unknown>> {
     const share = await this.prisma.share.findUnique({
       where: { id },
       include: {
@@ -174,17 +199,34 @@ export class ShareStateService implements OnApplicationShutdown {
   async getGuardShare(shareId: string): Promise<GuardShare | null> {
     const key = shareGuardCacheKey(shareId);
     const cached = await getCachedValue<GuardShare>(this.cache, key);
-    const share =
-      cached ??
-      (await this.prisma.share.findUnique({
-        where: { id: shareId },
-        include: GUARD_INCLUDE,
-      }));
+    if (cached) return cached;
+
+    const pending = this.pendingGuardLoads.get(shareId);
+    if (pending) return pending;
+
+    const load = this.loadGuardShare(shareId, key);
+    this.pendingGuardLoads.set(shareId, load);
+    void load
+      .finally(() => {
+        if (this.pendingGuardLoads.get(shareId) === load)
+          this.pendingGuardLoads.delete(shareId);
+      })
+      .catch(() => {});
+    return load;
+  }
+
+  private async loadGuardShare(
+    shareId: string,
+    key: string,
+  ): Promise<GuardShare | null> {
+    const share = await this.prisma.share.findUnique({
+      where: { id: shareId },
+      include: GUARD_INCLUDE,
+    });
 
     if (!share || share.removedReason || !share.uploadLocked) return null;
 
-    if (!cached)
-      await setCachedValue(this.cache, key, share, SHARE_DATA_CACHE_TTL_MS);
+    await setCachedValue(this.cache, key, share, SHARE_DATA_CACHE_TTL_MS);
     return share;
   }
 
@@ -238,27 +280,27 @@ export class ShareStateService implements OnApplicationShutdown {
     id: string,
     maxViews: number,
   ): Promise<number> {
-    return this.prisma.$transaction(async (tx) => {
-      const share = await tx.share.findUnique({
-        where: { id },
-        select: { views: true },
-      });
+    // One conditional UPDATE makes the limit check and increment atomic, so
+    // two concurrent requests cannot both observe the last permitted view.
+    // SQLite returns the new counter, avoiding the old read-then-write query.
+    const rows = await this.prisma.$queryRaw<{ views: number | bigint }[]>`
+      UPDATE "Share"
+      SET "views" = "views" + 1
+      WHERE "id" = ${id} AND "views" < ${maxViews}
+      RETURNING "views"
+    `;
+    if (rows.length > 0) return Number(rows[0].views);
 
-      if (!share) throw new NotFoundException(this.i18n.t("share.notFound"));
-      if (isViewLimitExceeded(share.views, maxViews)) {
-        throw new ForbiddenException(
-          this.i18n.t("share.maxViewsExceeded"),
-          "share_max_views_exceeded",
-        );
-      }
-
-      const updated = await tx.share.update({
-        where: { id },
-        data: { views: { increment: 1 } },
-        select: { views: true },
-      });
-      return updated.views;
+    // No row updated: either the share is gone or the limit is exhausted.
+    const share = await this.prisma.share.findUnique({
+      where: { id },
+      select: { views: true },
     });
+    if (!share) throw new NotFoundException(this.i18n.t("share.notFound"));
+    throw new ForbiddenException(
+      this.i18n.t("share.maxViewsExceeded"),
+      "share_max_views_exceeded",
+    );
   }
 
   private withVisitorLock<T>(

@@ -113,9 +113,29 @@ const VirusTotal = () => {
   }, []);
 
   useEffect(() => {
-    void load();
-    const timer = setInterval(() => void load(true), REFRESH_MS);
-    return () => clearInterval(timer);
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+
+    // Schedule the next refresh only after the previous request completes so a
+    // slow API cannot build up overlapping 15-second requests.
+    const refresh = async (silent = false) => {
+      await load(silent);
+      if (!cancelled) timer = setTimeout(() => void refresh(true), REFRESH_MS);
+    };
+
+    const onVisibilityChange = () => {
+      if (document.visibilityState !== "visible") return;
+      if (timer) clearTimeout(timer);
+      void refresh(true);
+    };
+
+    void refresh();
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
   }, [load]);
 
   if (!data) {

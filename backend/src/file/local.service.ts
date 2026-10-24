@@ -43,12 +43,24 @@ export class LocalFileService {
       throw new BadRequestException(this.i18n.t("file.invalidIdFormat"));
     }
 
+    // Chunk uploads only need the sizes and quota limits. Selecting whole rows
+    // (including every File column) on each chunk is unnecessary.
     const share = await this.prisma.share.findUnique({
       where: { id: shareId },
-      include: {
-        files: true,
-        reverseShare: { include: { creator: true } },
-        creator: true,
+      select: {
+        uploadLocked: true,
+        creatorId: true,
+        files: { select: { size: true } },
+        reverseShare: {
+          select: {
+            creatorId: true,
+            maxShareSize: true,
+            creator: { select: { storageQuotaLimit: true } },
+          },
+        },
+        creator: {
+          select: { storageQuotaLimit: true, shareSizeLimit: true },
+        },
       },
     });
 

@@ -73,12 +73,24 @@ export class S3FileService {
     const key = `${this.getS3Path()}${shareId}/${file.name}`;
     const bucketName = this.config.get("s3.bucketName");
     const s3Instance = this.getS3Instance();
+    // Chunk uploads only need the sizes and quota limits. Selecting whole rows
+    // (including every File column) on each part is unnecessary.
     const share = await this.prisma.share.findUnique({
       where: { id: shareId },
-      include: {
-        files: true,
-        creator: true,
-        reverseShare: { include: { creator: true } },
+      select: {
+        uploadLocked: true,
+        creatorId: true,
+        files: { select: { size: true } },
+        reverseShare: {
+          select: {
+            creatorId: true,
+            maxShareSize: true,
+            creator: { select: { storageQuotaLimit: true } },
+          },
+        },
+        creator: {
+          select: { storageQuotaLimit: true, shareSizeLimit: true },
+        },
       },
     });
 
