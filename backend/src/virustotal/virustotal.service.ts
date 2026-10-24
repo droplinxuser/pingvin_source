@@ -60,6 +60,7 @@ type ScanJob = {
   hash?: string;
   analysisId?: string;
   attempts: number;
+  submissions?: number;
 };
 
 export type VirusTotalShare = {
@@ -220,6 +221,7 @@ export class VirusTotalService implements OnModuleInit, OnApplicationShutdown {
         ...parsed,
         size: Number(parsed.size) || 0,
         attempts: Number(parsed.attempts) || 0,
+        submissions: Number(parsed.submissions) || 0,
       };
     } catch {
       return undefined;
@@ -316,13 +318,25 @@ export class VirusTotalService implements OnModuleInit, OnApplicationShutdown {
   }
 
   private beginUpload(job: ScanJob): ScanJob | undefined {
+    const submissions = job.submissions ?? 0;
+    if (submissions >= MAX_ATTEMPTS) {
+      this.logger.warn(
+        `VirusTotal dropped ${job.name} after ${MAX_ATTEMPTS} upload attempts`,
+      );
+      return undefined;
+    }
     if (job.size > MAX_UPLOAD_BYTES) {
       this.logger.log(
         `VirusTotal skipped ${job.name}: file exceeds the free-tier upload limit`,
       );
       return undefined;
     }
-    return { ...job, stage: "upload", attempts: 0 };
+    return {
+      ...job,
+      stage: "upload",
+      attempts: 0,
+      submissions: submissions + 1,
+    };
   }
 
   private async uploadJob(job: ScanJob): Promise<ScanJob | undefined> {
