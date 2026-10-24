@@ -488,6 +488,17 @@ sign-in redirect for a protected page and loop between `/upload` and
   the JSON file. The admin link was added to `/admin`; anonymous API access
   returned 403. All 36 backend tests pass (three new audit-state tests), and
   both production builds pass. No SQLite schema or migration was added.
+- Live non-admin audit (2026-10-24, after the admin-dashboard deployment): a
+  17-page Playwright pass covered guest, non-admin user and 390px mobile views.
+  Every page had one H1 and no horizontal overflow; there were no application
+  console warnings and only the deliberate missing-page 404 (plus one external
+  ad-image 404 at the network level). `/api/configs`, stats, trending, public
+  files and ZIPs returned the expected cache headers without `Set-Cookie`.
+  Anonymous `/admin/virustotal` redirected to sign-in; the non-admin user was
+  redirected from both `/admin` and `/admin/virustotal` to `/upload`;
+  `GET /api/admin/virustotal` returned 403 with no leaked dashboard content.
+  The live build manifest includes the `/admin/virustotal` route. The dashboard
+  itself was not opened live because the test account is non-admin.
 
 ## Known non-issues
 
