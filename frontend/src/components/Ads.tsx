@@ -1,4 +1,4 @@
-import { Box, Paper, Text, useMantineTheme } from "@mantine/core";
+import { Box, Card, Text } from "@mantine/core";
 import { useEffect, useRef, useState } from "react";
 import useTranslate from "../hooks/useTranslate.hook";
 
@@ -14,7 +14,6 @@ const Ads = ({ gallery = false }: { gallery?: boolean }) => {
   const bannerRef = useRef<HTMLDivElement>(null);
   const [collapsed, setCollapsed] = useState(false);
   const t = useTranslate();
-  const theme = useMantineTheme();
 
   useEffect(() => {
     let cancelled = false;
@@ -88,17 +87,13 @@ const Ads = ({ gallery = false }: { gallery?: boolean }) => {
 
   if (gallery) {
     return (
-      <Paper
+      <Card
         data-testid="share-gallery-ad"
         withBorder
         radius="md"
         p="sm"
         mb="xl"
-        sx={{
-          display: collapsed ? "none" : "block",
-          backgroundColor:
-            theme.colorScheme === "dark" ? theme.colors.dark[7] : theme.white,
-        }}
+        sx={{ display: collapsed ? "none" : "block" }}
       >
         <Text
           size="xs"
@@ -120,7 +115,7 @@ const Ads = ({ gallery = false }: { gallery?: boolean }) => {
             width: "100%",
           }}
         />
-      </Paper>
+      </Card>
     );
   }
 
