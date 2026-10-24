@@ -1,4 +1,6 @@
+import { Box, Paper, Text, useMantineTheme } from "@mantine/core";
 import { useEffect, useRef, useState } from "react";
+import useTranslate from "../hooks/useTranslate.hook";
 
 // Ad units from the publishers' original snippets. Banner scripts are inserted
 // into the placeholder below, page-level scripts into <body>.
@@ -8,9 +10,11 @@ const SCRIPTS = [
   { src: "https://wingsmob.com/1/ccdff92c9d7f97c5af143f6c519f16ed" },
 ];
 
-const Ads = () => {
+const Ads = ({ gallery = false }: { gallery?: boolean }) => {
   const bannerRef = useRef<HTMLDivElement>(null);
   const [collapsed, setCollapsed] = useState(false);
+  const t = useTranslate();
+  const theme = useMantineTheme();
 
   useEffect(() => {
     let cancelled = false;
@@ -19,6 +23,7 @@ const Ads = () => {
     let settleTimer: ReturnType<typeof setTimeout> | undefined;
     let observer: MutationObserver | undefined;
     let scripts: HTMLScriptElement[] = [];
+    setCollapsed(false);
 
     const hasAdContent = () => {
       const banner = bannerRef.current;
@@ -79,7 +84,45 @@ const Ads = () => {
       observer?.disconnect();
       scripts.forEach((script) => script.remove());
     };
-  }, []);
+  }, [gallery]);
+
+  if (gallery) {
+    return (
+      <Paper
+        data-testid="share-gallery-ad"
+        withBorder
+        radius="md"
+        p="sm"
+        mb="xl"
+        sx={{
+          display: collapsed ? "none" : "block",
+          backgroundColor:
+            theme.colorScheme === "dark" ? theme.colors.dark[7] : theme.white,
+        }}
+      >
+        <Text
+          size="xs"
+          color="dimmed"
+          weight={600}
+          tt="uppercase"
+          mb={6}
+          sx={{ letterSpacing: 0.5 }}
+        >
+          {t("share.custom.advertisement")}
+        </Text>
+        <Box
+          ref={bannerRef}
+          aria-label="Advertisement"
+          sx={{
+            display: "flex",
+            justifyContent: "center",
+            minHeight: 90,
+            width: "100%",
+          }}
+        />
+      </Paper>
+    );
+  }
 
   return (
     <aside

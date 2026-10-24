@@ -97,6 +97,11 @@ const SharePage = ({
     ? (seo?.files ?? []).filter((file) => isLikelyGalleryMedia(file.name))
         .length
     : 0;
+  const hasGalleryMedia = share
+    ? share.files.some((file: { name: string }) =>
+        isLikelyGalleryMedia(file.name),
+      )
+    : skeletonMediaCount > 0;
   const metaTitle = indexable
     ? shareName
       ? t("seo.custom.share.title", { name: shareName })
@@ -370,7 +375,7 @@ const SharePage = ({
         <MediaPreviewGallerySkeleton count={skeletonMediaCount} />
       )}
 
-      <Ads />
+      <Ads gallery={hasGalleryMedia} />
 
       <FileList
         files={share?.files}

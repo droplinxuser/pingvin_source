@@ -13,6 +13,7 @@ import { TbPlayerPlay } from "react-icons/tb";
 import { FileMetaData } from "../../types/File.type";
 import { getBaseName, getShareFileUrl } from "../../utils/file.util";
 import {
+  GalleryMediaKind,
   getGalleryMediaKind,
   supportsWebpPreview,
 } from "../../utils/mime.util";
@@ -34,14 +35,29 @@ const MediaPreviewGallery = ({
   const t = useTranslate();
 
   const mediaFiles = files
-    .filter((file) => !!getGalleryMediaKind(file.name))
-    .slice(0, MAX_GALLERY_ITEMS);
+    .map((file) => ({ file, kind: getGalleryMediaKind(file.name) }))
+    .filter(
+      (entry): entry is { file: FileMetaData; kind: GalleryMediaKind } =>
+        !!entry.kind,
+    )
+    .sort((a, b) => {
+      // Images lead the gallery; videos follow. Each group is alphabetical.
+      if (a.kind !== b.kind) return a.kind === "image" ? -1 : 1;
+      return getBaseName(a.file.name).localeCompare(
+        getBaseName(b.file.name),
+        undefined,
+        { numeric: true },
+      );
+    })
+    .slice(0, MAX_GALLERY_ITEMS)
+    .map((entry) => entry.file);
 
   if (mediaFiles.length === 0) return null;
 
   return (
     <SimpleGrid
-      mb="xl"
+      data-testid="media-preview-gallery"
+      mb="md"
       cols={1}
       spacing="md"
       breakpoints={[
@@ -61,7 +77,13 @@ const MediaPreviewGallery = ({
           : url;
 
         return (
-          <Card key={file.id} withBorder radius="md" p="sm">
+          <Card
+            key={file.id}
+            data-testid="media-preview-item"
+            withBorder
+            radius="md"
+            p="sm"
+          >
             <UnstyledButton
               onClick={() => showFilePreviewModal(shareId, file, modals)}
               aria-label={`${t("common.button.preview")}: ${name}`}
@@ -157,7 +179,7 @@ export const MediaPreviewGallerySkeleton = ({ count }: { count: number }) => {
 
   return (
     <SimpleGrid
-      mb="xl"
+      mb="md"
       cols={1}
       spacing="md"
       breakpoints={[
