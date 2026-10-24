@@ -122,13 +122,6 @@ export class ShareController {
     );
   }
 
-  @Get("sitemap")
-  @SkipThrottle({ visitor: true })
-  async getSitemap(@Res({ passthrough: true }) response: Response) {
-    response.set(getEdgeCacheHeaders(600));
-    return this.shareService.getSitemapShares();
-  }
-
   // Lightweight existence check used by the share page SSR so that missing
   // shares get a real 404 status without touching the share (no view count,
   // no rolling expiration, no token required).

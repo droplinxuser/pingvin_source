@@ -99,19 +99,10 @@ export type ShareSeo = {
   files?: { name: string }[];
 };
 
-export type SitemapShare = {
-  id: string;
-  lastModified: Date;
-};
-
-const SITEMAP_MAX_URLS = 45_000;
-const SITEMAP_CACHE_MS = 5 * 60 * 1000;
-
 @Injectable()
 export class ShareService {
   private readonly logger = new Logger(ShareService.name);
   private readonly activeZipBuilds = new Set<string>();
-  private sitemapCache?: { at: number; value: SitemapShare[] };
   constructor(
     private prisma: PrismaService,
     private configService: ConfigService,
@@ -683,66 +674,6 @@ export class ShareService {
       size: Number(sizeRows[0]?.size ?? 0),
       files: share.files,
     };
-  }
-
-  /**
-   * All indexable public shares, newest first. The list is cached briefly in
-   * process and much longer at the CDN edge.
-   */
-  async getSitemapShares(): Promise<SitemapShare[]> {
-    if (
-      this.sitemapCache &&
-      Date.now() - this.sitemapCache.at < SITEMAP_CACHE_MS
-    )
-      return this.sitemapCache.value;
-
-    const shares = await this.prisma.share.findMany({
-      where: {
-        uploadLocked: true,
-        removedReason: null,
-        files: { some: {} },
-        AND: [
-          {
-            OR: [
-              { expiration: { gt: new Date() } },
-              { expiration: { equals: moment(0).toDate() } },
-            ],
-          },
-          {
-            OR: [
-              { security: null },
-              {
-                security: {
-                  is: {
-                    password: null,
-                    maxViews: null,
-                    restrictToRecipients: false,
-                  },
-                },
-              },
-            ],
-          },
-          {
-            OR: [
-              { reverseShare: null },
-              { reverseShare: { is: { publicAccess: true } } },
-            ],
-          },
-        ],
-      },
-      select: { id: true, createdAt: true },
-      orderBy: { createdAt: "desc" },
-      take: SITEMAP_MAX_URLS,
-    });
-
-    const value = shares.map((share) => ({
-      id: share.id,
-      // createdAt is stable. updatedAt also changes on every view, which
-      // would make the sitemap's lastmod signal noisy.
-      lastModified: share.createdAt,
-    }));
-    this.sitemapCache = { at: Date.now(), value };
-    return value;
   }
 
   async report(id: string, report: ReportShareDTO) {

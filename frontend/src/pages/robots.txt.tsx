@@ -3,14 +3,7 @@ import { fetchConfig } from "../utils/config.server.util";
 import { setPublicCacheHeaders } from "../utils/httpCache.util";
 import { resolveSiteUrl } from "../utils/seo.server.util";
 
-export async function getServerSideProps({
-  req,
-  res,
-}: GetServerSidePropsContext) {
-  const apiURL = process.env.API_URL || "http://localhost:8080";
-  const { config } = await fetchConfig(apiURL);
-  const baseUrl = resolveSiteUrl(req, config);
-
+const buildFallbackRobots = (baseUrl: string) => {
   const lines = [
     "User-agent: *",
     "Allow: /$",
@@ -24,16 +17,34 @@ export async function getServerSideProps({
     "Disallow: /api",
     "Disallow: /s/",
     "Disallow: /share/*/edit",
-    // Query strings create duplicate share/auth variants and carry recipient
-    // tokens. Canonical URLs never contain a query string.
     "Disallow: /*?",
     "",
   ];
   if (baseUrl) lines.push(`Sitemap: ${baseUrl}/sitemap.xml`, "");
+  return lines.join("\n");
+};
+
+export async function getServerSideProps({
+  req,
+  res,
+}: GetServerSidePropsContext) {
+  const apiURL = process.env.API_URL || "http://localhost:8080";
+  const { config } = await fetchConfig(apiURL);
+  let text: string | undefined;
+
+  try {
+    const response = await fetch(`${apiURL}/api/system/robots.txt`, {
+      cache: "no-store",
+      signal: AbortSignal.timeout(3000),
+    });
+    if (response.ok) text = await response.text();
+  } catch {
+    // Fall through to the static rule set when the backend is unavailable.
+  }
 
   res.setHeader("Content-Type", "text/plain; charset=utf-8");
   setPublicCacheHeaders(res, 86_400);
-  res.end(lines.join("\n"));
+  res.end(text ?? buildFallbackRobots(resolveSiteUrl(req, config)));
   return { props: {} };
 }
 

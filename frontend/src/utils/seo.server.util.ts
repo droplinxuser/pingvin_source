@@ -1,11 +1,10 @@
 import type { IncomingMessage } from "http";
 import Config from "../types/config.type";
-import { ShareSeo, SitemapShare } from "../types/share.type";
+import { ShareSeo } from "../types/share.type";
 import { getConfiguredSiteUrl, normalizeBaseUrl } from "./seo.util";
 
 const SEO_CACHE_MS = 30_000;
 const ERROR_CACHE_MS = 5_000;
-const SITEMAP_CACHE_MS = 10 * 60 * 1000;
 
 type ShareSeoResult =
   | { status: "ok"; data: ShareSeo }
@@ -15,7 +14,6 @@ type ShareSeoResult =
 type CachedSeo = { at: number; value: ShareSeoResult; error?: boolean };
 
 const seoCache = new Map<string, CachedSeo>();
-let sitemapCache: { at: number; value: SitemapShare[] | undefined } | undefined;
 
 /**
  * Uses the configured public URL in production. Local development and tests
@@ -84,29 +82,5 @@ export async function fetchShareSeo(
     const value: ShareSeoResult = { status: "error" };
     seoCache.set(shareId, { at: Date.now(), value, error: true });
     return value;
-  }
-}
-
-export async function fetchSitemap(
-  apiUrl: string,
-): Promise<SitemapShare[] | undefined> {
-  if (sitemapCache) {
-    const ttl = sitemapCache.value ? SITEMAP_CACHE_MS : ERROR_CACHE_MS;
-    if (Date.now() - sitemapCache.at < ttl) return sitemapCache.value;
-  }
-
-  try {
-    const response = await fetch(`${apiUrl}/api/shares/sitemap`, {
-      cache: "no-store",
-      signal: AbortSignal.timeout(5000),
-    });
-    const value = response.ok
-      ? ((await response.json()) as SitemapShare[])
-      : undefined;
-    sitemapCache = { at: Date.now(), value };
-    return value;
-  } catch {
-    sitemapCache = { at: Date.now(), value: undefined };
-    return undefined;
   }
 }

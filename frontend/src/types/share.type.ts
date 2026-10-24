@@ -84,11 +84,6 @@ export type ShareSeo = {
   files?: { name: string }[];
 };
 
-export type SitemapShare = {
-  id: string;
-  lastModified: string;
-};
-
 export type TrendingShare = {
   id: string;
   name?: string;

@@ -41,4 +41,26 @@ export class SystemController {
     const country = Array.isArray(header) ? header[0] : header;
     return await this.systemService.recordPageView(country);
   }
+
+  @Get("robots.txt")
+  @SkipThrottle({ visitor: true })
+  async getRobots(
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    response.set(getEdgeCacheHeaders(86_400));
+    response.setHeader("Content-Type", "text/plain; charset=utf-8");
+    return this.systemService.getRobotsTxt(request);
+  }
+
+  @Get("sitemap.xml")
+  @SkipThrottle({ visitor: true })
+  async getSitemap(
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    response.set(getEdgeCacheHeaders(3_600));
+    response.setHeader("Content-Type", "application/xml; charset=utf-8");
+    return this.systemService.getSitemapXml(request);
+  }
 }

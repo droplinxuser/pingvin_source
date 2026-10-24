@@ -21,7 +21,7 @@ so `git merge upstream/main` stays small.
 | Site stats and footer | `backend/src/system/system.service.ts`, `backend/src/cache/metrics.service.ts`, `frontend/src/components/footer/Footer.tsx`; `POST /api/system/pageview` |
 | Home copy and ads | `frontend/src/pages/index.tsx` (upstream layout), `home.custom.*` keys in `en-US.ts`, `frontend/src/components/Ads.tsx` |
 | Fork branding / deployment | `frontend/public/img/**`, `frontend/public/favicon.ico`, `frontend/src/pages/manifest.json.tsx`, `pingvin-*.service`, `update.sh` |
-| SEO / crawlers | `frontend/src/components/Meta.tsx`, `SiteStructuredData.tsx`, `frontend/src/pages/robots.txt.tsx`, `frontend/src/pages/sitemap.xml.tsx`, `frontend/src/utils/seo.util.ts`, `frontend/src/utils/seo.server.util.ts`, `backend/src/share/share.service.ts` (`getSeo`, `getSitemapShares`) |
+| SEO / crawlers | `frontend/src/components/Meta.tsx`, `SiteStructuredData.tsx`, `frontend/src/pages/robots.txt.tsx`, `frontend/src/pages/sitemap.xml.tsx`, `frontend/src/utils/seo.util.ts`, `frontend/src/utils/seo.server.util.ts`, `backend/src/share/share.service.ts` (`getSeo`), `backend/src/system/system.service.ts` (`getRobotsTxt`, `getSitemapXml`) |
 | WebP / image pipeline | `backend/src/file/file.service.ts` (private preview cache), `backend/src/file/file.controller.ts` (`webp=true`), `backend/src/config/logo.service.ts`, `frontend/src/utils/file.util.ts`, `frontend/src/components/Logo.tsx`, `frontend/public/img/*.webp`, `og-image.png` |
 
 Fork-only UI strings live in `frontend/src/i18n/translations/en-US.ts`; every
@@ -162,8 +162,9 @@ other languages show the upstream copy instead of the English fallback.
   default, so the origin headers only apply where a Cache Rule makes those
   paths eligible; scope that rule to the public HTML routes (including
   `/trending`), the public config, stats, `/api/shares/trending`,
-  `/api/shares/:id/seo`, `/api/shares/sitemap`, `/robots.txt` and
-  `/sitemap.xml` rather than the whole site, and bypass requests carrying an
+  `/api/shares/:id/seo`, `/api/system/sitemap.xml`,
+  `/api/system/robots.txt`, `/robots.txt` and `/sitemap.xml` rather than the
+  whole site, and bypass requests carrying an
   `access_token` cookie if the rule uses an Edge TTL. Page HTML is cached for
   at most 60s, SEO JSON for 60s, sitemap XML for one hour, robots for one day
   and hashed `/_next/static` assets stay immutable. Angie/h5bp serves
@@ -200,17 +201,23 @@ sign-in redirect for a protected page and loop between `/upload` and
   SEO metadata into `getServerSideProps`, so titles/descriptions are available
   in the first HTML response. Missing/expired/removed shares still return a real
   404.
-- `GET /api/shares/sitemap` returns only indexable public shares (complete,
+- `GET /api/system/sitemap.xml` and `GET /api/system/robots.txt` generate the
+  crawler artifacts. They are cached for ten minutes / one day in the existing
+  cache-manager store: Valkey when `CACHE_REDIS_ENABLED=true` (recommended;
+  `update.sh` enables it when Valkey is active), process memory otherwise.
+  **Neither artifact is ever written to SQLite.** SQLite is only
+  read on a sitemap cache miss to discover indexable public shares (complete,
   unexpired, no password/max views/recipient restriction, public reverse share,
-  at least one file), capped at 45,000 URLs. It is cached in-process for five
-  minutes and at the edge for ten minutes. `/sitemap.xml` adds the static routes
-  and optional legal pages; `/robots.txt` disallows private routes, API/short
-  links, edit pages and query-string variants, then points at the absolute
-  sitemap URL. Migration `20261024000000_add_performance_indexes` adds the
-  missing SQLite indexes on `File.shareId`, `ShareRecipient.shareId`, share
+  at least one file), capped at 45,000 URLs. The public `/sitemap.xml` and
+  `/robots.txt` routes proxy those artifacts and fall back to static route rules
+  if the backend is unavailable. The sitemap adds the static routes and optional
+  legal pages; robots disallows private routes, API/short links, edit pages and
+  query-string variants, then points at the absolute sitemap URL. Migration
+  `20261024000000_add_performance_indexes` adds the missing SQLite indexes on
+  `File.shareId`, `ShareRecipient.shareId`, share
   creator/reverse-share/expiration/listing columns. On the 15.5k-share local
-  database the cold sitemap query dropped from ~12s to ~94ms; the warm cache is
-  ~25ms.
+  database the cold sitemap query dropped from ~12s to ~94ms; the cached
+  artifact/query is ~4ms.
 - Translation catalogues are lazy per locale and included in the active page's
   HTML/`__NEXT_DATA__` instead of importing all 34 files into `_app`. Moment
   locales load on demand only for non-English visitors, and the trending widget
@@ -263,7 +270,10 @@ sign-in redirect for a protected page and loop between `/upload` and
   `image/webp` at 952 bytes for a 3.1 kB JPEG. The cold sitemap query fell
   from ~12s to ~94ms after the index migration. The standalone server used by
   `update.sh` was also started directly and served `/`, German SSR, share
-  metadata, `/robots.txt`, `/sitemap.xml` and WebP assets correctly.
+  metadata, `/robots.txt`, `/sitemap.xml` and WebP assets correctly. The old
+  `/api/shares/sitemap` route is gone; the backend serves prebuilt robots/sitemap
+  strings through the cache layer (second request ~4ms) and no sitemap/robots
+  rows or tables exist in SQLite.
 - A follow-up caching review (local Node `26.12.1`; the server remains on
   `22.23.3`) rechecked that only query-free page shells are public, cacheable
   file/ZIP GETs stay free of `Set-Cookie`, the share-metadata cache contains
