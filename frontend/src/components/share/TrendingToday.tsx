@@ -145,7 +145,8 @@ const TrendingToday = ({
   const [items, setItems] = useState<TrendingShare[]>(initialItems ?? []);
 
   useEffect(() => {
-    if (initialItems) return;
+    // The full page always receives its data from getServerSideProps.
+    if (initialItems || embedded) return;
 
     let cancelled = false;
     shareService
@@ -158,9 +159,10 @@ const TrendingToday = ({
     return () => {
       cancelled = true;
     };
-  }, [initialItems, limit]);
+  }, [embedded, initialItems, limit]);
 
-  if (items.length === 0) return null;
+  const visibleItems = initialItems ?? items;
+  if (visibleItems.length === 0) return null;
 
   const title = t("trending.custom.title");
   const content = (
@@ -186,7 +188,7 @@ const TrendingToday = ({
       </Group>
 
       <div className={classes.grid}>
-        {items.map((item) => {
+        {visibleItems.map((item) => {
           const name = item.name || item.id;
           const views = item.views.toLocaleString(intl.locale);
           const url = `/api/shares/${item.id}/files/${item.previewFileId}?download=false`;
