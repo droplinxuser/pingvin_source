@@ -16,6 +16,7 @@ import useTranslate from "../../hooks/useTranslate.hook";
 import { TrendingCountry } from "../../types/share.type";
 import { countryCodeToFlag, getCountryName } from "../../utils/country.util";
 import { getShareFileUrl } from "../../utils/file.util";
+import LazyVideo from "../core/LazyVideo";
 
 const useStyles = createStyles((theme) => {
   const border =
@@ -198,13 +199,24 @@ const useStyles = createStyles((theme) => {
     },
 
     videoThumb: {
+      position: "relative",
       display: "flex",
       alignItems: "center",
       justifyContent: "center",
       width: "100%",
       height: "100%",
-      background:
-        "linear-gradient(135deg, rgba(0, 0, 0, 0.72), rgba(0, 0, 0, 0.92))",
+      backgroundColor: "#000",
+    },
+
+    playOverlay: {
+      position: "absolute",
+      inset: 0,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      color: "white",
+      pointerEvents: "none",
+      filter: "drop-shadow(0 1px 3px rgba(0, 0, 0, 0.9))",
     },
 
     body: {
@@ -376,7 +388,26 @@ const TrendingCountries = ({
                           />
                         ) : (
                           <Box component="span" className={classes.videoThumb}>
-                            <TbPlayerPlay size={18} aria-hidden />
+                            <LazyVideo
+                              className={classes.thumbImage}
+                              src={`${getShareFileUrl(
+                                item.id,
+                                item.previewFileId,
+                                { download: false },
+                              )}#t=0.1`}
+                              muted
+                              playsInline
+                              aria-hidden="true"
+                              onError={(event) => {
+                                event.currentTarget.style.display = "none";
+                              }}
+                            />
+                            <Box
+                              component="span"
+                              className={classes.playOverlay}
+                            >
+                              <TbPlayerPlay size={14} aria-hidden />
+                            </Box>
                           </Box>
                         )}
                       </Box>
