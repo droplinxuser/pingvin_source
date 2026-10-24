@@ -454,6 +454,16 @@ sign-in redirect for a protected page and loop between `/upload` and
   signed-in, admin and 390px checks showed one H1, no horizontal overflow and
   no console errors or warnings beyond the deliberate missing-page 404. No
   SQLite schema or migration was added.
+- Live VirusTotal audit (2026-10-24, after deployment): a mixed JPEG+PDF share
+  was uploaded through the live UI. The PDF report returned 0 malicious,
+  0 suspicious, 63 undetected and 12 type-unsupported; the unique JPEG hash
+  stayed absent (404), confirming safe-type filtering. The share remained
+  online while the scan ran and was deleted afterwards (API and page both
+  404). A final 12-page Playwright pass covered guest, signed-in and 390px
+  mobile views with no non-intentional console messages. `/api/configs`
+  returned the expected 30-second edge headers without `Set-Cookie`, and the
+  share `HEAD` probe returned 200. The test account remains non-admin, so live
+  admin pages were not audited.
 
 ## Known non-issues
 
