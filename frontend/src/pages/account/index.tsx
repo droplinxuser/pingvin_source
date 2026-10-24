@@ -175,7 +175,7 @@ const Account = () => {
     <>
       <Meta title={t("account.title")} />
       <Container size="sm">
-        <Title order={3} mb="xs">
+        <Title order={1} size="h3" mb="xs">
           <FormattedMessage id="account.title" />
         </Title>
         <Paper withBorder p="xl">

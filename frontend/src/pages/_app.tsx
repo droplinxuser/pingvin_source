@@ -1,4 +1,5 @@
 import {
+  Box,
   ColorScheme,
   ColorSchemeProvider,
   Container,
@@ -10,14 +11,13 @@ import { useColorScheme } from "@mantine/hooks";
 import { ModalsProvider } from "@mantine/modals";
 import { Notifications } from "@mantine/notifications";
 import { getCookie, setCookie } from "cookies-next";
-import moment from "moment";
-import "moment/min/locales";
 import { GetServerSidePropsContext } from "next";
 import type { AppProps } from "next/app";
+import dynamic from "next/dynamic";
 import Head from "next/head";
 import { useRouter } from "next/router";
 import { useEffect, useRef, useState } from "react";
-import { IntlProvider } from "react-intl";
+import { FormattedMessage, IntlProvider } from "react-intl";
 import Header from "../components/header/Header";
 import { ConfigContext } from "../hooks/config.hook";
 import { UserContext } from "../hooks/user.hook";
@@ -34,13 +34,18 @@ import i18nUtil from "../utils/i18n.util";
 import { isPublicPageRoute } from "../utils/router.util";
 import userPreferences from "../utils/userPreferences.util";
 import Footer from "../components/footer/Footer";
-import TrendingToday from "../components/share/TrendingToday";
 import { fetchConfig } from "../utils/config.server.util";
 import { fetchTrending } from "../utils/trending.server.util";
 import AdminNoticeModal, {
   AdminNotice,
 } from "../components/admin/AdminNoticeModal";
 import adminNoticeService from "../services/adminNotice.service";
+import SiteStructuredData from "../components/SiteStructuredData";
+
+const TrendingToday = dynamic(
+  () => import("../components/share/TrendingToday"),
+  { ssr: true },
+);
 
 const excludeDefaultLayoutRoutes = ["/admin/config/[category]"];
 const trendingWidgetRoutes = ["/", "/upload", "/share/[shareId]", "/404"];
@@ -136,6 +141,13 @@ function App({ Component, pageProps }: AppProps) {
 
   const [user, setUser] = useState<CurrentUser | null>(pageProps.user);
   const [route, setRoute] = useState<string>(pageProps.route);
+  const initialLanguage = pageProps.language ?? LOCALES.ENGLISH.code;
+  const [messages, setMessages] = useState<Record<string, string>>(
+    pageProps.messages ?? i18nUtil.getLocaleByCode(initialLanguage).messages,
+  );
+  if (pageProps.messages) {
+    i18nUtil.setLocaleMessages(initialLanguage, pageProps.messages);
+  }
 
   const [configVariables, setConfigVariables] = useState<Config[]>(
     pageProps.configVariables,
@@ -290,8 +302,32 @@ function App({ Component, pageProps }: AppProps) {
     });
   };
 
-  const language = useRef(pageProps.language);
-  moment.locale(language.current);
+  const language = useRef(pageProps.language ?? LOCALES.ENGLISH.code);
+  const [, setMomentLocaleVersion] = useState(0);
+
+  // Moment's locale catalogue is large. Load only the active locale after
+  // hydration instead of bundling every locale into the main chunk.
+  useEffect(() => {
+    if (language.current === LOCALES.ENGLISH.code) return;
+    let cancelled = false;
+
+    import("../utils/momentLocale.util")
+      .then(({ loadMomentLocale }) => loadMomentLocale(language.current))
+      .then(() => {
+        if (!cancelled) setMomentLocaleVersion((version) => version + 1);
+      })
+      .catch(() => {});
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!pageProps.messages) return;
+    i18nUtil.setLocaleMessages(initialLanguage, pageProps.messages);
+    setMessages(pageProps.messages);
+  }, [initialLanguage, pageProps.messages]);
 
   const [pendingNotices, setPendingNotices] = useState<AdminNotice[]>([]);
 
@@ -325,13 +361,10 @@ function App({ Component, pageProps }: AppProps) {
   return (
     <>
       <Head>
-        <meta
-          name="viewport"
-          content="minimum-scale=1, initial-scale=1, width=device-width, user-scalable=no"
-        />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
       </Head>
       <IntlProvider
-        messages={i18nUtil.getLocaleByCode(language.current)?.messages}
+        messages={messages}
         locale={language.current}
         defaultLocale={LOCALES.ENGLISH.code}
       >
@@ -366,30 +399,31 @@ function App({ Component, pageProps }: AppProps) {
                     },
                   }}
                 >
+                  <a className="skip-link" href="#main-content">
+                    <FormattedMessage id="common.custom.skip-to-content" />
+                  </a>
                   <AdminNoticeModal
                     notice={pendingNotices[0] || null}
                     onDismiss={handleDismissNotice}
                   />
+                  <SiteStructuredData />
                   {excludeDefaultLayoutRoutes.includes(route) ? (
-                    <Component {...pageProps} />
+                    <Box component="main" id="main-content">
+                      <Component {...pageProps} />
+                    </Box>
                   ) : (
-                    <>
-                      <Stack
-                        justify="space-between"
-                        sx={{ minHeight: "100vh" }}
-                      >
-                        <div>
-                          <Header />
-                          <Container>
-                            <Component {...pageProps} />
-                          </Container>
-                        </div>
+                    <Stack justify="space-between" sx={{ minHeight: "100vh" }}>
+                      <Header />
+                      <Box component="main" id="main-content">
+                        <Container>
+                          <Component {...pageProps} />
+                        </Container>
                         {showTrending && (
                           <TrendingToday initialItems={pageProps.trending} />
                         )}
-                        <Footer />
-                      </Stack>
-                    </>
+                      </Box>
+                      <Footer />
+                    </Stack>
                   )}
                 </UserContext.Provider>
               </ConfigContext.Provider>
@@ -414,6 +448,7 @@ App.getInitialProps = async ({
     route?: string;
     colorScheme: ColorScheme;
     language?: string;
+    messages?: Record<string, string>;
     isConfigFallback?: boolean;
     trending?: TrendingShare[];
   } = {
@@ -464,6 +499,12 @@ App.getInitialProps = async ({
 
     pageProps.language =
       ctx.req.cookies["language"] || defaultLanguage || requestLanguage;
+
+    // Ship only the active language. The full translation catalogue remains in
+    // lazy chunks instead of the main client bundle.
+    pageProps.messages = (
+      await i18nUtil.loadLocale(pageProps.language)
+    ).messages;
   }
   return { pageProps };
 };

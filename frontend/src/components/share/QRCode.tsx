@@ -32,7 +32,13 @@ const QRCode = ({ link }: { link: string }) => {
   }
 
   return (
-    <img alt="qrcode" src={qrCodeUrl} style={{ width: 400, height: 400 }} />
+    <img
+      alt="QR code for the share link"
+      src={qrCodeUrl}
+      width={400}
+      height={400}
+      style={{ width: 400, height: 400 }}
+    />
   );
 };
 

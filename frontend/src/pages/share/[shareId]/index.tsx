@@ -1,6 +1,15 @@
-import { Box, Button, Center, Group, Stack, Text, Title } from "@mantine/core";
+import {
+  Anchor,
+  Box,
+  Breadcrumbs,
+  Button,
+  Center,
+  Group,
+  Stack,
+  Text,
+  Title,
+} from "@mantine/core";
 import { useModals } from "@mantine/modals";
-import axios from "axios";
 import { GetServerSidePropsContext } from "next";
 import Link from "next/link";
 import { useRouter } from "next/router";
@@ -15,46 +24,43 @@ import UploaderInfoBadges from "../../../components/share/UploaderInfoBadges";
 import Ads from "../../../components/Ads";
 import showEnterPasswordModal from "../../../components/share/showEnterPasswordModal";
 import showErrorModal from "../../../components/share/showErrorModal";
+import useConfig from "../../../hooks/config.hook";
 import useTranslate from "../../../hooks/useTranslate.hook";
 import shareService from "../../../services/share.service";
-import { Share as ShareType } from "../../../types/share.type";
+import { Share as ShareType, ShareSeo } from "../../../types/share.type";
 import toast from "../../../utils/toast.util";
+import { getBaseName } from "../../../utils/file.util";
 import { byteToHumanSizeString } from "../../../utils/fileSize.util";
 import { getQueryString } from "../../../utils/router.util";
+import { fetchShareSeo } from "../../../utils/seo.server.util";
+import { absoluteUrl, normalizeBaseUrl } from "../../../utils/seo.util";
 
 export async function getServerSideProps(context: GetServerSidePropsContext) {
   const shareId = context.params!.shareId as string;
   const apiURL = process.env.API_URL || "http://localhost:8080";
-  let initialNotFound = false;
+  const result = await fetchShareSeo(apiURL, shareId);
+  const seo = result.status === "ok" ? result.data : null;
+  const initialNotFound = result.status === "not-found";
 
-  try {
-    await axios.head(`${apiURL}/api/shares/${encodeURIComponent(shareId)}`, {
-      timeout: 1000,
-    });
-  } catch (e) {
-    if (axios.isAxiosError(e)) {
-      const status = e.response?.status;
-      // Keep the share-specific "not found" message rendered by the page,
-      // but make the HTTP response itself a 404.
-      if (status === 400 || status === 404) {
-        context.res.statusCode = 404;
-        initialNotFound = true;
-      }
-    }
-  }
+  // Keep the share-specific "not found" message rendered by the page, but make
+  // the HTTP response itself a 404 so search engines do not index it.
+  if (initialNotFound) context.res.statusCode = 404;
 
-  return { props: { shareId, initialNotFound } };
+  return { props: { shareId, initialNotFound, seo } };
 }
 
 const SharePage = ({
   shareId,
   initialNotFound = false,
+  seo,
 }: {
   shareId: string;
   initialNotFound?: boolean;
+  seo?: ShareSeo | null;
 }) => {
   const modals = useModals();
   const router = useRouter();
+  const config = useConfig();
   const t = useTranslate();
 
   const [share, setShare] = useState<ShareType>();
@@ -72,6 +78,64 @@ const SharePage = ({
   );
 
   const recipientId = getQueryString(router.query.recipient);
+
+  const siteName =
+    (config.get("general.appName") as string)?.trim() || "Pingvin Share";
+  const baseUrl = normalizeBaseUrl(config.get("general.appUrl") as string);
+  const shareUrl = absoluteUrl(`/share/${shareId}`, baseUrl);
+  const indexable = seo?.indexable === true;
+  const shareName = indexable ? share?.name || seo?.name : undefined;
+  const metaTitle = indexable
+    ? shareName
+      ? t("seo.custom.share.title", { name: shareName })
+      : t("share.title", { shareId })
+    : t("share.title", { shareId });
+  const metaDescription = indexable
+    ? t("seo.custom.share.description", {
+        count: share?.files?.length ?? seo?.fileCount ?? 0,
+        size: byteToHumanSizeString(share?.size ?? seo?.size ?? 0),
+        siteName,
+      })
+    : t("share.description");
+  const shareJsonLd =
+    indexable && seo
+      ? {
+          "@context": "https://schema.org",
+          "@type": "CollectionPage",
+          name: shareName ? `${shareName} - ${siteName}` : metaTitle,
+          description: metaDescription,
+          url: shareUrl,
+          datePublished: seo.createdAt,
+          dateModified: seo.updatedAt,
+          isPartOf: {
+            "@type": "WebSite",
+            name: siteName,
+            url: absoluteUrl("/", baseUrl),
+          },
+          mainEntity: {
+            "@type": "ItemList",
+            numberOfItems: seo.files?.length ?? 0,
+            itemListElement: (seo.files ?? []).map((file, position) => ({
+              "@type": "ListItem",
+              position: position + 1,
+              name: getBaseName(file.name),
+            })),
+          },
+        }
+      : undefined;
+  const shareMeta = (
+    <Meta
+      title={metaTitle}
+      description={metaDescription}
+      type="article"
+      noindex={!indexable}
+      canonicalPath={`/share/${shareId}`}
+      publishedTime={indexable ? seo?.createdAt : undefined}
+      modifiedTime={indexable ? seo?.updatedAt : undefined}
+      jsonLd={shareJsonLd}
+      image="/img/og-image.png"
+    />
+  );
 
   const showRateLimitModal = () =>
     showErrorModal(
@@ -186,35 +250,37 @@ const SharePage = ({
 
   if (isRestricted) {
     return (
-      <Center style={{ height: "70vh" }}>
-        <Stack align="center" spacing="md">
-          <Title order={3}>
-            <FormattedMessage id="share.error.restricted.title" />
-          </Title>
-          <Text color="dimmed" align="center">
-            <FormattedMessage id="share.error.restricted.description" />
-          </Text>
-          <Button
-            component={Link}
-            href={`/auth/signIn?redirect=/share/${shareId}`}
-          >
-            <FormattedMessage id="share.error.restricted.button" />
-          </Button>
-        </Stack>
-      </Center>
+      <>
+        {shareMeta}
+        <Center style={{ height: "70vh" }}>
+          <Stack align="center" spacing="md">
+            <Title order={1} size="h3">
+              <FormattedMessage id="share.error.restricted.title" />
+            </Title>
+            <Text color="dimmed" align="center">
+              <FormattedMessage id="share.error.restricted.description" />
+            </Text>
+            <Button
+              component={Link}
+              href={`/auth/signIn?redirect=/share/${shareId}`}
+            >
+              <FormattedMessage id="share.error.restricted.button" />
+            </Button>
+          </Stack>
+        </Center>
+      </>
     );
   }
 
   if (pageError) {
     return (
       <>
-        <Meta
-          title={t("share.title", { shareId })}
-          description={t("share.description")}
-        />
+        {shareMeta}
         <Center style={{ height: "70vh" }}>
           <Stack align="center" spacing="md">
-            <Title order={3}>{pageError.title}</Title>
+            <Title order={1} size="h3">
+              {pageError.title}
+            </Title>
             <Text color="dimmed" align="center">
               {pageError.description}
             </Text>
@@ -229,15 +295,24 @@ const SharePage = ({
   }
 
   return (
-    <>
-      <Meta
-        title={t("share.title", { shareId: share?.name || shareId })}
-        description={t("share.description")}
-      />
+    <article aria-labelledby="share-title">
+      {shareMeta}
+
+      <Breadcrumbs mb="md" aria-label="Breadcrumb">
+        <Anchor component={Link} href="/">
+          {t("seo.custom.breadcrumb.home")}
+        </Anchor>
+        <Anchor component={Link} href="/trending">
+          {t("trending.custom.title")}
+        </Anchor>
+        <Text>{share?.name || shareId}</Text>
+      </Breadcrumbs>
 
       <Group position="apart" mb="lg">
         <Box style={{ maxWidth: "70%" }}>
-          <Title order={3}>{share?.name || share?.id}</Title>
+          <Title order={1} size="h3" id="share-title">
+            {share?.name || share?.id}
+          </Title>
           <Text size="sm">{share?.description}</Text>
           {share?.files?.length > 0 && (
             <Text size="sm" color="dimmed" mt={5}>
@@ -278,7 +353,7 @@ const SharePage = ({
       />
 
       {share && <ShareStats share={share} />}
-    </>
+    </article>
   );
 };
 

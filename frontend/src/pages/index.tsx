@@ -17,6 +17,7 @@ import Meta from "../components/Meta";
 import useUser from "../hooks/user.hook";
 import useConfig from "../hooks/config.hook";
 import useTranslate from "../hooks/useTranslate.hook";
+import { absoluteUrl, normalizeBaseUrl } from "../utils/seo.util";
 
 const useStyles = createStyles((theme) => ({
   inner: {
@@ -84,99 +85,123 @@ export default function Home() {
     }
   }, [user]);
 
-  const siteName =
-    (config.get("general.appName") as string) || "Pingvin Share";
+  const siteName = (config.get("general.appName") as string) || "Pingvin Share";
+  const description = t("home.custom.metaDescription", { siteName });
+  const baseUrl = normalizeBaseUrl(config.get("general.appUrl") as string);
   const aboutHref = (config.get("legal.imprintUrl") as string) || "/imprint";
   const aboutIsExternal = /^https?:\/\//i.test(aboutHref);
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    name: siteName,
+    applicationCategory: "UtilitiesApplication",
+    operatingSystem: "Any",
+    url: absoluteUrl("/", baseUrl),
+    description,
+    offers: {
+      "@type": "Offer",
+      price: "0",
+      priceCurrency: "USD",
+    },
+    isPartOf: {
+      "@type": "WebSite",
+      name: siteName,
+      url: absoluteUrl("/", baseUrl),
+    },
+  };
 
   return (
     <>
       <Meta
         title={t("home.custom.metaTitle")}
-        description={t("home.custom.metaDescription", { siteName })}
+        description={description}
+        canonicalPath="/"
+        jsonLd={jsonLd}
       />
-      <Container>
-        <div className={classes.inner}>
-          <div className={classes.content}>
-            <Title className={classes.title}>
-              <FormattedMessage
-                id="home.custom.title"
-                values={{
-                  siteName,
-                  h: (chunks) => (
-                    <span className={classes.highlight}>{chunks}</span>
-                  ),
-                }}
-              />
-            </Title>
-            <Text color="dimmed" mt="md">
-              <FormattedMessage id="home.custom.description" />
-            </Text>
+      <section aria-labelledby="home-title">
+        <Container>
+          <div className={classes.inner}>
+            <div className={classes.content}>
+              <Title id="home-title" order={1} className={classes.title}>
+                <FormattedMessage
+                  id="home.custom.title"
+                  values={{
+                    siteName,
+                    h: (chunks) => (
+                      <span className={classes.highlight}>{chunks}</span>
+                    ),
+                  }}
+                />
+              </Title>
+              <Text color="dimmed" mt="md">
+                <FormattedMessage id="home.custom.description" />
+              </Text>
 
-            <List
-              mt={30}
-              spacing="sm"
-              size="sm"
-              icon={
-                <ThemeIcon size={20} radius="xl">
-                  <TbCheck size={12} />
-                </ThemeIcon>
-              }
-            >
-              <List.Item>
-                <div>
-                  <b>
-                    <FormattedMessage id="home.custom.bullet.a.name" />
-                  </b>{" "}
-                  - <FormattedMessage id="home.custom.bullet.a.description" />
-                </div>
-              </List.Item>
-              <List.Item>
-                <div>
-                  <b>
-                    <FormattedMessage id="home.custom.bullet.b.name" />
-                  </b>{" "}
-                  - <FormattedMessage id="home.custom.bullet.b.description" />
-                </div>
-              </List.Item>
-              <List.Item>
-                <div>
-                  <b>
-                    <FormattedMessage id="home.custom.bullet.c.name" />
-                  </b>{" "}
-                  - <FormattedMessage id="home.custom.bullet.c.description" />
-                </div>
-              </List.Item>
-            </List>
+              <List
+                mt={30}
+                spacing="sm"
+                size="sm"
+                icon={
+                  <ThemeIcon size={20} radius="xl">
+                    <TbCheck size={12} />
+                  </ThemeIcon>
+                }
+              >
+                <List.Item>
+                  <div>
+                    <b>
+                      <FormattedMessage id="home.custom.bullet.a.name" />
+                    </b>{" "}
+                    - <FormattedMessage id="home.custom.bullet.a.description" />
+                  </div>
+                </List.Item>
+                <List.Item>
+                  <div>
+                    <b>
+                      <FormattedMessage id="home.custom.bullet.b.name" />
+                    </b>{" "}
+                    - <FormattedMessage id="home.custom.bullet.b.description" />
+                  </div>
+                </List.Item>
+                <List.Item>
+                  <div>
+                    <b>
+                      <FormattedMessage id="home.custom.bullet.c.name" />
+                    </b>{" "}
+                    - <FormattedMessage id="home.custom.bullet.c.description" />
+                  </div>
+                </List.Item>
+              </List>
 
-            <Group mt={30}>
-              <Button
-                component={Link}
-                href="/upload"
-                radius="xl"
-                size="md"
-                className={classes.control}
-              >
-                <FormattedMessage id="home.custom.button.start" />
-              </Button>
-              <Button
-                component={Link}
-                href={aboutHref}
-                target={aboutIsExternal ? "_blank" : undefined}
-                variant="default"
-                radius="xl"
-                size="md"
-                className={classes.control}
-              >
-                <FormattedMessage id="home.custom.button.source" />
-              </Button>
+              <Group mt={30}>
+                <Button
+                  component={Link}
+                  href="/upload"
+                  radius="xl"
+                  size="md"
+                  className={classes.control}
+                >
+                  <FormattedMessage id="home.custom.button.start" />
+                </Button>
+                <Button
+                  component={Link}
+                  href={aboutHref}
+                  target={aboutIsExternal ? "_blank" : undefined}
+                  variant="default"
+                  radius="xl"
+                  size="md"
+                  className={classes.control}
+                >
+                  <FormattedMessage id="home.custom.button.source" />
+                </Button>
+              </Group>
+            </div>
+            <Group className={classes.image} align="center">
+              <Logo width={200} height={200} />
             </Group>
           </div>
-          <Group className={classes.image} align="center">
-            <Logo width={200} height={200} />
-          </Group>
-        </div>
-      </Container>
+        </Container>
+      </section>
     </>
   );
 }

@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Button, Group, Box, useMantineTheme } from "@mantine/core";
 import dynamic from "next/dynamic";
-import { commands } from "@uiw/react-md-editor";
 import { FormattedMessage } from "react-intl";
 
 const MDEditor = dynamic(
@@ -48,17 +47,7 @@ const TextEditor = ({
           },
         })}
       >
-        <MDEditor
-          value={text}
-          onChange={setText}
-          height={400}
-          preview="live"
-          extraCommands={[
-            commands.codeEdit,
-            commands.codeLive,
-            commands.codePreview,
-          ]}
-        />
+        <MDEditor value={text} onChange={setText} height={400} preview="live" />
       </Box>
       <Group position="right" mt="md">
         <Button variant="default" onClick={onCancel}>

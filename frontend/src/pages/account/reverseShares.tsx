@@ -63,7 +63,7 @@ const MyShares = () => {
       <Meta title={t("account.reverseShares.title")} />
       <Group position="apart" align="baseline" mb={20}>
         <Group align="center" spacing={3} mb={30}>
-          <Title order={3}>
+          <Title order={1} size="h3">
             <FormattedMessage id="account.reverseShares.title" />
           </Title>
           <HoverTip label={t("account.reverseShares.description")}>

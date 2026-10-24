@@ -9,6 +9,12 @@ export function getDefaultConfig(): Config[] {
       type: "string",
     },
     {
+      key: "general.appUrl",
+      value: "",
+      defaultValue: "",
+      type: "string",
+    },
+    {
       key: "general.showHomePage",
       value: "true",
       defaultValue: "true",

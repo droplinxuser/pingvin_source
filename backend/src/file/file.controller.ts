@@ -14,6 +14,7 @@ import {
 } from "@nestjs/common";
 import { SkipThrottle, Throttle } from "@nestjs/throttler";
 import * as contentDisposition from "content-disposition";
+import { createReadStream } from "fs";
 import { Request, Response } from "express";
 import { ConfigService } from "src/config/config.service";
 import { CreateShareGuard } from "src/share/guard/createShare.guard";
@@ -179,6 +180,7 @@ export class FileController {
     @Param("shareId") shareId: string,
     @Param("fileId") fileId: string,
     @Query("download") download = "true",
+    @Query("webp") webp = "false",
     @Query("recipient") recipientId?: string,
   ) {
     const appUrl = this.config.get("general.appUrl");
@@ -193,6 +195,28 @@ export class FileController {
     const storageProvider =
       (req as FileRequest).shareStorageProvider ??
       (await this.fileService.getStorageProvider(shareId));
+
+    // Inline image previews are converted to a smaller WebP once and served
+    // from the private preview cache. Downloads keep the original format.
+    if (webp === "true" && !isDownload) {
+      const preview = await this.fileService.getWebpPreview(
+        shareId,
+        fileId,
+        storageProvider,
+      );
+      if (preview) {
+        res.set({
+          "Content-Type": "image/webp",
+          "Content-Length": preview.size,
+          "X-Content-Type-Options": "nosniff",
+          ...getDownloadCacheHeaders(
+            (req as FileRequest).shareIsPublic === true,
+            `"${shareId}-${fileId}-webp-v1"`,
+          ),
+        });
+        return new StreamableFile(createReadStream(preview.path));
+      }
+    }
 
     if (storageProvider === "S3") {
       const url = await this.fileService.getPreSignedDownloadUrl(

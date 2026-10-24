@@ -92,7 +92,7 @@ const Shares = () => {
     <>
       <Meta title={t("admin.shares.title")} />
       <Group position="apart" align="center" mb={20}>
-        <Title mb={0} order={3}>
+        <Title mb={0} order={1} size="h3">
           <FormattedMessage id="admin.shares.title" />
         </Title>
         <DiskUsage />

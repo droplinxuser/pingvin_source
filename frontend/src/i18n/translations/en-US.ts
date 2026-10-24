@@ -1,4 +1,22 @@
 export default {
+  // SEO metadata (fork-only; other locales fall back to English)
+  "seo.custom.share.title": "{name} — files to download",
+  "seo.custom.share.description":
+    "Download {count, plural, one {# file} other {# files}} ({size}) shared via {siteName}. Preview images, videos, audio and documents before downloading.",
+  "seo.custom.trending.description":
+    "Discover the most-viewed public shares from the last seven days. Preview and download images, videos, audio and documents.",
+  "seo.custom.privacy.description":
+    "Read how {siteName} handles data, cookies and uploaded files.",
+  "seo.custom.imprint.description":
+    "Legal and operator information for {siteName}.",
+  "seo.custom.defaultDescription":
+    "Fast, private file sharing with short links, previews and download controls.",
+  "seo.custom.breadcrumb.home": "Home",
+  "common.custom.skip-to-content": "Skip to content",
+  "navbar.custom.primary": "Primary navigation",
+  "navbar.custom.open-menu": "Open navigation menu",
+  "footer.custom.navigation": "Footer navigation",
+
   // Navbar
   "navbar.upload": "Upload",
   "navbar.signin": "Sign in",
@@ -37,6 +55,8 @@ export default {
   "trending.custom.description":
     "Most-viewed public shares from the last 7 days.",
   "trending.custom.item": "{name}: {count} views",
+  "trending.custom.empty":
+    "No public shares have been viewed in the last seven days yet.",
   // END trending
 
   // /

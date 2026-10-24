@@ -9,10 +9,16 @@ const PrivacyPolicy = () => {
   const t = useTranslate();
   const { colorScheme } = useMantineTheme();
   const config = useConfig();
+  const siteName =
+    (config.get("general.appName") as string)?.trim() || "Pingvin Share";
   return (
-    <>
-      <Meta title={t("privacy.title")} />
-      <Title mb={30} order={1}>
+    <article aria-labelledby="privacy-title">
+      <Meta
+        title={t("privacy.title")}
+        description={t("seo.custom.privacy.description", { siteName })}
+        canonicalPath="/privacy"
+      />
+      <Title id="privacy-title" mb={30} order={1}>
         <FormattedMessage id="privacy.title" />
       </Title>
       <Markdown
@@ -48,7 +54,7 @@ const PrivacyPolicy = () => {
       >
         {config.get("legal.privacyPolicyText")}
       </Markdown>
-    </>
+    </article>
   );
 };
 

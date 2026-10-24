@@ -10,15 +10,35 @@ import { Cache } from "cache-manager";
 import { LocalFileService } from "./local.service";
 import { S3FileService } from "./s3.service";
 import { ConfigService } from "src/config/config.service";
+import { createWriteStream } from "fs";
+import { promises as fs } from "fs";
+import { join } from "path";
 import { Readable } from "stream";
+import { pipeline } from "stream/promises";
 import { PrismaService } from "../prisma/prisma.service";
 import { EmailService } from "src/email/email.service";
 import { I18nService } from "nestjs-i18n";
 import { TrendingService } from "src/cache/trending.service";
 import { invalidateShareDataCache } from "src/utils/cache.util";
+import { getFileMimeType } from "src/utils/mime.util";
+import { DATA_DIRECTORY } from "src/constants";
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const sharp = require("sharp");
 
 const UPDATED_AT_THROTTLE_MS = 5 * 60 * 1000;
 const DOWNLOAD_NOTIFICATION_COOLDOWN_MS = 15 * 60 * 1000;
+const PREVIEW_DIRECTORY = `${DATA_DIRECTORY}/uploads/_previews`;
+const PREVIEW_MAX_FILE_SIZE = 100 * 1024 * 1024;
+const PREVIEW_MAX_DIMENSION = 1600;
+const WEBP_QUALITY = 82;
+const WEBP_IMAGE_TYPES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/bmp",
+  "image/tiff",
+  "image/avif",
+]);
+const SAFE_ID = /^[\w=-]+$/;
 
 @Injectable()
 export class FileService {
@@ -33,6 +53,10 @@ export class FileService {
     @Inject(CACHE_MANAGER) private cache: Cache,
   ) {}
   private readonly logger = new Logger(FileService.name);
+  private readonly previewBuilds = new Map<
+    string,
+    Promise<{ path: string; size: number } | undefined>
+  >();
 
   // Determine which service to use based on the current config value
   // shareId is optional -> can be used to overwrite a storage provider
@@ -176,6 +200,104 @@ export class FileService {
     return storageService.get(shareId, fileId, range);
   }
 
+  /**
+   * Returns a resized WebP preview for a raster image. Previews are generated
+   * once into a private disk cache; downloads keep the original file.
+   */
+  async getWebpPreview(
+    shareId: string,
+    fileId: string,
+    storageProvider?: string,
+  ): Promise<{ path: string; size: number } | undefined> {
+    if (!SAFE_ID.test(shareId) || !SAFE_ID.test(fileId)) return undefined;
+
+    const shareDirectory = join(PREVIEW_DIRECTORY, shareId);
+    const previewPath = join(shareDirectory, `${fileId}.webp`);
+    try {
+      const cached = await fs.stat(previewPath);
+      return { path: previewPath, size: cached.size };
+    } catch {
+      // Not generated yet.
+    }
+
+    const buildKey = `${shareId}:${fileId}`;
+    const running = this.previewBuilds.get(buildKey);
+    if (running) return running;
+
+    const build = this.buildWebpPreview(
+      shareId,
+      fileId,
+      storageProvider,
+      shareDirectory,
+      previewPath,
+    ).finally(() => {
+      if (this.previewBuilds.get(buildKey) === build)
+        this.previewBuilds.delete(buildKey);
+    });
+    this.previewBuilds.set(buildKey, build);
+    return build;
+  }
+
+  private async buildWebpPreview(
+    shareId: string,
+    fileId: string,
+    storageProvider: string | undefined,
+    shareDirectory: string,
+    previewPath: string,
+  ): Promise<{ path: string; size: number } | undefined> {
+    const tempPath = `${previewPath}.${process.pid}.${Math.random()
+      .toString(36)
+      .slice(2)}.tmp`;
+
+    try {
+      const original = await this.get(
+        shareId,
+        fileId,
+        undefined,
+        storageProvider,
+      );
+      const mimeType = getFileMimeType(original.metaData.name, false);
+      if (
+        !WEBP_IMAGE_TYPES.has(mimeType) ||
+        parseInt(original.metaData.size, 10) > PREVIEW_MAX_FILE_SIZE
+      )
+        return undefined;
+
+      await fs.mkdir(shareDirectory, { recursive: true });
+      await pipeline(
+        original.file,
+        sharp()
+          .rotate()
+          .resize({
+            width: PREVIEW_MAX_DIMENSION,
+            height: PREVIEW_MAX_DIMENSION,
+            fit: "inside",
+            withoutEnlargement: true,
+          })
+          .webp({ quality: WEBP_QUALITY, effort: 4 }),
+        createWriteStream(tempPath),
+      );
+      await fs.rename(tempPath, previewPath);
+      const stat = await fs.stat(previewPath);
+      return { path: previewPath, size: stat.size };
+    } catch (error) {
+      await fs.rm(tempPath, { force: true }).catch(() => {});
+      this.logger.debug(
+        `Could not build WebP preview for ${shareId}/${fileId}: ${error}`,
+      );
+      return undefined;
+    }
+  }
+
+  private async removePreviewCache(shareId: string, fileId?: string) {
+    if (!SAFE_ID.test(shareId)) return;
+    const target = fileId
+      ? join(PREVIEW_DIRECTORY, shareId, `${fileId}.webp`)
+      : join(PREVIEW_DIRECTORY, shareId);
+
+    await fs.rm(target, { recursive: !fileId, force: true }).catch(() => {});
+  }
+
   async remove(shareId: string, fileId: string) {
     const share = await this.prisma.share.findFirst({
       where: { id: shareId },
@@ -184,6 +306,7 @@ export class FileService {
     const storageService = this.getStorageService(share?.storageProvider);
     await storageService.remove(shareId, fileId);
     await Promise.all([
+      this.removePreviewCache(shareId, fileId),
       invalidateShareDataCache(this.cache, shareId),
       this.trending.invalidate(shareId),
     ]);
@@ -197,6 +320,7 @@ export class FileService {
     const storageService = this.getStorageService(share?.storageProvider);
     await storageService.deleteAllFiles(shareId);
     await Promise.all([
+      this.removePreviewCache(shareId),
       invalidateShareDataCache(this.cache, shareId),
       this.trending.invalidate(shareId),
     ]);

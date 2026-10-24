@@ -12,6 +12,7 @@ import {
   UpdateShare,
 } from "../types/share.type";
 import { generateUUID } from "../utils/crypto.util";
+import { getShareFileUrl } from "../utils/file.util";
 import {
   type UploadProgressHandler,
   withUploadInactivityTimeout,
@@ -162,10 +163,11 @@ const downloadFile = async (
   fileId: string,
   recipientId?: string,
 ) => {
-  const recipientQuery = recipientId
-    ? `?recipient=${encodeURIComponent(recipientId)}`
-    : "";
-  window.location.href = `${window.location.origin}/api/shares/${shareId}/files/${fileId}${recipientQuery}`;
+  window.location.href = `${window.location.origin}${getShareFileUrl(
+    shareId,
+    fileId,
+    { download: true, recipientId },
+  )}`;
 };
 
 const removeFile = async (shareId: string, fileId: string) => {

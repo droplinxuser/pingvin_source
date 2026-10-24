@@ -111,6 +111,11 @@ model Share {
   userRecipients ShareUserRecipient[]
   files          File[]
   storageProvider String @default("LOCAL")
+
+  @@index([uploadLocked, createdAt])
+  @@index([expiration])
+  @@index([creatorId])
+  @@index([reverseShareId])
 }
 
 model ReverseShare {
@@ -137,6 +142,8 @@ model ShareRecipient {
 
   shareId String
   share   Share  @relation(fields: [shareId], references: [id], onDelete: Cascade)
+
+  @@index([shareId])
 }
 
 model File {
@@ -148,6 +155,8 @@ model File {
 
   shareId String
   share   Share  @relation(fields: [shareId], references: [id], onDelete: Cascade)
+
+  @@index([shareId])
 }
 
 model ShareSecurity {

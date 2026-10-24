@@ -122,6 +122,13 @@ export class ShareController {
     );
   }
 
+  @Get("sitemap")
+  @SkipThrottle({ visitor: true })
+  async getSitemap(@Res({ passthrough: true }) response: Response) {
+    response.set(getEdgeCacheHeaders(600));
+    return this.shareService.getSitemapShares();
+  }
+
   // Lightweight existence check used by the share page SSR so that missing
   // shares get a real 404 status without touching the share (no view count,
   // no rolling expiration, no token required).
@@ -148,6 +155,17 @@ export class ShareController {
       views,
       uploaderInfo,
     });
+  }
+
+  @Get(":id/seo")
+  @SkipThrottle({ visitor: true })
+  @UseGuards(IdValidation)
+  async getSeo(
+    @Param("id") id: string,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    response.set(getEdgeCacheHeaders(60));
+    return this.shareService.getSeo(id);
   }
 
   @Get(":id/from-owner")

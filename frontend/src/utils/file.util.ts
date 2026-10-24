@@ -21,6 +21,24 @@ export const splitFileName = (pathName: string) => {
 export const getBaseName = (pathName: string): string =>
   splitFileName(pathName).baseName;
 
+export const getShareFileUrl = (
+  shareId: string,
+  fileId: string,
+  options: {
+    download?: boolean;
+    webp?: boolean;
+    recipientId?: string;
+  } = {},
+): string => {
+  const params = new URLSearchParams();
+  if (options.download === false) params.set("download", "false");
+  if (options.webp && options.download !== true) params.set("webp", "true");
+  if (options.recipientId) params.set("recipient", options.recipientId);
+
+  const query = params.toString();
+  return `/api/shares/${shareId}/files/${fileId}${query ? `?${query}` : ""}`;
+};
+
 export const filterDuplicateFiles = <T extends File>(
   newFiles: T[],
   existingFilesList: Array<{

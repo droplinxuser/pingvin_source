@@ -21,6 +21,8 @@ so `git merge upstream/main` stays small.
 | Site stats and footer | `backend/src/system/system.service.ts`, `backend/src/cache/metrics.service.ts`, `frontend/src/components/footer/Footer.tsx`; `POST /api/system/pageview` |
 | Home copy and ads | `frontend/src/pages/index.tsx` (upstream layout), `home.custom.*` keys in `en-US.ts`, `frontend/src/components/Ads.tsx` |
 | Fork branding / deployment | `frontend/public/img/**`, `frontend/public/favicon.ico`, `frontend/src/pages/manifest.json.tsx`, `pingvin-*.service`, `update.sh` |
+| SEO / crawlers | `frontend/src/components/Meta.tsx`, `SiteStructuredData.tsx`, `frontend/src/pages/robots.txt.tsx`, `frontend/src/pages/sitemap.xml.tsx`, `frontend/src/utils/seo.util.ts`, `frontend/src/utils/seo.server.util.ts`, `backend/src/share/share.service.ts` (`getSeo`, `getSitemapShares`) |
+| WebP / image pipeline | `backend/src/file/file.service.ts` (private preview cache), `backend/src/file/file.controller.ts` (`webp=true`), `backend/src/config/logo.service.ts`, `frontend/src/utils/file.util.ts`, `frontend/src/components/Logo.tsx`, `frontend/public/img/*.webp`, `og-image.png` |
 
 Fork-only UI strings live in `frontend/src/i18n/translations/en-US.ts`; every
 other locale falls back to English through `frontend/src/utils/i18n.util.ts`,
@@ -159,16 +161,18 @@ other languages show the upstream copy instead of the English fallback.
   responses after deployments. Cloudflare does not cache HTML or JSON by
   default, so the origin headers only apply where a Cache Rule makes those
   paths eligible; scope that rule to the public HTML routes (including
-  `/trending`) and the public config, stats and `/api/shares/trending` APIs
-  rather than the whole site, and
-  bypass requests carrying an `access_token` cookie if the rule uses an Edge
-  TTL. Page HTML is cached for at most 60s and hashed `/_next/static` assets
-  stay immutable. Angie/h5bp serves
+  `/trending`), the public config, stats, `/api/shares/trending`,
+  `/api/shares/:id/seo`, `/api/shares/sitemap`, `/robots.txt` and
+  `/sitemap.xml` rather than the whole site, and bypass requests carrying an
+  `access_token` cookie if the rule uses an Edge TTL. Page HTML is cached for
+  at most 60s, SEO JSON for 60s, sitemap XML for one hour, robots for one day
+  and hashed `/_next/static` assets stay immutable. Angie/h5bp serves
   `/img` and `/favicon.ico` directly with its own long TTL (one year / one
   week), so the Next.js one-day rules do not apply there; purge the logo,
-  favicon and PWA icon URLs after an admin branding change. If `/sw.js` was
-  previously cached long-term, purge it once; `_app` also registers it with a
-  build-hash query.
+  dark logo, favicon, PWA icon and `og-image.png` URLs after an admin branding
+  change. Public `?webp=true` previews are normal cacheable file GETs; keep the
+  query string in the file cache key. If `/sw.js` was previously cached
+  long-term, purge it once; `_app` also registers it with a build-hash query.
 
 ## Auth redirects
 
@@ -177,7 +181,58 @@ full document navigation. A client-side navigation can reuse a prefetched
 sign-in redirect for a protected page and loop between `/upload` and
 `/auth/signIn`; the full navigation avoids that cache.
 
+## SEO, structured data and image delivery
+
+- `Meta` now emits one title, description, canonical URL and robots directive per
+  page, plus Open Graph/Twitter tags, a 1200x630 OG image and JSON-LD. Query
+  strings (including `?lang=` and `?recipient=`) are stripped from canonicals;
+  `/s/:id` permanently redirects (308) to the canonical `/share/:id` page.
+  Auth, account, admin, upload, edit, error and missing-share pages are
+  `noindex, nofollow`; public routes are indexable with
+  `max-image-preview:large`.
+- `_app` emits an Organization + WebSite graph on public routes. The home page
+  adds `SoftwareApplication`, `/trending` and public share pages add
+  `CollectionPage` + `ItemList` data. Protected shares return only
+  `{ indexable: false, id }` from `GET /api/shares/:id/seo`, so names, file
+  names and descriptions never leak into crawler metadata.
+- `GET /api/shares/:id/seo` replaces the SSR share `HEAD` probe. It is
+  edge-cacheable for 60s and has a short in-process cache. The share page passes
+  SEO metadata into `getServerSideProps`, so titles/descriptions are available
+  in the first HTML response. Missing/expired/removed shares still return a real
+  404.
+- `GET /api/shares/sitemap` returns only indexable public shares (complete,
+  unexpired, no password/max views/recipient restriction, public reverse share,
+  at least one file), capped at 45,000 URLs. It is cached in-process for five
+  minutes and at the edge for ten minutes. `/sitemap.xml` adds the static routes
+  and optional legal pages; `/robots.txt` disallows private routes, API/short
+  links, edit pages and query-string variants, then points at the absolute
+  sitemap URL. Migration `20261024000000_add_performance_indexes` adds the
+  missing SQLite indexes on `File.shareId`, `ShareRecipient.shareId`, share
+  creator/reverse-share/expiration/listing columns. On the 15.5k-share local
+  database the cold sitemap query dropped from ~12s to ~94ms; the warm cache is
+  ~25ms.
+- Translation catalogues are lazy per locale and included in the active page's
+  HTML/`__NEXT_DATA__` instead of importing all 34 files into `_app`. Moment
+  locales load on demand only for non-English visitors, and the trending widget
+  is a lazy SSR chunk. The shared first-load JS dropped from ~744 kB to ~250 kB
+  in the local production build; `/upload` dropped from ~707 kB to ~356 kB
+  after removing the static MDEditor command import.
+- Raster share images get a resized WebP preview on first request
+  (`?download=false&webp=true`, max 1600px, quality 82) cached under
+  `uploads/_previews/<shareId>/<fileId>.webp`. Original files remain untouched
+  for downloads; protected shares keep `private` previews and public shares use
+  the same day-long immutable CDN headers as normal files. Preview files are
+  removed with their share/file.
+- UI branding uses WebP (`logo.webp`, `logo-dark.webp`, PWA icon WebP variants)
+  with PNG fallbacks, and the admin logo upload regenerates both formats plus
+  `og-image.png`. The tracked logo PNGs were recompressed from ~160 kB to
+  ~38 kB and their WebP versions are ~24 kB; PWA icons keep PNG for platform
+  compatibility while listing WebP variants in the manifest. `update.sh` merges preserved local branding
+  into the pulled tree instead of replacing the whole `img` directory, then
+  runs `npm run assets:brand` before `next build`.
+
 ## Verified locally
+
 
 - Node `22.23.3` production builds pass for backend and frontend. `npm run
   test:unit` passes all 23 tests, covering view limits, IP+User-Agent identity,
@@ -194,6 +249,21 @@ sign-in redirect for a protected page and loop between `/upload` and
   share 404, upload/share folder paths and the media gallery rendered, and
   public file/ZIP headers stayed cookie-free (`immutable` file / 60-second ZIP).
   No console errors or warnings appeared beyond the deliberate 404 page visit.
+- A Playwright SEO/CWV pass covered `/`, `/trending`, public/protected shares,
+  `/privacy`, sign-in, upload, account, admin, 404, `/robots.txt` and
+  `/sitemap.xml` at 1366px and 390px, signed-in and guest. Every page had one
+  H1, `main`/`header`/`footer`/`nav` landmarks, zero images without `alt`, zero
+  horizontal overflow, valid canonical/robots tags and JSON-LD, and loaded the
+  WebP logo. The sitemap parsed as valid XML with ~15.5k URLs on the local
+  database copy; protected shares were excluded and noindexed. German SSR
+  rendered translated dates and navigation. Only the intentional protected
+  share `403` and missing-page `404` appeared as browser network console
+  messages. The production build reports ~250 kB shared first-load JS (down
+  from ~744 kB; upload is ~356 kB) and the WebP preview request returned
+  `image/webp` at 952 bytes for a 3.1 kB JPEG. The cold sitemap query fell
+  from ~12s to ~94ms after the index migration. The standalone server used by
+  `update.sh` was also started directly and served `/`, German SSR, share
+  metadata, `/robots.txt`, `/sitemap.xml` and WebP assets correctly.
 - A follow-up caching review (local Node `26.12.1`; the server remains on
   `22.23.3`) rechecked that only query-free page shells are public, cacheable
   file/ZIP GETs stay free of `Set-Cookie`, the share-metadata cache contains

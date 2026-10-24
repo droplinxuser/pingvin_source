@@ -200,10 +200,7 @@ const Header = () => {
       label: t("navbar.home"),
     });
 
-  if (
-    config.get("security.allowRegistration") &&
-    (!shouldHideAuthButtons)
-  ) {
+  if (config.get("security.allowRegistration") && !shouldHideAuthButtons) {
     unauthenticatedLinks.push({
       link: "/auth/signUp",
       label: t("navbar.signup"),
@@ -361,26 +358,44 @@ const Header = () => {
     <>
       <MantineHeader height={HEADER_HEIGHT} mb={0} className={classes.root}>
         <Container className={classes.header}>
-          <Link href="/" passHref>
+          <Link
+            href="/"
+            passHref
+            aria-label={`${config.get("general.appName")} home`}
+          >
             <Group>
               <Logo height={35} width={35} />
               <Text weight={600}>{config.get("general.appName")}</Text>
             </Group>
           </Link>
-          <Group spacing={5} className={classes.links}>
+          <Box
+            component="nav"
+            aria-label={t("navbar.custom.primary")}
+            className={classes.links}
+          >
             <Group>{desktopItems}</Group>
-          </Group>
+          </Box>
           <Burger
             opened={opened}
             onClick={toggle}
             className={classes.burger}
             size="sm"
+            aria-label={t("navbar.custom.open-menu")}
+            aria-expanded={opened}
+            aria-controls="mobile-navigation"
           />
         </Container>
       </MantineHeader>
       <Transition transition="scale-y" duration={20} mounted={opened}>
         {(styles) => (
-          <Paper className={classes.mobilePanel} withBorder style={styles}>
+          <Paper
+            id="mobile-navigation"
+            component="nav"
+            aria-label={t("navbar.custom.primary")}
+            className={classes.mobilePanel}
+            withBorder
+            style={styles}
+          >
             <Stack spacing={0}>
               {mobileMenuView !== "root" && (
                 <UnstyledButton

@@ -13,16 +13,19 @@ import { FormattedMessage } from "react-intl";
 import { TbDownload, TbExternalLink } from "react-icons/tb";
 import useTranslate from "../../hooks/useTranslate.hook";
 import api from "../../services/api.service";
+import { getShareFileUrl } from "../../utils/file.util";
 import { HoverTip } from "../core/HoverTip";
 
 const FilePreviewContext = React.createContext<{
   shareId: string;
   fileId: string;
+  fileName: string;
   mimeType: string;
   setIsNotSupported: Dispatch<SetStateAction<boolean>>;
 }>({
   shareId: "",
   fileId: "",
+  fileName: "",
   mimeType: "",
   setIsNotSupported: () => {},
 });
@@ -30,10 +33,12 @@ const FilePreviewContext = React.createContext<{
 const FilePreview = ({
   shareId,
   fileId,
+  fileName,
   mimeType,
 }: {
   shareId: string;
   fileId: string;
+  fileName: string;
   mimeType: string;
 }) => {
   const t = useTranslate();
@@ -44,7 +49,7 @@ const FilePreview = ({
       <HoverTip label={t("share.modal.file-preview.original_file")}>
         <ActionIcon
           component="a"
-          href={`/api/shares/${shareId}/files/${fileId}?download=false`}
+          href={getShareFileUrl(shareId, fileId, { download: false })}
           target="_blank"
           rel="noopener"
           variant="light"
@@ -58,7 +63,7 @@ const FilePreview = ({
       <HoverTip label={t("common.button.download")}>
         <ActionIcon
           component="a"
-          href={`/api/shares/${shareId}/files/${fileId}?download=true`}
+          href={getShareFileUrl(shareId, fileId, { download: true })}
           variant="light"
           color="cyan"
           size="lg"
@@ -81,7 +86,7 @@ const FilePreview = ({
   return (
     <Stack>
       <FilePreviewContext.Provider
-        value={{ shareId, fileId, mimeType, setIsNotSupported }}
+        value={{ shareId, fileId, fileName, mimeType, setIsNotSupported }}
       >
         <FileDecider />
       </FilePreviewContext.Provider>
@@ -117,7 +122,7 @@ const AudioPreview = () => {
       <Stack align="center" spacing={10} style={{ width: "100%" }}>
         <audio controls style={{ width: "100%" }}>
           <source
-            src={`/api/shares/${shareId}/files/${fileId}?download=false`}
+            src={getShareFileUrl(shareId, fileId, { download: false })}
             onError={() => setIsNotSupported(true)}
           />
         </audio>
@@ -132,7 +137,7 @@ const VideoPreview = () => {
   return (
     <video width="100%" controls playsInline preload="metadata">
       <source
-        src={`/api/shares/${shareId}/files/${fileId}?download=false`}
+        src={getShareFileUrl(shareId, fileId, { download: false })}
         onError={() => setIsNotSupported(true)}
       />
     </video>
@@ -140,15 +145,16 @@ const VideoPreview = () => {
 };
 
 const ImagePreview = () => {
-  const { shareId, fileId, setIsNotSupported } =
+  const { shareId, fileId, fileName, setIsNotSupported } =
     React.useContext(FilePreviewContext);
   return (
     // eslint-disable-next-line @next/next/no-img-element
     <img
-      src={`/api/shares/${shareId}/files/${fileId}?download=false`}
-      alt={`${fileId}_preview`}
-      width="100%"
+      src={getShareFileUrl(shareId, fileId, { download: false, webp: true })}
+      alt={`Preview of ${fileName || fileId}`}
+      style={{ width: "100%", height: "auto" }}
       loading="lazy"
+      decoding="async"
       onError={() => setIsNotSupported(true)}
     />
   );

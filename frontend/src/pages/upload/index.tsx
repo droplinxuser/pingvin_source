@@ -314,7 +314,7 @@ const Upload = ({
         <Center style={{ height: "70vh" }}>
           <Stack align="center" spacing={10}>
             <TbShieldLock size={48} color="gray" />
-            <Title order={3}>
+            <Title order={1} size="h3">
               <FormattedMessage id="upload.error.not-allowed.title" />
             </Title>
             <Text color="dimmed" align="center">
@@ -333,6 +333,9 @@ const Upload = ({
   return (
     <>
       <Meta title={t("upload.title")} />
+      <Title order={1} className="visually-hidden">
+        {t("upload.title")}
+      </Title>
       <Group position="right" mb={20}>
         <Button
           loading={isUploading}

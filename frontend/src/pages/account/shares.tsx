@@ -57,7 +57,7 @@ const MyShares = () => {
   return (
     <>
       <Meta title={t("account.shares.title")} />
-      <Title mb={30} order={3}>
+      <Title mb={30} order={1} size="h3">
         <FormattedMessage id="account.shares.title" />
       </Title>
       {shares.length == 0 ? (

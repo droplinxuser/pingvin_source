@@ -9,10 +9,16 @@ const Imprint = () => {
   const t = useTranslate();
   const { colorScheme } = useMantineTheme();
   const config = useConfig();
+  const siteName =
+    (config.get("general.appName") as string)?.trim() || "Pingvin Share";
   return (
-    <>
-      <Meta title={t("imprint.title")} />
-      <Title mb={30} order={1}>
+    <article aria-labelledby="imprint-title">
+      <Meta
+        title={t("imprint.title")}
+        description={t("seo.custom.imprint.description", { siteName })}
+        canonicalPath="/imprint"
+      />
+      <Title id="imprint-title" mb={30} order={1}>
         <FormattedMessage id="imprint.title" />
       </Title>
       <Markdown
@@ -48,7 +54,7 @@ const Imprint = () => {
       >
         {config.get("legal.imprintText")}
       </Markdown>
-    </>
+    </article>
   );
 };
 

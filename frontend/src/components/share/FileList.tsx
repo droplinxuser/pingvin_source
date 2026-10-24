@@ -217,6 +217,7 @@ const FileList = ({
                           color="blue"
                           variant="light"
                           size={28}
+                          aria-label={t("share.copy-text-contents")}
                           onClick={() => {
                             api
                               .get(
@@ -247,6 +248,7 @@ const FileList = ({
                             color="green"
                             variant="light"
                             size={28}
+                            aria-label={t("common.button.preview")}
                             onClick={() =>
                               showFilePreviewModal(share.id, file, modals)
                             }
@@ -260,6 +262,7 @@ const FileList = ({
                         color="cyan"
                         variant="light"
                         size={28}
+                        aria-label={t("common.button.download")}
                         onClick={async () => {
                           await shareService.downloadFile(
                             share.id,

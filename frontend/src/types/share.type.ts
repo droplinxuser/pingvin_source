@@ -72,6 +72,23 @@ export type ShareMetaData = {
   isZipReady: boolean;
 };
 
+export type ShareSeo = {
+  indexable: boolean;
+  id: string;
+  name?: string;
+  description?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  fileCount?: number;
+  size?: number;
+  files?: { name: string }[];
+};
+
+export type SitemapShare = {
+  id: string;
+  lastModified: string;
+};
+
 export type TrendingShare = {
   id: string;
   name?: string;

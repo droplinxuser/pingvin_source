@@ -14,7 +14,12 @@ const showFilePreviewModal = (
     size: "xl",
     title: getBaseName(file.name),
     children: (
-      <FilePreview shareId={shareId} fileId={file.id} mimeType={mimeType} />
+      <FilePreview
+        shareId={shareId}
+        fileId={file.id}
+        fileName={file.name}
+        mimeType={mimeType}
+      />
     ),
   });
 };

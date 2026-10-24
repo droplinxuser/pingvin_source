@@ -7,6 +7,7 @@ import {
   Group,
   Text,
   ThemeIcon,
+  Title,
   UnstyledButton,
 } from "@mantine/core";
 import Link from "next/link";
@@ -16,6 +17,7 @@ import { TbEye, TbPlayerPlay } from "react-icons/tb";
 import useTranslate from "../../hooks/useTranslate.hook";
 import shareService from "../../services/share.service";
 import { TrendingShare } from "../../types/share.type";
+import { getShareFileUrl } from "../../utils/file.util";
 
 const useStyles = createStyles((theme) => {
   const border =
@@ -165,9 +167,24 @@ const TrendingToday = ({
   }, [initialItems, limit]);
 
   const visibleItems = initialItems ?? items;
-  if (visibleItems.length === 0) return null;
-
   const title = t("trending.custom.title");
+  if (visibleItems.length === 0) {
+    if (!embedded) return null;
+
+    return (
+      <Container className={classes.root}>
+        <section aria-labelledby="trending-title">
+          <Title order={1} id="trending-title" className={classes.heading}>
+            {title}
+          </Title>
+          <Text className={classes.subheading} mt="xs">
+            {t("trending.custom.empty")}
+          </Text>
+        </section>
+      </Container>
+    );
+  }
+
   const mediaClassName = embedded
     ? `${classes.media} ${classes.mediaSharp}`
     : classes.media;
@@ -175,18 +192,19 @@ const TrendingToday = ({
     <>
       <Group position="apart" align="baseline" mb="md">
         {embedded ? (
-          <Text id="trending-title" className={classes.heading}>
+          <Title order={1} id="trending-title" className={classes.heading}>
             {title}
-          </Text>
+          </Title>
         ) : (
-          <Anchor
-            id="trending-title"
-            component={Link}
-            href="/trending"
-            className={`${classes.heading} ${classes.headingLink}`}
-          >
-            {title}
-          </Anchor>
+          <Title order={2} id="trending-title" className={classes.heading}>
+            <Anchor
+              component={Link}
+              href="/trending"
+              className={classes.headingLink}
+            >
+              {title}
+            </Anchor>
+          </Title>
         )}
         <Text className={classes.subheading}>
           {t("trending.custom.description")}
@@ -197,7 +215,13 @@ const TrendingToday = ({
         {visibleItems.map((item) => {
           const name = item.name || item.id;
           const views = item.views.toLocaleString(intl.locale);
-          const url = `/api/shares/${item.id}/files/${item.previewFileId}?download=false`;
+          const url = getShareFileUrl(item.id, item.previewFileId, {
+            download: false,
+          });
+          const imageUrl = getShareFileUrl(item.id, item.previewFileId, {
+            download: false,
+            webp: true,
+          });
 
           return (
             <UnstyledButton
@@ -212,8 +236,8 @@ const TrendingToday = ({
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                   className={mediaClassName}
-                  src={url}
-                  alt=""
+                  src={imageUrl}
+                  alt={name}
                   loading="lazy"
                   decoding="async"
                   onError={(event) => {

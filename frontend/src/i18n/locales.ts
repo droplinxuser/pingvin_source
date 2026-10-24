@@ -1,216 +1,195 @@
-import arabic from "./translations/ar-EG";
-import bulgarian from "./translations/bg-BG";
-import catalan from "./translations/ca-ES";
-import czech from "./translations/cs-CZ";
-import danish from "./translations/da-DK";
-import german from "./translations/de-DE";
-import greek from "./translations/el-GR";
-import english from "./translations/en-US";
-import spanish from "./translations/es-ES";
-import estonian from "./translations/et-EE";
-import finnish from "./translations/fi-FI";
-import french from "./translations/fr-FR";
-import croatian from "./translations/hr-HR";
-import hungarian from "./translations/hu-HU";
-import italian from "./translations/it-IT";
-import japanese from "./translations/ja-JP";
-import korean from "./translations/ko-KR";
-import dutch from "./translations/nl-BE";
-import polish from "./translations/pl-PL";
-import portuguese from "./translations/pt-BR";
-import russian from "./translations/ru-RU";
-import slovenian from "./translations/sl-SI";
-import serbianLatin from "./translations/sr-CS";
-import serbianCyrillic from "./translations/sr-SP";
-import swedish from "./translations/sv-SE";
-import norwegianBokmal from "./translations/nb-NO";
-import norwegianNynorsk from "./translations/nn-NO";
-import thai from "./translations/th-TH";
-import turkish from "./translations/tr-TR";
-import ukrainian from "./translations/uk-UA";
-import viatnamese from "./translations/vi-VN";
-import chineseSimplified from "./translations/zh-CN";
-import chineseTraditional from "./translations/zh-TW";
-import persian from "./translations/fa-IR";
-
+/**
+ * Locale metadata is kept free of translation payloads so the client bundle
+ * only downloads the active language, not all 34 translation files.
+ */
 export interface Locale {
   name: string;
   code: string;
-  messages: Record<string, string>;
   direction?: string;
 }
+
+export type LocaleMessages = Record<string, string>;
+type LocaleModule = { default: LocaleMessages };
+
+export const DEFAULT_LOCALE = "en-US";
 
 export const LOCALES: Record<string, Locale> = {
   ENGLISH: {
     name: "English",
     code: "en-US",
-    messages: english,
   },
   GERMAN: {
     name: "Deutsch",
     code: "de-DE",
-    messages: german,
   },
   FRENCH: {
     name: "Français",
     code: "fr-FR",
-    messages: french,
   },
   PORTUGUESE_BRAZIL: {
     name: "Português (Brasil)",
     code: "pt-BR",
-    messages: portuguese,
   },
   DANISH: {
     name: "Dansk",
     code: "da-DK",
-    messages: danish,
   },
   SPANISH: {
     name: "Español",
     code: "es-ES",
-    messages: spanish,
   },
   CHINESE_SIMPLIFIED: {
     name: "简体中文",
     code: "zh-CN",
-    messages: chineseSimplified,
   },
   CHINESE_TRADITIONAL: {
     name: "正體中文",
     code: "zh-TW",
-    messages: chineseTraditional,
   },
   FINNISH: {
     name: "Suomi",
     code: "fi-FI",
-    messages: finnish,
   },
   RUSSIAN: {
     name: "Русский",
     code: "ru-RU",
-    messages: russian,
   },
   UKRAINIAN: {
     name: "Українська",
     code: "uk-UA",
-    messages: ukrainian,
   },
   THAI: {
     name: "ไทย",
     code: "th-TH",
-    messages: thai,
   },
   SERBIAN: {
     name: "Српски",
     code: "sr-SP",
-    messages: serbianCyrillic,
   },
   SERBIAN_LATIN: {
     name: "Srpski",
     code: "sr-CS",
-    messages: serbianLatin,
   },
   DUTCH: {
     name: "Nederlands",
     code: "nl-BE",
-    messages: dutch,
   },
   JAPANESE: {
     name: "日本語",
     code: "ja-JP",
-    messages: japanese,
   },
   POLISH: {
     name: "Polski",
     code: "pl-PL",
-    messages: polish,
   },
   SWEDISH: {
     name: "Svenska",
     code: "sv-SE",
-    messages: swedish,
   },
   NORWEGIAN_BOKMAL: {
     name: "Norsk bokmål",
     code: "nb-NO",
-    messages: norwegianBokmal,
   },
   NORWEGIAN_NYNORSK: {
     name: "Norsk nynorsk",
     code: "nn-NO",
-    messages: norwegianNynorsk,
   },
   ITALIAN: {
     name: "Italiano",
     code: "it-IT",
-    messages: italian,
   },
   GREEK: {
     name: "Ελληνικά",
     code: "el-GR",
-    messages: greek,
   },
   SLOVENIAN: {
     name: "Slovenščina",
     code: "sl-SI",
-    messages: slovenian,
   },
   ARABIC: {
     name: "العربية",
     code: "ar-EG",
-    messages: arabic,
     direction: "rtl",
   },
   PERSIAN: {
     name: "فارسی",
     code: "fa-IR",
-    messages: persian,
     direction: "rtl",
   },
   BULGARIAN: {
     name: "Български",
     code: "bg-BG",
-    messages: bulgarian,
   },
   HUNGARIAN: {
     name: "Hungarian",
     code: "hu-HU",
-    messages: hungarian,
   },
   KOREAN: {
     name: "한국어",
     code: "ko-KR",
-    messages: korean,
   },
   TURKISH: {
     name: "Türkçe",
     code: "tr-TR",
-    messages: turkish,
   },
   CZECH: {
     name: "Čeština",
     code: "cs-CZ",
-    messages: czech,
   },
   VIATNAMESE: {
     name: "Tiếng Việt",
     code: "vi-VN",
-    messages: viatnamese,
   },
   CROATIAN: {
     name: "Hrvatski",
     code: "hr-HR",
-    messages: croatian,
   },
   ESTONIAN: {
     name: "Eesti",
     code: "et-EE",
-    messages: estonian,
   },
   CATALAN: {
     name: "Català",
     code: "ca-ES",
-    messages: catalan,
   },
+};
+
+// Dynamic imports create one small chunk per language. The active locale is
+// loaded on the server (or during client-side navigation) and passed to the
+// IntlProvider; other languages are never downloaded.
+export const LOCALE_LOADERS: Record<string, () => Promise<LocaleModule>> = {
+  "en-US": () => import("./translations/en-US"),
+  "de-DE": () => import("./translations/de-DE"),
+  "fr-FR": () => import("./translations/fr-FR"),
+  "pt-BR": () => import("./translations/pt-BR"),
+  "da-DK": () => import("./translations/da-DK"),
+  "es-ES": () => import("./translations/es-ES"),
+  "zh-CN": () => import("./translations/zh-CN"),
+  "zh-TW": () => import("./translations/zh-TW"),
+  "fi-FI": () => import("./translations/fi-FI"),
+  "ru-RU": () => import("./translations/ru-RU"),
+  "uk-UA": () => import("./translations/uk-UA"),
+  "th-TH": () => import("./translations/th-TH"),
+  "sr-SP": () => import("./translations/sr-SP"),
+  "sr-CS": () => import("./translations/sr-CS"),
+  "nl-BE": () => import("./translations/nl-BE"),
+  "ja-JP": () => import("./translations/ja-JP"),
+  "pl-PL": () => import("./translations/pl-PL"),
+  "sv-SE": () => import("./translations/sv-SE"),
+  "nb-NO": () => import("./translations/nb-NO"),
+  "nn-NO": () => import("./translations/nn-NO"),
+  "it-IT": () => import("./translations/it-IT"),
+  "el-GR": () => import("./translations/el-GR"),
+  "sl-SI": () => import("./translations/sl-SI"),
+  "ar-EG": () => import("./translations/ar-EG"),
+  "fa-IR": () => import("./translations/fa-IR"),
+  "bg-BG": () => import("./translations/bg-BG"),
+  "hu-HU": () => import("./translations/hu-HU"),
+  "ko-KR": () => import("./translations/ko-KR"),
+  "tr-TR": () => import("./translations/tr-TR"),
+  "cs-CZ": () => import("./translations/cs-CZ"),
+  "vi-VN": () => import("./translations/vi-VN"),
+  "hr-HR": () => import("./translations/hr-HR"),
+  "et-EE": () => import("./translations/et-EE"),
+  "ca-ES": () => import("./translations/ca-ES"),
 };

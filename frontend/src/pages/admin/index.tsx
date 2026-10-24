@@ -74,7 +74,7 @@ const Admin = () => {
   return (
     <>
       <Meta title={t("admin.title")} />
-      <Title mb={30} order={3}>
+      <Title mb={30} order={1} size="h3">
         <FormattedMessage id="admin.title" />
       </Title>
       <Stack justify="space-between" style={{ height: "calc(100vh - 180px)" }}>

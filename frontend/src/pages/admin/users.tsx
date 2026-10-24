@@ -101,7 +101,7 @@ const Users = () => {
     <>
       <Meta title={t("admin.users.title")} />
       <Group position="apart" align="baseline" mb={20}>
-        <Title mb={30} order={3}>
+        <Title mb={30} order={1} size="h3">
           <FormattedMessage id="admin.users.title" />
         </Title>
         <Button

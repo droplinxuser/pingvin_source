@@ -21,7 +21,7 @@ const Intro = () => {
             <Logo height={80} width={80} />
           </Center>
           <Center>
-            <Title order={2}>Welcome to Pingvin Share X</Title>
+            <Title order={1} size="h2">Welcome to Pingvin Share X</Title>
           </Center>
           <Text>
             If you enjoy Pingvin Share X please ⭐️ it on{" "}

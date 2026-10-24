@@ -9,7 +9,9 @@ export function getServerSideProps(context: GetServerSidePropsContext) {
   return {
     props: {},
     redirect: {
-      permanent: false,
+      // Permanent alias so search engines consolidate /s/:id into the
+      // canonical /share/:id page.
+      permanent: true,
       destination:
         "/share/" +
         shareId +

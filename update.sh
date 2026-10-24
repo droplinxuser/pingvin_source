@@ -40,8 +40,9 @@ if [ -f frontend/public/favicon.ico ] && ! git diff --quiet -- frontend/public/f
 fi
 restore_branding() {
   if [ -n "$BRAND_BACKUP" ]; then
-    rm -rf frontend/public/img
-    cp -a "$BRAND_BACKUP/img" frontend/public/img
+    # Merge over the pulled tree so new tracked assets (WebP logos, PWA icon
+    # variants, og-image.png) survive an update.
+    cp -a "$BRAND_BACKUP/img/." frontend/public/img/
     rm -rf "$BRAND_BACKUP"
     BRAND_BACKUP=""
     # Older logo uploads wrote this file; the runtime uses the root favicon.
@@ -88,6 +89,9 @@ npm run build
 echo "==> Installing and building the frontend"
 cd "$SRC_DIR/frontend"
 npm ci --no-audit --no-fund
+# Rebuild WebP logos/icons and the OG image from the restored branding (or the
+# tracked defaults) after dependencies are installed.
+npm run assets:brand
 # The PWA manifest is served dynamically at /manifest.json with the site name
 # configured on the backend, so no build-time SITE_NAME handling is needed.
 npm run build

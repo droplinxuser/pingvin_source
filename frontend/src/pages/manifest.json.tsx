@@ -1,5 +1,7 @@
 import { GetServerSidePropsContext } from "next";
 import { fetchConfig } from "../utils/config.server.util";
+import { setPublicCacheHeaders } from "../utils/httpCache.util";
+import { DEFAULT_SITE_DESCRIPTION } from "../utils/seo.util";
 
 // The PWA manifest is served dynamically so that the name always reflects
 // the site name configured on the backend (general.appName, which can be
@@ -7,12 +9,20 @@ import { fetchConfig } from "../utils/config.server.util";
 
 const DEFAULT_SITE_NAME = "Pingvin Share";
 
-const icons = [72, 96, 128, 144, 152, 192, 384, 512].map((size) => ({
-  src: `img/icons/icon-${size}x${size}.png`,
-  sizes: `${size}x${size}`,
-  type: "image/png",
-  purpose: "any maskable",
-}));
+const icons = [72, 96, 128, 144, 152, 192, 384, 512].flatMap((size) => [
+  {
+    src: `img/icons/icon-${size}x${size}.png`,
+    sizes: `${size}x${size}`,
+    type: "image/png",
+    purpose: "any maskable",
+  },
+  {
+    src: `img/icons/icon-${size}x${size}.webp`,
+    sizes: `${size}x${size}`,
+    type: "image/webp",
+    purpose: "any maskable",
+  },
+]);
 
 export async function getServerSideProps({ res }: GetServerSidePropsContext) {
   const apiURL = process.env.API_URL || "http://localhost:8080";
@@ -20,17 +30,20 @@ export async function getServerSideProps({ res }: GetServerSidePropsContext) {
   const siteName =
     config.find((item) => item.key === "general.appName")?.value?.trim() ||
     DEFAULT_SITE_NAME;
+  const language =
+    config.find((item) => item.key === "general.defaultLanguage")?.value ||
+    "en-US";
 
-  const cache = "public, max-age=86400";
   res.setHeader("Content-Type", "application/manifest+json; charset=utf-8");
-  res.setHeader("Cache-Control", cache);
-  res.setHeader("CDN-Cache-Control", cache);
-  res.setHeader("Cloudflare-CDN-Cache-Control", cache);
+  setPublicCacheHeaders(res, 86_400);
   res.end(
     JSON.stringify(
       {
+        id: "/",
         name: siteName,
         short_name: siteName,
+        description: DEFAULT_SITE_DESCRIPTION,
+        lang: language,
         theme_color: "#46509e",
         background_color: "#ffffff",
         display: "standalone",

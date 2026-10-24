@@ -26,7 +26,7 @@ export default function Error() {
     <>
       <Meta title={t("error.title")} />
       <Stack align="center">
-        <Title order={3} className={classes.title}>
+        <Title order={1} className={classes.title}>
           {t("error.description")}
         </Title>
         <Text mt="xl" size="lg">

@@ -108,7 +108,7 @@ const SignUpForm = () => {
 
   return (
     <Container size={420} my={40}>
-      <Title order={2} align="center" weight={900}>
+      <Title order={1} size="h2" align="center" weight={900}>
         <FormattedMessage id="signup.title" />
       </Title>
       {config.get("security.allowRegistration") && (

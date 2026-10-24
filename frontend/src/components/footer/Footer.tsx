@@ -9,6 +9,7 @@ import {
   Stack,
   Text,
 } from "@mantine/core";
+import Link from "next/link";
 import { useRouter } from "next/router";
 import { useEffect, useMemo, useState } from "react";
 import { useIntl } from "react-intl";
@@ -284,7 +285,21 @@ const Footer = () => {
 
           <Box>
             <Text className={classes.heading}>{t("footer.custom.links")}</Text>
-            <div className={classes.legalLinks}>
+            <Box
+              component="nav"
+              aria-label={t("footer.custom.navigation")}
+              className={classes.legalLinks}
+            >
+              <Anchor className={classes.link} component={Link} href="/">
+                {t("navbar.home")}
+              </Anchor>
+              <Anchor
+                className={classes.link}
+                component={Link}
+                href="/trending"
+              >
+                {t("trending.custom.title")}
+              </Anchor>
               <Anchor className={classes.link} href={contactUrl}>
                 {t("footer.custom.contact")}
               </Anchor>
@@ -298,7 +313,7 @@ const Footer = () => {
                   {t("privacy.title")}
                 </Anchor>
               )}
-            </div>
+            </Box>
           </Box>
         </div>
       </Container>

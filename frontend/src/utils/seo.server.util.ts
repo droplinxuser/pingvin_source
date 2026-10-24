@@ -1,0 +1,112 @@
+import type { IncomingMessage } from "http";
+import Config from "../types/config.type";
+import { ShareSeo, SitemapShare } from "../types/share.type";
+import { getConfiguredSiteUrl, normalizeBaseUrl } from "./seo.util";
+
+const SEO_CACHE_MS = 30_000;
+const ERROR_CACHE_MS = 5_000;
+const SITEMAP_CACHE_MS = 10 * 60 * 1000;
+
+type ShareSeoResult =
+  | { status: "ok"; data: ShareSeo }
+  | { status: "not-found" }
+  | { status: "error" };
+
+type CachedSeo = { at: number; value: ShareSeoResult; error?: boolean };
+
+const seoCache = new Map<string, CachedSeo>();
+let sitemapCache: { at: number; value: SitemapShare[] | undefined } | undefined;
+
+/**
+ * Uses the configured public URL in production. Local development and tests
+ * fall back to the proxy's forwarded host so generated sitemap/canonical URLs
+ * point at the address the visitor actually opened.
+ */
+export function resolveSiteUrl(
+  request: IncomingMessage | undefined,
+  config: Config[],
+): string {
+  const configured = getConfiguredSiteUrl(config);
+  const localConfigured =
+    !configured ||
+    /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(configured);
+  if (!localConfigured) return configured;
+  if (!request) return configured;
+
+  const forwardedHost = request.headers["x-forwarded-host"];
+  const host = Array.isArray(forwardedHost)
+    ? forwardedHost[0]
+    : forwardedHost || request.headers.host;
+  if (!host) return configured;
+
+  const forwardedProto = request.headers["x-forwarded-proto"];
+  const proto = Array.isArray(forwardedProto)
+    ? forwardedProto[0]
+    : forwardedProto?.split(",")[0]?.trim() ||
+      ((request.socket as { encrypted?: boolean })?.encrypted
+        ? "https"
+        : "http");
+
+  return normalizeBaseUrl(`${proto}://${host}`);
+}
+
+export async function fetchShareSeo(
+  apiUrl: string,
+  shareId: string,
+): Promise<ShareSeoResult> {
+  const cached = seoCache.get(shareId);
+  if (cached) {
+    const ttl = cached.error ? ERROR_CACHE_MS : SEO_CACHE_MS;
+    if (Date.now() - cached.at < ttl) return cached.value;
+  }
+
+  try {
+    const response = await fetch(
+      `${apiUrl}/api/shares/${encodeURIComponent(shareId)}/seo`,
+      { cache: "no-store", signal: AbortSignal.timeout(1500) },
+    );
+    if (response.status === 404) {
+      const value: ShareSeoResult = { status: "not-found" };
+      seoCache.set(shareId, { at: Date.now(), value });
+      return value;
+    }
+    if (!response.ok) throw new Error(`SEO fetch failed: ${response.status}`);
+
+    const value: ShareSeoResult = {
+      status: "ok",
+      data: (await response.json()) as ShareSeo,
+    };
+    seoCache.set(shareId, { at: Date.now(), value });
+    return value;
+  } catch {
+    // A short negative cache stops a slow backend from being retried on every
+    // request, while still recovering quickly once it is reachable again.
+    const value: ShareSeoResult = { status: "error" };
+    seoCache.set(shareId, { at: Date.now(), value, error: true });
+    return value;
+  }
+}
+
+export async function fetchSitemap(
+  apiUrl: string,
+): Promise<SitemapShare[] | undefined> {
+  if (sitemapCache) {
+    const ttl = sitemapCache.value ? SITEMAP_CACHE_MS : ERROR_CACHE_MS;
+    if (Date.now() - sitemapCache.at < ttl) return sitemapCache.value;
+  }
+
+  try {
+    const response = await fetch(`${apiUrl}/api/shares/sitemap`, {
+      cache: "no-store",
+      signal: AbortSignal.timeout(5000),
+    });
+    const value = response.ok
+      ? ((await response.json()) as SitemapShare[])
+      : undefined;
+    sitemapCache = { at: Date.now(), value };
+    return value;
+  } catch {
+    sitemapCache = { at: Date.now(), value: undefined };
+    return undefined;
+  }
+}

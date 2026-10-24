@@ -12,25 +12,48 @@ const Ads = () => {
   const bannerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const scripts = SCRIPTS.map(({ src, banner }) => {
-      const script = document.createElement("script");
-      script.setAttribute("data-cfasync", "false");
-      script.async = !!banner;
-      script.src = src;
-      (banner ? bannerRef.current : document.body)?.appendChild(script);
-      return script;
-    });
+    let cancelled = false;
+    let idleHandle: number | undefined;
+    let timeout: ReturnType<typeof setTimeout> | undefined;
+    let scripts: HTMLScriptElement[] = [];
 
-    return () => scripts.forEach((script) => script.remove());
+    const load = () => {
+      if (cancelled) return;
+      scripts = SCRIPTS.map(({ src, banner }) => {
+        const script = document.createElement("script");
+        script.setAttribute("data-cfasync", "false");
+        script.async = !!banner;
+        script.src = src;
+        (banner ? bannerRef.current : document.body)?.appendChild(script);
+        return script;
+      });
+    };
+
+    // Third-party tags are not part of the critical path. Start them after the
+    // first paint / idle period so they do not block hydration or LCP.
+    if ("requestIdleCallback" in window) {
+      idleHandle = window.requestIdleCallback(load, { timeout: 3000 });
+    } else {
+      timeout = setTimeout(load, 1500);
+    }
+
+    return () => {
+      cancelled = true;
+      if (idleHandle !== undefined) window.cancelIdleCallback(idleHandle);
+      if (timeout) clearTimeout(timeout);
+      scripts.forEach((script) => script.remove());
+    };
   }, []);
 
   return (
-    <div
+    <aside
       ref={bannerRef}
+      aria-label="Advertisement"
       style={{
         display: "flex",
         justifyContent: "center",
         margin: "24px auto",
+        minHeight: 90,
         width: "100%",
       }}
     />

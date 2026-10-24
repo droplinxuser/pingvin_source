@@ -42,6 +42,7 @@ import { UpdateShareDTO } from "./dto/updateShare.dto";
 import { GuardShare, ShareStateService } from "./shareState.service";
 import {
   SHARE_EXPIRATION,
+  isPublicShare,
   isViewLimitExceeded,
   sumFileSizes,
 } from "./share.util";
@@ -86,10 +87,31 @@ type ShareMetaData = {
   isZipReady: boolean;
 };
 
+export type ShareSeo = {
+  indexable: boolean;
+  id: string;
+  name?: string;
+  description?: string;
+  createdAt?: Date;
+  updatedAt?: Date;
+  fileCount?: number;
+  size?: number;
+  files?: { name: string }[];
+};
+
+export type SitemapShare = {
+  id: string;
+  lastModified: Date;
+};
+
+const SITEMAP_MAX_URLS = 45_000;
+const SITEMAP_CACHE_MS = 5 * 60 * 1000;
+
 @Injectable()
 export class ShareService {
   private readonly logger = new Logger(ShareService.name);
   private readonly activeZipBuilds = new Set<string>();
+  private sitemapCache?: { at: number; value: SitemapShare[] };
   constructor(
     private prisma: PrismaService,
     private configService: ConfigService,
@@ -594,6 +616,133 @@ export class ShareService {
     }
 
     return metaData;
+  }
+
+  /**
+   * Public metadata for search engines. Protected shares return only
+   * `indexable: false` so their names, file names and descriptions stay out of
+   * HTML metadata, structured data and sitemaps.
+   */
+  async getSeo(id: string): Promise<ShareSeo> {
+    const share = await this.prisma.share.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        createdAt: true,
+        updatedAt: true,
+        uploadLocked: true,
+        removedReason: true,
+        expiration: true,
+        security: {
+          select: {
+            password: true,
+            maxViews: true,
+            restrictToRecipients: true,
+          },
+        },
+        reverseShare: { select: { publicAccess: true } },
+        files: {
+          select: { name: true },
+          orderBy: { name: "asc" },
+          take: 20,
+        },
+        _count: { select: { files: true } },
+      },
+    });
+
+    if (!share || share.removedReason || !share.uploadLocked)
+      throw new NotFoundException(this.i18n.t("share.notFound"));
+
+    if (
+      !moment(share.expiration).isSame(0) &&
+      moment().isAfter(share.expiration)
+    )
+      throw new NotFoundException(this.i18n.t("share.notFound"));
+
+    if (!isPublicShare(share) || share._count.files === 0)
+      return { indexable: false, id: share.id };
+
+    const sizeRows = await this.prisma.$queryRaw<
+      { size: number | bigint | null }[]
+    >`
+      SELECT COALESCE(SUM(CAST(size AS INTEGER)), 0) AS size
+      FROM "File"
+      WHERE "shareId" = ${share.id}
+    `;
+
+    return {
+      indexable: true,
+      id: share.id,
+      name: share.name ?? undefined,
+      description: share.description ?? undefined,
+      createdAt: share.createdAt,
+      updatedAt: share.updatedAt ?? share.createdAt,
+      fileCount: share._count.files,
+      size: Number(sizeRows[0]?.size ?? 0),
+      files: share.files,
+    };
+  }
+
+  /**
+   * All indexable public shares, newest first. The list is cached briefly in
+   * process and much longer at the CDN edge.
+   */
+  async getSitemapShares(): Promise<SitemapShare[]> {
+    if (
+      this.sitemapCache &&
+      Date.now() - this.sitemapCache.at < SITEMAP_CACHE_MS
+    )
+      return this.sitemapCache.value;
+
+    const shares = await this.prisma.share.findMany({
+      where: {
+        uploadLocked: true,
+        removedReason: null,
+        files: { some: {} },
+        AND: [
+          {
+            OR: [
+              { expiration: { gt: new Date() } },
+              { expiration: { equals: moment(0).toDate() } },
+            ],
+          },
+          {
+            OR: [
+              { security: null },
+              {
+                security: {
+                  is: {
+                    password: null,
+                    maxViews: null,
+                    restrictToRecipients: false,
+                  },
+                },
+              },
+            ],
+          },
+          {
+            OR: [
+              { reverseShare: null },
+              { reverseShare: { is: { publicAccess: true } } },
+            ],
+          },
+        ],
+      },
+      select: { id: true, createdAt: true },
+      orderBy: { createdAt: "desc" },
+      take: SITEMAP_MAX_URLS,
+    });
+
+    const value = shares.map((share) => ({
+      id: share.id,
+      // createdAt is stable. updatedAt also changes on every view, which
+      // would make the sitemap's lastmod signal noisy.
+      lastModified: share.createdAt,
+    }));
+    this.sitemapCache = { at: Date.now(), value };
+    return value;
   }
 
   async report(id: string, report: ReportShareDTO) {

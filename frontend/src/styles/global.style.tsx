@@ -19,6 +19,39 @@ const GlobalStyle = () => {
           paddingLeft: "0.5em",
           paddingRight: "0.5em",
         },
+        ".skip-link": {
+          position: "absolute",
+          left: -9999,
+          top: 0,
+          zIndex: 1000,
+          padding: "8px 14px",
+          borderRadius: theme.radius.sm,
+          backgroundColor:
+            theme.colorScheme === "dark" ? theme.white : theme.black,
+          color: theme.colorScheme === "dark" ? theme.black : theme.white,
+        },
+        ".skip-link:focus": {
+          left: theme.spacing.md,
+          top: theme.spacing.md,
+        },
+        ".visually-hidden": {
+          position: "absolute",
+          width: 1,
+          height: 1,
+          padding: 0,
+          margin: -1,
+          overflow: "hidden",
+          clip: "rect(0, 0, 0, 0)",
+          whiteSpace: "nowrap",
+          border: 0,
+        },
+        "img, video": {
+          maxWidth: "100%",
+        },
+        "a:focus-visible, button:focus-visible": {
+          outline: `2px solid ${theme.colors[theme.primaryColor][6]}`,
+          outlineOffset: 2,
+        },
       })}
     />
   );
