@@ -160,7 +160,7 @@ const ShareActions = ({
         <DownloadAllButton
           shareId={shareId}
           recipientId={recipientId}
-          isZipReady={share.isZipReady}
+          files={share.files}
         />
       )}
     </Group>

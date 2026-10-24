@@ -1,58 +1,68 @@
-import { Button } from "@mantine/core";
-import { useEffect, useState } from "react";
+import { Button, Text } from "@mantine/core";
+import { useModals } from "@mantine/modals";
+import { useState } from "react";
+import { TbDownload } from "react-icons/tb";
 import { FormattedMessage } from "react-intl";
+import useTranslate from "../../hooks/useTranslate.hook";
 import shareService from "../../services/share.service";
+
+const DOWNLOAD_GAP_MS = 250;
+
+type DownloadableFile = { id: string };
 
 const DownloadAllButton = ({
   shareId,
   recipientId,
-  isZipReady: initialIsZipReady = false,
+  files,
 }: {
   shareId: string;
   recipientId?: string;
-  isZipReady?: boolean;
+  files: DownloadableFile[];
 }) => {
-  const [isZipReady, setIsZipReady] = useState(initialIsZipReady);
-  const [isLoading, setIsLoading] = useState(false);
+  const modals = useModals();
+  const t = useTranslate();
+  const [isDownloading, setIsDownloading] = useState(false);
 
   const downloadAll = async () => {
-    setIsLoading(true);
-    await shareService
-      .downloadFile(shareId, "zip", recipientId)
-      .then(() => setIsLoading(false));
+    setIsDownloading(true);
+    try {
+      for (const [index, file] of files.entries()) {
+        await shareService.downloadFile(shareId, file.id, recipientId);
+        if (index < files.length - 1) {
+          await new Promise((resolve) => setTimeout(resolve, DOWNLOAD_GAP_MS));
+        }
+      }
+    } finally {
+      setIsDownloading(false);
+    }
   };
 
-  useEffect(() => {
-    // The share response already carries the zip state, so only poll while it
-    // is still being prepared.
-    if (initialIsZipReady) {
-      setIsZipReady(true);
-      return;
-    }
-
-    const timer = setInterval(() => {
-      shareService
-        .getMetaData(shareId)
-        .then((share) => {
-          setIsZipReady(share.isZipReady);
-          if (share.isZipReady) clearInterval(timer);
-        })
-        .catch(() => clearInterval(timer));
-    }, 5000);
-    return () => {
-      clearInterval(timer);
-    };
-  }, [initialIsZipReady, shareId]);
-
-  // The button is only shown once the zip has been prepared
-  if (!isZipReady) return null;
+  const confirmDownloadAll = () => {
+    modals.openConfirmModal({
+      title: t("share.custom.download-all.confirm.title"),
+      children: (
+        <Text size="sm">
+          <FormattedMessage
+            id="share.custom.download-all.confirm.description"
+            values={{ count: files.length }}
+          />
+        </Text>
+      ),
+      labels: {
+        confirm: t("share.custom.download-all.confirm.button"),
+        cancel: t("common.button.cancel"),
+      },
+      onConfirm: downloadAll,
+    });
+  };
 
   return (
     <Button
       variant="light"
       color="cyan"
-      loading={isLoading}
-      onClick={downloadAll}
+      leftIcon={<TbDownload />}
+      loading={isDownloading}
+      onClick={confirmDownloadAll}
     >
       <FormattedMessage id="share.button.download-all" />
     </Button>

@@ -7,13 +7,11 @@ import {
 } from "@nestjs/common";
 import { JwtService, JwtSignOptions } from "@nestjs/jwt";
 import { Prisma, Share, User, ShareSecurity } from "@prisma/client";
-import * as archiver from "archiver";
 import * as argon from "argon2";
 import * as crypto from "crypto";
 import { Request } from "express";
 import * as fs from "fs";
 import * as moment from "moment";
-import { pipeline } from "stream/promises";
 import { I18nService } from "nestjs-i18n";
 import { ClamScanService } from "src/clamscan/clamscan.service";
 import { ConfigService } from "src/config/config.service";
@@ -88,7 +86,6 @@ export type ShareSeo = {
 @Injectable()
 export class ShareService {
   private readonly logger = new Logger(ShareService.name);
-  private readonly activeZipBuilds = new Set<string>();
   constructor(
     private prisma: PrismaService,
     private configService: ConfigService,
@@ -248,71 +245,6 @@ export class ShareService {
     return shareTuple;
   }
 
-  async createZip(shareId: string) {
-    if (this.activeZipBuilds.has(shareId)) return;
-    this.activeZipBuilds.add(shareId);
-
-    const share = await this.prisma.share.findUnique({
-      where: { id: shareId },
-      select: { id: true },
-    });
-
-    if (!share) {
-      this.activeZipBuilds.delete(shareId);
-      return;
-    }
-
-    const sharePath = `${SHARE_DIRECTORY}/${share.id}`;
-    const zipPath = `${sharePath}/archive.zip`;
-
-    if (this.config.get("s3.enabled")) {
-      await this.prisma.share
-        .update({
-          where: { id: shareId },
-          data: { isZipReady: true },
-        })
-        .catch((error) => {
-          this.logger.error(
-            `Failed to update isZipReady for S3 share ${shareId}`,
-            error,
-          );
-        });
-      await this.shareState.invalidateDataCache(shareId);
-      this.activeZipBuilds.delete(shareId);
-      return;
-    }
-
-    try {
-      const files = await this.prisma.file.findMany({ where: { shareId } });
-      const archive = archiver("zip", {
-        zlib: { level: this.config.get("share.zipCompressionLevel") },
-      });
-
-      archive.on("warning", (err) => archive.destroy(err));
-
-      const writeStream = fs.createWriteStream(zipPath);
-
-      for (const file of files) {
-        archive.file(`${sharePath}/${file.id}`, {
-          name: file.name,
-        });
-      }
-
-      await Promise.all([pipeline(archive, writeStream), archive.finalize()]);
-
-      await this.prisma.share.update({
-        where: { id: shareId },
-        data: { isZipReady: true },
-      });
-      await this.shareState.invalidateDataCache(shareId);
-    } catch (error) {
-      this.logger.error(`Failed to create zip for share ${shareId}`, error);
-      await fs.promises.rm(zipPath, { force: true }).catch(() => {});
-    } finally {
-      this.activeZipBuilds.delete(shareId);
-    }
-  }
-
   async complete(id: string) {
     const share = await this.prisma.share.findUnique({
       where: { id },
@@ -358,8 +290,8 @@ export class ShareService {
       }
     }
 
-    // Create a zip of all files
-    if (share.files.length > 1) void this.createZip(id);
+    // ZIP archives are not built during completion. The legacy endpoint still
+    // serves archives already on disk (and S3 builds on explicit request).
 
     const recipientEmails = share.recipients.map((r) => r.email);
     const matchedUsers =
@@ -587,21 +519,12 @@ export class ShareService {
   }
 
   async getMetaData(id: string) {
-    // The share data cache already contains isZipReady and the file list, so
-    // the five-second ZIP poll needs neither its own cache key nor a query.
+    // ZIP archives are not built automatically. Existing archives remain
+    // downloadable through the API; the flag is kept for client compatibility.
     const share = (await this.shareState.getShare(id)) as {
       id: string;
       isZipReady: boolean;
-      files?: { id: string }[];
     };
-
-    if (
-      !share.isZipReady &&
-      (share.files?.length ?? 0) > 1 &&
-      !this.activeZipBuilds.has(id)
-    ) {
-      void this.createZip(id);
-    }
 
     return { id: share.id, isZipReady: share.isZipReady };
   }

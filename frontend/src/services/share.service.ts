@@ -7,7 +7,6 @@ import {
   MyReverseShare,
   MyShare,
   Share,
-  ShareMetaData,
   TrendingShare,
   UpdateShare,
 } from "../types/share.type";
@@ -98,11 +97,6 @@ const getFromOwner = async (id: string): Promise<Share> => {
   return (await api.get(`shares/${id}/from-owner`)).data;
 };
 
-const getMetaData = async (id: string): Promise<ShareMetaData> => {
-  if (!isValidId(id)) throw new Error("Invalid ID");
-  return (await api.get(`shares/${id}/metaData`)).data;
-};
-
 const getTrending = async (limit?: number): Promise<TrendingShare[]> => {
   const requested = limit && limit > 0 ? limit : 12;
   if (
@@ -166,11 +160,16 @@ const downloadFile = async (
   fileId: string,
   recipientId?: string,
 ) => {
-  window.location.href = `${window.location.origin}${getShareFileUrl(
-    shareId,
-    fileId,
-    { download: true, recipientId },
-  )}`;
+  const link = document.createElement("a");
+  link.href = `${window.location.origin}${getShareFileUrl(shareId, fileId, {
+    download: true,
+    recipientId,
+  })}`;
+  link.rel = "noopener";
+  link.style.display = "none";
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
 };
 
 const removeFile = async (shareId: string, fileId: string) => {
@@ -464,7 +463,6 @@ export default {
   remove,
   report,
   expire,
-  getMetaData,
   getTrending,
   getMyShares,
   getReceivedShares,

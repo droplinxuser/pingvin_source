@@ -67,11 +67,6 @@ export type UpdateShare = {
   };
 };
 
-export type ShareMetaData = {
-  id: string;
-  isZipReady: boolean;
-};
-
 export type ShareSeo = {
   indexable: boolean;
   id: string;

@@ -1090,14 +1090,14 @@
 							"response": []
 						},
 						{
-							"name": "Get Zip",
+							"name": "Get Zip - no automatic archive",
 							"event": [
 								{
 									"listen": "test",
 									"script": {
 										"exec": [
-											"pm.test(\"Status code is 200\",  () => {",
-											"    pm.response.to.have.status(200);",
+											"pm.test(\"Status code is 404\",  () => {",
+											"    pm.response.to.have.status(404);",
 											"});"
 										],
 										"type": "text/javascript"

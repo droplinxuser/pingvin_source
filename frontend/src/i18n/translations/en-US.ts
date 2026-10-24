@@ -668,6 +668,8 @@ export default {
   "share.description": "Take a look at what I’ve shared with you!",
   "share.fileCount":
     "{count, plural, =1 {# file} other {# files}} · {size} (zip file may be smaller due to compression)",
+  "share.custom.fileCount":
+    "{count, plural, =1 {# file} other {# files}} · {size}",
   "share.custom.stats.title": "Visitor insights",
   "share.custom.stats.views": "Total views",
   "share.custom.stats.recent": "Recent visitors",
@@ -725,6 +727,10 @@ export default {
   "share.button.download-all": "Download all",
   "share.notify.download-all-preparing":
     "The share is being prepared. Please try again in a few minutes.",
+  "share.custom.download-all.confirm.title": "Download all files?",
+  "share.custom.download-all.confirm.description":
+    "Your browser will download {count, plural, one {# file} other {# files}} separately. If it asks to allow multiple downloads, choose Allow so every file can be saved.",
+  "share.custom.download-all.confirm.button": "Download all",
 
   "share.notify.copied-contents": "File contents copied to clipboard",
   "share.notify.copy-too-big-error": "File is too big to copy to clipboard",

@@ -14,6 +14,7 @@ so `git merge upstream/main` stays small.
 | Share reports | `backend/src/share/dto/reportShare.dto.ts`, `backend/src/email/email.service.ts`, `frontend/src/components/share/showReportShareModal.tsx` |
 | Uploader metadata / visitors | `backend/src/utils/uploaderInfo.util.ts`, `ShareDTO.uploaderInfo`, `frontend/src/components/share/UploaderInfoBadges.tsx`, `ShareStats.tsx`; view counts stay in `Share.views` |
 | Inline media gallery | `frontend/src/components/share/MediaPreviewGallery.tsx` (up to 30 supported image/video thumbnails at 250px for any file size, opening `FilePreview.tsx` in the full-size modal) |
+| Individual downloads / legacy ZIP | `frontend/src/components/share/DownloadAllButton.tsx` (confirmation + sequential per-file downloads), `frontend/src/services/share.service.ts` (anchor-based downloads), `backend/src/share/share.service.ts` (no automatic archive creation); existing `archive.zip` files remain served by the legacy API. The share file count uses `share.custom.fileCount` without the old ZIP note. |
 | Trending today | `backend/src/cache/trending.service.ts`, `GET /api/shares/trending?limit=48`, `frontend/src/components/share/TrendingToday.tsx`, `frontend/src/pages/trending.tsx`, `frontend/src/pages/_app.tsx` |
 | Cache headers / hotlink protection | `backend/src/utils/cache.util.ts` (shared `Cache-Control`, `CDN-Cache-Control`, `Cloudflare-CDN-Cache-Control`, public-file `ETag`), `backend/src/utils/referrer.util.ts`, `frontend/src/middleware.ts` (query-free anonymous page shells), `frontend/next.config.js` |
 | Per-IP+User-Agent rate limiting | `backend/src/utils/visitorIdentity.util.ts`, `backend/src/cache/valkeyThrottler.storage.ts`, `backend/src/cache/throttler.config.ts`, `backend/src/main.ts` |
@@ -85,15 +86,13 @@ other languages show the upstream copy instead of the English fallback.
   if Valkey is unavailable they fall back to the in-memory store. `/api/configs`,
   `GET /api/system/stats`, `GET /api/users/me` (called by SSR), share `HEAD`
   checks and every upload request (init, chunk, complete, abort) skip the
-  visitor bucket so SSR and large uploads keep working. File/ZIP GETs are
+  visitor bucket so SSR and large uploads keep working. File GETs are
   still cache-friendly because the response never needs a visitor cookie.
 - Valkey/Redis is optional but recommended: set `CACHE_REDIS_ENABLED=true` and
   `CACHE_REDIS_URL=redis://127.0.0.1:6379` in `backend/.env` (`update.sh`
   enables both automatically when a local `valkey-server` is active). Share-page
-  data and guard data are cached for 30s each; there is no separate ZIP metadata
-  key, so the five-second ZIP poll reads the share data cache and a finished ZIP
-  invalidates it immediately. A data-cache miss also resets the rolling
-  expiration to 100 days. Share view counts are written
+  data and guard data are cached for 30s each. A data-cache miss also resets
+  the rolling expiration to 100 days. Share view counts are written
   directly to SQLite; shares without a view limit use a single atomic update
   instead of a transaction. Visitor metadata is coalesced into one
   `uploader.json` write per second and per share, and pending entries are
@@ -117,9 +116,9 @@ other languages show the upstream copy instead of the English fallback.
   the backend restarts, and 5xx/network failures retry up to three times. A
   malicious VirusTotal verdict removes only the offending file and keeps clean
   files online. If no files remain, the share gets a `removedReason` and
-  returns 404; otherwise its stale ZIP is deleted and `isZipReady` is reset so
-  the next page load rebuilds it from the remaining files. ClamAV continues to
-  remove the whole share. No scan state is written to SQLite.
+  returns 404; otherwise its stale ZIP is deleted and `isZipReady` is reset.
+  No replacement archive is built because automatic ZIP generation is disabled.
+  ClamAV continues to remove the whole share. No scan state is written to SQLite.
   Operational history is file-backed at
   `DATA_DIRECTORY/virustotal/state.json` (mode `600`): the latest 200 events,
   48 hours of API-call timestamps and 30 days of daily counters. The
@@ -213,9 +212,19 @@ other languages show the upstream copy instead of the English fallback.
   These public routes never put account data in `__NEXT_DATA__`; `_app`
   restores the signed-in user client-side, so an edge cache hit cannot expose
   another visitor's account. Public files are cached for a day with an `ETag`;
-  protected files are `private`. ZIP archives are rebuilt when a share changes,
-  so they use a 60-second edge TTL (and `no-store` when protected) instead of
-  the immutable single-file headers.
+  protected files are `private`. Existing legacy ZIP archives are served as-is
+  with a 60-second edge TTL (and `no-store` when protected) instead of the
+  immutable single-file headers; no new archives are generated automatically.
+- "Download all" downloads each file individually instead of building a ZIP.
+  The button is shown immediately for multi-file shares, asks for confirmation,
+  and warns that the browser may request permission to allow multiple
+  downloads. Each file is fetched through a hidden same-origin anchor with a
+  short gap so Chrome/Firefox can show their multiple-download prompt. The
+  legacy `GET /api/shares/:id/files/zip` endpoint still serves archives already
+  on disk (and builds S3 archives on explicit request), but `share.complete`
+  and `share.getMetaData` no longer create `archive.zip`; this avoids archive
+  CPU/disk work after large uploads. `isZipReady` remains in the DTO for API
+  compatibility.
 - Public shares no longer require a share token, so their page makes a single
   data request instead of the old `403 -> token -> retry` cycle. Password,
   max-view, recipient-restricted and private reverse shares still require a
@@ -608,6 +617,17 @@ sign-in redirect for a protected page and loop between `/upload` and
   covered guest redirects, the signed-in dashboard and logs page at 1366px and
   390px, and the only console entry was the deliberately injected browser
   error; there was no horizontal overflow.
+- Individual download pass (2026-10-25): `/share/h4Dr` with two files showed
+  `2 files · 10.2 KB` without the old ZIP compression note, and "Download all"
+  opened a confirmation modal explaining that the browser may ask to allow
+  multiple downloads. After confirmation, Playwright received two separate
+  downloads (`.jpg` and `.pdf`), no request was made to `/files/zip`, the page
+  stayed on the share URL, and a single-file row download still worked. The
+  same flow passed with the non-admin account at 390px with no overflow or
+  console errors. A newly completed two-file share had no `archive.zip`,
+  remained `isZipReady=false`, and its legacy ZIP endpoint returned `404`,
+  confirming that completion no longer builds archives. Backend tests pass
+  (46) and both builds/lints pass.
 - Admin logs capture is runtime-only: a process restart clears the memory
   fallback, and startup errors logged before `app.useLogger` are only in
   systemd's journal. On the live deployment the backend captures errors from

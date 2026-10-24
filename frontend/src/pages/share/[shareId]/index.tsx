@@ -338,7 +338,7 @@ const SharePage = ({
           {displayFileCount > 0 && (
             <Text size="sm" color="dimmed" mt={5}>
               <FormattedMessage
-                id="share.fileCount"
+                id="share.custom.fileCount"
                 values={{
                   count: displayFileCount,
                   size: byteToHumanSizeString(displaySize),
