@@ -482,17 +482,36 @@ sign-in redirect for a protected page and loop between `/upload` and
   seven-day-old share, excluded the eight-day-old share and all other cases,
   and dropped a share immediately after it was switched to password-protected,
   added back after it was made public again. The share and 404 pages rendered
-  the widget server-side with twelve 150px-tall cards spanning the content
-  width in a 4x3 desktop grid, a 3-column tablet grid, a 2-column/6-row mobile
-  grid at 390px and zero measured layout shift; the home and upload pages no
-  longer render or request the widget. Widget thumbnails use a 2px blur that
-  clears on hover, the view
-  badge is 14px, dark mode was checked, and click-through to `/share/<id>` was
-  verified. The widget title links to the public `/trending` page, which renders
-  the identical grid with up to 48 entries from `?limit=48`; full-page
-  thumbnails are unblurred, the page fetches its data in `getServerSideProps`,
-  has one listing (no duplicate footer widget), and is edge-cacheable as an
-  anonymous shell.
+  the widget server-side with twelve cards in a 4-column desktop grid, a
+  3-column tablet grid, a 2-column small-tablet/mobile grid and a single column
+  at 390px, with zero measured layout shift; the home and upload pages no
+  longer render or request the widget. Preview thumbnails use a heavy blur and
+  dark gradient that stay in place on hover, and each card shows the share name
+  and description, file count, total size, upload date and view count with a
+  play badge for videos. Dark mode was checked and click-through to
+  `/share/<id>` was verified. The widget title links to the public `/trending`
+  page, which renders the identical grid with up to 48 entries from
+  `?limit=48`; full-page cards use the same protected preview treatment, the
+  page fetches its data in `getServerSideProps`, has one listing (no duplicate
+  footer widget), and is edge-cacheable as an anonymous shell.
+- Trending card pass (2026-10-25): the Valkey metadata now also carries the
+  whitespace-normalised, 240-character-capped description, file count and total
+  size, and the API returns the upload date as well. The metadata is rewritten
+  with `SET ... EX` on each view so legacy entries and schema additions recover
+  without a second key or extra read. An isolated local database and a real
+  Valkey-compatible server produced eight `pingvin:trending:meta:<shareId>`
+  keys and one daily sorted set for eight test shares; the capped description
+  was exactly 240 characters, each metadata TTL was eight days, and the
+  `/api/shares/trending?limit=48` response had the expected name, description,
+  file count, size, date, views and preview kind. Playwright covered guest and
+  signed-in `/trending` and share/404 widgets at 1366, 1024 and 390px: the
+  enriched cards rendered in 4/3/2/1 columns, images loaded via the WebP
+  preview route, the preview stayed at `blur(14px) brightness(0.5)` with a dark
+  gradient, the video play badge and view label were present, no card
+  description exceeded two lines, hover, click-through, back navigation, dark
+  mode and the edge-cache headers were correct, and there were no unexpected
+  console errors or warnings. All backend unit tests and both production
+  builds pass.
 - Navigating between share pages on the client now remounts the share view by
   share ID. Previously the page only fetched its files on mount, so clicking a
   trending thumbnail could leave the previous share's name, files and visitor
