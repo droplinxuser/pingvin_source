@@ -1,5 +1,4 @@
 import {
-  Badge,
   Box,
   createStyles,
   Group,
@@ -125,28 +124,8 @@ const useStyles = createStyles((theme) => {
       lineHeight: 1,
     },
 
-    flagLarge: {
-      display: "inline-flex",
-      alignItems: "center",
-      justifyContent: "center",
-      width: 28,
-      height: 22,
-      flexShrink: 0,
-      fontSize: 21,
-      lineHeight: 1,
-    },
-
-    panelHeader: {
-      minWidth: 0,
-      marginTop: theme.spacing.md,
-    },
-
-    panelViews: {
-      fontWeight: 700,
-    },
-
     list: {
-      marginTop: theme.spacing.sm,
+      marginTop: theme.spacing.md,
     },
 
     row: {
@@ -337,7 +316,7 @@ const TrendingCountries = ({
           })}
         </Tabs.List>
 
-        {countries.map(({ country, views, shares }) => {
+        {countries.map(({ country, shares }) => {
           const name = getCountryName(country, intl.locale);
           return (
             <Tabs.Panel
@@ -347,40 +326,8 @@ const TrendingCountries = ({
                 country: name,
               })}
             >
-              <Group
-                position="apart"
-                align="center"
-                spacing="xs"
-                className={classes.panelHeader}
-              >
-                <Group spacing="xs" noWrap>
-                  <Box
-                    component="span"
-                    className={classes.flagLarge}
-                    aria-hidden
-                  >
-                    {countryCodeToFlag(country)}
-                  </Box>
-                  <Text size="sm" weight={700}>
-                    {name}
-                  </Text>
-                  <Badge variant="light" size="sm">
-                    {t("trending.custom.countries.total", {
-                      count: views,
-                    })}
-                  </Badge>
-                </Group>
-                {shares.length > 0 && (
-                  <Text size="xs" color="dimmed">
-                    {t("trending.custom.countries.top", {
-                      count: shares.length,
-                    })}
-                  </Text>
-                )}
-              </Group>
-
               {shares.length === 0 ? (
-                <Text size="xs" color="dimmed" mt="sm">
+                <Text size="xs" color="dimmed" mt="md">
                   {t("trending.custom.countries.empty")}
                 </Text>
               ) : (

@@ -66,10 +66,6 @@ export default {
     "Public share views from the last 24 hours.",
   "trending.custom.countries.views":
     "{count, plural, one {# view from this country} other {# views from this country}}",
-  "trending.custom.countries.total":
-    "{count, plural, one {# view} other {# views}}",
-  "trending.custom.countries.top":
-    "{count, plural, one {Top # share} other {Top # shares}}",
   "trending.custom.countries.window": "Last 24 hours",
   "trending.custom.countries.list":
     "Most-viewed shares from {country} in the last 24 hours",
