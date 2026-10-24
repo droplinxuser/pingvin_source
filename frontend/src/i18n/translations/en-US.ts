@@ -83,13 +83,13 @@ export default {
   // Fork-specific home page copy (English only; other locales fall back to it)
   "home.custom.title": "<h>{siteName}</h> — big files, short links, zero fuss.",
   "home.custom.description":
-    "A free file-sharing platform for sending up to 512 MB with one link. Sign in with Google, GitHub or Discord; recipients just open the link — no app, and no account needed for standard downloads.",
+    "A free file-sharing platform for sending shares up to 5 GB with one link. Each file can be up to 512 MB. Sign in with Google, GitHub or Discord; recipients just open the link — no app, and no account needed for standard downloads.",
   "home.custom.metaTitle": "Big files, short links",
   "home.custom.metaDescription":
-    "{siteName} is a free file-sharing platform. Share up to 512 MB with short links, previews, passwords, QR codes and email delivery. No app needed.",
-  "home.custom.bullet.a.name": "512 MB, any file type",
+    "{siteName} is a free file-sharing platform. Share up to 5 GB per link, with 512 MB per file, using short links, previews, passwords, QR codes and email delivery. No app needed.",
+  "home.custom.bullet.a.name": "5 GB per share, 512 MB per file",
   "home.custom.bullet.a.description":
-    "Upload files or whole folders, preview photos, videos, audio, PDFs and text, and download multi-file shares as one ZIP.",
+    "Upload files or whole folders, preview photos, videos, audio, PDFs and text, and download every file individually at full speed.",
   "home.custom.bullet.b.name": "Short links, your way",
   "home.custom.bullet.b.description":
     "Share a short or custom link, show a QR code, or email the link directly to recipients.",
@@ -597,6 +597,10 @@ export default {
     "Click here or drag and drop individual files, photos, or videos, or press {shortcut} to upload text from your clipboard. Maximum total upload size: {maxSize}.",
   "upload.dropzone.notify.file-too-big":
     "Your files exceed the maximum share size of {maxSize}.",
+  "upload.dropzone.custom.max-file-size":
+    "Maximum file size: {maxFileSize}.",
+  "upload.dropzone.custom.file-too-big":
+    "{name} is larger than the maximum file size of {maxSize}.",
   "upload.button.folder": "Upload folder",
   "upload.button.folder.append": "Append folder",
   "upload.button.add": "Add to upload",
@@ -949,8 +953,12 @@ export default {
   "admin.config.share.share-id-length": "Default share ID length",
   "admin.config.share.share-id-length.description":
     "Default length for the generated ID of a share. This value is also used to generate links for reverse shares. A value below 8 is not considered secure.",
-  "admin.config.share.max-size": "Max size",
-  "admin.config.share.max-size.description": "Maximum share size",
+  "admin.config.share.max-size": "Max share size",
+  "admin.config.share.max-size.description":
+    "Maximum combined size of all files in one share.",
+  "admin.config.share.max-file-size": "Max file size",
+  "admin.config.share.max-file-size.description":
+    "Maximum size of each individual file. Keep this at or below 512 MB so downloads remain cacheable at the edge.",
   "admin.config.share.zip-compression-level": "Zip compression level",
   "admin.config.share.zip-compression-level.description":
     "Adjust the level to balance file size and compression speed. Valid values range from 0 to 9, with 0 being no compression and 9 being maximum compression. ",

@@ -15,6 +15,7 @@ so `git merge upstream/main` stays small.
 | Uploader metadata / visitors | `backend/src/utils/uploaderInfo.util.ts`, `ShareDTO.uploaderInfo`, `frontend/src/components/share/UploaderInfoBadges.tsx`, `ShareStats.tsx`; view counts stay in `Share.views` |
 | Inline media gallery | `frontend/src/components/share/MediaPreviewGallery.tsx` (up to 30 supported image/video thumbnails at 250px for any file size, opening `FilePreview.tsx` in the full-size modal) |
 | Individual downloads / legacy ZIP | `frontend/src/components/share/DownloadAllButton.tsx` (confirmation + sequential per-file downloads), `frontend/src/services/share.service.ts` (anchor-based downloads), `backend/src/share/share.service.ts` (no automatic archive creation); existing `archive.zip` files remain served by the legacy API. The share file count uses `share.custom.fileCount` without the old ZIP note. |
+| Share and file size limits | `backend/prisma/seed/config.seed.ts` (`share.maxSize` 5 GB, `share.maxFileSize` 512 MB), migration `20261025000000_raise_share_size_limit`, `backend/src/share/share.util.ts` (`resolveShareSizeLimit`), local/S3 upload guards, `frontend/src/components/upload/Dropzone.tsx` and upload pages |
 | Trending today | `backend/src/cache/trending.service.ts`, `GET /api/shares/trending?limit=48`, `frontend/src/components/share/TrendingToday.tsx`, `frontend/src/pages/trending.tsx`, `frontend/src/pages/_app.tsx` |
 | Cache headers / hotlink protection | `backend/src/utils/cache.util.ts` (shared `Cache-Control`, `CDN-Cache-Control`, `Cloudflare-CDN-Cache-Control`, public-file `ETag`), `backend/src/utils/referrer.util.ts`, `frontend/src/middleware.ts` (query-free anonymous page shells), `frontend/next.config.js` |
 | Per-IP+User-Agent rate limiting | `backend/src/utils/visitorIdentity.util.ts`, `backend/src/cache/valkeyThrottler.storage.ts`, `backend/src/cache/throttler.config.ts`, `backend/src/main.ts` |
@@ -65,6 +66,12 @@ other languages show the upstream copy instead of the English fallback.
 - `security.allowRegistration=false`
 - `oauth.allowRegistration=true`
 - `oauth.disablePassword=false`
+- `share.maxSize` is 5 GB for one share and `share.maxFileSize` is 512 MB for
+  each file. The per-file cap keeps every individual download within
+  Cloudflare's 512 MB cacheable-file limit; multi-file shares are downloaded
+  file by file instead of as an archive. The existing value migration raises
+  the old 512 MB setting on deployed databases, while fresh installs get the
+  new defaults from the seed. `config.example.yaml` documents both keys.
 - `share.maxExpiration` / `share.defaultExpiration` are intentionally removed
   from the seed and the share/reverse-share create/update DTOs; expiration is
   rolling and automatic.
@@ -225,7 +232,7 @@ other languages show the upstream copy instead of the English fallback.
   `fetchConfig` helper keeps a 30s in-process copy (5s for bundled defaults),
   so middleware and SSR do not call the backend on every page.
   The bundled fallback config includes the upload/share keys used during SSR
-  (`share.chunkSize`, `share.maxSize`, `share.shareIdLength`,
+  (`share.chunkSize`, `share.maxSize`, `share.maxFileSize`, `share.shareIdLength`,
   `share.autoOpenShareModal`, email-recipient flags, retention,
   `appearance.uploadProgressStyle`, password-policy settings and
   `oauth.disablePassword`), so an API-config timeout no longer crashes
@@ -243,6 +250,8 @@ other languages show the upstream copy instead of the English fallback.
   with a 60-second edge TTL (and `no-store` when protected) instead of the
   immutable single-file headers; no new archives are generated automatically.
 - "Download all" downloads each file individually instead of building a ZIP.
+  Every file is capped at 512 MB on upload, so each download stays within
+  Cloudflare's edge cache limit.
   The button is shown immediately for multi-file shares, asks for confirmation,
   and warns that the browser may request permission to allow multiple
   downloads. Each file is fetched through a hidden same-origin anchor with a

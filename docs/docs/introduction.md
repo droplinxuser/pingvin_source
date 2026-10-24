@@ -9,7 +9,7 @@ Pingvin Share X is a self-hosted file sharing platform and an alternative for We
 ## Features
 
 - Share files using a link
-- Unlimited file size (restricted only by disk space)
+- Configurable share size with a per-file cap (5 GB per share and 512 MB per file by default)
 - Set an expiration date for shares
 - Secure shares with visitor limits and passwords
 - Email recipients

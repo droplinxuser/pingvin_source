@@ -14,6 +14,7 @@ import { I18nService } from "nestjs-i18n";
 import { resolve, sep } from "path";
 import { ConfigService } from "src/config/config.service";
 import { PrismaService } from "src/prisma/prisma.service";
+import { resolveShareSizeLimit, sumFileSizes } from "src/share/share.util";
 import { byteToHumanSizeString } from "src/utils/fileSize.util";
 import { getUserActiveStorageUsage } from "src/utils/storageQuota.util";
 import { validate as isValidUUID } from "uuid";
@@ -85,20 +86,24 @@ export class LocalFileService {
       );
     }
 
-    // Check if share size limit is exceeded
-    const fileSizeSum = share.files.reduce(
-      (n, { size }) => n + parseInt(size),
-      0,
-    );
-
-    const shareSizeSum = fileSizeSum + diskFileSize + buffer.byteLength;
-
-    let limit = parseInt(this.config.get("share.maxSize"));
-    if (share.reverseShare?.maxShareSize) {
-      limit = parseInt(share.reverseShare.maxShareSize);
-    } else if (share.creator?.shareSizeLimit) {
-      limit = parseInt(share.creator.shareSizeLimit);
+    // Each file must fit the edge cache limit, while the whole share has its
+    // own (larger) quota.
+    const maxFileSize = parseInt(this.config.get("share.maxFileSize"));
+    const uploadedFileSize = diskFileSize + buffer.byteLength;
+    if (maxFileSize > 0 && uploadedFileSize > maxFileSize) {
+      throw new HttpException(
+        this.i18n.t("file.maxFileSizeExceeded", {
+          args: { maxSize: byteToHumanSizeString(maxFileSize) },
+        }),
+        HttpStatus.PAYLOAD_TOO_LARGE,
+      );
     }
+
+    const shareSizeSum = sumFileSizes(share.files) + uploadedFileSize;
+    const limit = resolveShareSizeLimit(
+      parseInt(this.config.get("share.maxSize")),
+      share,
+    );
 
     if (shareSizeSum > limit) {
       throw new HttpException(

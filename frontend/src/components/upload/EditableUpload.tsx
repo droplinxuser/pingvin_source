@@ -37,6 +37,7 @@ const EditableUpload = ({
   const { user } = useUser();
 
   const chunkSize = useRef(parseInt(config.get("share.chunkSize")));
+  const maxFileSize = parseInt(config.get("share.maxFileSize") || "0");
 
   const [existingFiles, setExistingFiles] =
     useState<Array<FileMetaData & { deleted?: boolean }>>(savedFiles);
@@ -244,6 +245,7 @@ const EditableUpload = ({
       <Dropzone
         title={t("share.edit.append-upload")}
         maxShareSize={maxShareSize}
+        maxFileSize={maxFileSize}
         currentFilesSize={currentFilesSize}
         onFilesChanged={appendFiles}
         isUploading={isUploading}

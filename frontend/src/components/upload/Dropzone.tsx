@@ -140,12 +140,14 @@ const Dropzone = ({
   title,
   isUploading,
   maxShareSize,
+  maxFileSize,
   currentFilesSize = 0,
   onFilesChanged,
 }: {
   title?: string;
   isUploading: boolean;
   maxShareSize: number;
+  maxFileSize: number;
   currentFilesSize?: number;
   onFilesChanged: (files: FileUpload[]) => void;
 }) => {
@@ -168,6 +170,32 @@ const Dropzone = ({
     typeof HTMLInputElement !== "undefined" &&
     "webkitdirectory" in HTMLInputElement.prototype;
 
+  const validateFiles = (files: { name: string; size: number }[]) => {
+    const oversizedFile =
+      maxFileSize > 0 ? files.find((file) => file.size > maxFileSize) : null;
+    if (oversizedFile) {
+      toast.error(
+        t("upload.dropzone.custom.file-too-big", {
+          name: oversizedFile.name,
+          maxSize: byteToHumanSizeString(maxFileSize),
+        }),
+      );
+      return false;
+    }
+
+    const fileSizeSum = files.reduce((n, { size }) => n + size, 0);
+    if (fileSizeSum + currentFilesSize > maxShareSize) {
+      toast.error(
+        t("upload.dropzone.notify.file-too-big", {
+          maxSize: byteToHumanSizeString(maxShareSize),
+        }),
+      );
+      return false;
+    }
+
+    return true;
+  };
+
   const handleFolderSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const filesList = event.target.files;
     if (!filesList) return;
@@ -178,15 +206,7 @@ const Dropzone = ({
       return newFile;
     });
 
-    const fileSizeSum = files.reduce((n, { size }) => n + size, 0);
-
-    if (fileSizeSum + currentFilesSize > maxShareSize) {
-      toast.error(
-        t("upload.dropzone.notify.file-too-big", {
-          maxSize: byteToHumanSizeString(maxShareSize),
-        }),
-      );
-    } else {
+    if (validateFiles(files)) {
       onFilesChanged(files);
     }
 
@@ -214,15 +234,7 @@ const Dropzone = ({
         openRef={openRef as ForwardedRef<() => void>}
         getFilesFromEvent={getFilesFromEvent}
         onDrop={(files: FileUpload[]) => {
-          const fileSizeSum = files.reduce((n, { size }) => n + size, 0);
-
-          if (fileSizeSum + currentFilesSize > maxShareSize) {
-            toast.error(
-              t("upload.dropzone.notify.file-too-big", {
-                maxSize: byteToHumanSizeString(maxShareSize),
-              }),
-            );
-          } else {
+          if (validateFiles(files)) {
             files = files.map((newFile) => {
               newFile.uploadingProgress = 0;
               return newFile;
@@ -267,6 +279,14 @@ const Dropzone = ({
               />
             </span>
           </Text>
+          {maxFileSize > 0 && (
+            <Text align="center" size="xs" mt={4} color="dimmed">
+              <FormattedMessage
+                id="upload.dropzone.custom.max-file-size"
+                values={{ maxFileSize: byteToHumanSizeString(maxFileSize) }}
+              />
+            </Text>
+          )}
         </div>
       </MantineDropzone>
       <Center>

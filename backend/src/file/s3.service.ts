@@ -1,5 +1,7 @@
 import {
   BadRequestException,
+  HttpException,
+  HttpStatus,
   Injectable,
   InternalServerErrorException,
   NotFoundException,
@@ -27,6 +29,7 @@ import * as crypto from "crypto";
 import { promises as fs } from "fs";
 import * as mime from "mime-types";
 import { SHARE_DIRECTORY } from "../constants";
+import { resolveShareSizeLimit, sumFileSizes } from "src/share/share.util";
 import { byteToHumanSizeString } from "src/utils/fileSize.util";
 import { getUserActiveStorageUsage } from "src/utils/storageQuota.util";
 import { getFileMimeType } from "src/utils/mime.util";
@@ -73,6 +76,7 @@ export class S3FileService {
     const share = await this.prisma.share.findUnique({
       where: { id: shareId },
       include: {
+        files: true,
         creator: true,
         reverseShare: { include: { creator: true } },
       },
@@ -106,6 +110,29 @@ export class S3FileService {
       if (!multipartUpload) {
         throw new InternalServerErrorException(
           this.i18n.t("file.s3SessionNotFound"),
+        );
+      }
+
+      const fileSize = multipartUpload.uploadedBytes + buffer.byteLength;
+      const maxFileSize = parseInt(this.config.get("share.maxFileSize"));
+      if (maxFileSize > 0 && fileSize > maxFileSize) {
+        throw new HttpException(
+          this.i18n.t("file.maxFileSizeExceeded", {
+            args: { maxSize: byteToHumanSizeString(maxFileSize) },
+          }),
+          HttpStatus.PAYLOAD_TOO_LARGE,
+        );
+      }
+
+      const shareSizeSum = sumFileSizes(share?.files) + fileSize;
+      const shareSizeLimit = resolveShareSizeLimit(
+        parseInt(this.config.get("share.maxSize")),
+        share,
+      );
+      if (shareSizeSum > shareSizeLimit) {
+        throw new HttpException(
+          this.i18n.t("file.maxSizeExceeded"),
+          HttpStatus.PAYLOAD_TOO_LARGE,
         );
       }
 
@@ -197,6 +224,7 @@ export class S3FileService {
         }
         delete this.multipartUploads[file.id];
       }
+      if (error instanceof HttpException) throw error;
       this.logger.error(error);
       throw new Error(this.i18n.t("file.s3UploadFailed"));
     }
@@ -537,6 +565,49 @@ export class S3FileService {
       });
 
       if (!existingFile) {
+        const share = await this.prisma.share.findUnique({
+          where: { id: shareId },
+          include: { files: true, creator: true, reverseShare: true },
+        });
+        if (!share) throw new NotFoundException(this.i18n.t("share.notFound"));
+
+        const maxFileSize = parseInt(this.config.get("share.maxFileSize"));
+        const shareSizeLimit = resolveShareSizeLimit(
+          parseInt(this.config.get("share.maxSize")),
+          share,
+        );
+        const fileTooLarge = maxFileSize > 0 && fileSize > maxFileSize;
+        const shareTooLarge =
+          sumFileSizes(share.files) + fileSize > shareSizeLimit;
+
+        if (fileTooLarge || shareTooLarge) {
+          try {
+            await s3Instance.send(
+              new DeleteObjectCommand({
+                Bucket: bucketName,
+                Key: key,
+              }),
+            );
+          } catch (deleteError) {
+            this.logger.error(
+              "Failed to remove an oversized S3 upload:",
+              deleteError,
+            );
+          }
+
+          throw fileTooLarge
+            ? new HttpException(
+                this.i18n.t("file.maxFileSizeExceeded", {
+                  args: { maxSize: byteToHumanSizeString(maxFileSize) },
+                }),
+                HttpStatus.PAYLOAD_TOO_LARGE,
+              )
+            : new HttpException(
+                this.i18n.t("file.maxSizeExceeded"),
+                HttpStatus.PAYLOAD_TOO_LARGE,
+              );
+        }
+
         await this.prisma.file.create({
           data: {
             id: fileId,
@@ -549,6 +620,7 @@ export class S3FileService {
 
       return { id: fileId, name: fileName };
     } catch (error) {
+      if (error instanceof HttpException) throw error;
       this.logger.error(
         "Error creating database record after S3 upload completion:",
         error,

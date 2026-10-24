@@ -6,6 +6,7 @@
   "notEnoughSpace": "Not enough space on the server",
   "unexpectedChunk": "Unexpected chunk received",
   "maxSizeExceeded": "Max share size exceeded",
+  "maxFileSizeExceeded": "Max file size exceeded. Each file may be up to {maxSize}.",
   "storageQuotaExceeded": "Your storage quota has been exceeded by {exceededSize}",
   "reverseShareQuotaExceeded": "The reverse share owner's storage quota has been exceeded by {exceededSize}",
   "zipError": "Error creating ZIP file",

@@ -29,6 +29,7 @@ import { FileUpload } from "../../types/File.type";
 import { CreateShare, Share } from "../../types/share.type";
 import toast from "../../utils/toast.util";
 import { useRouter } from "next/router";
+import { byteToHumanSizeString } from "../../utils/fileSize.util";
 import {
   getNormalizedFileName,
   filterDuplicateFiles,
@@ -62,6 +63,7 @@ const Upload = ({
   });
 
   const chunkSize = useRef(parseInt(config.get("share.chunkSize")));
+  const maxFileSize = parseInt(config.get("share.maxFileSize") || "0");
 
   maxShareSize ??= user?.shareSizeLimit
     ? parseInt(user.shareSizeLimit)
@@ -235,6 +237,15 @@ const Upload = ({
           type: "text/plain",
         });
         const fileUpload = file as FileUpload;
+        if (maxFileSize > 0 && fileUpload.size > maxFileSize) {
+          toast.error(
+            t("upload.dropzone.custom.file-too-big", {
+              name: fileUpload.name,
+              maxSize: byteToHumanSizeString(maxFileSize),
+            }),
+          );
+          return;
+        }
         fileUpload.uploadingProgress = 0;
 
         const filtered = filterDuplicateFiles(
@@ -352,6 +363,7 @@ const Upload = ({
             : undefined
         }
         maxShareSize={maxShareSize}
+        maxFileSize={maxFileSize}
         currentFilesSize={currentFilesSize}
         onFilesChanged={handleDropzoneFilesChanged}
         isUploading={isUploading}

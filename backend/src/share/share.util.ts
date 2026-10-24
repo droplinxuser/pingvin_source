@@ -40,6 +40,26 @@ export function sumFileSizes(
   );
 }
 
+type ShareSizeLimitSource = {
+  reverseShare?: { maxShareSize?: string | number | null } | null;
+  creator?: { shareSizeLimit?: string | number | null } | null;
+};
+
+/**
+ * Reverse shares and per-user limits take precedence over the site default.
+ * Keep this in one place so local and S3 uploads enforce the same limit.
+ */
+export function resolveShareSizeLimit(
+  defaultLimit: number,
+  share?: ShareSizeLimitSource | null,
+): number {
+  if (share?.reverseShare?.maxShareSize)
+    return parseInt(String(share.reverseShare.maxShareSize));
+  if (share?.creator?.shareSizeLimit)
+    return parseInt(String(share.creator.shareSizeLimit));
+  return defaultLimit;
+}
+
 /**
  * Checks a share's view limit. File access is allowed on the last permitted
  * view, while new share tokens are blocked once that limit is reached.

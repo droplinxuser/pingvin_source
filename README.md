@@ -16,7 +16,7 @@ Pingvin Share X is a fork of [Pingvin Share](https://github.com/stonith404/pingv
 ## Features
 
 - Share files using a link
-- Unlimited file size (restricted only by disk space)
+- Configurable share size with a per-file cap (5 GB per share and 512 MB per file by default)
 - Set an expiration date for shares
 - Secure shares with visitor limits and passwords
 - Email recipients
