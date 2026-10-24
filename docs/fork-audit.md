@@ -783,6 +783,27 @@ sign-in redirect for a protected page and loop between `/upload` and
   404 page and 390px mobile width; the file-list header now aligns with the
   name column, guest/owner visitor visibility behaved as intended, and the
   browser console stayed clean.
+- Live deployment pass (2026-10-25, after the update): the same checks were
+  repeated against the live site with temporary QA shares, which were deleted
+  afterwards (share pages returned 404). Guest API responses omitted
+  `uploaderInfo.visitors` while the owner response included them; the guest
+  page showed total views only and the owner page showed "Recent visitors".
+  Absolute, protocol-relative and backslash `?redirect=` values all returned a
+  307 to a clean `/auth/signIn` with no reflected external target. A max-view
+  share accepted exactly its three allowed sequential views and returned
+  `403 share_max_views_exceeded` on the fourth; 20 concurrent requests against
+  a fresh five-view share produced exactly 5 `200` and 15 `403`. A live UI
+  upload produced a working share page, text preview loaded the plain text,
+  copy placed the same text on the clipboard, and the uploaded QA share was
+  deleted. Cache checks passed for anonymous HTML shells (60s), auth pages
+  (`no-store`), config (30s), stats/trending/SEO (60s), manifest/robots (one
+  day) and the sitemap index (one hour); public files carried a day-long
+  immutable CDN policy, an ETag and no cookies. The live `/trending` page and
+  share widget rendered cards, the sitemap index/chunk were valid, admin APIs
+  returned 403 and admin pages redirected a non-admin to upload. Playwright
+  covered guest, owner, 390px mobile and dark mode with no horizontal overflow
+  and zero application console errors or warnings; a separate real-ad load
+  also produced no console messages. No temporary QA shares remain.
 
 ## Known non-issues
 
@@ -800,6 +821,11 @@ sign-in redirect for a protected page and loop between `/upload` and
 - A guest sees the share's total view count but not the recent-visitor list.
   The owner (and administrators) still receive the visitor history; this keeps
   other visitors' city/browser/referrer data out of public API responses.
+- The live CDN currently stores `/api/configs` with a stale duplicate
+  `Cache-Control: no-store` beside the current public header. A cache-busting
+  query returns the origin's single correct header and Cloudflare still reports
+  a HIT; the response body is unaffected. Purging that URL removes the stale
+  stored copy.
 - Chrome may log the expected `403` while a protected share page fetches its
   share token, and `404`s for intentionally missing shares. These are network
   status logs, not JavaScript exceptions; the page recovers and renders
