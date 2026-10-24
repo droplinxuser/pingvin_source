@@ -129,25 +129,16 @@ export class ClamScanService {
       const infectedFiles = await this.check(shareId);
 
       if (infectedFiles.length > 0) {
+        const fileNames = infectedFiles.map((file) => file.name).join(", ");
+
         try {
-          await this.fileService.deleteAllFiles(shareId);
-          await this.prisma.file.deleteMany({ where: { shareId } });
+          await this.removeMaliciousShare(shareId, fileNames);
         } catch (err: any) {
           this.logger.error(
             `Failed to delete malicious share ${shareId}: ${err?.message || "unknown error"}`,
           );
           return;
         }
-
-        const fileNames = infectedFiles.map((file) => file.name).join(", ");
-
-        await this.prisma.share.update({
-          where: { id: shareId },
-          data: {
-            removedReason: `Your share got removed because the file(s) ${fileNames} are malicious.`,
-          },
-        });
-        await invalidateShareDataCache(this.cache, shareId);
 
         this.logger.warn(
           `Share ${shareId} deleted because it contained ${infectedFiles.length} malicious file(s)`,
@@ -158,5 +149,21 @@ export class ClamScanService {
         `Error during ClamAV scan for share ${shareId}: ${err?.message || "unknown error"}`,
       );
     }
+  }
+
+  /**
+   * Removes every file of a share after a scanner has flagged it. Kept in this
+   * service so ClamAV and VirusTotal use the exact same deletion path.
+   */
+  async removeMaliciousShare(shareId: string, fileNames: string) {
+    await this.fileService.deleteAllFiles(shareId);
+    await this.prisma.file.deleteMany({ where: { shareId } });
+    await this.prisma.share.update({
+      where: { id: shareId },
+      data: {
+        removedReason: `Your share got removed because the file(s) ${fileNames} are malicious.`,
+      },
+    });
+    await invalidateShareDataCache(this.cache, shareId);
   }
 }

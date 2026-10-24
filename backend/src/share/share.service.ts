@@ -22,6 +22,7 @@ import { FileService } from "src/file/file.service";
 import { PrismaService } from "src/prisma/prisma.service";
 import { ReverseShareService } from "src/reverseShare/reverseShare.service";
 import { SystemService } from "src/system/system.service";
+import { VirusTotalService } from "src/virustotal/virustotal.service";
 import { parseRelativeDateToAbsolute } from "src/utils/date.util";
 import { byteToHumanSizeString } from "src/utils/fileSize.util";
 import { getUserActiveStorageUsage } from "src/utils/storageQuota.util";
@@ -100,6 +101,7 @@ export class ShareService {
     private systemService: SystemService,
     private readonly i18n: I18nService,
     private shareState: ShareStateService,
+    private virusTotalService: VirusTotalService,
   ) {}
 
   async create(share: CreateShareDTO, user?: User, reverseShareToken?: string) {
@@ -432,6 +434,10 @@ export class ShareService {
     });
 
     await this.shareState.invalidateData(id);
+
+    // Queue non-media files for the rate-limited VirusTotal background scan
+    // only after the share is complete and visible.
+    this.virusTotalService.scanShare(share);
 
     return {
       ...updatedShare,

@@ -7,7 +7,7 @@
     "prod": "prisma migrate deploy && prisma db seed && node dist/src/main",
     "lint": "eslint 'src/**/*.ts'",
     "format": "prettier --end-of-line=auto --write 'src/**/*.ts'",
-    "test:unit": "npm run build && node --test test/view-limit.test.js test/visitor-identity.test.js test/valkey-throttler.test.js test/uploader-info.test.js test/metrics.test.js test/trending.test.js test/share-state.test.js",
+    "test:unit": "npm run build && node --test test/view-limit.test.js test/visitor-identity.test.js test/valkey-throttler.test.js test/uploader-info.test.js test/metrics.test.js test/trending.test.js test/share-state.test.js test/virustotal.test.js",
     "test:system": "prisma migrate reset -f && nest start & wait-on http://localhost:8080/api/configs && npx newman run ./test/newman-system-tests.json"
   },
   "prisma": {

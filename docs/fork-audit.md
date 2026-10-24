@@ -18,6 +18,7 @@ so `git merge upstream/main` stays small.
 | Cache headers / hotlink protection | `backend/src/utils/cache.util.ts` (shared `Cache-Control`, `CDN-Cache-Control`, `Cloudflare-CDN-Cache-Control`, public-file `ETag`), `backend/src/utils/referrer.util.ts`, `frontend/src/middleware.ts` (query-free anonymous page shells), `frontend/next.config.js` |
 | Per-IP+User-Agent rate limiting | `backend/src/utils/visitorIdentity.util.ts`, `backend/src/cache/valkeyThrottler.storage.ts`, `backend/src/cache/throttler.config.ts`, `backend/src/main.ts` |
 | Valkey/Redis cache | `backend/src/utils/cache.util.ts`, `backend/src/share/shareState.service.ts`, `backend/src/cache/cache.module.ts`, `backend/src/cache/valkey.service.ts` |
+| VirusTotal background scanning | `backend/src/virustotal/*`, `backend/src/share/share.service.ts` (completion hook), `backend/src/share/share.module.ts`, `backend/src/clamscan/clamscan.service.ts` (shared malicious-share removal), `backend/.env.example` |
 | Site stats and footer | `backend/src/system/system.service.ts`, `backend/src/cache/metrics.service.ts`, `frontend/src/components/footer/Footer.tsx`; `POST /api/system/pageview` |
 | Home copy and ads | `frontend/src/pages/index.tsx` (upstream layout), `home.custom.*` keys in `en-US.ts`, `frontend/src/components/Ads.tsx` |
 | Fork branding / deployment | `frontend/public/img/**`, `frontend/public/favicon.ico`, `frontend/src/pages/manifest.json.tsx`, `pingvin-*.service`, `update.sh` |
@@ -93,6 +94,24 @@ other languages show the upstream copy instead of the English fallback.
   `uploader.json` write per second and per share, and pending entries are
   flushed on shutdown. The footer's base counters use a 60-second in-process
   cache and do not add a Valkey key.
+- VirusTotal scanning is optional: `VIRUSTOTAL_API_KEY` in `backend/.env`
+  enables it. The optional `VIRUSTOTAL_API_URL` exists only for a local stub or
+  proxy. On completion, only non-media/plain-text files are queued; raster
+  images, audio, video and plain structured text are skipped while SVG is
+  scanned. The queue is a 1000-job Valkey list
+  (`pingvin:virustotal:queue`, process-memory fallback) and every API step
+  (hash lookup, upload, analysis poll) waits for a
+  `pingvin:virustotal:request` lock with a 180-second TTL, so at most 480
+  requests can start in any 24 hours (below the 500/day free-tier cap) while
+  the shared Valkey lock is available, even across restarts or instances.
+  Without Valkey the same spacing is enforced per process. Files are hashed
+  locally and looked up by SHA-256 first; they are uploaded only when unknown
+  and at most 32 MiB.
+  Terminal verdicts are cached as one `pingvin:virustotal:verdict:<sha256>` key
+  for seven days. HTTP 429 sets a cooldown key, 401/403 pauses scanning until
+  the backend restarts, and 5xx/network failures retry up to three times. A
+  malicious verdict uses the same file-deletion and `removedReason` path as
+  ClamAV. No scan state is written to SQLite.
 - "Trending today" is stored entirely in Valkey. A public share `GET` records
   the share's total view count as its score in a per-day sorted set
   (`pingvin:trending:views:<day>`, 8-day TTL) and writes
@@ -423,6 +442,18 @@ sign-in redirect for a protected page and loop between `/upload` and
   60-second edge headers, public files kept the day-long immutable headers and
   ETag, and the share `HEAD` probe still returned 200/404 without changing the
   view count.
+
+- VirusTotal background scanning (2026-10-24): both production builds pass and
+  all 33 backend unit tests pass (10 new VirusTotal filter/verdict/queue/state
+  tests). A local mock API run uploaded a mixed JPEG+PDF share and received a
+  hash lookup only for the PDF; the lookup, upload and analysis poll arrived
+  180.02s apart. The clean analysis left the share untouched. A second ZIP
+  share whose hash was reported malicious had its files deleted, its
+  `removedReason` written, and its page changed to 404. A deliberately failed
+  mock request was retried at the next slot and completed. Playwright guest,
+  signed-in, admin and 390px checks showed one H1, no horizontal overflow and
+  no console errors or warnings beyond the deliberate missing-page 404. No
+  SQLite schema or migration was added.
 
 ## Known non-issues
 
