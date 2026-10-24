@@ -60,6 +60,7 @@ function meta(id, _views, createdAt, kind = "image") {
     fileCount: 3,
     size: 1234,
     createdAt,
+    previewVersion: 1,
   });
 }
 
@@ -192,6 +193,47 @@ test("stores compact metadata and truncates long descriptions", async () => {
   assert.equal(stored.description.startsWith("First line xxx"), true);
   assert.equal(stored.fileCount, 2);
   assert.equal(stored.size, 4634);
+  assert.equal(stored.previewVersion, 1);
+});
+
+test("prefers a browser-playable video preview", async () => {
+  const mock = createMockValkey(() => []);
+  const service = createService(mock);
+
+  await service.recordView({
+    id: "share",
+    name: "Share",
+    createdAt: new Date(),
+    views: 3,
+    files: [
+      { id: "avi", name: "clip.avi", size: 100 },
+      { id: "mp4", name: "clip.mp4", size: 200 },
+    ],
+  });
+
+  const stored = JSON.parse(mock.calls[0][2][1][1]);
+  assert.equal(stored.previewFileId, "mp4");
+  assert.equal(stored.previewKind, "video");
+});
+
+test("uses an image when the first video is not playable", async () => {
+  const mock = createMockValkey(() => []);
+  const service = createService(mock);
+
+  await service.recordView({
+    id: "share",
+    name: "Share",
+    createdAt: new Date(),
+    views: 3,
+    files: [
+      { id: "avi", name: "clip.avi", size: 100 },
+      { id: "image", name: "photo.jpg", size: 200 },
+    ],
+  });
+
+  const stored = JSON.parse(mock.calls[0][2][1][1]);
+  assert.equal(stored.previewFileId, "image");
+  assert.equal(stored.previewKind, "image");
 });
 
 test("backfills legacy metadata from SQLite once", async () => {
@@ -257,6 +299,51 @@ test("backfills legacy metadata from SQLite once", async () => {
   // The enriched result is cached in-process, so a second read is cache-only.
   await service.getTrending();
   assert.equal(lookups, 1);
+});
+
+test("refreshes cached previews when the preview version changes", async () => {
+  const ranked = [{ value: "a", score: 4 }];
+  const oldMeta = JSON.stringify({
+    id: "a",
+    name: "Share a",
+    previewFileId: "avi",
+    previewKind: "video",
+    fileCount: 2,
+    size: 300,
+    createdAt: recent,
+    previewVersion: 0,
+  });
+  const prisma = {
+    share: {
+      findMany: async () => [
+        {
+          id: "a",
+          name: "Share a",
+          description: null,
+          createdAt: new Date(recent),
+          uploadLocked: true,
+          removedReason: null,
+          files: [
+            { id: "avi", name: "clip.avi", size: "100" },
+            { id: "mp4", name: "clip.mp4", size: "200" },
+          ],
+        },
+      ],
+    },
+  };
+  const mock = createMockValkey(
+    (queue) =>
+      queue.some(([method]) => method === "zRangeWithScores")
+        ? [1, ranked, 1]
+        : [1],
+    [oldMeta],
+  );
+  const service = createService(mock, prisma);
+
+  const [item] = await service.getTrending();
+
+  assert.equal(item.previewFileId, "mp4");
+  assert.equal(item.previewKind, "video");
 });
 
 test("keeps legacy metadata readable when the backfill query fails", async () => {

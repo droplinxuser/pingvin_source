@@ -28,6 +28,10 @@ const GEO_TTL_SECONDS = (GEO_WINDOW_HOURS + 1) * 60 * 60;
 const GEO_COUNTRY_LIMIT = 5;
 const GEO_SHARE_LIMIT = 10;
 const GEO_CACHE_MS = 5 * 60 * 1000;
+// Cached metadata from before preview selection preferred a playable video is
+// refreshed once. The field is internal to the cache payload.
+const PREVIEW_VERSION = 1;
+const PLAYABLE_VIDEO_EXTENSIONS = new Set(["mp4", "m4v", "mov", "f4v", "webm"]);
 
 type MediaKind = "image" | "video";
 
@@ -51,7 +55,9 @@ export type TrendingCountry = {
 
 // Views come from the sorted-set score; everything else is a small immutable
 // card payload. Reusing one key per share keeps the Valkey footprint bounded.
-type TrendingMeta = Omit<TrendingShare, "views">;
+type TrendingMeta = Omit<TrendingShare, "views"> & {
+  previewVersion?: number;
+};
 
 type TrendingSource = {
   id: string;
@@ -97,6 +103,7 @@ export class TrendingService {
           fileCount: share.files?.length ?? 0,
           size: sumFileSizes(share.files),
           createdAt: new Date(share.createdAt).toISOString(),
+          previewVersion: PREVIEW_VERSION,
         }
       : undefined;
 
@@ -382,6 +389,7 @@ export class TrendingService {
         fileCount: share.files.length,
         size: sumFileSizes(share.files),
         createdAt: share.createdAt.toISOString(),
+        previewVersion: PREVIEW_VERSION,
       };
       metas.set(share.id, meta);
       multi.set(metaKeyFor(share.id), JSON.stringify(meta), {
@@ -444,19 +452,41 @@ function parseMetaValues(values: (string | null)[] | null | undefined) {
 function legacyMetaIds(ids: string[], metas: Map<string, TrendingMeta>) {
   return ids.filter((id) => {
     const meta = metas.get(id);
-    return !!meta && (meta.fileCount === undefined || meta.size === undefined);
+    return (
+      !!meta &&
+      (meta.fileCount === undefined ||
+        meta.size === undefined ||
+        meta.previewVersion !== PREVIEW_VERSION)
+    );
   });
 }
 
 function findPreview(files?: { id: string; name: string }[]) {
+  let firstMedia: { id: string; kind: MediaKind } | undefined;
+  let firstImage: { id: string; kind: MediaKind } | undefined;
+  let playableVideo: { id: string; kind: MediaKind } | undefined;
+
   for (const file of files ?? []) {
     const mimeType = getFileMimeType(file.name, false);
-    if (mimeType.startsWith("image/"))
-      return { id: file.id, kind: "image" as MediaKind };
-    if (mimeType.startsWith("video/"))
-      return { id: file.id, kind: "video" as MediaKind };
+    if (mimeType.startsWith("image/")) {
+      if (!firstMedia) firstMedia = { id: file.id, kind: "image" };
+      if (!firstImage) firstImage = { id: file.id, kind: "image" };
+    } else if (mimeType.startsWith("video/")) {
+      if (!firstMedia) firstMedia = { id: file.id, kind: "video" };
+      const extension = file.name.split(".").pop()?.toLowerCase() ?? "";
+      if (!playableVideo && PLAYABLE_VIDEO_EXTENSIONS.has(extension))
+        playableVideo = { id: file.id, kind: "video" };
+    }
   }
-  return undefined;
+
+  if (firstMedia?.kind === "video") {
+    // Browsers cannot decode every video container. Prefer a playable video
+    // from the same share, then an image, so the compact country preview shows
+    // a real frame instead of a black box. Shares with neither keep the first
+    // video as a fallback for clients that do support it.
+    return playableVideo ?? firstImage ?? firstMedia;
+  }
+  return firstMedia;
 }
 
 function currentDay() {
