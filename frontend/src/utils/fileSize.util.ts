@@ -1,6 +1,3 @@
-// Files larger than this are not embedded inline (preview and media gallery)
-export const MAX_INLINE_FILE_SIZE = 100000000;
-
 export function byteToHumanSizeString(bytes: number) {
   const sizes = ["B", "KB", "MB", "GB", "TB"];
   if (bytes == 0) return "0 Byte";

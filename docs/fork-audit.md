@@ -13,7 +13,7 @@ so `git merge upstream/main` stays small.
 | Admin pagination, search and sorting | `backend/src/share/share.service.ts`, `backend/src/user/user.service.ts`, `frontend/src/pages/admin/*`, `frontend/src/components/core/SortIcon.tsx` |
 | Share reports | `backend/src/share/dto/reportShare.dto.ts`, `backend/src/email/email.service.ts`, `frontend/src/components/share/showReportShareModal.tsx` |
 | Uploader metadata / visitors | `backend/src/utils/uploaderInfo.util.ts`, `ShareDTO.uploaderInfo`, `frontend/src/components/share/UploaderInfoBadges.tsx`, `ShareStats.tsx`; view counts stay in `Share.views` |
-| Inline media gallery | `frontend/src/components/share/MediaPreviewGallery.tsx` (up to 30 supported image/video thumbnails at 250px, opening `FilePreview.tsx` in the full-size modal) |
+| Inline media gallery | `frontend/src/components/share/MediaPreviewGallery.tsx` (up to 30 supported image/video thumbnails at 250px for any file size, opening `FilePreview.tsx` in the full-size modal) |
 | Trending today | `backend/src/cache/trending.service.ts`, `GET /api/shares/trending?limit=48`, `frontend/src/components/share/TrendingToday.tsx`, `frontend/src/pages/trending.tsx`, `frontend/src/pages/_app.tsx` |
 | Cache headers / hotlink protection | `backend/src/utils/cache.util.ts` (shared `Cache-Control`, `CDN-Cache-Control`, `Cloudflare-CDN-Cache-Control`, public-file `ETag`), `backend/src/utils/referrer.util.ts`, `frontend/src/middleware.ts` (query-free anonymous page shells), `frontend/next.config.js` |
 | Per-IP+User-Agent rate limiting | `backend/src/utils/visitorIdentity.util.ts`, `backend/src/cache/valkeyThrottler.storage.ts`, `backend/src/cache/throttler.config.ts`, `backend/src/main.ts` |
@@ -272,6 +272,11 @@ sign-in redirect for a protected page and loop between `/upload` and
 - Gallery images use native lazy loading; videos use the shared `LazyVideo`
   component, which waits for `IntersectionObserver` before attaching `src` and
   requesting metadata. The logo remains eager because it is above the fold.
+- The previous 100 MB inline-preview cap was removed (2026-10-24).
+  `MediaPreviewGallery` and the file-list preview action now accept any
+  supported image/video size; large videos still load metadata lazily through
+  `LazyVideo` when near the viewport. A local 510.9 MB MP4 rendered one gallery
+  card and the file-list preview action with no page overflow.
 - The share page reserves SEO-derived gallery/file-list skeletons while the
   client share request is in flight, and renders the name/description/file
   count from the SEO payload immediately. In a throttled local run (1.2s share

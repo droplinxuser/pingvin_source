@@ -11,7 +11,6 @@ import {
 import { useModals } from "@mantine/modals";
 import { TbPlayerPlay } from "react-icons/tb";
 import { FileMetaData } from "../../types/File.type";
-import { MAX_INLINE_FILE_SIZE } from "../../utils/fileSize.util";
 import { getBaseName, getShareFileUrl } from "../../utils/file.util";
 import {
   getGalleryMediaKind,
@@ -35,12 +34,7 @@ const MediaPreviewGallery = ({
   const t = useTranslate();
 
   const mediaFiles = files
-    .filter((file) => {
-      const kind = getGalleryMediaKind(file.name);
-      // Use the same inline cap as the file list so a large video cannot be
-      // embedded here but blocked from the preview button there.
-      return !!kind && parseInt(file.size) <= MAX_INLINE_FILE_SIZE;
-    })
+    .filter((file) => !!getGalleryMediaKind(file.name))
     .slice(0, MAX_GALLERY_ITEMS);
 
   if (mediaFiles.length === 0) return null;

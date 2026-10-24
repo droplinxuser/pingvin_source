@@ -30,10 +30,7 @@ import api from "../../services/api.service";
 import shareService from "../../services/share.service";
 import { FileMetaData } from "../../types/File.type";
 import { Share } from "../../types/share.type";
-import {
-  byteToHumanSizeString,
-  MAX_INLINE_FILE_SIZE,
-} from "../../utils/fileSize.util";
+import { byteToHumanSizeString } from "../../utils/fileSize.util";
 import { getBaseName } from "../../utils/file.util";
 import {
   doesFileSupportPreview,
@@ -243,22 +240,21 @@ const FileList = ({
                         </ActionIcon>
                       </HoverTip>
                     )}
-                    {doesFileSupportPreview(file.name) &&
-                      parseInt(file.size) <= MAX_INLINE_FILE_SIZE && (
-                        <HoverTip label={t("common.button.preview")}>
-                          <ActionIcon
-                            color="green"
-                            variant="light"
-                            size={28}
-                            aria-label={t("common.button.preview")}
-                            onClick={() =>
-                              showFilePreviewModal(share.id, file, modals)
-                            }
-                          >
-                            <TbEye size={16} />
-                          </ActionIcon>
-                        </HoverTip>
-                      )}
+                    {doesFileSupportPreview(file.name) && (
+                      <HoverTip label={t("common.button.preview")}>
+                        <ActionIcon
+                          color="green"
+                          variant="light"
+                          size={28}
+                          aria-label={t("common.button.preview")}
+                          onClick={() =>
+                            showFilePreviewModal(share.id, file, modals)
+                          }
+                        >
+                          <TbEye size={16} />
+                        </ActionIcon>
+                      </HoverTip>
+                    )}
                     <HoverTip label={t("common.button.download")}>
                       <ActionIcon
                         color="cyan"
