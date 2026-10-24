@@ -51,8 +51,9 @@ other languages show the upstream copy instead of the English fallback.
    widget on `/share/*`
    and 404 pages (no widget on home, upload or other pages), the clickable
    widget title and full `/trending` page with up to 48 cards showing name,
-   description, file count, size, upload date and views over a blurred
-   preview, file download headers, report modal, footer page-view/top-country
+   description, file count, size, upload date and views over a lightly blurred
+   preview that clears on hover, file download headers, report modal, footer
+   page-view/top-country
    metrics, and the dynamic `/manifest.json`. Repeat once with Valkey stopped
    to confirm the fallbacks (the trending widget is hidden without Valkey).
 
@@ -195,10 +196,11 @@ other languages show the upstream copy instead of the English fallback.
   the request. Editing, expiring or deleting a share (including removing its
   files or reverse-share parent) deletes its metadata immediately. If Valkey
   is unavailable the endpoint returns an empty list and the widget is hidden.
-  Trending cards use a dark gradient over a strongly blurred preview, keeping
-  the media hidden until the share is opened while the name, description, file
-  count, size, upload date and view count stay readable. The grid is one column
-  on phones, two on small tablets, three on laptops and four on wide screens.
+  Trending cards use a dark gradient over a lightly blurred preview; hovering
+  clears the blur and restores the image brightness while the name,
+  description, file count, size, upload date and view count stay readable. The
+  grid is one column on phones, two on small tablets, three on laptops and four
+  on wide screens.
 - The footer posts to `POST /api/system/pageview` on every rendered page. The
   endpoint increments a per-hour Valkey hash atomically (one total field plus
   one field per country), expires each hourly bucket after 25 hours and reads
@@ -490,14 +492,14 @@ sign-in redirect for a protected page and loop between `/upload` and
   the widget server-side with twelve cards in a 4-column desktop grid, a
   3-column tablet grid, a 2-column small-tablet/mobile grid and a single column
   at 390px, with zero measured layout shift; the home and upload pages no
-  longer render or request the widget. Preview thumbnails use a heavy blur and
-  dark gradient that stay in place on hover, and each card shows the share name
+  longer render or request the widget. Preview thumbnails use a 6px blur and
+  dark gradient; the image clears on hover, and each card shows the share name
   and description, file count, total size, upload date and view count with a
   play badge for videos. Dark mode was checked and click-through to
   `/share/<id>` was verified. The widget title links to the public `/trending`
   page, which renders the identical grid with up to 48 entries from
-  `?limit=48`; full-page cards use the same protected preview treatment, the
-  page fetches its data in `getServerSideProps`, has one listing (no duplicate
+  `?limit=48`; full-page cards use the same 6px preview treatment, the page
+  fetches its data in `getServerSideProps`, has one listing (no duplicate
   footer widget), and is edge-cacheable as an anonymous shell.
 - Trending card pass (2026-10-25): the Valkey metadata now also carries the
   whitespace-normalised, 240-character-capped description, file count and total
@@ -514,11 +516,12 @@ sign-in redirect for a protected page and loop between `/upload` and
   fields. Playwright covered guest and
   signed-in `/trending` and share/404 widgets at 1366, 1024 and 390px: the
   enriched cards rendered in 4/3/2/1 columns, images loaded via the WebP
-  preview route, the preview stayed at `blur(14px) brightness(0.5)` with a dark
-  gradient, the video play badge and view label were present, no card
-  description exceeded two lines, hover, click-through, back navigation, dark
-  mode and the edge-cache headers were correct, and there were no unexpected
-  console errors or warnings. All backend unit tests and both production
+  preview route, the preview used a 6px base blur with a dark gradient and
+  cleared to `blur(0px) brightness(1)` on hover, the video play badge and view
+  label were present, no card description exceeded two lines, hover,
+  click-through, back navigation, dark mode and the edge-cache headers were
+  correct, and there were no unexpected console errors or warnings. All
+  backend unit tests and both production
   builds pass.
 - Navigating between share pages on the client now remounts the share view by
   share ID. Previously the page only fetched its files on mount, so clicking a

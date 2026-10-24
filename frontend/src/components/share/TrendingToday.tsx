@@ -110,10 +110,11 @@ const useStyles = createStyles((theme) => {
         outlineOffset: 2,
       },
 
-      // The preview is deliberately only a colour wash; the card details stay
-      // readable and the media is not exposed before the visitor opens it.
+      // The preview stays lightly blurred so the details remain readable;
+      // hovering reveals the full image.
       "&:hover img, &:hover video": {
-        filter: "blur(12px) brightness(0.58)",
+        filter: "blur(0px) brightness(1)",
+        transform: "scale(1.02)",
       },
     },
 
@@ -125,9 +126,9 @@ const useStyles = createStyles((theme) => {
       height: "100%",
       objectFit: "cover",
       backgroundColor: "#000",
-      filter: "blur(14px) brightness(0.5)",
+      filter: "blur(6px) brightness(0.5)",
       transform: "scale(1.12)",
-      transition: "filter 120ms ease",
+      transition: "filter 120ms ease, transform 120ms ease",
       pointerEvents: "none",
     },
 
