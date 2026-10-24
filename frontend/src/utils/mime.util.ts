@@ -58,6 +58,26 @@ const GALLERY_IMAGE_EXTENSIONS = new Set([
   "svg",
 ]);
 
+// Formats the backend can convert to a resized WebP. GIF, APNG, SVG and ICO
+// are displayed as-is so the gallery does not request a preview that can
+// never be generated.
+const WEBP_PREVIEW_EXTENSIONS = new Set([
+  "jpg",
+  "jpeg",
+  "jpe",
+  "jfif",
+  "jfi",
+  "jif",
+  "pjpeg",
+  "pjp",
+  "png",
+  "bmp",
+  "dib",
+  "tif",
+  "tiff",
+  "avif",
+]);
+
 // The browser's own canPlayType() check filters these further, so Safari and
 // Chromium only get containers they actually advertise.
 const GALLERY_VIDEO_EXTENSIONS = new Set([
@@ -121,6 +141,9 @@ export const getFileMimeType = (fileName: string) => {
   mimeTypeCache.set(extension, mimeType);
   return mimeType;
 };
+
+export const supportsWebpPreview = (fileName: string) =>
+  WEBP_PREVIEW_EXTENSIONS.has(getFileExtension(fileName));
 
 export const getGalleryMediaKind = (
   fileName: string,

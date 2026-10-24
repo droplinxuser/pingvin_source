@@ -13,7 +13,10 @@ import { TbPlayerPlay } from "react-icons/tb";
 import { FileMetaData } from "../../types/File.type";
 import { MAX_INLINE_FILE_SIZE } from "../../utils/fileSize.util";
 import { getBaseName, getShareFileUrl } from "../../utils/file.util";
-import { getGalleryMediaKind } from "../../utils/mime.util";
+import {
+  getGalleryMediaKind,
+  supportsWebpPreview,
+} from "../../utils/mime.util";
 import useTranslate from "../../hooks/useTranslate.hook";
 import LazyVideo from "../core/LazyVideo";
 import showFilePreviewModal from "./modals/showFilePreviewModal";
@@ -56,10 +59,12 @@ const MediaPreviewGallery = ({
         const kind = getGalleryMediaKind(file.name);
         const name = getBaseName(file.name);
         const url = getShareFileUrl(shareId, file.id, { download: false });
-        const imageUrl = getShareFileUrl(shareId, file.id, {
-          download: false,
-          webp: true,
-        });
+        const imageUrl = supportsWebpPreview(file.name)
+          ? getShareFileUrl(shareId, file.id, {
+              download: false,
+              webp: true,
+            })
+          : url;
 
         return (
           <Card key={file.id} withBorder radius="md" p="sm">

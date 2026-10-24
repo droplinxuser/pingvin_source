@@ -5,6 +5,7 @@ import { getConfiguredSiteUrl, normalizeBaseUrl } from "./seo.util";
 
 const SEO_CACHE_MS = 30_000;
 const ERROR_CACHE_MS = 5_000;
+const SEO_CACHE_MAX_ENTRIES = 500;
 
 type ShareSeoResult =
   | { status: "ok"; data: ShareSeo }
@@ -14,6 +15,22 @@ type ShareSeoResult =
 type CachedSeo = { at: number; value: ShareSeoResult; error?: boolean };
 
 const seoCache = new Map<string, CachedSeo>();
+
+// Share URLs are unbounded, so keep the per-process SSR cache small instead of
+// retaining every share ever crawled for the lifetime of the frontend.
+function cacheSeo(shareId: string, entry: CachedSeo) {
+  const now = Date.now();
+  for (const [id, cached] of seoCache) {
+    if (now - cached.at < (cached.error ? ERROR_CACHE_MS : SEO_CACHE_MS))
+      continue;
+    seoCache.delete(id);
+  }
+  if (seoCache.size >= SEO_CACHE_MAX_ENTRIES) {
+    const oldest = seoCache.keys().next().value;
+    if (oldest) seoCache.delete(oldest);
+  }
+  seoCache.set(shareId, entry);
+}
 
 /**
  * Uses the configured public URL in production. Local development and tests
@@ -65,7 +82,7 @@ export async function fetchShareSeo(
     );
     if (response.status === 404) {
       const value: ShareSeoResult = { status: "not-found" };
-      seoCache.set(shareId, { at: Date.now(), value });
+      cacheSeo(shareId, { at: Date.now(), value });
       return value;
     }
     if (!response.ok) throw new Error(`SEO fetch failed: ${response.status}`);
@@ -74,13 +91,13 @@ export async function fetchShareSeo(
       status: "ok",
       data: (await response.json()) as ShareSeo,
     };
-    seoCache.set(shareId, { at: Date.now(), value });
+    cacheSeo(shareId, { at: Date.now(), value });
     return value;
   } catch {
     // A short negative cache stops a slow backend from being retried on every
     // request, while still recovering quickly once it is reachable again.
     const value: ShareSeoResult = { status: "error" };
-    seoCache.set(shareId, { at: Date.now(), value, error: true });
+    cacheSeo(shareId, { at: Date.now(), value, error: true });
     return value;
   }
 }
