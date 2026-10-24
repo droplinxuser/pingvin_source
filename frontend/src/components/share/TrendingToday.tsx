@@ -149,8 +149,7 @@ const TrendingToday = ({
   const [items, setItems] = useState<TrendingShare[]>(initialItems ?? []);
 
   useEffect(() => {
-    // The full page always receives its data from getServerSideProps.
-    if (initialItems || embedded) return;
+    if (initialItems) return;
 
     let cancelled = false;
     shareService
@@ -163,7 +162,7 @@ const TrendingToday = ({
     return () => {
       cancelled = true;
     };
-  }, [embedded, initialItems, limit]);
+  }, [initialItems, limit]);
 
   const visibleItems = initialItems ?? items;
   if (visibleItems.length === 0) return null;
