@@ -21,7 +21,8 @@ import {
 } from "./virustotal.util";
 
 const API_BASE_DEFAULT = "https://www.virustotal.com/api/v3";
-const RATE_LIMIT_MS = 3 * 60 * 1000;
+// 499 intervals at 173s fit in 24h, allowing exactly 500 starts/day.
+const RATE_LIMIT_MS = 173 * 1000;
 const REQUEST_TIMEOUT_MS = 30 * 1000;
 const UPLOAD_TIMEOUT_MS = 2 * 60 * 1000;
 const MAX_UPLOAD_BYTES = 32 * 1024 * 1024;
@@ -73,7 +74,7 @@ export type VirusTotalShare = {
  * Best-effort VirusTotal scanning for completed shares.
  *
  * Every step is queued and executed by one background loop. A Valkey lock
- * spaces API calls three minutes apart across restarts and instances; the
+ * spaces API calls 173 seconds apart across restarts and instances; the
  * queue itself also lives in Valkey so a restart does not lose pending work.
  * If Valkey is unavailable the service falls back to a process-memory queue
  * and the same local three-minute spacing.
@@ -123,7 +124,7 @@ export class VirusTotalService implements OnModuleInit, OnApplicationShutdown {
 
     this.running = true;
     this.logger.log(
-      "VirusTotal scanning is enabled (one API request per 3 minutes)",
+      "VirusTotal scanning is enabled (one API request per 173 seconds)",
     );
     this.loopPromise = this.loop().catch((error) => {
       this.running = false;

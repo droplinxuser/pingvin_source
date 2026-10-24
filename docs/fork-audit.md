@@ -103,9 +103,9 @@ other languages show the upstream copy instead of the English fallback.
   scanned. The queue is a 1000-job Valkey list
   (`pingvin:virustotal:queue`, process-memory fallback) and every API step
   (hash lookup, upload, analysis poll) waits for a
-  `pingvin:virustotal:request` lock with a 180-second TTL, so at most 480
-  requests can start in any 24 hours (below the 500/day free-tier cap) while
-  the shared Valkey lock is available, even across restarts or instances.
+  `pingvin:virustotal:request` lock with a 173-second TTL, so at most 500
+  requests can start in any 24-hour window (the free-tier daily cap) while the
+  shared Valkey lock is available, even across restarts or instances.
   Without Valkey the same spacing is enforced per process. Files are hashed
   locally and looked up by SHA-256 first; they are uploaded only when unknown
   and at most 32 MiB.
@@ -460,7 +460,8 @@ sign-in redirect for a protected page and loop between `/upload` and
   all 33 backend unit tests pass (10 new VirusTotal filter/verdict/queue/state
   tests). A local mock API run uploaded a mixed JPEG+PDF share and received a
   hash lookup only for the PDF; the lookup, upload and analysis poll arrived
-  180.02s apart. The clean analysis left the share untouched. A second ZIP
+  180.02s apart under the previous 180s setting. The clean analysis left the
+  share untouched. A second ZIP
   share whose hash was reported malicious had its files deleted, its
   `removedReason` written, and its page changed to 404. A deliberately failed
   mock request was retried at the next slot and completed. Playwright guest,
@@ -488,6 +489,12 @@ sign-in redirect for a protected page and loop between `/upload` and
   the JSON file. The admin link was added to `/admin`; anonymous API access
   returned 403. All 36 backend tests pass (three new audit-state tests), and
   both production builds pass. No SQLite schema or migration was added.
+- VirusTotal rate-limit change (2026-10-24): the shared request lock is now
+  **173 seconds**, which allows exactly 500 request starts in a 24-hour window
+  (499 intervals of 173s fit inside 86,400s) instead of the previous 480/day.
+  The admin dashboard reads the limit from the service and therefore displays
+  `1 request / 173s`. The spacing mechanism is unchanged and remains covered by
+  the existing lock/audit tests.
 - Live non-admin audit (2026-10-24, after the admin-dashboard deployment): a
   17-page Playwright pass covered guest, non-admin user and 390px mobile views.
   Every page had one H1 and no horizontal overflow; there were no application

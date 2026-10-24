@@ -33,7 +33,7 @@ function createValkey() {
       return "OK";
     },
     get: async (key) => values.get(key) ?? null,
-    pTTL: async (key) => (values.has(key) ? 180000 : -2),
+    pTTL: async (key) => (values.has(key) ? 173000 : -2),
   };
 
   return {
