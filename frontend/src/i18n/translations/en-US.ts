@@ -54,7 +54,10 @@ export default {
   "trending.custom.title": "Trending today",
   "trending.custom.description":
     "Most-viewed public shares from the last 7 days.",
-  "trending.custom.item": "{name}: {count} views",
+  "trending.custom.files": "{count, plural, one {# file} other {# files}}",
+  "trending.custom.uploaded": "Uploaded {date}",
+  "trending.custom.views": "{count, plural, one {# view} other {# views}}",
+  "trending.custom.video": "Video",
   "trending.custom.empty":
     "No public shares have been viewed in the last seven days yet.",
   "trending.custom.loading": "Loading trending shares…",

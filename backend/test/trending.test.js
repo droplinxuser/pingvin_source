@@ -46,8 +46,11 @@ function meta(id, _views, createdAt, kind = "image") {
   return JSON.stringify({
     id,
     name: `Share ${id}`,
+    description: `Description for ${id}`,
     previewFileId: `file-${id}`,
     previewKind: kind,
+    fileCount: 3,
+    size: 1234,
     createdAt,
   });
 }
@@ -80,6 +83,10 @@ test("ranks the last seven days by total views and filters stale shares", async 
   assert.equal(items[1].views, 20);
   assert.equal(items[1].previewKind, "video");
   assert.equal(items[1].previewFileId, "file-b");
+  assert.equal(items[0].description, "Description for a");
+  assert.equal(items[0].fileCount, 3);
+  assert.equal(items[0].size, 1234);
+  assert.equal(items[0].createdAt, recent);
 });
 
 test("returns twelve by default and caps the full list at forty-eight", async () => {
@@ -115,41 +122,90 @@ test("records only recent public shares with image or video media", async () => 
   const base = {
     id: "share",
     name: "Share",
+    description: "  First line\n second line  ",
     createdAt: new Date(),
     views: 7,
   };
 
   await service.recordView({
     ...base,
-    files: [{ id: "text", name: "note.txt" }],
+    files: [{ id: "text", name: "note.txt", size: 10 }],
   });
   assert.equal(mock.calls.length, 0);
 
   await service.recordView({
     ...base,
     createdAt: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000),
-    files: [{ id: "image", name: "photo.jpg" }],
+    files: [{ id: "image", name: "photo.jpg", size: 10 }],
   });
   assert.equal(mock.calls.length, 0);
 
   await service.recordView({
     ...base,
     files: [
-      { id: "video", name: "clip.mp4" },
-      { id: "image", name: "photo.jpg" },
+      { id: "video", name: "clip.mp4", size: 1200 },
+      { id: "image", name: "photo.jpg", size: 3400 },
     ],
   });
   assert.equal(mock.calls.length, 1);
 
   const methods = mock.calls[0].map(([method]) => method);
-  assert.deepEqual(methods, ["zAdd", "expire", "set", "expire"]);
+  assert.deepEqual(methods, ["zAdd", "expire", "set"]);
   assert.deepEqual(mock.calls[0][0][1][1], { score: 7, value: "share" });
-  assert.equal(mock.calls[0][2][1][2].NX, true);
+  assert.equal(mock.calls[0][2][1][2].EX, 8 * 24 * 60 * 60);
 
   const stored = JSON.parse(mock.calls[0][2][1][1]);
   assert.equal(stored.previewFileId, "video");
   assert.equal(stored.previewKind, "video");
+  assert.equal(stored.description, "First line second line");
+  assert.equal(stored.fileCount, 2);
+  assert.equal(stored.size, 4600);
   assert.equal("views" in stored, false);
+});
+
+test("stores compact metadata and truncates long descriptions", async () => {
+  const mock = createMockValkey(() => []);
+  const service = new TrendingService(mock.valkey);
+
+  await service.recordView({
+    id: "share",
+    name: "Share",
+    description: `  First\nline   ${"x".repeat(400)}  `,
+    createdAt: new Date(),
+    views: 3,
+    files: [
+      { id: "image", name: "photo.jpg", size: "1234" },
+      { id: "video", name: "clip.mp4", size: "3400" },
+    ],
+  });
+
+  const stored = JSON.parse(mock.calls[0][2][1][1]);
+  assert.equal(stored.description.length, 240);
+  assert.equal(stored.description.startsWith("First line xxx"), true);
+  assert.equal(stored.fileCount, 2);
+  assert.equal(stored.size, 4634);
+});
+
+test("keeps legacy metadata readable until its next view", async () => {
+  const legacy = JSON.stringify({
+    id: "a",
+    name: "Share a",
+    previewFileId: "file-a",
+    previewKind: "image",
+    createdAt: recent,
+  });
+  const mock = createMockValkey(
+    () => [1, [{ value: "a", score: 4 }], 1],
+    [legacy],
+  );
+  const service = new TrendingService(mock.valkey);
+
+  const [item] = await service.getTrending();
+  assert.equal(item.id, "a");
+  assert.equal(item.createdAt, recent);
+  assert.equal(item.description, undefined);
+  assert.equal(item.fileCount, 0);
+  assert.equal(item.size, 0);
 });
 
 test("keeps the short ranking cache between views", async () => {

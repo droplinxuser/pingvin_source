@@ -82,9 +82,13 @@ export type ShareSeo = {
 export type TrendingShare = {
   id: string;
   name?: string;
+  description?: string;
   views: number;
   previewFileId: string;
   previewKind: "image" | "video";
+  fileCount?: number;
+  size?: number;
+  createdAt: string;
 };
 
 export type MyShare = Omit<Share, "hasPassword"> & {

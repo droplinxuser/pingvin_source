@@ -1,4 +1,5 @@
 import { Injectable } from "@nestjs/common";
+import { sumFileSizes } from "src/share/share.util";
 import { getFileMimeType } from "src/utils/mime.util";
 import { ValkeyClient, ValkeyService } from "./valkey.service";
 
@@ -10,6 +11,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 const VIEW_TTL_SECONDS = (WINDOW_DAYS + 1) * 24 * 60 * 60;
 const META_TTL_SECONDS = (WINDOW_DAYS + 1) * 24 * 60 * 60;
 const MAX_SHARE_AGE_MS = WINDOW_DAYS * DAY_MS;
+const MAX_DESCRIPTION_LENGTH = 240;
 const CANDIDATE_LIMIT = 200;
 const DEFAULT_RESULT_LIMIT = 12;
 const MAX_RESULT_LIMIT = 48;
@@ -20,23 +22,26 @@ type MediaKind = "image" | "video";
 export type TrendingShare = {
   id: string;
   name?: string;
+  description?: string;
   views: number;
   previewFileId: string;
   previewKind: MediaKind;
-};
-
-// Views are read from the sorted-set score, so metadata is immutable until
-// the share is edited or removed and only has to be written once.
-type TrendingMeta = Omit<TrendingShare, "views"> & {
+  fileCount?: number;
+  size?: number;
   createdAt: string;
 };
+
+// Views come from the sorted-set score; everything else is a small immutable
+// card payload. Reusing one key per share keeps the Valkey footprint bounded.
+type TrendingMeta = Omit<TrendingShare, "views">;
 
 type TrendingSource = {
   id: string;
   name?: string | null;
+  description?: string | null;
   createdAt: Date | string;
   views: number;
-  files?: { id: string; name: string }[];
+  files?: { id: string; name: string; size: string | number }[];
 };
 
 /**
@@ -60,8 +65,11 @@ export class TrendingService {
     const meta: TrendingMeta = {
       id: share.id,
       name: share.name || undefined,
+      description: normalizeDescription(share.description),
       previewFileId: preview.id,
       previewKind: preview.kind,
+      fileCount: share.files?.length ?? 0,
+      size: sumFileSizes(share.files),
       createdAt: new Date(share.createdAt).toISOString(),
     };
 
@@ -75,13 +83,10 @@ export class TrendingService {
       multi.zAdd(viewKey, { score: share.views, value: share.id });
       multi.expire(viewKey, VIEW_TTL_SECONDS);
       // One metadata entry per share instead of one copy in every day bucket.
-      // NX avoids rewriting the same JSON on every view; EXPIRE keeps an
-      // actively viewed share alive without a second write.
-      multi.set(metaKey, JSON.stringify(meta), {
-        EX: META_TTL_SECONDS,
-        NX: true,
-      });
-      multi.expire(metaKey, META_TTL_SECONDS);
+      // Rewriting the small card payload on each view keeps older entries
+      // current after a deploy adds a field; SET EX also refreshes the TTL, so
+      // no separate EXPIRE is needed.
+      multi.set(metaKey, JSON.stringify(meta), { EX: META_TTL_SECONDS });
       await multi.exec();
     });
   }
@@ -162,17 +167,28 @@ export class TrendingService {
       items.push({
         id: meta.id,
         name: meta.name,
+        description: meta.description,
         // The union keeps the highest daily score, which is the share's
         // current total view count.
         views: Number(score),
         previewFileId: meta.previewFileId,
         previewKind: meta.previewKind,
+        // Older cache entries predate these fields; the next view rewrites
+        // them. Keeping zero here lets the card hide the row until then.
+        fileCount: Number(meta.fileCount) || 0,
+        size: Number(meta.size) || 0,
+        createdAt: meta.createdAt,
       });
     }
 
     // zRangeWithScores already returned the candidates by descending score.
     return items.slice(0, MAX_RESULT_LIMIT);
   }
+}
+
+function normalizeDescription(description?: string | null) {
+  const normalized = description?.replace(/\s+/g, " ").trim();
+  return normalized ? normalized.slice(0, MAX_DESCRIPTION_LENGTH) : undefined;
 }
 
 function findPreview(files?: { id: string; name: string }[]) {

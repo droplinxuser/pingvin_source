@@ -50,10 +50,11 @@ other languages show the upstream copy instead of the English fallback.
    (copy, pagination, browser error reporting), missing share (404), trending
    widget on `/share/*`
    and 404 pages (no widget on home, upload or other pages), the clickable
-   widget title and full `/trending` page with up to 48 shares, file download
-   headers, report modal, footer page-view/top-country metrics, and the dynamic
-   `/manifest.json`. Repeat once with Valkey stopped to confirm the fallbacks
-   (the trending widget is hidden without Valkey).
+   widget title and full `/trending` page with up to 48 cards showing name,
+   description, file count, size, upload date and views over a blurred
+   preview, file download headers, report modal, footer page-view/top-country
+   metrics, and the dynamic `/manifest.json`. Repeat once with Valkey stopped
+   to confirm the fallbacks (the trending widget is hidden without Valkey).
 
 ## Production settings
 
@@ -165,17 +166,22 @@ other languages show the upstream copy instead of the English fallback.
 - "Trending today" is stored entirely in Valkey. A public share `GET` records
   the share's total view count as its score in a per-day sorted set
   (`pingvin:trending:views:<day>`, 8-day TTL) and writes
-  `{ id, name, previewFileId, previewKind, createdAt }` to one per-share key
-  (`pingvin:trending:meta:<shareId>`, 8-day TTL) in the same `MULTI`. The
-  metadata is written once (`NX`), and an `EXPIRE` keeps an actively viewed
-  share alive without rewriting the JSON on every view; the view badge comes
-  from the sorted-set score. One metadata entry per share replaces the old
-  per-day copies. Shares older than seven days and shares without an
-  image/video are skipped before writing. `GET /api/shares/trending` unions
-  the seven daily sets with `AGGREGATE MAX`, reads every candidate's metadata
-  with a single `MGET`, drops entries without current metadata or older than
-  seven days, and returns the top twelve ordered by total views without any
-  SQLite query.
+  `{ id, name, description, previewFileId, previewKind, fileCount, size,
+  createdAt }` to one per-share key (`pingvin:trending:meta:<shareId>`, 8-day
+  TTL) in the same `MULTI`. Descriptions are whitespace-normalised and capped
+  at 240 characters so one card cannot inflate the cache key. The small card
+  payload is rewritten on each view (`SET ... EX`, which also refreshes the
+  TTL), so entries cached before a field was added become current on their next
+  view without a second key or an extra read. The view badge still comes from
+  the sorted-set score. One metadata entry per share replaces the old per-day
+  copies. Shares older than seven days and shares without an image/video are
+  skipped before writing. `GET /api/shares/trending` unions the seven daily
+  sets with `AGGREGATE MAX`, reads every candidate's metadata with a single
+  `MGET`, drops entries without current metadata or older than seven days, and
+  returns the top twelve ordered by total views without any SQLite query. Each
+  item carries the share name, description, file count, total size, upload date
+  and preview kind, so the cards can show those details without additional
+  requests.
   `?limit=48` returns the full list for the public `/trending` page; other
   values are clamped to 48. The result is cached in-process for 30 seconds and
   is edge-cacheable for 60 seconds. The frontend also caches the public list
@@ -184,6 +190,10 @@ other languages show the upstream copy instead of the English fallback.
   the request. Editing, expiring or deleting a share (including removing its
   files or reverse-share parent) deletes its metadata immediately. If Valkey
   is unavailable the endpoint returns an empty list and the widget is hidden.
+  Trending cards use a dark gradient over a strongly blurred preview, keeping
+  the media hidden until the share is opened while the name, description, file
+  count, size, upload date and view count stay readable. The grid is one column
+  on phones, two on small tablets, three on laptops and four on wide screens.
 - The footer posts to `POST /api/system/pageview` on every rendered page. The
   endpoint increments a per-hour Valkey hash atomically (one total field plus
   one field per country), expires each hourly bucket after 25 hours and reads
