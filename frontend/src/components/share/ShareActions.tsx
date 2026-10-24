@@ -41,7 +41,9 @@ const ShareActions = ({
     if (!share) return;
 
     // The share page already contains everything the edit form needs, so a
-    // second request for the user's whole share list is unnecessary.
+    // second request for the user's whole share list is unnecessary. Using the
+    // loaded share also lets an admin edit an anonymous reverse share, which
+    // would never be present in getMyShares().
     const editableShare: MyShare = {
       ...share,
       recipients: [],
