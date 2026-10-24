@@ -116,7 +116,10 @@ const getTrending = async (limit?: number): Promise<TrendingShare[]> => {
   const items = (
     await api.get("shares/trending", { params: { limit: requested } })
   ).data as TrendingShare[];
-  trendingCache = { at: Date.now(), limit: requested, items };
+  // Do not cache an empty response; it may be a transient backend/cache miss
+  // and would keep the widget empty for the rest of the browser session.
+  trendingCache =
+    items.length > 0 ? { at: Date.now(), limit: requested, items } : undefined;
   return items.slice(0, requested);
 };
 

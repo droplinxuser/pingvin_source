@@ -57,6 +57,7 @@ export default {
   "trending.custom.item": "{name}: {count} views",
   "trending.custom.empty":
     "No public shares have been viewed in the last seven days yet.",
+  "trending.custom.loading": "Loading trending shares…",
   // END trending
 
   // /

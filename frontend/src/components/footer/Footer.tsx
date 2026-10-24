@@ -16,6 +16,7 @@ import { useIntl } from "react-intl";
 import { TbEye } from "react-icons/tb";
 import useConfig from "../../hooks/config.hook";
 import useTranslate from "../../hooks/useTranslate.hook";
+import useUser from "../../hooks/user.hook";
 import systemService, { SystemStats } from "../../services/system.service";
 import { countryCodeToFlag, getCountryName } from "../../utils/country.util";
 import { byteToHumanSizeString } from "../../utils/fileSize.util";
@@ -142,6 +143,7 @@ const Footer = () => {
   const intl = useIntl();
   const router = useRouter();
   const config = useConfig();
+  const { user } = useUser();
   const { classes } = useStyles();
   const [stats, setStats] = useState<SystemStats | null>(null);
   const [isLoadingStats, setIsLoadingStats] = useState(true);
@@ -214,7 +216,9 @@ const Footer = () => {
   ];
 
   const views = stats?.pageViewsLastDay ?? 0;
-  const countries = stats?.topCountriesLastDay?.slice(0, 5) ?? [];
+  const countries = stats?.topCountriesLastDay?.slice(0, 8) ?? [];
+  const primaryHref = user ? "/upload" : "/";
+  const primaryLabel = user ? t("navbar.upload") : t("navbar.home");
 
   return (
     <MFooter height="auto" className={classes.footer} zIndex={100}>
@@ -265,7 +269,14 @@ const Footer = () => {
               </Text>
             </Group>
             {countries.length > 0 && (
-              <Group spacing={8} mt={7}>
+              <SimpleGrid
+                data-testid="footer-countries"
+                cols={2}
+                spacing={8}
+                verticalSpacing={5}
+                mt={7}
+                breakpoints={[{ minWidth: "xs", cols: 4 }]}
+              >
                 {countries.map(({ country, count }) => {
                   const name = getCountryName(country, intl.locale);
                   return (
@@ -279,7 +290,7 @@ const Footer = () => {
                     </HoverTip>
                   );
                 })}
-              </Group>
+              </SimpleGrid>
             )}
           </Box>
 
@@ -290,8 +301,12 @@ const Footer = () => {
               aria-label={t("footer.custom.navigation")}
               className={classes.legalLinks}
             >
-              <Anchor className={classes.link} component={Link} href="/">
-                {t("navbar.home")}
+              <Anchor
+                className={classes.link}
+                component={Link}
+                href={primaryHref}
+              >
+                {primaryLabel}
               </Anchor>
               <Anchor
                 className={classes.link}

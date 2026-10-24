@@ -11,7 +11,7 @@ export const getServerSideProps: GetServerSideProps = async () => {
   const apiURL = process.env.API_URL || "http://localhost:8080";
   const trending = await fetchTrending(apiURL, 48);
 
-  return { props: { trending: trending ?? [] } };
+  return { props: { trending } };
 };
 
 const Trending = ({ trending }: { trending?: TrendingShare[] }) => {
@@ -52,7 +52,7 @@ const Trending = ({ trending }: { trending?: TrendingShare[] }) => {
         canonicalPath="/trending"
         jsonLd={jsonLd}
       />
-      <TrendingToday initialItems={items} embedded limit={48} />
+      <TrendingToday initialItems={trending} embedded limit={48} />
     </>
   );
 };

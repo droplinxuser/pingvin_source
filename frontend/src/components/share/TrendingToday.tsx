@@ -149,25 +149,38 @@ const TrendingToday = ({
   const { classes } = useStyles();
   const t = useTranslate();
   const intl = useIntl();
+  const hasInitialItems = !!initialItems?.length;
   const [items, setItems] = useState<TrendingShare[]>(initialItems ?? []);
+  const [isLoading, setIsLoading] = useState(!hasInitialItems);
 
   useEffect(() => {
-    if (initialItems) return;
+    if (initialItems?.length) {
+      setItems(initialItems);
+      setIsLoading(false);
+      return;
+    }
 
+    // An SSR timeout or an empty edge response must not lock the page into the
+    // empty state. Retry in the browser and only show "empty" once that
+    // request has completed.
     let cancelled = false;
+    setIsLoading(true);
     shareService
       .getTrending(limit)
       .then((trending) => {
         if (!cancelled) setItems(trending);
       })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setIsLoading(false);
+      });
 
     return () => {
       cancelled = true;
     };
   }, [initialItems, limit]);
 
-  const visibleItems = initialItems ?? items;
+  const visibleItems = initialItems?.length ? initialItems : items;
   const title = t("trending.custom.title");
   if (visibleItems.length === 0) {
     if (!embedded) return null;
@@ -179,7 +192,9 @@ const TrendingToday = ({
             {title}
           </Title>
           <Text className={classes.subheading} mt="xs">
-            {t("trending.custom.empty")}
+            {isLoading
+              ? t("trending.custom.loading")
+              : t("trending.custom.empty")}
           </Text>
         </section>
       </Container>

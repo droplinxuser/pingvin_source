@@ -412,9 +412,9 @@ function App({ Component, pageProps }: AppProps) {
                       <Component {...pageProps} />
                     </Box>
                   ) : (
-                    <Stack justify="space-between" sx={{ minHeight: "100vh" }}>
+                    <Stack sx={{ minHeight: "100vh" }}>
                       <Header />
-                      <Box component="main" id="main-content">
+                      <Box component="main" id="main-content" sx={{ flex: 1 }}>
                         <Container>
                           <Component {...pageProps} />
                         </Container>

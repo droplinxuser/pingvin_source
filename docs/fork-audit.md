@@ -118,7 +118,8 @@ other languages show the upstream copy instead of the English fallback.
 - The footer posts to `POST /api/system/pageview` on every rendered page. The
   endpoint increments a per-hour Valkey hash atomically (one total field plus
   one field per country), expires each hourly bucket after 25 hours and reads
-  the last 24 hours of page views plus the top five countries. The aggregate is
+  the last 24 hours of page views plus the top eight countries (four columns
+  per row on desktop). The aggregate is
   cached in-process for 10s so a page view costs one increment instead of 24
   hash reads. Only the 24 hourly hashes are stored; no per-visitor sets are
   kept. The POST response is never cached. `GET /api/system/stats` remains a
@@ -291,7 +292,14 @@ sign-in redirect for a protected page and loop between `/upload` and
   the trending widget, the manifest link includes the build hash, generated
   thumbnails are 300x225 WebP (216 bytes for the local test image), and the
   full-size modal uses the original file. With the share API delayed by 1.2s,
-  the new skeleton measured CLS ~0.055 on desktop and ~0.001 at 390px.
+  the new skeleton measured CLS ~0.066 on desktop and ~0.0001 at 390px.
+- The layout/UX follow-up removed the redundant header spacer and
+  `space-between` distribution, so short pages no longer get a large gap below
+  the header. `/trending` now shows a loading state and retries client-side
+  when SSR returns an empty/undefined list instead of permanently rendering the
+  empty message. Footer activity displays the top eight countries in a
+  two-row, four-column desktop grid, and the first footer link is Home for
+  guests and Upload for signed-in users.
 - A follow-up caching review (local Node `26.12.1`; the server remains on
   `22.23.3`) rechecked that only query-free page shells are public, cacheable
   file/ZIP GETs stay free of `Set-Cookie`, the share-metadata cache contains

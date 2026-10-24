@@ -1,6 +1,7 @@
 import type { TrendingShare } from "../types/share.type";
 
 const TRENDING_CACHE_TTL_MS = 30_000;
+const TRENDING_ERROR_CACHE_TTL_MS = 5_000;
 const cache = new Map<
   number,
   { at: number; items: TrendingShare[] | undefined }
@@ -18,8 +19,10 @@ export async function fetchTrending(
 ): Promise<TrendingShare[] | undefined> {
   const key = limit ?? 0;
   const cached = cache.get(key);
-  if (cached && Date.now() - cached.at < TRENDING_CACHE_TTL_MS)
-    return cached.items;
+  const cacheTtl = cached?.items
+    ? TRENDING_CACHE_TTL_MS
+    : TRENDING_ERROR_CACHE_TTL_MS;
+  if (cached && Date.now() - cached.at < cacheTtl) return cached.items;
 
   try {
     const query = limit ? `?limit=${limit}` : "";

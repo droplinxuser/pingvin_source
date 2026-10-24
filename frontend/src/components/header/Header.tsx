@@ -412,7 +412,6 @@ const Header = () => {
           </Paper>
         )}
       </Transition>
-      {!opened && <Box mb={40} />}
     </>
   );
 };
