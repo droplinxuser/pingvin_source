@@ -506,6 +506,17 @@ sign-in redirect for a protected page and loop between `/upload` and
   `GET /api/admin/virustotal` returned 403 with no leaked dashboard content.
   The live build manifest includes the `/admin/virustotal` route. The dashboard
   itself was not opened live because the test account is non-admin.
+- Live 173s re-audit (2026-10-24): the same 17-page guest/non-admin/mobile
+  Playwright pass was repeated after the rate-limit change. All pages had one
+  H1 and no horizontal overflow; only the intentional missing-page 404 appeared
+  as an application console error, with two third-party ad-image 404s at the
+  network level. Cache headers, public file/ZIP headers and share `HEAD`
+  remained correct. Anonymous `/admin/virustotal` still redirected to sign-in;
+  the non-admin user still redirected to `/upload` from both admin routes and
+  received 403 from `GET /api/admin/virustotal`. The 173-second value is
+  backend-side and admin-only, so it could not be read with the non-admin
+  account; an admin dashboard capture is needed to confirm the displayed
+  `1 request / 173s` live.
 
 ## Known non-issues
 
