@@ -7,6 +7,7 @@ import useTranslate from "../../hooks/useTranslate.hook";
 import shareService from "../../services/share.service";
 
 const DOWNLOAD_GAP_MS = 250;
+const MODAL_SETTLE_MS = 400;
 
 type DownloadableFile = { id: string };
 
@@ -26,6 +27,8 @@ const DownloadAllButton = ({
   const downloadAll = async () => {
     setIsDownloading(true);
     try {
+      // Let the confirmation modal finish closing before the first download.
+      await new Promise((resolve) => setTimeout(resolve, MODAL_SETTLE_MS));
       for (const [index, file] of files.entries()) {
         await shareService.downloadFile(shareId, file.id, recipientId);
         if (index < files.length - 1) {

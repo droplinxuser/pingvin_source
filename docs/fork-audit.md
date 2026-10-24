@@ -219,7 +219,9 @@ other languages show the upstream copy instead of the English fallback.
   The button is shown immediately for multi-file shares, asks for confirmation,
   and warns that the browser may request permission to allow multiple
   downloads. Each file is fetched through a hidden same-origin anchor with a
-  short gap so Chrome/Firefox can show their multiple-download prompt. The
+  short gap so Chrome/Firefox can show their multiple-download prompt; a short
+  settle delay after confirmation prevents the first click being lost while the
+  modal closes. The
   legacy `GET /api/shares/:id/files/zip` endpoint still serves archives already
   on disk (and builds S3 archives on explicit request), but `share.complete`
   and `share.getMetaData` no longer create `archive.zip`; this avoids archive
