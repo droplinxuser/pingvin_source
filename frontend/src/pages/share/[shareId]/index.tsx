@@ -245,13 +245,7 @@ const SharePage = ({
                 id="share.fileCount"
                 values={{
                   count: share?.files?.length || 0,
-                  size: byteToHumanSizeString(
-                    share?.files?.reduce(
-                      (total: number, file: { size: string }) =>
-                        total + parseInt(file.size),
-                      0,
-                    ) || 0,
-                  ),
+                  size: byteToHumanSizeString(share?.size || 0),
                 }}
               />
             </Text>
@@ -268,7 +262,7 @@ const SharePage = ({
           shareId={shareId}
           recipientId={recipientId}
           setShare={setShare}
-          onDeleted={getFiles}
+          onDeleted={() => router.replace("/")}
         />
       </Group>
 

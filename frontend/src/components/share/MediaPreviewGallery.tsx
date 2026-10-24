@@ -32,10 +32,9 @@ const MediaPreviewGallery = ({
   const mediaFiles = files
     .filter((file) => {
       const kind = getGalleryMediaKind(file.name);
-      return (
-        kind &&
-        (kind !== "image" || parseInt(file.size) <= MAX_INLINE_FILE_SIZE)
-      );
+      // Use the same inline cap as the file list so a large video cannot be
+      // embedded here but blocked from the preview button there.
+      return !!kind && parseInt(file.size) <= MAX_INLINE_FILE_SIZE;
     })
     .slice(0, MAX_GALLERY_ITEMS);
 

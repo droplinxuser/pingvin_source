@@ -6,10 +6,12 @@ export type Share = {
   files: any;
   creator?: User;
   description?: string;
+  createdAt: Date;
   expiration: Date;
   views: number;
   size: number;
   hasPassword: boolean;
+  maxViews?: number;
   isZipReady?: boolean;
   uploaderInfo?: UploaderInfo;
 };

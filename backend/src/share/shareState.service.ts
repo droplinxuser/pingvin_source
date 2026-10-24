@@ -29,7 +29,11 @@ import {
   shareDataCacheKey,
   shareGuardCacheKey,
 } from "src/utils/cache.util";
-import { SHARE_EXPIRATION, isViewLimitExceeded } from "./share.util";
+import {
+  SHARE_EXPIRATION,
+  isViewLimitExceeded,
+  sumFileSizes,
+} from "./share.util";
 
 // Collapse bursts of share views into one metadata write per share. The
 // returned visitor list is updated immediately; only the disk write is delayed.
@@ -122,6 +126,7 @@ export class ShareStateService implements OnApplicationShutdown {
     const { security, ...shareData } = share;
     const result = {
       ...shareData,
+      size: sumFileSizes(share.files),
       hasPassword: !!security?.password,
       maxViews: security?.maxViews,
     };

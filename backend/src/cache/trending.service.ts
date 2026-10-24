@@ -25,7 +25,9 @@ export type TrendingShare = {
   previewKind: MediaKind;
 };
 
-type TrendingMeta = TrendingShare & {
+// Views are read from the sorted-set score, so metadata is immutable until
+// the share is edited or removed and only has to be written once.
+type TrendingMeta = Omit<TrendingShare, "views"> & {
   createdAt: string;
 };
 
@@ -58,28 +60,30 @@ export class TrendingService {
     const meta: TrendingMeta = {
       id: share.id,
       name: share.name || undefined,
-      views: share.views,
       previewFileId: preview.id,
       previewKind: preview.kind,
       createdAt: new Date(share.createdAt).toISOString(),
     };
 
-    const stored = await this.valkey.run(async (client) => {
+    // Keep the short result cache: a view only changes a score, and rebuilding
+    // the ranking after every view would turn each visit into extra Valkey
+    // reads. The cached order is at most 30 seconds old.
+    await this.valkey.run(async (client) => {
       const viewKey = viewKeyFor(currentDay());
+      const metaKey = metaKeyFor(share.id);
       const multi = client.multi();
       multi.zAdd(viewKey, { score: share.views, value: share.id });
       multi.expire(viewKey, VIEW_TTL_SECONDS);
-      // One metadata entry per share instead of one copy in every day bucket:
-      // a share viewed on several days used to duplicate its metadata up to
-      // seven times. The TTL refreshes on each view and invalidates the entry.
-      multi.set(metaKeyFor(share.id), JSON.stringify(meta), {
+      // One metadata entry per share instead of one copy in every day bucket.
+      // NX avoids rewriting the same JSON on every view; EXPIRE keeps an
+      // actively viewed share alive without a second write.
+      multi.set(metaKey, JSON.stringify(meta), {
         EX: META_TTL_SECONDS,
+        NX: true,
       });
+      multi.expire(metaKey, META_TTL_SECONDS);
       await multi.exec();
-      return true;
     });
-
-    if (stored) this.cached = undefined;
   }
 
   async getTrending(limit = DEFAULT_RESULT_LIMIT): Promise<TrendingShare[]> {
@@ -150,7 +154,7 @@ export class TrendingService {
 
     const now = Date.now();
     const items: TrendingShare[] = [];
-    for (const { value: id } of ranked) {
+    for (const { value: id, score } of ranked) {
       const meta = metas.get(id);
       if (!meta) continue;
       if (now - new Date(meta.createdAt).getTime() > MAX_SHARE_AGE_MS) continue;
@@ -158,14 +162,15 @@ export class TrendingService {
       items.push({
         id: meta.id,
         name: meta.name,
-        views: meta.views,
+        // The union keeps the highest daily score, which is the share's
+        // current total view count.
+        views: Number(score),
         previewFileId: meta.previewFileId,
         previewKind: meta.previewKind,
       });
     }
 
-    // Keep the visible order in lockstep with the view badge.
-    items.sort((a, b) => b.views - a.views);
+    // zRangeWithScores already returned the candidates by descending score.
     return items.slice(0, MAX_RESULT_LIMIT);
   }
 }

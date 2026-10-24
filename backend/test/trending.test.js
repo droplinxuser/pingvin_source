@@ -42,11 +42,10 @@ const now = Date.now();
 const recent = new Date(now - 60 * 60 * 1000).toISOString();
 const old = new Date(now - 8 * 24 * 60 * 60 * 1000).toISOString();
 
-function meta(id, views, createdAt, kind = "image") {
+function meta(id, _views, createdAt, kind = "image") {
   return JSON.stringify({
     id,
     name: `Share ${id}`,
-    views,
     previewFileId: `file-${id}`,
     previewKind: kind,
     createdAt,
@@ -77,7 +76,8 @@ test("ranks the last seven days by total views and filters stale shares", async 
     items.map((item) => item.id),
     ["a", "b"],
   );
-  assert.equal(items[0].views, 400);
+  assert.equal(items[0].views, 40);
+  assert.equal(items[1].views, 20);
   assert.equal(items[1].previewKind, "video");
   assert.equal(items[1].previewFileId, "file-b");
 });
@@ -142,19 +142,51 @@ test("records only recent public shares with image or video media", async () => 
   assert.equal(mock.calls.length, 1);
 
   const methods = mock.calls[0].map(([method]) => method);
-  assert.deepEqual(methods, ["zAdd", "expire", "set"]);
+  assert.deepEqual(methods, ["zAdd", "expire", "set", "expire"]);
   assert.deepEqual(mock.calls[0][0][1][1], { score: 7, value: "share" });
+  assert.equal(mock.calls[0][2][1][2].NX, true);
 
   const stored = JSON.parse(mock.calls[0][2][1][1]);
   assert.equal(stored.previewFileId, "video");
   assert.equal(stored.previewKind, "video");
-  assert.equal(stored.views, 7);
+  assert.equal("views" in stored, false);
+});
+
+test("keeps the short ranking cache between views", async () => {
+  const mock = createMockValkey(
+    () => [1, [{ value: "a", score: 1 }], 1],
+    [meta("a", 1, recent)],
+  );
+  const service = new TrendingService(mock.valkey);
+
+  assert.deepEqual(
+    (await service.getTrending()).map((item) => item.id),
+    ["a"],
+  );
+  const callsAfterFirstRead = mock.calls.length;
+
+  await service.recordView({
+    id: "a",
+    name: "Share a",
+    createdAt: new Date(),
+    views: 2,
+    files: [{ id: "image-a", name: "photo.jpg" }],
+  });
+  assert.deepEqual(
+    (await service.getTrending()).map((item) => item.id),
+    ["a"],
+  );
+
+  // Only the recordView MULTI reached Valkey; the second read came from the
+  // 30-second in-process result cache.
+  assert.equal(mock.calls.length, callsAfterFirstRead + 1);
 });
 
 test("invalidates cached rankings and share metadata", async () => {
-  const mock = createMockValkey(() => [1, [{ value: "a", score: 1 }], 1], [
-    meta("a", 1, recent),
-  ]);
+  const mock = createMockValkey(
+    () => [1, [{ value: "a", score: 1 }], 1],
+    [meta("a", 1, recent)],
+  );
   const service = new TrendingService(mock.valkey);
   assert.deepEqual(
     (await service.getTrending()).map((item) => item.id),

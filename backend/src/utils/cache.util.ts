@@ -6,7 +6,7 @@ const NO_STORE = "no-store";
 const PUBLIC_CACHE_MAX_AGE = 60 * 60 * 24;
 
 export const SHARE_DATA_CACHE_TTL_MS = 30 * 1000;
-export const SHARE_META_CACHE_TTL_MS = 5 * 1000;
+export const SHARE_META_CACHE_TTL_MS = 30 * 1000;
 
 export const shareDataCacheKey = (shareId: string) => `share:data:${shareId}`;
 export const shareGuardCacheKey = (shareId: string) => `share:guard:${shareId}`;
@@ -34,6 +34,17 @@ export function getEdgeCacheHeaders(maxAge: number) {
   return cacheHeaders(
     `public, max-age=0, s-maxage=${maxAge}, stale-while-revalidate=${maxAge}`,
   );
+}
+
+/**
+ * A ZIP archive is rebuilt whenever the owner changes a share's files, so it
+ * gets a short edge TTL instead of the immutable headers used for single
+ * files. Protected shares are never stored by the CDN.
+ */
+export function getZipCacheHeaders(
+  isPublicShare: boolean,
+): Record<string, string> {
+  return isPublicShare ? getEdgeCacheHeaders(60) : NO_STORE_HEADERS;
 }
 
 /**

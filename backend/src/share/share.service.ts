@@ -43,6 +43,7 @@ import { GuardShare, ShareStateService } from "./shareState.service";
 import {
   SHARE_EXPIRATION,
   isViewLimitExceeded,
+  sumFileSizes,
 } from "./share.util";
 import { tableOrderBy } from "src/utils/pagination.util";
 
@@ -618,11 +619,18 @@ export class ShareService {
     );
   }
 
-  async remove(shareId: string, isDeleterAdmin = false) {
-    const share = await this.prisma.share.findUnique({
-      where: { id: shareId },
-      select: { creatorId: true },
-    });
+  async remove(
+    shareId: string,
+    isDeleterAdmin = false,
+    knownShare?: Pick<Share, "creatorId">,
+  ) {
+    // The owner guard already loaded the share for the request.
+    const share =
+      knownShare ??
+      (await this.prisma.share.findUnique({
+        where: { id: shareId },
+        select: { creatorId: true },
+      }));
 
     if (!share) throw new NotFoundException(this.i18n.t("share.notFound"));
 
@@ -636,11 +644,13 @@ export class ShareService {
     await this.shareState.invalidateData(shareId);
   }
 
-  async expire(shareId: string) {
-    const share = await this.prisma.share.findUnique({
-      where: { id: shareId },
-      select: { creatorId: true },
-    });
+  async expire(shareId: string, knownShare?: Pick<Share, "creatorId">) {
+    const share =
+      knownShare ??
+      (await this.prisma.share.findUnique({
+        where: { id: shareId },
+        select: { creatorId: true },
+      }));
 
     if (!share) throw new NotFoundException(this.i18n.t("share.notFound"));
 
@@ -711,7 +721,14 @@ export class ShareService {
         ? body.security.maxViews
         : currentSecurity?.maxViews;
 
-    if (!nextPassword && !nextMaxViews) {
+    // A recipient-restricted share keeps its security row even when it has no
+    // password or view limit; deleting the row would silently lift the
+    // restriction.
+    if (
+      !nextPassword &&
+      !nextMaxViews &&
+      !currentSecurity?.restrictToRecipients
+    ) {
       if (currentSecurity) {
         await this.prisma.shareSecurity.delete({ where: { shareId } });
       }
@@ -724,6 +741,7 @@ export class ShareService {
         share: { connect: { id: shareId } },
         password: nextPassword,
         maxViews: nextMaxViews,
+        restrictToRecipients: currentSecurity?.restrictToRecipients ?? false,
       },
       update: {
         password: nextPassword,
@@ -757,8 +775,7 @@ export class ShareService {
   private transformShare(share: any) {
     return {
       ...share,
-      size:
-        share.files?.reduce((acc, file) => acc + parseInt(file.size), 0) ?? 0,
+      size: sumFileSizes(share.files),
       recipients: share.recipients?.map((recipient) => recipient.email) ?? [],
       security: {
         maxViews: share.security?.maxViews,

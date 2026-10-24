@@ -37,37 +37,43 @@ const ShareActions = ({
   const isOwnerOrAdmin =
     !!user && !!share && (share.creator?.id === user.id || user.isAdmin);
 
-  const handleEditClick = async () => {
-    try {
-      const myShares = await shareService.getMyShares();
-      const myShare = myShares.find((s) => s.id === shareId);
-      if (!myShare) return;
-      showShareInformationsModal(
-        modals,
-        myShare,
-        parseInt(config.get("share.maxSize")),
-        config.get("general.appUrl"),
-        config.get("general.appUrl", true),
-        (updatedShare: MyShare) => {
-          setShare((prev) =>
-            prev
-              ? {
-                  ...prev,
-                  name: updatedShare.name,
-                  description: updatedShare.description,
-                  expiration: updatedShare.expiration,
-                  hasPassword:
-                    updatedShare.security?.passwordProtected ??
-                    prev.hasPassword,
-                }
-              : prev,
-          );
-        },
-        true,
-      );
-    } catch (e) {
-      toast.axiosError(e);
-    }
+  const handleEditClick = () => {
+    if (!share) return;
+
+    // The share page already contains everything the edit form needs, so a
+    // second request for the user's whole share list is unnecessary.
+    const editableShare: MyShare = {
+      ...share,
+      recipients: [],
+      security: {
+        passwordProtected: share.hasPassword,
+        maxViews: share.maxViews,
+        restrictToRecipients: false,
+      },
+    };
+    showShareInformationsModal(
+      modals,
+      editableShare,
+      parseInt(config.get("share.maxSize")),
+      config.get("general.appUrl"),
+      config.get("general.appUrl", true),
+      (updatedShare: MyShare) => {
+        setShare((prev) =>
+          prev
+            ? {
+                ...prev,
+                name: updatedShare.name,
+                description: updatedShare.description,
+                expiration: updatedShare.expiration,
+                hasPassword:
+                  updatedShare.security?.passwordProtected ?? prev.hasPassword,
+                maxViews: updatedShare.security?.maxViews,
+              }
+            : prev,
+        );
+      },
+      true,
+    );
   };
 
   const handleDeleteClick = () => {

@@ -6,8 +6,20 @@ export const getNormalizedFileName = (file: {
   return pathName.replace(/\\/g, "/").replace(/^\//, "");
 };
 
+export const splitFileName = (pathName: string) => {
+  const normalized = pathName.replace(/\\/g, "/").replace(/^\//, "");
+  const separator = normalized.lastIndexOf("/");
+
+  return separator === -1
+    ? { folderPath: "", baseName: normalized }
+    : {
+        folderPath: normalized.slice(0, separator),
+        baseName: normalized.slice(separator + 1) || normalized,
+      };
+};
+
 export const getBaseName = (pathName: string): string =>
-  pathName.replace(/\\/g, "/").split("/").pop() || pathName;
+  splitFileName(pathName).baseName;
 
 export const filterDuplicateFiles = <T extends File>(
   newFiles: T[],

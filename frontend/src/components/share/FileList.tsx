@@ -44,6 +44,7 @@ import {
 import toast from "../../utils/toast.util";
 import TableSortIcon, { TableSort } from "../core/SortIcon";
 import { HoverTip } from "../core/HoverTip";
+import FileName from "../core/FileName";
 import showFilePreviewModal from "./modals/showFilePreviewModal";
 
 const ARCHIVE_EXTENSION = /\.(zip|rar|7z|tar|gz|bz2|xz)$/i;
@@ -157,7 +158,6 @@ const FileList = ({
         {isLoading
           ? skeletonRows
           : sortedFiles.map((file, index) => {
-              const name = getBaseName(file.name);
               const size = byteToHumanSizeString(parseInt(file.size));
               const visual = getFileVisual(file.name);
 
@@ -188,9 +188,7 @@ const FileList = ({
                     {visual.icon}
                   </ThemeIcon>
                   <Box sx={{ minWidth: 0 }}>
-                    <Text size="sm" weight={600} truncate title={name}>
-                      {name}
-                    </Text>
+                    <FileName name={file.name} />
                     <Text
                       size="xs"
                       color="dimmed"

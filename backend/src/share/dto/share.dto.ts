@@ -11,10 +11,16 @@ export class ShareDTO {
   name?: string;
 
   @Expose()
+  createdAt: Date;
+
+  @Expose()
   expiration: Date;
 
   @Expose()
   views: number;
+
+  @Expose()
+  maxViews?: number;
 
   @Expose()
   @Type(() => FileDTO)

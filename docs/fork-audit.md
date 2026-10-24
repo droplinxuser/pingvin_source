@@ -82,26 +82,29 @@ other languages show the upstream copy instead of the English fallback.
 - Valkey/Redis is optional but recommended: set `CACHE_REDIS_ENABLED=true` and
   `CACHE_REDIS_URL=redis://127.0.0.1:6379` in `backend/.env` (`update.sh`
   enables both automatically when a local `valkey-server` is active). Share-page
-  data, guard data and metadata are cached for 30s/30s/5s; the metadata entry
-  contains only `{ id, isZipReady }`. A data-cache miss also resets the rolling
-  expiration to 100 days. Share view counts are written directly to SQLite;
-  shares without a view limit use a single atomic update instead of a
-  transaction. Visitor metadata is coalesced into one `uploader.json` write per
-  second and per share, and pending entries are flushed on shutdown. The
-  footer's base counters use a 60-second in-process cache and do not add a
-  Valkey key.
+  data, guard data and metadata are cached for 30s/30s/30s; the metadata entry
+  contains only `{ id, isZipReady }`, so the five-second ZIP poll is served
+  from cache and a finished ZIP invalidates it immediately. A data-cache miss
+  also resets the rolling expiration to 100 days. Share view counts are written
+  directly to SQLite; shares without a view limit use a single atomic update
+  instead of a transaction. Visitor metadata is coalesced into one
+  `uploader.json` write per second and per share, and pending entries are
+  flushed on shutdown. The footer's base counters use a 60-second in-process
+  cache and do not add a Valkey key.
 - "Trending today" is stored entirely in Valkey. A public share `GET` records
   the share's total view count as its score in a per-day sorted set
   (`pingvin:trending:views:<day>`, 8-day TTL) and writes
-  `{ id, name, views, previewFileId, previewKind, createdAt }` to one
-  per-share key (`pingvin:trending:meta:<shareId>`, 8-day TTL) in the same
-  `MULTI`. One metadata entry per share replaces the old per-day copies, so a
-  share viewed on several days no longer duplicates its JSON up to seven
-  times. Shares older than seven days and shares without an image/video are
-  skipped before writing. `GET /api/shares/trending` unions the seven daily
-  sets with `AGGREGATE MAX`, reads every candidate's metadata with a single
-  `MGET`, drops entries without current metadata or older than seven days, and
-  returns the top twelve ordered by total views without any SQLite query.
+  `{ id, name, previewFileId, previewKind, createdAt }` to one per-share key
+  (`pingvin:trending:meta:<shareId>`, 8-day TTL) in the same `MULTI`. The
+  metadata is written once (`NX`), and an `EXPIRE` keeps an actively viewed
+  share alive without rewriting the JSON on every view; the view badge comes
+  from the sorted-set score. One metadata entry per share replaces the old
+  per-day copies. Shares older than seven days and shares without an
+  image/video are skipped before writing. `GET /api/shares/trending` unions
+  the seven daily sets with `AGGREGATE MAX`, reads every candidate's metadata
+  with a single `MGET`, drops entries without current metadata or older than
+  seven days, and returns the top twelve ordered by total views without any
+  SQLite query.
   `?limit=48` returns the full list for the public `/trending` page; other
   values are clamped to 48. The result is cached in-process for 30 seconds and
   is edge-cacheable for 60 seconds. The frontend also caches the public list
@@ -131,7 +134,9 @@ other languages show the upstream copy instead of the English fallback.
   These public routes never put account data in `__NEXT_DATA__`; `_app`
   restores the signed-in user client-side, so an edge cache hit cannot expose
   another visitor's account. Public files are cached for a day with an `ETag`;
-  protected files are `private`.
+  protected files are `private`. ZIP archives are rebuilt when a share changes,
+  so they use a 60-second edge TTL (and `no-store` when protected) instead of
+  the immutable single-file headers.
 - Public shares no longer require a share token, so their page makes a single
   data request instead of the old `403 -> token -> retry` cycle. Password,
   max-view, recipient-restricted and private reverse shares still require a
@@ -175,12 +180,20 @@ sign-in redirect for a protected page and loop between `/upload` and
 ## Verified locally
 
 - Node `22.23.3` production builds pass for backend and frontend. `npm run
-  test:unit` passes all 21 tests, covering view limits, IP+User-Agent identity,
+  test:unit` passes all 23 tests, covering view limits, IP+User-Agent identity,
   Valkey/fallback throttling, uploader metadata, batched visitor writes,
   page-view metrics and trending ranking/eligibility/result cap. A local smoke
   run rechecked config/stats cache headers,
   share `HEAD`/token/view flow and rolling expiration; the aggregate cache and
   upload-throttle exemptions were reviewed without a live Valkey instance.
+- A later sandbox pass (Node `26.12.1`, isolated copy of the local database)
+  used Playwright for guest and signed-in pages: the owner edit modal now
+  reuses the loaded share instead of fetching the whole share list, a
+  recipient-only share kept its restriction, max-view value and recipients
+  after an edit, deleting from the share page returned to `/upload` without a
+  share 404, upload/share folder paths and the media gallery rendered, and
+  public file/ZIP headers stayed cookie-free (`immutable` file / 60-second ZIP).
+  No console errors or warnings appeared beyond the deliberate 404 page visit.
 - A follow-up caching review (local Node `26.12.1`; the server remains on
   `22.23.3`) rechecked that only query-free page shells are public, cacheable
   file/ZIP GETs stay free of `Set-Cookie`, the share-metadata cache contains

@@ -1,25 +1,17 @@
-import { ActionIcon, Table, Group, Text } from "@mantine/core";
+import { ActionIcon, Table, Group } from "@mantine/core";
 import { useModals } from "@mantine/modals";
 import { TbTrash, TbEdit } from "react-icons/tb";
 import { GrUndo } from "react-icons/gr";
 import { FileListItem } from "../../types/File.type";
 import { byteToHumanSizeString } from "../../utils/fileSize.util";
-import { getBaseName, getNormalizedFileName } from "../../utils/file.util";
+import { getNormalizedFileName } from "../../utils/file.util";
 import { isShareTextFile } from "../../utils/mime.util";
 import UploadProgressIndicator from "./UploadProgressIndicator";
 import { FormattedMessage } from "react-intl";
 import useTranslate from "../../hooks/useTranslate.hook";
 import { HoverTip } from "../core/HoverTip";
 import showTextEditorModal from "./modals/showTextEditorModal";
-
-const renderFileName = (name: string) => {
-  const fileName = getBaseName(name);
-  return (
-    <Text size="sm" truncate title={fileName}>
-      {fileName}
-    </Text>
-  );
-};
+import FileName from "../core/FileName";
 
 const FileListRow = ({
   file,
@@ -54,7 +46,9 @@ const FileListRow = ({
           textDecoration: deleted ? "line-through" : "none",
         }}
       >
-        <td style={{ maxWidth: 0 }}>{renderFileName(fileNameOrPath)}</td>
+        <td style={{ maxWidth: 0 }}>
+          <FileName name={fileNameOrPath} />
+        </td>
         <td style={{ whiteSpace: "nowrap" }}>
           {byteToHumanSizeString(+file.size)}
         </td>

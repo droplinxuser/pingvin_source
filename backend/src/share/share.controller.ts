@@ -213,16 +213,20 @@ export class ShareController {
 
   @Delete(":id")
   @UseGuards(IdValidation, ShareOwnerGuard)
-  async remove(@Param("id") id: string, @GetUser() user: User) {
+  async remove(
+    @Param("id") id: string,
+    @GetUser() user: User,
+    @GetShare() share: Share,
+  ) {
     const isDeleterAdmin = user?.isAdmin === true;
-    await this.shareService.remove(id, isDeleterAdmin);
+    await this.shareService.remove(id, isDeleterAdmin, share);
   }
 
   @Post(":id/expire")
   @HttpCode(200)
   @UseGuards(IdValidation, ShareOwnerGuard)
-  async expire(@Param("id") id: string) {
-    await this.shareService.expire(id);
+  async expire(@Param("id") id: string, @GetShare() share: Share) {
+    await this.shareService.expire(id, share);
   }
 
   @Throttle({

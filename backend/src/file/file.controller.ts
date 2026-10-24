@@ -19,7 +19,10 @@ import { ConfigService } from "src/config/config.service";
 import { CreateShareGuard } from "src/share/guard/createShare.guard";
 import { StrictShareOwnerGuard } from "src/share/guard/strictShareOwner.guard";
 import { IdValidation } from "src/share/guard/shareIdValidation.guard";
-import { getDownloadCacheHeaders } from "src/utils/cache.util";
+import {
+  getDownloadCacheHeaders,
+  getZipCacheHeaders,
+} from "src/utils/cache.util";
 import { getFileMimeType } from "src/utils/mime.util";
 import { isRequestFromApp, redirectToSharePage } from "src/utils/referrer.util";
 import { FileService } from "./file.service";
@@ -151,9 +154,7 @@ export class FileController {
       "Content-Type": "application/zip",
       "Content-Disposition": contentDisposition(`${shareId}.zip`),
     });
-    res.set(
-      getDownloadCacheHeaders((req as FileRequest).shareIsPublic === true),
-    );
+    res.set(getZipCacheHeaders((req as FileRequest).shareIsPublic === true));
 
     void this.fileService.notifyRecipientDownload(
       shareId,

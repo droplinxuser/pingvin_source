@@ -1,6 +1,9 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { isViewLimitExceeded } = require("../dist/src/share/share.util.js");
+const {
+  isViewLimitExceeded,
+  sumFileSizes,
+} = require("../dist/src/share/share.util.js");
 
 test("allows file access on the last permitted view", () => {
   assert.equal(isViewLimitExceeded(1, 1, true), false);
@@ -15,4 +18,10 @@ test("blocks new share tokens when the limit is reached", () => {
 test("zero means unlimited", () => {
   assert.equal(isViewLimitExceeded(100, 0), false);
   assert.equal(isViewLimitExceeded(100, undefined), false);
+});
+
+test("sums string and numeric file sizes", () => {
+  assert.equal(sumFileSizes([{ size: "5" }, { size: 7 }]), 12);
+  assert.equal(sumFileSizes([]), 0);
+  assert.equal(sumFileSizes(undefined), 0);
 });

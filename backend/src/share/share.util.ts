@@ -26,6 +26,21 @@ export function isPublicShare(share?: ShareVisibility | null): boolean {
 }
 
 /**
+ * Share size is derived from the files instead of being stored on the share,
+ * so the API and every list endpoint calculate it the same way.
+ */
+export function sumFileSizes(
+  files?: { size: string | number }[] | null,
+): number {
+  return (
+    files?.reduce(
+      (total, file) => total + (parseInt(String(file.size)) || 0),
+      0,
+    ) ?? 0
+  );
+}
+
+/**
  * Checks a share's view limit. File access is allowed on the last permitted
  * view, while new share tokens are blocked once that limit is reached.
  */
