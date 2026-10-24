@@ -6,7 +6,7 @@ import { FormattedMessage } from "react-intl";
 import useTranslate from "../../hooks/useTranslate.hook";
 import shareService from "../../services/share.service";
 
-const DOWNLOAD_GAP_MS = 250;
+const DOWNLOAD_GAP_MS = 1000;
 const MODAL_SETTLE_MS = 400;
 
 type DownloadableFile = { id: string };
