@@ -24,7 +24,7 @@ so `git merge upstream/main` stays small.
 | Valkey metrics and error logs | `backend/src/cache/valkeyMetrics.util.ts`, `backend/src/logs/*`, `backend/src/system/system.controller.ts` (`GET /api/system/valkey`), `frontend/src/components/admin/ValkeyMetricsCard.tsx`, `frontend/src/pages/admin/logs.tsx`, `frontend/src/services/log.service.ts`, `frontend/src/utils/errorReporter.util.ts` |
 | Home copy and ads | `frontend/src/pages/index.tsx` (upstream layout), `home.custom.*` keys in `en-US.ts`, `frontend/src/components/Ads.tsx` |
 | Fork branding / deployment | `frontend/public/img/**`, `frontend/public/favicon.ico`, `frontend/src/pages/manifest.json.tsx`, `pingvin-*.service`, `update.sh` |
-| SEO / crawlers | `frontend/src/components/Meta.tsx`, `SiteStructuredData.tsx`, `frontend/src/pages/robots.txt.tsx`, `frontend/src/pages/sitemap.xml.tsx`, `frontend/src/utils/seo.util.ts`, `frontend/src/utils/seo.server.util.ts`, `backend/src/share/share.service.ts` (`getSeo`), `backend/src/system/system.service.ts` (`getRobotsTxt`, `getSitemapXml`) |
+| SEO / crawlers | `frontend/src/components/Meta.tsx`, `SiteStructuredData.tsx`, `frontend/src/pages/robots.txt.tsx`, `frontend/src/pages/sitemap.xml.tsx`, `frontend/src/utils/seo.util.ts`, `frontend/src/utils/seo.server.util.ts`, `backend/src/share/share.service.ts` (`getSeo`), `backend/src/system/system.service.ts` (disk-backed `getRobotsTxt`, 50k-entry sitemap index/chunks, `getSitemapFile`) |
 | WebP / image pipeline | `backend/src/file/file.service.ts` (private preview cache), `backend/src/file/file.controller.ts` (`webp=300`), `backend/src/config/logo.service.ts`, `frontend/src/utils/file.util.ts`, `frontend/src/components/Logo.tsx`, `frontend/public/img/*.webp`, `og-image.png` |
 
 Fork-only UI strings live in `frontend/src/i18n/translations/en-US.ts`; every
@@ -54,7 +54,10 @@ other languages show the upstream copy instead of the English fallback.
    description, file count, size, upload date and views over a lightly blurred
    preview that clears on hover, file download headers, report modal, footer
    page-view/top-country
-   metrics, and the dynamic `/manifest.json`. Repeat once with Valkey stopped
+   metrics, the dynamic `/manifest.json`, and the disk-backed `/sitemap.xml`
+   index plus a versioned `/api/system/sitemaps/sitemap-N.xml` chunk (one
+   `<loc>` per index entry, no more than 50,000 `<url>` entries per chunk).
+   Repeat once with Valkey stopped
    to confirm the fallbacks (the trending widget is hidden without Valkey).
 
 ## Production settings
@@ -71,7 +74,10 @@ other languages show the upstream copy instead of the English fallback.
   live database URL exactly:
   `DATABASE_URL="file:/var/www/pingvin_data/pingvin-share.db?connection_limit=1"`
 - `DATA_DIRECTORY="/var/www/pingvin_data"`; uploader/visitor metadata is stored
-  per share at `uploads/shares/<shareId>/uploader.json` with mode `600`. View
+  per share at `uploads/shares/<shareId>/uploader.json` with mode `600`. Sitemap
+  files and their manifest are written to
+  `DATA_DIRECTORY/sitemaps/<site-hash>/`; they are derived data and can be
+  deleted at any time (the next request rebuilds them). View
   counts live in `Share.views` and are updated directly in SQLite. Visitor
   writes are batched for one second per share: the response still includes the
   new visitor immediately, while a burst of views produces a single atomic
@@ -94,7 +100,9 @@ other languages show the upstream copy instead of the English fallback.
   `CACHE_REDIS_URL=redis://127.0.0.1:6379` in `backend/.env` (`update.sh`
   enables both automatically when a local `valkey-server` is active). Share-page
   data and guard data are cached for 30s each. A data-cache miss also resets
-  the rolling expiration to 100 days. Share view counts are written
+  the rolling expiration to 100 days in the response; the corresponding SQLite
+  write is throttled to once per six hours per share and process, so a popular
+  share does not cause an `UPDATE` per view. Share view counts are written
   directly to SQLite; shares without a view limit use a single atomic update
   instead of a transaction. Visitor metadata is coalesced into one
   `uploader.json` write per second and per share, and pending entries are
@@ -206,8 +214,10 @@ other languages show the upstream copy instead of the English fallback.
   one field per country), expires each hourly bucket after 25 hours and reads
   the last 24 hours of page views plus the top eight countries (four columns
   per row on desktop). The aggregate is
-  cached in-process for 10s so a page view costs one increment instead of 24
-  hash reads. Only the 24 hourly hashes are stored; no per-visitor sets are
+  cached in-process for 30s so page views in that window reuse one 24-hour
+  hash scan instead of triggering a scan every ten seconds. Only the 24 hourly
+  hashes are stored; no
+  per-visitor sets are
   kept. The POST response is never cached. `GET /api/system/stats` remains a
   read-only fallback and is edge-cacheable for 60s; its user/share/file/storage
   totals are fetched in one SQL query and cached in-process for 60s.
@@ -279,10 +289,12 @@ other languages show the upstream copy instead of the English fallback.
   paths eligible; scope that rule to the public HTML routes (including
   `/trending`), the public config, stats, `/api/shares/trending`,
   `/api/shares/:id/seo`, `/api/system/sitemap.xml`,
-  `/api/system/robots.txt`, `/robots.txt` and `/sitemap.xml` rather than the
+  `/api/system/sitemaps/*` (the versioned chunks), `/api/system/robots.txt`,
+  `/robots.txt` and `/sitemap.xml` rather than the
   whole site, and bypass requests carrying an
   `access_token` cookie if the rule uses an Edge TTL. Page HTML is cached for
-  at most 60s, SEO JSON for 60s, sitemap XML for one hour, robots for one day
+  at most 60s, SEO JSON for 60s, the sitemap index for one hour, versioned
+  sitemap chunks for one day, robots for one day
   and hashed `/_next/static` assets stay immutable. Angie/h5bp serves
   `/img` and `/favicon.ico` directly with its own long TTL (one year / one
   week), so the Next.js one-day rules do not apply there; purge the logo,
@@ -318,23 +330,31 @@ sign-in redirect for a protected page and loop between `/upload` and
   SEO metadata into `getServerSideProps`, so titles/descriptions are available
   in the first HTML response. Missing/expired/removed shares still return a real
   404.
-- `GET /api/system/sitemap.xml` and `GET /api/system/robots.txt` generate the
-  crawler artifacts. They are cached for ten minutes / one day in the existing
-  cache-manager store: Valkey when `CACHE_REDIS_ENABLED=true` (recommended;
-  `update.sh` enables it when Valkey is active), process memory otherwise.
-  **Neither artifact is ever written to SQLite.** SQLite is only
-  read on a sitemap cache miss to discover indexable public shares (complete,
-  unexpired, no password/max views/recipient restriction, public reverse share,
-  at least one file), capped at 45,000 URLs. The public `/sitemap.xml` and
-  `/robots.txt` routes proxy those artifacts and fall back to static route rules
-  if the backend is unavailable. The sitemap adds the static routes and optional
-  legal pages; robots disallows private routes, API/short links, edit pages and
-  query-string variants, then points at the absolute sitemap URL. Migration
+- `GET /api/system/sitemap.xml` and `GET /api/system/robots.txt` build the
+  crawler artifacts from SQLite and write the sitemap files to
+  `DATA_DIRECTORY/sitemaps/<site-hash>/` on disk. The top-level `sitemap.xml`
+  is a sitemap index; URL sets are split into `sitemap-N.xml` files capped at
+  50,000 entries each. Every chunk URL in the index carries a content-hash
+  version query (`/api/system/sitemaps/sitemap-1.xml?v=<hash>`) and robots
+  points at `/sitemap.xml?v=<index-hash>`, so a content change gets a new
+  cache key while unchanged files are not rewritten. The chunk endpoint reads
+  the file from disk and is edge-cacheable for one day; the index is
+  edge-cacheable for one hour. Files refresh after ten minutes; old chunks are
+  retained for a day so a cached index never points at a deleted file, then
+  removed. **Nothing is stored in SQLite, Valkey or process memory.** The
+  public `/sitemap.xml` and `/robots.txt` routes proxy those artifacts and fall
+  back to static route rules if the backend is unavailable. Robots allows
+  `/sitemap.xml` and `/api/system/sitemaps/` because the index/chunks carry
+  query strings and live under the otherwise disallowed `/api` tree. The
+  sitemap adds the static routes and optional legal pages; SQLite is read once
+  per refresh to discover indexable public shares (complete, unexpired, no
+  password/max views/recipient restriction, public reverse share, at least one
+  file). Migration
   `20261024000000_add_performance_indexes` adds the missing SQLite indexes on
   `File.shareId`, `ShareRecipient.shareId`, share
   creator/reverse-share/expiration/listing columns. On the 15.5k-share local
-  database the cold sitemap query dropped from ~12s to ~94ms; the cached
-  artifact/query is ~4ms.
+  database the cold sitemap query dropped from ~12s to ~94ms; the served index
+  and chunk reads take ~3ms.
 - Translation catalogues are lazy per locale and included in the active page's
   HTML/`__NEXT_DATA__` instead of importing all 34 files into `_app`. Moment
   locales load on demand only for non-English visitors. The trending widget is
@@ -408,9 +428,9 @@ sign-in redirect for a protected page and loop between `/upload` and
   from ~12s to ~94ms after the index migration. The standalone server used by
   `update.sh` was also started directly and served `/`, German SSR, share
   metadata, `/robots.txt`, `/sitemap.xml` and WebP assets correctly. The old
-  `/api/shares/sitemap` route is gone; the backend serves prebuilt robots/sitemap
-  strings through the cache layer (second request ~4ms) and no sitemap/robots
-  rows or tables exist in SQLite.
+  `/api/shares/sitemap` route is gone; the backend generates the crawl artifacts
+  itself (now from disk, see the later cache pass) and no sitemap/robots rows or
+  tables exist in SQLite.
 - The final CWV pass verified that `/` and `/upload` no longer render or request
   the trending widget, the manifest link includes the build hash, generated
   thumbnails are 300x225 WebP (216 bytes for the local test image), and the
@@ -701,6 +721,26 @@ sign-in redirect for a protected page and loop between `/upload` and
   systemd's journal. On the live deployment the backend captures errors from
   that point forward into Valkey, so the viewer is intended for diagnostics
   rather than a complete journal replacement.
+- Cache-footprint/write pass (2026-10-25): the generated sitemap was measured
+  at **1,565,078 bytes** on the 15.9k-share local database and was stored as a
+  single Valkey string (plus a memory copy). It is now written to the
+  persistent data directory as an index plus 50k-entry chunks, with a
+  content-hash `?v=` on every chunk URL, and served from disk (index read
+  ~3 ms). The local 15,499-entry sitemap is one chunk; a 50,001-share unit
+  fixture produced two files of exactly 50,000 and 3 entries. The rolling
+  expiration is now persisted at most once per six hours per share/process
+  while every response still shows the fresh 100-day date, and the page-view
+  aggregate is cached for 30s instead of 10s. The backend production build and
+  all 56 unit tests pass (new sitemap index/chunk/version-busting/50k-limit,
+  robots, and expiration-throttle tests). A local Valkey 8.10 instance showed
+  no `seo:` keys after sitemap and robots requests, and a chunk request
+  returned the disk file with a one-day edge TTL. Removing the
+  unused `getExpirationPreview` helper
+  also dropped `moment` from the middleware/shared bundle: the production
+  build's shared first-load JS fell from 252 kB to 233 kB and middleware from
+  48.1 kB to 28.5 kB. The backend startup
+  also passed after removing the redundant `AppCacheModule` import from the
+  throttler factory.
 
 ## Known non-issues
 
@@ -708,6 +748,11 @@ sign-in redirect for a protected page and loop between `/upload` and
   tags load, then collapses after 5s if no ad content is present. A
   `MutationObserver` reopens it if an ad arrives later. The media gallery is
   absent only when the share has no supported image/video files.
+- Third-party ad scripts may log their own failed resource loads (for example
+  an ad-network CSS/XHR request) in the browser console. These originate from
+  the ad vendor, not application code; the app's own requests and pages stay
+  error-free. Block the ad domains or use an ad-free network when validating
+  the application console.
 - Backend lint reports upstream warnings only.
 - A fresh data directory logs one `ENOENT` from the temporary-file cron.
 - Chrome may log the expected `403` while a protected share page fetches its

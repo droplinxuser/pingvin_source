@@ -9,6 +9,8 @@ const buildFallbackRobots = (baseUrl: string) => {
     "Allow: /$",
     "Allow: /share/",
     "Allow: /trending",
+    "Allow: /sitemap.xml",
+    "Allow: /api/system/sitemaps/",
     "Disallow: /admin",
     "Disallow: /account",
     "Disallow: /auth",
@@ -35,7 +37,7 @@ export async function getServerSideProps({
   try {
     const response = await fetch(`${apiURL}/api/system/robots.txt`, {
       cache: "no-store",
-      signal: AbortSignal.timeout(3000),
+      signal: AbortSignal.timeout(8000),
     });
     if (response.ok) text = await response.text();
   } catch {

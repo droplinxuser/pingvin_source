@@ -1,8 +1,11 @@
-import { Inject, Injectable, Logger } from "@nestjs/common";
-import { CACHE_MANAGER } from "@nestjs/cache-manager";
-import { Cache } from "cache-manager";
+import {
+  Injectable,
+  Logger,
+  NotFoundException,
+} from "@nestjs/common";
 import checkDiskSpace from "check-disk-space";
 import { createHash } from "crypto";
+import { promises as fs } from "fs";
 import { Request } from "express";
 import * as path from "path";
 import { DATA_DIRECTORY } from "src/constants";
@@ -14,14 +17,17 @@ import {
 } from "src/cache/valkeyMetrics.util";
 import { ValkeyService } from "src/cache/valkey.service";
 import { PrismaService } from "src/prisma/prisma.service";
-import { getCachedValue, setCachedValue } from "src/utils/cache.util";
 import { SystemInfoDTO } from "./dto/systemInfo.dto";
 import { ConfigService } from "src/config/config.service";
 
 const SYSTEM_STATS_CACHE_TTL = 60 * 1000;
-const SITEMAP_CACHE_TTL_MS = 10 * 60 * 1000;
-const ROBOTS_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
-const SITEMAP_MAX_URLS = 45_000;
+const SITEMAP_REFRESH_MS = 10 * 60 * 1000;
+const SITEMAP_MAX_ENTRIES = 50_000;
+const SITEMAP_QUERY_BATCH = 10_000;
+// Keep chunk files that are no longer in the current manifest for a day so a
+// CDN-cached index that still points at them does not 404.
+const SITEMAP_STALE_FILE_MS = 24 * 60 * 60 * 1000;
+const SITEMAP_ROOT = path.join(DATA_DIRECTORY, "sitemaps");
 
 const escapeXml = (value: string): string =>
   value
@@ -49,17 +55,34 @@ type BaseSystemStats = {
 
 export type SystemStats = BaseSystemStats & PageViewMetrics;
 
+type SitemapFileEntry = {
+  name: string;
+  version: string;
+  entries: number;
+};
+
+type SitemapManifest = {
+  version: string;
+  generatedAt: string;
+  files: SitemapFileEntry[];
+};
+
+type PendingSitemapWrite = {
+  tempPath: string;
+  finalPath: string;
+};
+
 @Injectable()
 export class SystemService {
   private readonly logger = new Logger(SystemService.name);
   private baseStats?: { at: number; value: BaseSystemStats };
+  private readonly sitemapBuilds = new Map<string, Promise<SitemapManifest>>();
 
   constructor(
     private configService: ConfigService,
     private prisma: PrismaService,
     private readonly metrics: MetricsService,
     private readonly valkey: ValkeyService,
-    @Inject(CACHE_MANAGER) private cache: Cache,
   ) {}
 
   async getSystemStats(): Promise<SystemStats> {
@@ -78,9 +101,74 @@ export class SystemService {
     return { ...base, ...pageViews };
   }
 
-  // Generated SEO artifacts are cached in Valkey (or the in-process fallback),
-  // never written to SQLite. SQLite is only read on a cache miss to discover
-  // the public share IDs that belong in the sitemap.
+  // Sitemap artifacts are written to the persistent data directory. They are
+  // deliberately not kept in process memory or Valkey: a full sitemap is
+  // several megabytes on a large instance, while a disk read is cheap and the
+  // HTTP layer (Cloudflare/Angie) already caches the response.
+  private sitemapDirectory(baseUrl: string): string {
+    const siteHash = createHash("sha256")
+      .update(baseUrl)
+      .digest("hex")
+      .slice(0, 16);
+    return path.join(SITEMAP_ROOT, siteHash);
+  }
+
+  private async readSitemapManifest(
+    directory: string,
+  ): Promise<SitemapManifest | undefined> {
+    try {
+      const parsed = JSON.parse(
+        await fs.readFile(path.join(directory, "manifest.json"), "utf8"),
+      ) as SitemapManifest;
+      if (
+        !parsed ||
+        typeof parsed.version !== "string" ||
+        typeof parsed.generatedAt !== "string" ||
+        !Array.isArray(parsed.files)
+      )
+        return undefined;
+      return parsed;
+    } catch {
+      return undefined;
+    }
+  }
+
+  private async sitemapManifestIsFresh(
+    directory: string,
+    manifest: SitemapManifest,
+  ): Promise<boolean> {
+    if (Date.now() - new Date(manifest.generatedAt).getTime() > SITEMAP_REFRESH_MS)
+      return false;
+
+    try {
+      await Promise.all([
+        fs.access(path.join(directory, "sitemap.xml")),
+        ...manifest.files.map((file) =>
+          fs.access(path.join(directory, file.name)),
+        ),
+      ]);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  private async ensureSitemapFiles(baseUrl: string): Promise<SitemapManifest> {
+    const directory = this.sitemapDirectory(baseUrl);
+    const manifest = await this.readSitemapManifest(directory);
+    if (manifest && (await this.sitemapManifestIsFresh(directory, manifest)))
+      return manifest;
+
+    const running = this.sitemapBuilds.get(directory);
+    if (running) return running;
+
+    const build = this.buildSitemapFiles(baseUrl, directory).finally(() => {
+      this.sitemapBuilds.delete(directory);
+    });
+    this.sitemapBuilds.set(directory, build);
+    return build;
+  }
+
   private getSeoBaseUrl(request: Request): string {
     const configured = (this.configService.get("general.appUrl") as string)
       ?.trim()
@@ -103,25 +191,26 @@ export class SystemService {
     return `${proto}://${host}`;
   }
 
-  private seoCacheKey(kind: "robots" | "sitemap", baseUrl: string) {
-    const siteHash = createHash("sha256")
-      .update(baseUrl)
-      .digest("hex")
-      .slice(0, 16);
-    return `seo:${kind}:${siteHash}`;
-  }
-
   async getRobotsTxt(request: Request): Promise<string> {
     const baseUrl = this.getSeoBaseUrl(request);
-    const cacheKey = this.seoCacheKey("robots", baseUrl);
-    const cached = await getCachedValue<string>(this.cache, cacheKey);
-    if (cached) return cached;
+    let sitemapVersion: string | undefined;
+    if (baseUrl) {
+      try {
+        sitemapVersion = (await this.ensureSitemapFiles(baseUrl)).version;
+      } catch (error) {
+        this.logger.warn(`Could not prepare sitemap for robots.txt: ${error}`);
+      }
+    }
 
     const lines = [
       "User-agent: *",
       "Allow: /$",
       "Allow: /share/",
       "Allow: /trending",
+      // The sitemap index and its versioned chunk files must stay crawlable
+      // even though the generic /api tree and query strings are disallowed.
+      "Allow: /sitemap.xml",
+      "Allow: /api/system/sitemaps/",
       "Disallow: /admin",
       "Disallow: /account",
       "Disallow: /auth",
@@ -135,62 +224,94 @@ export class SystemService {
       "Disallow: /*?",
       "",
     ];
-    if (baseUrl) lines.push(`Sitemap: ${baseUrl}/sitemap.xml`, "");
+    if (baseUrl)
+      lines.push(
+        `Sitemap: ${baseUrl}/sitemap.xml${
+          sitemapVersion ? `?v=${sitemapVersion}` : ""
+        }`,
+        "",
+      );
 
-    const text = lines.join("\n");
-    await setCachedValue(this.cache, cacheKey, text, ROBOTS_CACHE_TTL_MS);
-    return text;
+    return lines.join("\n");
   }
 
   async getSitemapXml(request: Request): Promise<string> {
     const baseUrl = this.getSeoBaseUrl(request);
-    const cacheKey = this.seoCacheKey("sitemap", baseUrl);
-    const cached = await getCachedValue<string>(this.cache, cacheKey);
-    if (cached) return cached;
+    await this.ensureSitemapFiles(baseUrl);
+    return await fs.readFile(
+      path.join(this.sitemapDirectory(baseUrl), "sitemap.xml"),
+      "utf8",
+    );
+  }
 
-    const shares = await this.prisma.share.findMany({
-      where: {
-        uploadLocked: true,
-        removedReason: null,
-        files: { some: {} },
-        AND: [
-          {
-            OR: [
-              { expiration: { gt: new Date() } },
-              { expiration: { equals: new Date(0) } },
-            ],
-          },
-          {
-            OR: [
-              { security: null },
-              {
-                security: {
-                  is: {
-                    password: null,
-                    maxViews: null,
-                    restrictToRecipients: false,
-                  },
-                },
-              },
-            ],
-          },
-          {
-            OR: [
-              { reverseShare: null },
-              { reverseShare: { is: { publicAccess: true } } },
-            ],
-          },
-        ],
-      },
-      select: { id: true, createdAt: true },
-      orderBy: { createdAt: "desc" },
-      take: SITEMAP_MAX_URLS,
-    });
+  async getSitemapFile(request: Request, name: string): Promise<string> {
+    if (!/^sitemap-\d+\.xml$/.test(name)) throw new NotFoundException();
 
-    const urls: { loc: string; lastmod?: string }[] = [
-      { loc: absoluteUrl("/", baseUrl) },
-      { loc: absoluteUrl("/trending", baseUrl) },
-    ];
+    const baseUrl = this.getSeoBaseUrl(request);
+    await this.ensureSitemapFiles(baseUrl);
+
+    // A CDN-cached index may still reference a chunk from the previous
+    // manifest. Those files are retained for a day, so serve any existing
+    // chunk with a safe name rather than only the current manifest entries.
+    const filePath = path.join(this.sitemapDirectory(baseUrl), name);
+    if (!(await this.fileExists(filePath))) throw new NotFoundException();
+
+    return await fs.readFile(filePath, "utf8");
+  }
+
+  private async buildSitemapFiles(
+    baseUrl: string,
+    directory: string,
+  ): Promise<SitemapManifest> {
+    const previous = await this.readSitemapManifest(directory);
+    await fs.mkdir(directory, { recursive: true });
+
+    const pending: PendingSitemapWrite[] = [];
+    const files: SitemapFileEntry[] = [];
+    const entries: string[] = [];
+    let chunkNumber = 1;
+
+    const versionOf = (xml: string) =>
+      createHash("sha256").update(xml).digest("hex").slice(0, 16);
+    const urlEntry = (loc: string, lastmod?: string) =>
+      `  <url><loc>${escapeXml(loc)}</loc>${
+        lastmod ? `<lastmod>${escapeXml(lastmod)}</lastmod>` : ""
+      }</url>`;
+
+    const writeChunk = async () => {
+      if (entries.length === 0) return;
+
+      const name = `sitemap-${chunkNumber}.xml`;
+      const xml = [
+        `<?xml version="1.0" encoding="UTF-8"?>`,
+        `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">`,
+        ...entries,
+        `</urlset>`,
+        "",
+      ].join("\n");
+      const version = versionOf(xml);
+      const finalPath = path.join(directory, name);
+      const previousFile = previous?.files.find((file) => file.name === name);
+
+      if (
+        !(
+          previousFile?.version === version &&
+          (await this.fileExists(finalPath))
+        )
+      ) {
+        const tempPath = `${finalPath}.${process.pid}.${Date.now()}.tmp`;
+        await fs.writeFile(tempPath, xml, { encoding: "utf8", mode: 0o644 });
+        pending.push({ tempPath, finalPath });
+      }
+
+      files.push({ name, version, entries: entries.length });
+      entries.length = 0;
+      chunkNumber += 1;
+    };
+
+    entries.push(urlEntry(absoluteUrl("/", baseUrl)));
+    entries.push(urlEntry(absoluteUrl("/trending", baseUrl)));
+
     const legalEnabled = this.configService.get("legal.enabled") === true;
     const imprintText = this.configService.get("legal.imprintText") as string;
     const imprintUrl = this.configService.get("legal.imprintUrl") as string;
@@ -204,35 +325,180 @@ export class SystemService {
       legalEnabled &&
       (imprintText || (imprintUrl && !/^https?:\/\//i.test(imprintUrl)))
     )
-      urls.push({ loc: absoluteUrl("/imprint", baseUrl) });
+      entries.push(urlEntry(absoluteUrl("/imprint", baseUrl)));
     if (
       legalEnabled &&
       (privacyText || (privacyUrl && !/^https?:\/\//i.test(privacyUrl)))
     )
-      urls.push({ loc: absoluteUrl("/privacy", baseUrl) });
+      entries.push(urlEntry(absoluteUrl("/privacy", baseUrl)));
 
-    for (const share of shares) {
-      if (urls.length >= SITEMAP_MAX_URLS) break;
-      urls.push({
-        loc: absoluteUrl(`/share/${encodeURIComponent(share.id)}`, baseUrl),
-        lastmod: share.createdAt.toISOString(),
+    const where = {
+      uploadLocked: true,
+      removedReason: null,
+      files: { some: {} },
+      AND: [
+        {
+          OR: [
+            { expiration: { gt: new Date() } },
+            { expiration: { equals: new Date(0) } },
+          ],
+        },
+        {
+          OR: [
+            { security: null },
+            {
+              security: {
+                is: {
+                  password: null,
+                  maxViews: null,
+                  restrictToRecipients: false,
+                },
+              },
+            },
+          ],
+        },
+        {
+          OR: [
+            { reverseShare: null },
+            { reverseShare: { is: { publicAccess: true } } },
+          ],
+        },
+      ],
+    };
+    let cursor: string | undefined;
+
+    try {
+      while (true) {
+        const shares = await this.prisma.share.findMany({
+          where,
+          select: { id: true, createdAt: true },
+          orderBy: { id: "asc" },
+          take: SITEMAP_QUERY_BATCH,
+          ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+        });
+        if (shares.length === 0) break;
+
+        for (const share of shares) {
+          entries.push(
+            urlEntry(
+              absoluteUrl(`/share/${encodeURIComponent(share.id)}`, baseUrl),
+              share.createdAt.toISOString(),
+            ),
+          );
+          // Keep every sitemap file within the protocol's 50k URL limit.
+          if (entries.length >= SITEMAP_MAX_ENTRIES) await writeChunk();
+        }
+
+        cursor = shares[shares.length - 1].id;
+        if (shares.length < SITEMAP_QUERY_BATCH) break;
+      }
+
+      await writeChunk();
+
+      const indexXml = [
+        `<?xml version="1.0" encoding="UTF-8"?>`,
+        `<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">`,
+        ...files.map(
+          (file) =>
+            `  <sitemap><loc>${escapeXml(
+              absoluteUrl(
+                `/api/system/sitemaps/${file.name}?v=${file.version}`,
+                baseUrl,
+              ),
+            )}</loc></sitemap>`,
+        ),
+        `</sitemapindex>`,
+        "",
+      ].join("\n");
+      const version = versionOf(indexXml);
+      const indexPath = path.join(directory, "sitemap.xml");
+
+      if (
+        !(
+          previous?.version === version &&
+          (await this.fileExists(indexPath))
+        )
+      ) {
+        const tempPath = `${indexPath}.${process.pid}.${Date.now()}.tmp`;
+        await fs.writeFile(tempPath, indexXml, {
+          encoding: "utf8",
+          mode: 0o644,
+        });
+        pending.push({ tempPath, finalPath: indexPath });
+      }
+
+      // Move everything into place only after every temp file was written.
+      for (const write of pending)
+        await fs.rename(write.tempPath, write.finalPath);
+
+      const manifest: SitemapManifest = {
+        version,
+        generatedAt: new Date().toISOString(),
+        files,
+      };
+      const manifestPath = path.join(directory, "manifest.json");
+      const manifestTemp = `${manifestPath}.${process.pid}.${Date.now()}.tmp`;
+      await fs.writeFile(manifestTemp, JSON.stringify(manifest), {
+        encoding: "utf8",
+        mode: 0o644,
       });
+      await fs.rename(manifestTemp, manifestPath);
+
+      // Refresh the mtime of current chunks so the 24-hour grace period for a
+      // stale chunk starts when it leaves the manifest, not when it was last
+      // rewritten.
+      const now = new Date();
+      await Promise.all(
+        files.map((file) =>
+          fs
+            .utimes(path.join(directory, file.name), now, now)
+            .catch(() => undefined),
+        ),
+      );
+
+      await this.cleanSitemapDirectory(directory, files);
+      return manifest;
+    } catch (error) {
+      await Promise.all(
+        pending.map((write) => fs.rm(write.tempPath, { force: true })),
+      );
+      throw error;
     }
+  }
 
-    const xml = [
-      `<?xml version="1.0" encoding="UTF-8"?>`,
-      `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">`,
-      ...urls.map(
-        ({ loc, lastmod }) =>
-          `  <url><loc>${escapeXml(loc)}</loc>${
-            lastmod ? `<lastmod>${lastmod}</lastmod>` : ""
-          }</url>`,
-      ),
-      `</urlset>`,
-    ].join("\n");
+  private async fileExists(filePath: string): Promise<boolean> {
+    try {
+      await fs.access(filePath);
+      return true;
+    } catch {
+      return false;
+    }
+  }
 
-    await setCachedValue(this.cache, cacheKey, xml, SITEMAP_CACHE_TTL_MS);
-    return xml;
+  private async cleanSitemapDirectory(
+    directory: string,
+    files: SitemapFileEntry[],
+  ) {
+    const current = new Set(files.map((file) => file.name));
+    try {
+      const entries = await fs.readdir(directory);
+      await Promise.all(
+        entries.map(async (entry) => {
+          if (entry.endsWith(".tmp")) {
+            await fs.rm(path.join(directory, entry), { force: true });
+            return;
+          }
+          if (!/^sitemap-\d+\.xml$/.test(entry) || current.has(entry)) return;
+
+          const filePath = path.join(directory, entry);
+          const stat = await fs.stat(filePath);
+          if (Date.now() - stat.mtimeMs >= SITEMAP_STALE_FILE_MS)
+            await fs.rm(filePath, { force: true });
+        }),
+      );
+    } catch (error) {
+      this.logger.warn(`Could not clean old sitemap files: ${error}`);
+    }
   }
 
   private async getBaseSystemStats(): Promise<BaseSystemStats> {

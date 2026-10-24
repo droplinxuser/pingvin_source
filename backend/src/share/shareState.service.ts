@@ -38,6 +38,10 @@ import {
 // Collapse bursts of share views into one metadata write per share. The
 // returned visitor list is updated immediately; only the disk write is delayed.
 const VISITOR_WRITE_DELAY_MS = 1000;
+// A rolling expiration only needs to be persisted occasionally. The response
+// still shows the fresh 100-day date on every visit; the database write is
+// throttled per process so a popular share cannot cause an UPDATE per view.
+const EXPIRATION_WRITE_INTERVAL_MS = 6 * 60 * 60 * 1000;
 
 const GUARD_INCLUDE = {
   security: {
@@ -64,6 +68,7 @@ export class ShareStateService implements OnApplicationShutdown {
   private readonly visitorTimers = new Map<string, NodeJS.Timeout>();
   private readonly visitorWrites = new Map<string, Promise<void>>();
   private readonly dirtyVisitors = new Set<string>();
+  private readonly expirationWrites = new Map<string, number>();
   private shuttingDown = false;
 
   constructor(
@@ -113,14 +118,12 @@ export class ShareStateService implements OnApplicationShutdown {
     if (!share.uploadLocked)
       throw new NotFoundException(this.i18n.t("share.notFound"));
 
-    // Refresh the rolling expiration on a cache miss. A cached share is served
-    // for 30 seconds, so this writes at most once per cache window.
+    // Refresh the rolling expiration on a cache miss, but persist it at most
+    // once per six hours per share. The cached response still shows a fresh
+    // 100-day date on every visit.
     if (!moment(share.expiration).isSame(0)) {
       share.expiration = parseRelativeDateToAbsolute(SHARE_EXPIRATION);
-      await this.prisma.share.updateMany({
-        where: { id },
-        data: { expiration: share.expiration },
-      });
+      await this.persistExpiration(share.id, share.expiration);
     }
 
     const { security, ...shareData } = share;
@@ -132,6 +135,29 @@ export class ShareStateService implements OnApplicationShutdown {
     };
     await setCachedValue(this.cache, cacheKey, result, SHARE_DATA_CACHE_TTL_MS);
     return result;
+  }
+
+  private async persistExpiration(shareId: string, expiration: Date) {
+    const now = Date.now();
+    const lastWrite = this.expirationWrites.get(shareId) ?? 0;
+    if (now - lastWrite < EXPIRATION_WRITE_INTERVAL_MS) return;
+
+    // Keep the map bounded on a long-running instance without scanning it on
+    // every share read.
+    if (this.expirationWrites.size > 1000) {
+      for (const [id, writtenAt] of this.expirationWrites) {
+        if (now - writtenAt >= EXPIRATION_WRITE_INTERVAL_MS)
+          this.expirationWrites.delete(id);
+      }
+    }
+
+    // Record the attempt before awaiting so concurrent cache misses for the
+    // same share cannot queue duplicate UPDATEs.
+    this.expirationWrites.set(shareId, now);
+    await this.prisma.share.updateMany({
+      where: { id: shareId },
+      data: { expiration },
+    });
   }
 
   async invalidateData(shareId: string) {

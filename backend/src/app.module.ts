@@ -48,7 +48,6 @@ const i18nPath = existsSync(join(__dirname, "../i18n"))
     AdminNoticeModule,
     LogsModule,
     ThrottlerModule.forRootAsync({
-      imports: [AppCacheModule],
       inject: [ValkeyService],
       useFactory: createThrottlerOptions,
     }),

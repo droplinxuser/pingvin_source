@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   HttpCode,
+  Param,
   Post,
   Req,
   Res,
@@ -68,5 +69,20 @@ export class SystemController {
     response.set(getEdgeCacheHeaders(3_600));
     response.setHeader("Content-Type", "application/xml; charset=utf-8");
     return this.systemService.getSitemapXml(request);
+  }
+
+  @Get("sitemaps/:name")
+  @SkipThrottle({ visitor: true })
+  async getSitemapFile(
+    @Param("name") name: string,
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    const xml = await this.systemService.getSitemapFile(request, name);
+    // Chunk URLs include a content-hash query string, so they can be cached
+    // for longer than the unversioned sitemap index.
+    response.set(getEdgeCacheHeaders(86_400));
+    response.setHeader("Content-Type", "application/xml; charset=utf-8");
+    return xml;
   }
 }

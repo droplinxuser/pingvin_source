@@ -4,7 +4,10 @@ import { ValkeyClient, ValkeyService } from "./valkey.service";
 const METRICS_PREFIX = "pingvin:metrics:pageviews:hour:";
 const WINDOW_HOURS = 24;
 const BUCKET_TTL_SECONDS = (WINDOW_HOURS + 1) * 60 * 60;
-const AGGREGATE_CACHE_MS = 10 * 1000;
+// Page-view counters do not need second-by-second freshness in the footer, so
+// one aggregate read serves all page views in this window instead of reading
+// 24 hourly hashes every ten seconds.
+const AGGREGATE_CACHE_MS = 30 * 1000;
 const MAX_TOP_COUNTRIES = 8;
 const TOTAL_FIELD = "total";
 const COUNTRY_FIELD = "c:";
