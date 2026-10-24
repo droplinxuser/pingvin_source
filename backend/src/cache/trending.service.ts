@@ -26,7 +26,7 @@ const RESULT_CACHE_MS = 30 * 1000;
 const GEO_WINDOW_HOURS = 24;
 const GEO_TTL_SECONDS = (GEO_WINDOW_HOURS + 1) * 60 * 60;
 const GEO_COUNTRY_LIMIT = 5;
-const GEO_SHARE_LIMIT = 20;
+const GEO_SHARE_LIMIT = 10;
 const GEO_CACHE_MS = 5 * 60 * 1000;
 
 type MediaKind = "image" | "video";
@@ -118,8 +118,8 @@ export class TrendingService {
       }
       if (code) {
         // Country totals cover every public share view; the per-share fields
-        // keep the top twenty list aligned with the renderable trending
-        // shares. One hourly hash keeps the footprint to 25 short-lived keys.
+        // keep the top ten list aligned with the renderable trending shares.
+        // One hourly hash keeps the footprint to 25 short-lived keys.
         const geoKey = geoKeyFor(currentHour());
         multi.hIncrBy(geoKey, geoTotalFieldFor(code), 1);
         if (meta) multi.hIncrBy(geoKey, geoFieldFor(code, share.id), 1);
@@ -147,9 +147,10 @@ export class TrendingService {
 
   /**
    * Returns the five countries with the most public share views in the last
-   * 24 hours and, for each country, its twenty most-viewed shares. Everything
-   * is derived from the hourly Valkey hashes written by recordView; SQLite is
-   * only touched by the existing legacy-metadata backfill.
+   * 24 hours and, for each country, its ten most-viewed shares. A share may
+   * appear in more than one country. Everything is derived from the hourly
+   * Valkey hashes written by recordView; SQLite is only touched by the existing
+   * legacy-metadata backfill.
    */
   async getTrendingCountries(): Promise<TrendingCountry[]> {
     if (
@@ -269,25 +270,9 @@ export class TrendingService {
       }
     }
 
-    // A share can be visited from several countries. Keep it only in the
-    // country with the highest view count for that share, so the five lists
-    // never duplicate a card. Ties resolve by country code for a stable order.
-    const owners = new Map<string, { country: string; views: number }>();
-    for (const [country, countryShares] of shares) {
-      for (const [shareId, count] of countryShares) {
-        const owner = owners.get(shareId);
-        if (
-          !owner ||
-          count > owner.views ||
-          (count === owner.views && country < owner.country)
-        )
-          owners.set(shareId, { country, views: count });
-      }
-    }
-
-    // Select the five highest-view countries that still have at least one
-    // unique share after deduplication. Countries whose shares all belong to
-    // another country are skipped instead of leaving an empty panel.
+    // Select the five highest-view countries that have at least one listed
+    // share. A share may appear under multiple countries; each country's list
+    // reflects that country's own view counts.
     const rankedCountries: {
       country: string;
       views: number;
@@ -300,7 +285,6 @@ export class TrendingService {
       const candidates = [
         ...(shares.get(country) ?? new Map<string, number>()).entries(),
       ]
-        .filter(([id]) => owners.get(id)?.country === country)
         .sort(
           ([aId, aViews], [bId, bViews]) =>
             bViews - aViews || aId.localeCompare(bId),

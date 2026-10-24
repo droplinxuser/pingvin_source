@@ -472,7 +472,7 @@ test("returns the top five countries and their top shares", async () => {
 
   assert.deepEqual(
     countries.map((item) => item.country),
-    ["PH", "CA", "DE", "FR"],
+    ["PH", "US", "CA", "DE", "FR"],
   );
   assert.equal(countries[0].views, 10);
   assert.deepEqual(
@@ -482,13 +482,15 @@ test("returns the top five countries and their top shares", async () => {
       ["b", 5],
     ],
   );
-  assert.equal(countries[1].views, 2);
-  assert.equal(countries[1].shares[0].id, "c");
-  assert.equal(countries[2].shares[0].id, "d");
-  assert.equal(countries[3].shares[0].id, "e");
+  assert.equal(countries[1].views, 5);
+  assert.equal(countries[1].shares[0].id, "a");
+  assert.equal(countries[1].shares[0].views, 5);
+  assert.equal(countries[2].shares[0].id, "c");
+  assert.equal(countries[3].shares[0].id, "d");
+  assert.equal(countries[4].shares[0].id, "e");
 });
 
-test("lists each share only under its highest-view country", async () => {
+test("allows the same share under every country that viewed it", async () => {
   const buckets = Array.from({ length: 24 }, () => null);
   buckets[0] = {
     "c:PH": "12",
@@ -503,8 +505,8 @@ test("lists each share only under its highest-view country", async () => {
   const mock = createMockValkey(
     () => buckets,
     [
-      meta("ph-only", 4, recent),
       meta("shared", 7, recent),
+      meta("ph-only", 4, recent),
       meta("us-only", 2, recent),
       meta("ca-only", 4, recent),
     ],
@@ -519,13 +521,13 @@ test("lists each share only under its highest-view country", async () => {
     ]),
   );
 
-  assert.deepEqual(byCountry.PH, ["ph-only"]);
+  assert.deepEqual(byCountry.PH, ["shared", "ph-only"]);
   assert.deepEqual(byCountry.US, ["shared", "us-only"]);
   assert.deepEqual(byCountry.CA, ["ca-only"]);
   const listed = countries.flatMap((country) =>
     country.shares.map((share) => share.id),
   );
-  assert.equal(new Set(listed).size, listed.length);
+  assert.ok(listed.length > new Set(listed).size);
 });
 
 test("uses the country code to break equal per-share view counts", async () => {
@@ -543,11 +545,16 @@ test("uses the country code to break equal per-share view counts", async () => {
 
   assert.deepEqual(
     countries.map((country) => [country.country, country.shares.length]),
-    [["PH", 1]],
+    [
+      ["PH", 1],
+      ["US", 1],
+    ],
   );
+  assert.equal(countries[0].shares[0].id, "shared");
+  assert.equal(countries[1].shares[0].id, "shared");
 });
 
-test("backfills countries when higher-ranked ones have no unique shares", async () => {
+test("skips countries without shares and backfills to five", async () => {
   const buckets = Array.from({ length: 24 }, () => null);
   buckets[0] = {
     "c:PH": "100",
@@ -556,9 +563,7 @@ test("backfills countries when higher-ranked ones have no unique shares", async 
     "c:DE": "70",
     "c:FR": "60",
     "c:IT": "50",
-    "PH:shared": "1",
-    "US:shared": "2",
-    "US:us-only": "1",
+    "US:us-only": "2",
     "CA:ca-only": "1",
     "DE:de-only": "1",
     "FR:fr-only": "1",
@@ -567,8 +572,7 @@ test("backfills countries when higher-ranked ones have no unique shares", async 
   const mock = createMockValkey(
     () => buckets,
     [
-      meta("shared", 2, recent),
-      meta("us-only", 1, recent),
+      meta("us-only", 2, recent),
       meta("ca-only", 1, recent),
       meta("de-only", 1, recent),
       meta("fr-only", 1, recent),
@@ -584,21 +588,20 @@ test("backfills countries when higher-ranked ones have no unique shares", async 
     ["US", "CA", "DE", "FR", "IT"],
   );
   assert.equal(countries.length, 5);
-  assert.equal(countries[0].shares[0].id, "shared");
 });
 
-test("limits each country to twenty shares", async () => {
+test("limits each country to ten shares", async () => {
   const buckets = Array.from({ length: 24 }, () => null);
   buckets[0] = {
-    "c:PH": "2200",
+    "c:PH": "1000",
     ...Object.fromEntries(
-      Array.from({ length: 25 }, (_, index) => [
+      Array.from({ length: 15 }, (_, index) => [
         `PH:s${index}`,
         String(100 - index),
       ]),
     ),
   };
-  const metas = Array.from({ length: 20 }, (_, index) =>
+  const metas = Array.from({ length: 10 }, (_, index) =>
     meta(`s${index}`, 100 - index, recent),
   );
   const mock = createMockValkey(() => buckets, metas);
@@ -606,10 +609,10 @@ test("limits each country to twenty shares", async () => {
 
   const [country] = await service.getTrendingCountries();
 
-  assert.equal(country.views, 2200);
-  assert.equal(country.shares.length, 20);
+  assert.equal(country.views, 1000);
+  assert.equal(country.shares.length, 10);
   assert.equal(country.shares[0].id, "s0");
-  assert.equal(country.shares.at(-1).id, "s19");
+  assert.equal(country.shares.at(-1).id, "s9");
 });
 
 test("caches the country aggregate for five minutes", async () => {
