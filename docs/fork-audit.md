@@ -500,6 +500,11 @@ sign-in redirect for a protected page and loop between `/upload` and
   The admin dashboard reads the limit from the service and therefore displays
   `1 request / 173s`. The spacing mechanism is unchanged and remains covered by
   the existing lock/audit tests.
+- VirusTotal dashboard responsive pass (2026-10-24): Recent activity now uses
+  the table at 1280px and 1366px, and 2-column cards at 1024px and 1-column
+  cards at 768px/390px. All five widths had zero document/body horizontal
+  overflow, the existing events/uploader/removal details remained visible, and
+  the browser console stayed clean.
 - Live non-admin audit (2026-10-24, after the admin-dashboard deployment): a
   17-page Playwright pass covered guest, non-admin user and 390px mobile views.
   Every page had one H1 and no horizontal overflow; there were no application

@@ -7,6 +7,7 @@ import {
   Code,
   Group,
   Loader,
+  MediaQuery,
   Paper,
   SegmentedControl,
   SimpleGrid,
@@ -173,7 +174,7 @@ const VirusTotal = () => {
             : t("admin.virustotal.custom.events.anonymous")}
         </Text>
         {uploader.creator?.email && (
-          <Text size="xs" color="dimmed">
+          <Text size="xs" color="dimmed" sx={{ overflowWrap: "anywhere" }}>
             {uploader.creator.email}
           </Text>
         )}
@@ -187,7 +188,7 @@ const VirusTotal = () => {
           </Text>
         )}
         {meta.length > 0 && (
-          <Text size="xs" color="dimmed">
+          <Text size="xs" color="dimmed" sx={{ overflowWrap: "anywhere" }}>
             {meta.join(" · ")}
           </Text>
         )}
@@ -231,7 +232,7 @@ const VirusTotal = () => {
         </Text>
       )}
       {event.detail && (
-        <Text size="xs" color="dimmed">
+        <Text size="xs" color="dimmed" sx={{ overflowWrap: "anywhere" }}>
           {event.detail}
         </Text>
       )}
@@ -243,6 +244,39 @@ const VirusTotal = () => {
         </Text>
       )}
     </Stack>
+  );
+
+  const renderEventCard = (event: VirusTotalEvent) => (
+    <Paper key={event.id} withBorder p="sm" radius="md">
+      <Group position="apart" align="flex-start" spacing="xs">
+        <Badge color={EVENT_COLORS[event.type]} variant="light">
+          {eventLabel(event.type)}
+        </Badge>
+        <Text size="xs" color="dimmed" title={moment(event.at).format("LLLL")}>
+          {moment(event.at).format("L LTS")}
+        </Text>
+      </Group>
+      <Text size="sm" weight={600} mt={6} sx={{ overflowWrap: "anywhere" }}>
+        {event.fileName || "—"}
+      </Text>
+      <Group spacing="xs" mt={2}>
+        {typeof event.size === "number" && (
+          <Text size="xs" color="dimmed">
+            {byteToHumanSizeString(event.size)}
+          </Text>
+        )}
+        <Code>{event.shareId}</Code>
+      </Group>
+      <Box mt="xs">{renderDetails(event)}</Box>
+      {event.uploader && (
+        <Box mt="xs">
+          <Text size="xs" color="dimmed">
+            <FormattedMessage id="admin.virustotal.custom.events.user" />
+          </Text>
+          {renderUploader(event.uploader)}
+        </Box>
+      )}
+    </Paper>
   );
 
   return (
@@ -495,76 +529,93 @@ const VirusTotal = () => {
         />
       </Group>
 
-      <Box sx={{ display: "block", overflowX: "auto" }}>
-        <Table
-          striped
-          highlightOnHover
-          verticalSpacing="sm"
-          style={{ minWidth: 980 }}
-        >
-          <thead>
-            <tr>
-              <th>{t("admin.virustotal.custom.events.time")}</th>
-              <th>{t("admin.virustotal.custom.events.event")}</th>
-              <th>{t("admin.virustotal.custom.events.file")}</th>
-              <th>{t("admin.virustotal.custom.events.share")}</th>
-              <th>{t("admin.virustotal.custom.events.details")}</th>
-              <th>{t("admin.virustotal.custom.events.user")}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {visibleEvents.length === 0 ? (
-              <tr>
-                <td colSpan={6}>
-                  <Text size="sm" color="dimmed" align="center" py="md">
-                    {detectionsOnly
-                      ? t("admin.virustotal.custom.events.empty-detections")
-                      : t("admin.virustotal.custom.events.empty")}
-                  </Text>
-                </td>
-              </tr>
-            ) : (
-              visibleEvents.map((event) => (
-                <tr key={event.id}>
-                  <td>
-                    <Text size="xs" title={moment(event.at).format("LLLL")}>
-                      {moment(event.at).format("L LTS")}
-                    </Text>
-                  </td>
-                  <td>
-                    <Badge color={EVENT_COLORS[event.type]} variant="light">
-                      {eventLabel(event.type)}
-                    </Badge>
-                  </td>
-                  <td>
-                    {event.fileName ? (
-                      <>
-                        <Text size="sm" sx={{ overflowWrap: "anywhere" }}>
-                          {event.fileName}
-                        </Text>
-                        {typeof event.size === "number" && (
-                          <Text size="xs" color="dimmed">
-                            {byteToHumanSizeString(event.size)}
-                          </Text>
-                        )}
-                      </>
-                    ) : (
-                      <Text size="xs" color="dimmed">
-                        —
-                      </Text>
-                    )}
-                  </td>
-                  <td>
-                    <Code>{event.shareId}</Code>
-                  </td>
-                  <td>{renderDetails(event)}</td>
-                  <td>{renderUploader(event.uploader)}</td>
+      {visibleEvents.length === 0 ? (
+        <Text size="sm" color="dimmed" align="center" py="md">
+          {detectionsOnly
+            ? t("admin.virustotal.custom.events.empty-detections")
+            : t("admin.virustotal.custom.events.empty")}
+        </Text>
+      ) : (
+        <>
+          <MediaQuery smallerThan="lg" styles={{ display: "none" }}>
+            <Table
+              data-testid="virustotal-events-table"
+              striped
+              highlightOnHover
+              verticalSpacing="sm"
+              sx={{ tableLayout: "fixed", width: "100%" }}
+            >
+              <colgroup>
+                <col style={{ width: "11%" }} />
+                <col style={{ width: "14%" }} />
+                <col style={{ width: "20%" }} />
+                <col style={{ width: "8%" }} />
+                <col style={{ width: "24%" }} />
+                <col style={{ width: "23%" }} />
+              </colgroup>
+              <thead>
+                <tr>
+                  <th>{t("admin.virustotal.custom.events.time")}</th>
+                  <th>{t("admin.virustotal.custom.events.event")}</th>
+                  <th>{t("admin.virustotal.custom.events.file")}</th>
+                  <th>{t("admin.virustotal.custom.events.share")}</th>
+                  <th>{t("admin.virustotal.custom.events.details")}</th>
+                  <th>{t("admin.virustotal.custom.events.user")}</th>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </Table>
-      </Box>
+              </thead>
+              <tbody>
+                {visibleEvents.map((event) => (
+                  <tr key={event.id}>
+                    <td>
+                      <Text size="xs" title={moment(event.at).format("LLLL")}>
+                        {moment(event.at).format("L LTS")}
+                      </Text>
+                    </td>
+                    <td>
+                      <Badge color={EVENT_COLORS[event.type]} variant="light">
+                        {eventLabel(event.type)}
+                      </Badge>
+                    </td>
+                    <td>
+                      {event.fileName ? (
+                        <>
+                          <Text size="sm" sx={{ overflowWrap: "anywhere" }}>
+                            {event.fileName}
+                          </Text>
+                          {typeof event.size === "number" && (
+                            <Text size="xs" color="dimmed">
+                              {byteToHumanSizeString(event.size)}
+                            </Text>
+                          )}
+                        </>
+                      ) : (
+                        <Text size="xs" color="dimmed">
+                          —
+                        </Text>
+                      )}
+                    </td>
+                    <td>
+                      <Code>{event.shareId}</Code>
+                    </td>
+                    <td>{renderDetails(event)}</td>
+                    <td>{renderUploader(event.uploader)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </Table>
+          </MediaQuery>
+          <MediaQuery largerThan="lg" styles={{ display: "none" }}>
+            <SimpleGrid
+              data-testid="virustotal-events-cards"
+              cols={1}
+              spacing="xs"
+              breakpoints={[{ minWidth: "md", cols: 2 }]}
+            >
+              {visibleEvents.map(renderEventCard)}
+            </SimpleGrid>
+          </MediaQuery>
+        </>
+      )}
     </>
   );
 };
