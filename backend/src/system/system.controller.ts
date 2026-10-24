@@ -25,6 +25,12 @@ export class SystemController {
     return await this.systemService.getSystemInfo();
   }
 
+  @Get("valkey")
+  @UseGuards(JwtGuard, AdministratorGuard)
+  async getValkeyMetrics() {
+    return await this.systemService.getValkeyMetrics();
+  }
+
   @Get("stats")
   @SkipThrottle({ visitor: true })
   async getSystemStats(

@@ -343,8 +343,56 @@ export default {
   "admin.button.shares": "Share management",
   "admin.button.config": "Configuration",
   "admin.button.virustotal": "VirusTotal",
+  "admin.button.custom.logs": "Error logs",
   "admin.version": "Version",
   // END /admin
+
+  // /admin valkey metrics
+  "admin.valkey.custom.title": "Valkey metrics",
+  "admin.valkey.custom.subtitle": "Shared cache health and performance.",
+  "admin.valkey.custom.refresh": "Refresh Valkey metrics",
+  "admin.valkey.custom.version": "v{version}",
+  "admin.valkey.custom.status.connected": "Connected",
+  "admin.valkey.custom.status.unreachable": "Unreachable",
+  "admin.valkey.custom.status.disabled": "Not configured",
+  "admin.valkey.custom.memory": "Memory used",
+  "admin.valkey.custom.memory-detail": "Peak {peak}",
+  "admin.valkey.custom.keys": "Total keys",
+  "admin.valkey.custom.hit-ratio": "Hit ratio",
+  "admin.valkey.custom.hit-ratio-detail": "{hits} hits · {misses} misses",
+  "admin.valkey.custom.clients": "Connected clients",
+  "admin.valkey.custom.uptime": "Uptime",
+  "admin.valkey.custom.load-error": "Could not load Valkey metrics.",
+  "admin.valkey.custom.unreachable-description":
+    "Valkey is not reachable. The app is using its in-process fallbacks.",
+  "admin.valkey.custom.disabled-description":
+    "Valkey is not configured. The app is using in-process memory and SQLite only.",
+  // END /admin valkey metrics
+
+  // /admin/logs
+  "admin.logs.custom.title": "Error logs",
+  "admin.logs.custom.subtitle":
+    "Recent backend exceptions and browser errors in one place.",
+  "admin.logs.custom.refresh": "Refresh logs",
+  "admin.logs.custom.copy": "Copy logs",
+  "admin.logs.custom.copied": "Copied",
+  "admin.logs.custom.source.backend": "Backend",
+  "admin.logs.custom.source.frontend": "Frontend",
+  "admin.logs.custom.storage.valkey": "Valkey",
+  "admin.logs.custom.storage.memory": "Process memory",
+  "admin.logs.custom.count": "{count} entries",
+  "admin.logs.custom.updated": "Fetched {time}",
+  "admin.logs.custom.empty": "No {source} errors recorded.",
+  "admin.logs.custom.load-error": "Could not load error logs.",
+  "admin.logs.custom.load-error-detail":
+    "Check that the backend is running, then try again.",
+  "admin.logs.custom.hint.backend":
+    "Captured from NestJS error and fatal log entries, including unhandled request exceptions.",
+  "admin.logs.custom.hint.frontend":
+    "Reported by browsers through window.onerror and unhandledrejection.",
+  "admin.logs.custom.hint.env":
+    "The newest 100 entries are kept per source for 7 days. Logs prefer Valkey and fall back to process memory; nothing is written to SQLite.",
+  // END /admin/logs
 
   // /admin/virustotal
   "admin.virustotal.custom.title": "VirusTotal scanning",

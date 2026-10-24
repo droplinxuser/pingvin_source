@@ -36,6 +36,7 @@ import userPreferences from "../utils/userPreferences.util";
 import Footer from "../components/footer/Footer";
 import { fetchConfig } from "../utils/config.server.util";
 import { fetchTrending } from "../utils/trending.server.util";
+import { installGlobalErrorReporter } from "../utils/errorReporter.util";
 import AdminNoticeModal, {
   AdminNotice,
 } from "../components/admin/AdminNoticeModal";
@@ -48,6 +49,11 @@ const TrendingToday = dynamic(
 );
 
 const excludeDefaultLayoutRoutes = ["/admin/config/[category]"];
+
+// Install before hydration so early client errors are reported too. The guard
+// inside the helper keeps hot reloads from registering duplicate listeners.
+if (typeof window !== "undefined") installGlobalErrorReporter();
+
 const trendingWidgetRoutes = ["/share/[shareId]", "/404"];
 const availableMantineColors = [
   "dark",

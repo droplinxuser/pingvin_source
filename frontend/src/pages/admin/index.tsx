@@ -16,9 +16,11 @@ import {
   TbSettings,
   TbUsers,
   TbVirus,
+  TbFileText,
 } from "react-icons/tb";
 import { FormattedMessage } from "react-intl";
 import Meta from "../../components/Meta";
+import ValkeyMetricsCard from "../../components/admin/ValkeyMetricsCard";
 import useTranslate from "../../hooks/useTranslate.hook";
 import configService from "../../services/config.service";
 
@@ -58,6 +60,11 @@ const Admin = () => {
       route: "/admin/virustotal",
     },
     {
+      title: t("admin.button.custom.logs"),
+      icon: TbFileText,
+      route: "/admin/logs",
+    },
+    {
       title: t("admin.button.config"),
       icon: TbSettings,
       route: "/admin/config/general",
@@ -68,18 +75,22 @@ const Admin = () => {
     configService
       .isNewReleaseAvailable()
       .then((isNewReleaseAvailable) => {
-        if (isNewReleaseAvailable) {
-          setManagementOptions([
-            ...managementOptions,
-            {
-              title: "Update",
-              icon: TbRefresh,
-              route: "https://github.com/smp46/pingvin-share-x/releases/latest",
-            },
-          ]);
-        }
+        if (!isNewReleaseAvailable) return;
+        setManagementOptions((options) =>
+          options.some((option) => option.icon === TbRefresh)
+            ? options
+            : [
+                ...options,
+                {
+                  title: "Update",
+                  icon: TbRefresh,
+                  route:
+                    "https://github.com/smp46/pingvin-share-x/releases/latest",
+                },
+              ],
+        );
       })
-      .catch();
+      .catch(() => {});
   }, []);
 
   return (
@@ -88,7 +99,7 @@ const Admin = () => {
       <Title mb={30} order={1} size="h3">
         <FormattedMessage id="admin.title" />
       </Title>
-      <Stack justify="space-between" style={{ height: "calc(100vh - 180px)" }}>
+      <Stack spacing="md" style={{ minHeight: "calc(100vh - 180px)" }}>
         <Paper withBorder p={40}>
           <Grid>
             {managementOptions.map((item) => {
@@ -117,7 +128,9 @@ const Admin = () => {
           </Grid>
         </Paper>
 
-        <Center>
+        <ValkeyMetricsCard />
+
+        <Center mt="auto" pt="sm">
           <Text size="xs" color="dimmed">
             <FormattedMessage id="admin.version" /> {process.env.VERSION}
             {process.env.COMMIT_HASH ? ` (${process.env.COMMIT_HASH})` : ""}

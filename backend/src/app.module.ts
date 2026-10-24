@@ -25,6 +25,7 @@ import { ShareModule } from "./share/share.module";
 import { UserModule } from "./user/user.module";
 import { SystemModule } from "./system/system.module";
 import { AdminNoticeModule } from "./adminNotice/adminNotice.module";
+import { LogsModule } from "./logs/logs.module";
 
 import { SystemLanguageResolver } from "./i18n/systemLanguage.resolver";
 
@@ -45,6 +46,7 @@ const i18nPath = existsSync(join(__dirname, "../i18n"))
     UserModule,
     SystemModule,
     AdminNoticeModule,
+    LogsModule,
     ThrottlerModule.forRootAsync({
       imports: [AppCacheModule],
       inject: [ValkeyService],

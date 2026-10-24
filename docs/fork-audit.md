@@ -20,6 +20,7 @@ so `git merge upstream/main` stays small.
 | Valkey/Redis cache | `backend/src/utils/cache.util.ts`, `backend/src/share/shareState.service.ts`, `backend/src/cache/cache.module.ts`, `backend/src/cache/valkey.service.ts` |
 | VirusTotal background scanning | `backend/src/virustotal/*` (worker, file-backed audit, admin controller), `backend/src/share/share.service.ts` (completion hook), `backend/src/share/share.module.ts`, `backend/src/clamscan/clamscan.service.ts` (shared malicious-share removal), `frontend/src/pages/admin/virustotal.tsx`, `backend/.env.example` |
 | Site stats and footer | `backend/src/system/system.service.ts`, `backend/src/cache/metrics.service.ts`, `frontend/src/components/footer/Footer.tsx`; `POST /api/system/pageview` |
+| Valkey metrics and error logs | `backend/src/cache/valkeyMetrics.util.ts`, `backend/src/logs/*`, `backend/src/system/system.controller.ts` (`GET /api/system/valkey`), `frontend/src/components/admin/ValkeyMetricsCard.tsx`, `frontend/src/pages/admin/logs.tsx`, `frontend/src/services/log.service.ts`, `frontend/src/utils/errorReporter.util.ts` |
 | Home copy and ads | `frontend/src/pages/index.tsx` (upstream layout), `home.custom.*` keys in `en-US.ts`, `frontend/src/components/Ads.tsx` |
 | Fork branding / deployment | `frontend/public/img/**`, `frontend/public/favicon.ico`, `frontend/src/pages/manifest.json.tsx`, `pingvin-*.service`, `update.sh` |
 | SEO / crawlers | `frontend/src/components/Meta.tsx`, `SiteStructuredData.tsx`, `frontend/src/pages/robots.txt.tsx`, `frontend/src/pages/sitemap.xml.tsx`, `frontend/src/utils/seo.util.ts`, `frontend/src/utils/seo.server.util.ts`, `backend/src/share/share.service.ts` (`getSeo`), `backend/src/system/system.service.ts` (`getRobotsTxt`, `getSitemapXml`) |
@@ -44,7 +45,9 @@ other languages show the upstream copy instead of the English fallback.
 5. Smoke-test locally: home page, sign-in, upload, share page, admin
    shares/users (search, sort, pagination), the `/admin/virustotal`
    dashboard (status, API counts, detections, uploader identity, filter and
-   the file-backed state), missing share (404), trending widget on `/share/*`
+   the file-backed state), the `/admin` Valkey metrics card and `/admin/logs`
+   (copy, pagination, browser error reporting), missing share (404), trending
+   widget on `/share/*`
    and 404 pages (no widget on home, upload or other pages), the clickable
    widget title and full `/trending` page with up to 48 shares, file download
    headers, report modal, footer page-view/top-country metrics, and the dynamic
@@ -128,6 +131,36 @@ other languages show the upstream copy instead of the English fallback.
   the share creator, the reverse-share owner and the uploader metadata before
   the files are deleted. This file is included in the data-directory backup;
   no SQLite table or migration is used.
+- Admin observability is Valkey-first and adds no SQLite tables:
+  - The `/admin` dashboard includes a Valkey metrics card. It reads one
+    `INFO` response through the shared `ValkeyService` connection and shows
+    used/peak memory, total keys (sum of `dbN` keys), cumulative hit ratio
+    (`keyspace_hits` / `keyspace_misses`), connected clients, uptime and the
+    server version. The admin-only `GET /api/system/valkey` endpoint is
+    `no-store`; when Valkey is disabled it returns `configured=false`, and when
+    unreachable it returns `configured=true, connected=false` so the UI can
+    explain the in-process fallback.
+  - `/admin/logs` (`GET /api/admin/logs?source=backend|frontend&page=1&pageSize=20`,
+    admin-only) shows the newest 100 entries per source with client-side
+    pagination and a one-click copy button. Entries are stored in one Valkey
+    list per source (`pingvin:errorlogs:backend` and
+    `pingvin:errorlogs:frontend`) with `LPUSH`/`LTRIM`/`EXPIRE` in a single
+    `MULTI`; each list has a 7-day TTL and a hard 100-entry cap. No SQLite
+    writes or extra keys are made.
+  - Backend entries come from a `ConsoleLogger` subclass installed with
+    `app.useLogger`, so normal console/systemd output is unchanged while Nest
+    `error`/`fatal` logs also go to the store. Browser entries are posted to
+    public `POST /api/logs/client` by a small global reporter in `_app`
+    (`window.onerror` and `unhandledrejection`); the reporter stores only the
+    route path (never the origin or query string, which can carry recipient
+    tokens), truncates fields, deduplicates repeats
+    for 60s on the server and 15s in the browser, and skips the visitor rate
+    bucket so an error loop cannot lock a user out of normal pages. If Valkey is
+    unavailable both sources fall back to a process-memory buffer (visible
+    while the outage lasts; a restart clears it); `storage` in the API response
+    tells the UI which backend was used. Browser-side Next.js server errors are
+    not captured; the Frontend tab documents that it reports browser uncaught
+    errors.
 - "Trending today" is stored entirely in Valkey. A public share `GET` records
   the share's total view count as its score in a per-day sorted set
   (`pingvin:trending:views:<day>`, 8-day TTL) and writes
@@ -557,6 +590,27 @@ sign-in redirect for a protected page and loop between `/upload` and
   backend-side and admin-only, so it could not be read with the non-admin
   account; an admin dashboard capture is needed to confirm the displayed
   `1 request / 173s` live.
+- Admin observability pass (2026-10-25): both production builds pass and all
+  46 backend unit tests pass (new INFO parsing, memory fallback, pagination,
+  deduplication, truncation and logger-forwarding cases). A local Valkey 8.10.2
+  instance returned the dashboard card's memory, key, hit/miss, client and
+  uptime values through one admin-only INFO call; the card rendered
+  "Connected" with its version badge. Seeded browser errors appeared in
+  `/admin/logs`, the copy button produced clipboard text containing them, the
+  injected `window.onerror` reporter wrote a real browser error into the
+  Valkey-backed Frontend tab, and pagination reached page 2 after more than 20
+  entries. With Valkey stopped, the metrics API returned
+  `configured=true, connected=false` and browser/backend logs moved to the
+  process-memory store (`storage=memory`) without breaking the endpoints.
+  Admin HTML and both admin APIs returned `no-store` cache headers. Playwright
+  covered guest redirects, the signed-in dashboard and logs page at 1366px and
+  390px, and the only console entry was the deliberately injected browser
+  error; there was no horizontal overflow.
+- Admin logs capture is runtime-only: a process restart clears the memory
+  fallback, and startup errors logged before `app.useLogger` are only in
+  systemd's journal. On the live deployment the backend captures errors from
+  that point forward into Valkey, so the viewer is intended for diagnostics
+  rather than a complete journal replacement.
 
 ## Known non-issues
 

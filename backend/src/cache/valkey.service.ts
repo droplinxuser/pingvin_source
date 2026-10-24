@@ -30,6 +30,10 @@ export class ValkeyService implements OnModuleInit, OnApplicationShutdown {
     this.url = config.get("cache.redis-url") || "";
   }
 
+  get configured(): boolean {
+    return this.enabled && !!this.url;
+  }
+
   async onModuleInit() {
     if (this.enabled && this.url) await this.getClient();
   }

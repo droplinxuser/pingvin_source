@@ -19,6 +19,8 @@ import {
 } from "./constants";
 import { NO_STORE_HEADERS } from "./utils/cache.util";
 import { createVisitorIdentityMiddleware } from "./utils/visitorIdentity.util";
+import { ErrorLogService } from "./logs/errorLog.service";
+import { ErrorTrackingLogger } from "./logs/errorTracking.logger";
 
 function generateNestJsLogLevels(): LogLevel[] {
   if (LOG_LEVEL_ENV) {
@@ -41,6 +43,12 @@ async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     logger: logLevels,
   });
+
+  // Route Nest error/fatal logs into the admin log viewer while keeping the
+  // normal console/systemd output unchanged.
+  app.useLogger(
+    new ErrorTrackingLogger(app.get(ErrorLogService), { logLevels }),
+  );
 
   app.useGlobalPipes(new I18nValidationPipe({ whitelist: true }));
   app.useGlobalFilters(new I18nValidationExceptionFilter());

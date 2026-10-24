@@ -7,6 +7,12 @@ import { Request } from "express";
 import * as path from "path";
 import { DATA_DIRECTORY } from "src/constants";
 import { MetricsService, PageViewMetrics } from "src/cache/metrics.service";
+import {
+  ValkeyMetrics,
+  emptyValkeyMetrics,
+  parseValkeyInfo,
+} from "src/cache/valkeyMetrics.util";
+import { ValkeyService } from "src/cache/valkey.service";
 import { PrismaService } from "src/prisma/prisma.service";
 import { getCachedValue, setCachedValue } from "src/utils/cache.util";
 import { SystemInfoDTO } from "./dto/systemInfo.dto";
@@ -52,6 +58,7 @@ export class SystemService {
     private configService: ConfigService,
     private prisma: PrismaService,
     private readonly metrics: MetricsService,
+    private readonly valkey: ValkeyService,
     @Inject(CACHE_MANAGER) private cache: Cache,
   ) {}
 
@@ -262,6 +269,13 @@ export class SystemService {
 
     this.baseStats = { at: Date.now(), value: stats };
     return stats;
+  }
+
+  async getValkeyMetrics(): Promise<ValkeyMetrics> {
+    const info = await this.valkey.run((client) => client.info());
+    return info
+      ? parseValkeyInfo(info)
+      : emptyValkeyMetrics(this.valkey.configured);
   }
 
   async getSystemInfo(): Promise<SystemInfoDTO | null> {
