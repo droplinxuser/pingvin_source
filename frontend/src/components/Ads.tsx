@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 // Ad units from the publishers' original snippets. Banner scripts are inserted
 // into the placeholder below, page-level scripts into <body>.
@@ -10,12 +10,33 @@ const SCRIPTS = [
 
 const Ads = () => {
   const bannerRef = useRef<HTMLDivElement>(null);
+  const [collapsed, setCollapsed] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     let idleHandle: number | undefined;
     let timeout: ReturnType<typeof setTimeout> | undefined;
+    let settleTimer: ReturnType<typeof setTimeout> | undefined;
+    let observer: MutationObserver | undefined;
     let scripts: HTMLScriptElement[] = [];
+
+    const hasAdContent = () => {
+      const banner = bannerRef.current;
+      if (!banner) return false;
+
+      // Ad networks normally inject an iframe/image/canvas. Check for those
+      // first, including while the placeholder itself is collapsed.
+      if (banner.querySelector("iframe, img, video, canvas, object, embed"))
+        return true;
+      if (banner.innerText.trim()) return true;
+
+      // Some networks inject a styled wrapper without media elements. Only
+      // count wrappers that actually occupy space.
+      return Array.from(banner.querySelectorAll("div, ins")).some((element) => {
+        const rect = element.getBoundingClientRect();
+        return rect.width > 0 && rect.height > 0;
+      });
+    };
 
     const load = () => {
       if (cancelled) return;
@@ -29,6 +50,19 @@ const Ads = () => {
       });
     };
 
+    // If no ad fills the slot after the first paint, remove the reserved
+    // space. A MutationObserver brings the slot back if an ad arrives later.
+    settleTimer = setTimeout(() => {
+      if (!cancelled) setCollapsed(!hasAdContent());
+    }, 5000);
+
+    if (typeof MutationObserver !== "undefined" && bannerRef.current) {
+      observer = new MutationObserver(() => {
+        if (!cancelled && hasAdContent()) setCollapsed(false);
+      });
+      observer.observe(bannerRef.current, { childList: true, subtree: true });
+    }
+
     // Third-party tags are not part of the critical path. Start them after the
     // first paint / idle period so they do not block hydration or LCP.
     if ("requestIdleCallback" in window) {
@@ -41,6 +75,8 @@ const Ads = () => {
       cancelled = true;
       if (idleHandle !== undefined) window.cancelIdleCallback(idleHandle);
       if (timeout) clearTimeout(timeout);
+      if (settleTimer) clearTimeout(settleTimer);
+      observer?.disconnect();
       scripts.forEach((script) => script.remove());
     };
   }, []);
@@ -50,10 +86,10 @@ const Ads = () => {
       ref={bannerRef}
       aria-label="Advertisement"
       style={{
-        display: "flex",
+        display: collapsed ? "none" : "flex",
         justifyContent: "center",
-        margin: "24px auto",
-        minHeight: 90,
+        margin: collapsed ? 0 : "24px auto",
+        minHeight: collapsed ? 0 : 90,
         width: "100%",
       }}
     />

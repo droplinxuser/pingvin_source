@@ -510,6 +510,12 @@ sign-in redirect for a protected page and loop between `/upload` and
   returned 403. All 38 backend tests pass (three audit-state tests and two
   malicious-file removal tests), and both production builds pass. No SQLite
   schema or migration was added.
+- Empty ad-slot collapse (2026-10-25): with third-party ad requests blocked,
+  the share-page ad container collapsed after 5s (`display:none`, zero height
+  and margins) on a share with no gallery. Injecting a 300x100 iframe reopened
+  it through the observer. The file list remained visible with no console
+  errors. This removes the blank gap on shares without an image/video gallery
+  when no ad fills.
 - VirusTotal single-file removal (2026-10-25): a local share containing the
   EICAR test file and a clean PDF was scanned. VirusTotal flagged the EICAR
   file; only that file was deleted, while the PDF remained online (share 200,
@@ -554,11 +560,10 @@ sign-in redirect for a protected page and loop between `/upload` and
 
 ## Known non-issues
 
-- A blank gap above the file list on shares without image/video content is the
-  reserved ad container (`Ads`: 90px minimum height plus 24px vertical
-  margins). It stays blank when the third-party ad does not fill or is blocked;
-  it is not a missing gallery or a layout bug. The media gallery is absent only
-  when the share has no supported image/video files.
+- The ad container reserves about 90px plus 24px margins while third-party
+  tags load, then collapses after 5s if no ad content is present. A
+  `MutationObserver` reopens it if an ad arrives later. The media gallery is
+  absent only when the share has no supported image/video files.
 - Backend lint reports upstream warnings only.
 - A fresh data directory logs one `ENOENT` from the temporary-file cron.
 - Chrome may log the expected `403` while a protected share page fetches its
