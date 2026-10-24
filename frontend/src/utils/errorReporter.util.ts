@@ -15,6 +15,19 @@ const seen = new Map<string, number>();
 const truncate = (value: string, maxLength: number): string =>
   value.length > maxLength ? value.slice(0, maxLength) : value;
 
+const isBlockedAutoplay = (reason: unknown): boolean => {
+  if (!reason || typeof reason !== "object") return false;
+  const { name, message } = reason as {
+    name?: unknown;
+    message?: unknown;
+  };
+  return (
+    name === "NotAllowedError" &&
+    typeof message === "string" &&
+    /play\(\)/i.test(message)
+  );
+};
+
 const stringifyReason = (reason: unknown): string => {
   if (reason instanceof Error) return `${reason.name}: ${reason.message}`;
   if (typeof reason === "string") return reason;
@@ -80,6 +93,15 @@ export function installGlobalErrorReporter() {
 
   window.addEventListener("unhandledrejection", (event) => {
     const reason = event.reason;
+
+    // Third-party ad creatives sometimes call video.play() before a user
+    // gesture. The rejection is expected Chrome autoplay policy noise, not an
+    // application fault, and would otherwise clutter the console and log store.
+    if (isBlockedAutoplay(reason)) {
+      event.preventDefault();
+      return;
+    }
+
     report({
       message: stringifyReason(reason),
       stack: reason instanceof Error ? reason.stack : undefined,

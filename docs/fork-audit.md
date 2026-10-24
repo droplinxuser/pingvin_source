@@ -154,8 +154,10 @@ other languages show the upstream copy instead of the English fallback.
     (`window.onerror` and `unhandledrejection`); the reporter stores only the
     route path (never the origin or query string, which can carry recipient
     tokens), truncates fields, deduplicates repeats
-    for 60s on the server and 15s in the browser, and skips the visitor rate
-    bucket so an error loop cannot lock a user out of normal pages. If Valkey is
+    for 60s on the server and 15s in the browser, ignores the known third-party
+    ad `video.play()`/`NotAllowedError` autoplay rejection, and skips the
+    visitor rate bucket so an error loop cannot lock a user out of normal
+    pages. If Valkey is
     unavailable both sources fall back to a process-memory buffer (visible
     while the outage lasts; a restart clears it); `storage` in the API response
     tells the UI which backend was used. Browser-side Next.js server errors are
