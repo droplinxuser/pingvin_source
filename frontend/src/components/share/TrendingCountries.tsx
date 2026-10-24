@@ -243,10 +243,13 @@ const TrendingCountries = ({
 
   if (!countries?.length) return null;
 
+  const visibleCountries = countries.filter(
+    (country) => country.shares.length > 0,
+  );
+  if (visibleCountries.length === 0) return null;
+
   const formatCount = (value: number) => intl.formatNumber(value);
-  const initialCountry =
-    countries.find((country) => country.shares.length > 0)?.country ??
-    countries[0].country;
+  const initialCountry = visibleCountries[0].country;
 
   return (
     <Paper
@@ -298,7 +301,7 @@ const TrendingCountries = ({
         className={classes.tabs}
       >
         <Tabs.List className={classes.tabList}>
-          {countries.map(({ country, views }) => {
+          {visibleCountries.map(({ country, views }) => {
             const name = getCountryName(country, intl.locale);
             return (
               <Tabs.Tab key={country} value={country} className={classes.tab}>
@@ -316,7 +319,7 @@ const TrendingCountries = ({
           })}
         </Tabs.List>
 
-        {countries.map(({ country, shares }) => {
+        {visibleCountries.map(({ country, shares }) => {
           const name = getCountryName(country, intl.locale);
           return (
             <Tabs.Panel
@@ -326,86 +329,76 @@ const TrendingCountries = ({
                 country: name,
               })}
             >
-              {shares.length === 0 ? (
-                <Text size="xs" color="dimmed" mt="md">
-                  {t("trending.custom.countries.empty")}
-                </Text>
-              ) : (
-                <SimpleGrid
-                  cols={2}
-                  spacing="sm"
-                  verticalSpacing="sm"
-                  className={classes.list}
-                  breakpoints={[{ maxWidth: "sm", cols: 1 }]}
-                >
-                  {shares.map((item, index) => {
-                    const label = item.name || item.id;
-                    return (
-                      <UnstyledButton
-                        key={item.id}
-                        component={Link}
-                        href={`/share/${item.id}`}
-                        className={classes.row}
-                        title={label}
-                        aria-label={`${label} — ${t(
-                          "trending.custom.countries.views",
-                          { count: item.views },
-                        )}`}
+              <SimpleGrid
+                cols={2}
+                spacing="sm"
+                verticalSpacing="sm"
+                className={classes.list}
+                breakpoints={[{ maxWidth: "sm", cols: 1 }]}
+              >
+                {shares.map((item, index) => {
+                  const label = item.name || item.id;
+                  return (
+                    <UnstyledButton
+                      key={item.id}
+                      component={Link}
+                      href={`/share/${item.id}`}
+                      className={classes.row}
+                      title={label}
+                      aria-label={`${label} — ${t(
+                        "trending.custom.countries.views",
+                        { count: item.views },
+                      )}`}
+                    >
+                      <Box
+                        component="span"
+                        className={`${classes.rank} ${
+                          index < 3 ? classes.rankTop : ""
+                        }`}
                       >
-                        <Box
-                          component="span"
-                          className={`${classes.rank} ${
-                            index < 3 ? classes.rankTop : ""
-                          }`}
-                        >
-                          {formatCount(index + 1)}
-                        </Box>
-                        <Box component="span" className={classes.thumb}>
-                          {item.previewKind === "image" ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img
-                              className={classes.thumbImage}
-                              src={getShareFileUrl(
-                                item.id,
-                                item.previewFileId,
-                                { download: false, webp: true },
-                              )}
-                              alt=""
-                              loading="lazy"
-                              decoding="async"
-                              onError={(event) => {
-                                event.currentTarget.style.display = "none";
-                              }}
-                            />
-                          ) : (
-                            <Box
-                              component="span"
-                              className={classes.videoThumb}
-                            >
-                              <TbPlayerPlay size={18} aria-hidden />
-                            </Box>
-                          )}
-                        </Box>
-                        <Box component="span" className={classes.body}>
-                          <Text
-                            component="span"
-                            className={classes.name}
-                            lineClamp={1}
-                          >
-                            {label}
-                          </Text>
-                          <Box component="span" className={classes.meta}>
-                            <TbEye size={13} aria-hidden />
-                            {t("trending.custom.countries.views", {
-                              count: item.views,
+                        {formatCount(index + 1)}
+                      </Box>
+                      <Box component="span" className={classes.thumb}>
+                        {item.previewKind === "image" ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            className={classes.thumbImage}
+                            src={getShareFileUrl(item.id, item.previewFileId, {
+                              download: false,
+                              webp: true,
                             })}
+                            alt=""
+                            loading="lazy"
+                            decoding="async"
+                            onError={(event) => {
+                              event.currentTarget.style.display = "none";
+                            }}
+                          />
+                        ) : (
+                          <Box component="span" className={classes.videoThumb}>
+                            <TbPlayerPlay size={18} aria-hidden />
                           </Box>
+                        )}
+                      </Box>
+                      <Box component="span" className={classes.body}>
+                        <Text
+                          component="span"
+                          className={classes.name}
+                          lineClamp={1}
+                        >
+                          {label}
+                        </Text>
+                        <Box component="span" className={classes.meta}>
+                          <TbEye size={13} aria-hidden />
+                          {t("trending.custom.countries.views", {
+                            count: item.views,
+                          })}
                         </Box>
-                      </UnstyledButton>
-                    );
-                  })}
-                </SimpleGrid>
-              )}
+                      </Box>
+                    </UnstyledButton>
+                  );
+                })}
+              </SimpleGrid>
             </Tabs.Panel>
           );
         })}

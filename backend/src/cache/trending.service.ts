@@ -269,14 +269,6 @@ export class TrendingService {
       }
     }
 
-    const topCountries = [...views.entries()]
-      .sort(
-        ([aCode, aViews], [bCode, bViews]) =>
-          bViews - aViews || aCode.localeCompare(bCode),
-      )
-      .slice(0, GEO_COUNTRY_LIMIT);
-    if (topCountries.length === 0) return [];
-
     // A share can be visited from several countries. Keep it only in the
     // country with the highest view count for that share, so the five lists
     // never duplicate a card. Ties resolve by country code for a stable order.
@@ -293,11 +285,18 @@ export class TrendingService {
       }
     }
 
-    // Rank the shares inside each country before fetching metadata, so the
-    // MGET below never handles more than five times twenty IDs.
-    const ranked = new Map<string, { id: string; views: number }[]>();
-    const ids = new Set<string>();
-    for (const [country] of topCountries) {
+    // Select the five highest-view countries that still have at least one
+    // unique share after deduplication. Countries whose shares all belong to
+    // another country are skipped instead of leaving an empty panel.
+    const rankedCountries: {
+      country: string;
+      views: number;
+      shares: { id: string; views: number }[];
+    }[] = [];
+    for (const [country, countryViews] of [...views.entries()].sort(
+      ([aCode, aViews], [bCode, bViews]) =>
+        bViews - aViews || aCode.localeCompare(bCode),
+    )) {
       const candidates = [
         ...(shares.get(country) ?? new Map<string, number>()).entries(),
       ]
@@ -308,30 +307,40 @@ export class TrendingService {
         )
         .slice(0, GEO_SHARE_LIMIT)
         .map(([id, count]) => ({ id, views: count }));
-      ranked.set(country, candidates);
-      for (const { id } of candidates) ids.add(id);
-    }
+      if (candidates.length === 0) continue;
 
-    const metas = ids.size
-      ? parseMetaValues(await client.mGet([...ids].map(metaKeyFor)))
-      : new Map<string, TrendingMeta>();
+      rankedCountries.push({
+        country,
+        views: countryViews,
+        shares: candidates,
+      });
+      if (rankedCountries.length >= GEO_COUNTRY_LIMIT) break;
+    }
+    if (rankedCountries.length === 0) return [];
+
+    const ids = new Set(
+      rankedCountries.flatMap((country) =>
+        country.shares.map((share) => share.id),
+      ),
+    );
+    const metas = parseMetaValues(await client.mGet([...ids].map(metaKeyFor)));
     const legacyIds = legacyMetaIds([...ids], metas);
     if (legacyIds.length > 0) await this.backfill(client, legacyIds, metas);
 
     const now = Date.now();
-    return topCountries.map(([country, countryViews]) => ({
-      country,
-      views: countryViews,
-      shares: (ranked.get(country) ?? []).flatMap(
-        ({ id, views: shareViews }) => {
+    return rankedCountries
+      .map(({ country, views: countryViews, shares: candidates }) => ({
+        country,
+        views: countryViews,
+        shares: candidates.flatMap(({ id, views: shareViews }) => {
           const meta = metas.get(id);
           if (!meta) return [];
           if (now - new Date(meta.createdAt).getTime() > MAX_SHARE_AGE_MS)
             return [];
           return [toTrendingShare(meta, shareViews)];
-        },
-      ),
-    }));
+        }),
+      }))
+      .filter((country) => country.shares.length > 0);
   }
 
   private async backfill(

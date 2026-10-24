@@ -69,8 +69,6 @@ export default {
   "trending.custom.countries.window": "Last 24 hours",
   "trending.custom.countries.list":
     "Most-viewed shares from {country} in the last 24 hours",
-  "trending.custom.countries.empty":
-    "No unique share views from this country yet.",
   // END trending
 
   // /

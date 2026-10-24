@@ -472,7 +472,7 @@ test("returns the top five countries and their top shares", async () => {
 
   assert.deepEqual(
     countries.map((item) => item.country),
-    ["PH", "US", "CA", "DE", "FR"],
+    ["PH", "CA", "DE", "FR"],
   );
   assert.equal(countries[0].views, 10);
   assert.deepEqual(
@@ -482,9 +482,10 @@ test("returns the top five countries and their top shares", async () => {
       ["b", 5],
     ],
   );
-  assert.equal(countries[1].views, 5);
-  assert.deepEqual(countries[1].shares, []);
-  assert.equal(countries[2].shares[0].id, "c");
+  assert.equal(countries[1].views, 2);
+  assert.equal(countries[1].shares[0].id, "c");
+  assert.equal(countries[2].shares[0].id, "d");
+  assert.equal(countries[3].shares[0].id, "e");
 });
 
 test("lists each share only under its highest-view country", async () => {
@@ -542,11 +543,48 @@ test("uses the country code to break equal per-share view counts", async () => {
 
   assert.deepEqual(
     countries.map((country) => [country.country, country.shares.length]),
+    [["PH", 1]],
+  );
+});
+
+test("backfills countries when higher-ranked ones have no unique shares", async () => {
+  const buckets = Array.from({ length: 24 }, () => null);
+  buckets[0] = {
+    "c:PH": "100",
+    "c:US": "90",
+    "c:CA": "80",
+    "c:DE": "70",
+    "c:FR": "60",
+    "c:IT": "50",
+    "PH:shared": "1",
+    "US:shared": "2",
+    "US:us-only": "1",
+    "CA:ca-only": "1",
+    "DE:de-only": "1",
+    "FR:fr-only": "1",
+    "IT:it-only": "1",
+  };
+  const mock = createMockValkey(
+    () => buckets,
     [
-      ["PH", 1],
-      ["US", 0],
+      meta("shared", 2, recent),
+      meta("us-only", 1, recent),
+      meta("ca-only", 1, recent),
+      meta("de-only", 1, recent),
+      meta("fr-only", 1, recent),
+      meta("it-only", 1, recent),
     ],
   );
+  const service = createService(mock);
+
+  const countries = await service.getTrendingCountries();
+
+  assert.deepEqual(
+    countries.map((country) => country.country),
+    ["US", "CA", "DE", "FR", "IT"],
+  );
+  assert.equal(countries.length, 5);
+  assert.equal(countries[0].shares[0].id, "shared");
 });
 
 test("limits each country to twenty shares", async () => {
