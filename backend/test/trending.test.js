@@ -84,6 +84,28 @@ test("ranks the last seven days by total views and filters stale shares", async 
   assert.equal(items[1].previewFileId, "file-b");
 });
 
+test("returns at most twelve shares", async () => {
+  const ranked = Array.from({ length: 15 }, (_, index) => ({
+    value: `s${index}`,
+    score: 100 - index,
+  }));
+  const today = Array.from({ length: 15 }, (_, index) =>
+    meta(`s${index}`, 100 - index, recent),
+  );
+
+  const mock = createMockValkey((queue) =>
+    queue[0][0] === "zUnionStore" ? [1, ranked, 1] : [today, []],
+  );
+  const service = new TrendingService(mock.valkey);
+  const items = await service.getTrending();
+
+  assert.equal(items.length, 12);
+  assert.deepEqual(
+    items.map((item) => item.id),
+    Array.from({ length: 12 }, (_, index) => `s${index}`),
+  );
+});
+
 test("records only recent public shares with image or video media", async () => {
   const mock = createMockValkey(() => []);
   const service = new TrendingService(mock.valkey);

@@ -11,7 +11,7 @@ const VIEW_TTL_SECONDS = (WINDOW_DAYS + 1) * 24 * 60 * 60;
 const META_TTL_SECONDS = (WINDOW_DAYS + 1) * 24 * 60 * 60;
 const MAX_SHARE_AGE_MS = WINDOW_DAYS * DAY_MS;
 const CANDIDATE_LIMIT = 200;
-const RESULT_LIMIT = 9;
+const RESULT_LIMIT = 12;
 const RESULT_CACHE_MS = 30 * 1000;
 
 type MediaKind = "image" | "video";

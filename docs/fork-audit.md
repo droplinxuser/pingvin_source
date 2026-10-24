@@ -92,7 +92,7 @@ other languages show the upstream copy instead of the English fallback.
   older than seven days and shares without an image/video are skipped before
   writing. `GET /api/shares/trending` unions the seven daily sets with
   `AGGREGATE MAX`, drops entries without current metadata or older than seven
-  days, and returns the top nine ordered by total views without any SQLite
+  days, and returns the top twelve ordered by total views without any SQLite
   query. The result is cached in-process for 30 seconds and is edge-cacheable
   for 60 seconds. Editing, expiring or deleting a share (including removing
   its files or reverse-share parent) clears its metadata immediately. If
@@ -161,9 +161,9 @@ sign-in redirect for a protected page and loop between `/upload` and
 ## Verified locally
 
 - Node `22.23.3` production builds pass for backend and frontend. `npm run
-  test:unit` passes all 18 tests, covering view limits, IP+User-Agent identity,
+  test:unit` passes all 19 tests, covering view limits, IP+User-Agent identity,
   Valkey/fallback throttling, uploader metadata, page-view metrics and trending
-  ranking/eligibility. A local smoke run rechecked config/stats cache headers,
+  ranking/eligibility/result cap. A local smoke run rechecked config/stats cache headers,
   share `HEAD`/token/view flow and rolling expiration; the aggregate cache and
   upload-throttle exemptions were reviewed without a live Valkey instance.
 - A follow-up caching review (local Node `26.12.1`; the server remains on
@@ -228,16 +228,15 @@ sign-in redirect for a protected page and loop between `/upload` and
 - The trending widget was verified with 11 recent public media shares, a
   password share, a max-view share, a text-only share, a 6-day-23-hour-old
   share, an 8-day-old share and a share whose media was deleted. The endpoint
-  returned the nine eligible shares ordered by total views, included the
+  returned the twelve eligible shares ordered by total views, included the
   seven-day-old share, excluded the eight-day-old share and all other cases,
   and dropped a share immediately after it was switched to password-protected,
   added back after it was made public again. The four pages rendered the widget
-  server-side with nine 250px-tall cards spanning the content width in a 3x3
-  desktop grid, a 2-column tablet grid, one column at 390px and zero measured
-  layout shift;
-  the homepage made no client-side trending request. Thumbnails use a 2px blur
-  that clears on hover, the view badge is 14px, dark mode was checked, and
-  click-through to `/share/<id>` was verified.
+  server-side with twelve 150px-tall cards spanning the content width in a 4x3
+  desktop grid, a 3-column tablet grid, a 2-column/6-row mobile grid at 390px
+  and zero measured layout shift; the homepage made no client-side trending
+  request. Thumbnails use a 2px blur that clears on hover, the view badge is
+  14px, dark mode was checked, and click-through to `/share/<id>` was verified.
 - Navigating between share pages on the client now remounts the share view by
   share ID. Previously the page only fetched its files on mount, so clicking a
   trending thumbnail could leave the previous share's name, files and visitor

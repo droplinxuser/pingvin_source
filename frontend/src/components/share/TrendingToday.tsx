@@ -43,15 +43,15 @@ const useStyles = createStyles((theme) => {
 
     grid: {
       display: "grid",
-      gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+      gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
       gap: theme.spacing.md,
 
       [theme.fn.smallerThan("lg")]: {
-        gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+        gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
       },
 
-      [theme.fn.smallerThan("xs")]: {
-        gridTemplateColumns: "minmax(0, 1fr)",
+      [theme.fn.smallerThan("sm")]: {
+        gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
       },
     },
 
@@ -59,7 +59,7 @@ const useStyles = createStyles((theme) => {
       position: "relative",
       display: "block",
       width: "100%",
-      height: 250,
+      height: 150,
       padding: 0,
       overflow: "hidden",
       border: `1px solid ${border}`,
