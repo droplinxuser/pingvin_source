@@ -5,6 +5,7 @@ import {
   Button,
   Center,
   Group,
+  Skeleton,
   Stack,
   Text,
   Title,
@@ -17,7 +18,9 @@ import { useEffect, useState } from "react";
 import { FormattedMessage } from "react-intl";
 import Meta from "../../../components/Meta";
 import FileList from "../../../components/share/FileList";
-import MediaPreviewGallery from "../../../components/share/MediaPreviewGallery";
+import MediaPreviewGallery, {
+  MediaPreviewGallerySkeleton,
+} from "../../../components/share/MediaPreviewGallery";
 import ShareActions from "../../../components/share/ShareActions";
 import ShareStats from "../../../components/share/ShareStats";
 import UploaderInfoBadges from "../../../components/share/UploaderInfoBadges";
@@ -31,6 +34,7 @@ import { Share as ShareType, ShareSeo } from "../../../types/share.type";
 import toast from "../../../utils/toast.util";
 import { getBaseName } from "../../../utils/file.util";
 import { byteToHumanSizeString } from "../../../utils/fileSize.util";
+import { isLikelyGalleryMedia } from "../../../utils/mime.util";
 import { getQueryString } from "../../../utils/router.util";
 import { fetchShareSeo } from "../../../utils/seo.server.util";
 import { absoluteUrl, normalizeBaseUrl } from "../../../utils/seo.util";
@@ -85,6 +89,14 @@ const SharePage = ({
   const shareUrl = absoluteUrl(`/share/${shareId}`, baseUrl);
   const indexable = seo?.indexable === true;
   const shareName = indexable ? share?.name || seo?.name : undefined;
+  const displayName = share?.name || seo?.name || shareId;
+  const displayDescription = share?.description || seo?.description;
+  const displayFileCount = share?.files?.length ?? seo?.fileCount ?? 0;
+  const displaySize = share?.size ?? seo?.size ?? 0;
+  const skeletonMediaCount = indexable
+    ? (seo?.files ?? []).filter((file) => isLikelyGalleryMedia(file.name))
+        .length
+    : 0;
   const metaTitle = indexable
     ? shareName
       ? t("seo.custom.share.title", { name: shareName })
@@ -305,30 +317,41 @@ const SharePage = ({
         <Anchor component={Link} href="/trending">
           {t("trending.custom.title")}
         </Anchor>
-        <Text>{share?.name || shareId}</Text>
+        <Text truncate maw={{ base: 160, sm: 420 }}>
+          {displayName}
+        </Text>
       </Breadcrumbs>
 
       <Group position="apart" mb="lg">
         <Box style={{ maxWidth: "70%" }}>
-          <Title order={1} size="h3" id="share-title">
-            {share?.name || share?.id}
+          <Title
+            order={1}
+            size="h3"
+            id="share-title"
+            sx={{ overflowWrap: "anywhere" }}
+          >
+            {displayName}
           </Title>
-          <Text size="sm">{share?.description}</Text>
-          {share?.files?.length > 0 && (
+          <Text size="sm" sx={{ overflowWrap: "anywhere" }}>
+            {displayDescription}
+          </Text>
+          {displayFileCount > 0 && (
             <Text size="sm" color="dimmed" mt={5}>
               <FormattedMessage
                 id="share.fileCount"
                 values={{
-                  count: share?.files?.length || 0,
-                  size: byteToHumanSizeString(share?.size || 0),
+                  count: displayFileCount,
+                  size: byteToHumanSizeString(displaySize),
                 }}
               />
             </Text>
           )}
-          {share && (
+          {share ? (
             <Group spacing="xs" mt={5}>
               <UploaderInfoBadges share={share} info={share.uploaderInfo} />
             </Group>
+          ) : (
+            indexable && <Skeleton height={16} width={210} mt={7} />
           )}
         </Box>
 
@@ -341,7 +364,11 @@ const SharePage = ({
         />
       </Group>
 
-      <MediaPreviewGallery shareId={shareId} files={share?.files} />
+      {share ? (
+        <MediaPreviewGallery shareId={shareId} files={share.files} />
+      ) : (
+        <MediaPreviewGallerySkeleton count={skeletonMediaCount} />
+      )}
 
       <Ads />
 
@@ -350,6 +377,7 @@ const SharePage = ({
         share={share!}
         isLoading={!share}
         recipientId={recipientId}
+        skeletonCount={displayFileCount || 5}
       />
 
       {share && <ShareStats share={share} />}

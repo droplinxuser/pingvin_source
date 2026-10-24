@@ -88,11 +88,13 @@ const FileList = ({
   share,
   isLoading,
   recipientId,
+  skeletonCount = 5,
 }: {
   files?: FileMetaData[];
   share: Share;
   isLoading: boolean;
   recipientId?: string;
+  skeletonCount?: number;
 }) => {
   const clipboard = useClipboard();
   const modals = useModals();
@@ -156,7 +158,7 @@ const FileList = ({
 
       <Stack spacing={0}>
         {isLoading
-          ? skeletonRows
+          ? skeletonRows(skeletonCount)
           : sortedFiles.map((file, index) => {
               const size = byteToHumanSizeString(parseInt(file.size));
               const visual = getFileVisual(file.name);
@@ -283,41 +285,42 @@ const FileList = ({
   );
 };
 
-const skeletonRows = [...Array(5)].map((_, index) => (
-  <Box
-    key={index}
-    px="md"
-    py="sm"
-    sx={(theme) => ({
-      ...rowStyle(theme),
-      borderTop:
-        index === 0
-          ? undefined
-          : `1px solid ${
-              theme.colorScheme === "dark"
-                ? theme.colors.dark[5]
-                : theme.colors.gray[2]
-            }`,
-    })}
-  >
-    <Skeleton height={34} width={34} radius="sm" />
-    <Box sx={{ minWidth: 0 }}>
-      <Skeleton height={12} width="45%" mb={6} />
-      <Skeleton height={10} width="20%" />
-    </Box>
-    <Skeleton
-      height={10}
-      width={40}
-      radius="sm"
+const skeletonRows = (count: number) =>
+  [...Array(Math.min(Math.max(count, 1), 50))].map((_, index) => (
+    <Box
+      key={index}
+      px="md"
+      py="sm"
       sx={(theme) => ({
-        [theme.fn.smallerThan("sm")]: { display: "none" },
+        ...rowStyle(theme),
+        borderTop:
+          index === 0
+            ? undefined
+            : `1px solid ${
+                theme.colorScheme === "dark"
+                  ? theme.colors.dark[5]
+                  : theme.colors.gray[2]
+              }`,
       })}
-    />
-    <Group spacing={4} noWrap sx={{ justifySelf: "end" }}>
-      <Skeleton height={28} width={28} radius="sm" />
-      <Skeleton height={28} width={28} radius="sm" />
-    </Group>
-  </Box>
-));
+    >
+      <Skeleton height={34} width={34} radius="sm" />
+      <Box sx={{ minWidth: 0 }}>
+        <Skeleton height={12} width="45%" mb={6} />
+        <Skeleton height={10} width="20%" />
+      </Box>
+      <Skeleton
+        height={10}
+        width={40}
+        radius="sm"
+        sx={(theme) => ({
+          [theme.fn.smallerThan("sm")]: { display: "none" },
+        })}
+      />
+      <Group spacing={4} noWrap sx={{ justifySelf: "end" }}>
+        <Skeleton height={28} width={28} radius="sm" />
+        <Skeleton height={28} width={28} radius="sm" />
+      </Group>
+    </Box>
+  ));
 
 export default FileList;

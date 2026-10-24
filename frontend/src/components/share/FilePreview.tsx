@@ -15,6 +15,7 @@ import useTranslate from "../../hooks/useTranslate.hook";
 import api from "../../services/api.service";
 import { getShareFileUrl } from "../../utils/file.util";
 import { HoverTip } from "../core/HoverTip";
+import LazyVideo from "../core/LazyVideo";
 
 const FilePreviewContext = React.createContext<{
   shareId: string;
@@ -135,12 +136,13 @@ const VideoPreview = () => {
   const { shareId, fileId, setIsNotSupported } =
     React.useContext(FilePreviewContext);
   return (
-    <video width="100%" controls playsInline preload="metadata">
-      <source
-        src={getShareFileUrl(shareId, fileId, { download: false })}
-        onError={() => setIsNotSupported(true)}
-      />
-    </video>
+    <LazyVideo
+      src={getShareFileUrl(shareId, fileId, { download: false })}
+      width="100%"
+      controls
+      playsInline
+      onError={() => setIsNotSupported(true)}
+    />
   );
 };
 
@@ -150,7 +152,9 @@ const ImagePreview = () => {
   return (
     // eslint-disable-next-line @next/next/no-img-element
     <img
-      src={getShareFileUrl(shareId, fileId, { download: false, webp: true })}
+      // The full-size modal uses the original image; 300px WebP thumbnails are
+      // only for the gallery and trending grids.
+      src={getShareFileUrl(shareId, fileId, { download: false })}
       alt={`Preview of ${fileName || fileId}`}
       style={{ width: "100%", height: "auto" }}
       loading="lazy"

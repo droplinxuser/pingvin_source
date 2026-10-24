@@ -48,7 +48,7 @@ const TrendingToday = dynamic(
 );
 
 const excludeDefaultLayoutRoutes = ["/admin/config/[category]"];
-const trendingWidgetRoutes = ["/", "/upload", "/share/[shareId]", "/404"];
+const trendingWidgetRoutes = ["/share/[shareId]", "/404"];
 const availableMantineColors = [
   "dark",
   "gray",

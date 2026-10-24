@@ -22,7 +22,7 @@ so `git merge upstream/main` stays small.
 | Home copy and ads | `frontend/src/pages/index.tsx` (upstream layout), `home.custom.*` keys in `en-US.ts`, `frontend/src/components/Ads.tsx` |
 | Fork branding / deployment | `frontend/public/img/**`, `frontend/public/favicon.ico`, `frontend/src/pages/manifest.json.tsx`, `pingvin-*.service`, `update.sh` |
 | SEO / crawlers | `frontend/src/components/Meta.tsx`, `SiteStructuredData.tsx`, `frontend/src/pages/robots.txt.tsx`, `frontend/src/pages/sitemap.xml.tsx`, `frontend/src/utils/seo.util.ts`, `frontend/src/utils/seo.server.util.ts`, `backend/src/share/share.service.ts` (`getSeo`), `backend/src/system/system.service.ts` (`getRobotsTxt`, `getSitemapXml`) |
-| WebP / image pipeline | `backend/src/file/file.service.ts` (private preview cache), `backend/src/file/file.controller.ts` (`webp=true`), `backend/src/config/logo.service.ts`, `frontend/src/utils/file.util.ts`, `frontend/src/components/Logo.tsx`, `frontend/public/img/*.webp`, `og-image.png` |
+| WebP / image pipeline | `backend/src/file/file.service.ts` (private preview cache), `backend/src/file/file.controller.ts` (`webp=300`), `backend/src/config/logo.service.ts`, `frontend/src/utils/file.util.ts`, `frontend/src/components/Logo.tsx`, `frontend/public/img/*.webp`, `og-image.png` |
 
 Fork-only UI strings live in `frontend/src/i18n/translations/en-US.ts`; every
 other locale falls back to English through `frontend/src/utils/i18n.util.ts`,
@@ -42,7 +42,7 @@ other languages show the upstream copy instead of the English fallback.
    - lint: `npm run lint` in both packages (backend warnings are upstream-only)
 5. Smoke-test locally: home page, sign-in, upload, share page, admin
    shares/users (search, sort, pagination), missing share (404), trending
-   widget on `/`, `/upload`, `/share/*` and 404 pages (plus no widget on other
+   widget on `/share/*` and 404 pages (no widget on home, upload or other
    pages), the clickable widget title and full `/trending` page with up to 48
    shares, file download headers, report modal, footer page-view/top-country
    metrics, and the dynamic `/manifest.json`. Repeat once with Valkey stopped
@@ -171,8 +171,9 @@ other languages show the upstream copy instead of the English fallback.
   `/img` and `/favicon.ico` directly with its own long TTL (one year / one
   week), so the Next.js one-day rules do not apply there; purge the logo,
   dark logo, favicon, PWA icon and `og-image.png` URLs after an admin branding
-  change. Public `?webp=true` previews are normal cacheable file GETs; keep the
-  query string in the file cache key. If `/sw.js` was previously cached
+  change. Public `?webp=300` previews are normal cacheable file GETs; keep the
+  versioned query string in the file cache key so older 1600px previews are
+  bypassed after deployment. If `/sw.js` was previously cached
   long-term, purge it once; `_app` also registers it with a build-hash query.
 
 ## Auth redirects
@@ -220,16 +221,28 @@ sign-in redirect for a protected page and loop between `/upload` and
   artifact/query is ~4ms.
 - Translation catalogues are lazy per locale and included in the active page's
   HTML/`__NEXT_DATA__` instead of importing all 34 files into `_app`. Moment
-  locales load on demand only for non-English visitors, and the trending widget
-  is a lazy SSR chunk. The shared first-load JS dropped from ~744 kB to ~250 kB
-  in the local production build; `/upload` dropped from ~707 kB to ~356 kB
-  after removing the static MDEditor command import.
-- Raster share images get a resized WebP preview on first request
-  (`?download=false&webp=true`, max 1600px, quality 82) cached under
-  `uploads/_previews/<shareId>/<fileId>.webp`. Original files remain untouched
-  for downloads; protected shares keep `private` previews and public shares use
-  the same day-long immutable CDN headers as normal files. Preview files are
-  removed with their share/file.
+  locales load on demand only for non-English visitors. The trending widget is
+  a lazy SSR chunk shown only on share and 404 pages; it is no longer rendered
+  on the home page or `/upload`. The shared first-load JS dropped from ~744 kB
+  to ~250 kB in the local production build; `/upload` dropped from ~707 kB to
+  ~356 kB after removing the static MDEditor command import.
+- Raster share images get a resized 300px WebP preview on first request
+  (`?download=false&webp=300`, quality 82) cached under
+  `uploads/_previews/v300/<shareId>/<fileId>.webp`. Preview caches from older
+  dimensions are removed on backend startup. Original files remain untouched
+  for downloads and the full-size image modal; protected shares keep `private`
+  previews and public shares use the same day-long immutable CDN headers as
+  normal files. Preview files are removed with their share/file.
+- Gallery images use native lazy loading; videos use the shared `LazyVideo`
+  component, which waits for `IntersectionObserver` before attaching `src` and
+  requesting metadata. The logo remains eager because it is above the fold.
+- The share page reserves SEO-derived gallery/file-list skeletons while the
+  client share request is in flight, and renders the name/description/file
+  count from the SEO payload immediately. In a throttled local run (1.2s share
+  response) desktop CLS fell to ~0.055 and mobile CLS to ~0.001.
+- The manifest link is versioned with `COMMIT_HASH`/`VERSION`
+  (`/manifest.json?v=<build>`), so Cloudflare and browsers do not keep serving a
+  stale manifest after a deployment.
 - UI branding uses WebP (`logo.webp`, `logo-dark.webp`, PWA icon WebP variants)
   with PNG fallbacks, and the admin logo upload regenerates both formats plus
   `og-image.png`. The tracked logo PNGs were recompressed from ~160 kB to
@@ -274,6 +287,11 @@ sign-in redirect for a protected page and loop between `/upload` and
   `/api/shares/sitemap` route is gone; the backend serves prebuilt robots/sitemap
   strings through the cache layer (second request ~4ms) and no sitemap/robots
   rows or tables exist in SQLite.
+- The final CWV pass verified that `/` and `/upload` no longer render or request
+  the trending widget, the manifest link includes the build hash, generated
+  thumbnails are 300x225 WebP (216 bytes for the local test image), and the
+  full-size modal uses the original file. With the share API delayed by 1.2s,
+  the new skeleton measured CLS ~0.055 on desktop and ~0.001 at 390px.
 - A follow-up caching review (local Node `26.12.1`; the server remains on
   `22.23.3`) rechecked that only query-free page shells are public, cacheable
   file/ZIP GETs stay free of `Set-Cookie`, the share-metadata cache contains
@@ -339,11 +357,12 @@ sign-in redirect for a protected page and loop between `/upload` and
   returned the twelve eligible shares ordered by total views, included the
   seven-day-old share, excluded the eight-day-old share and all other cases,
   and dropped a share immediately after it was switched to password-protected,
-  added back after it was made public again. The four pages rendered the widget
-  server-side with twelve 150px-tall cards spanning the content width in a 4x3
-  desktop grid, a 3-column tablet grid, a 2-column/6-row mobile grid at 390px
-  and zero measured layout shift; the homepage made no client-side trending
-  request. Widget thumbnails use a 2px blur that clears on hover, the view
+  added back after it was made public again. The share and 404 pages rendered
+  the widget server-side with twelve 150px-tall cards spanning the content
+  width in a 4x3 desktop grid, a 3-column tablet grid, a 2-column/6-row mobile
+  grid at 390px and zero measured layout shift; the home and upload pages no
+  longer render or request the widget. Widget thumbnails use a 2px blur that
+  clears on hover, the view
   badge is 14px, dark mode was checked, and click-through to `/share/<id>` was
   verified. The widget title links to the public `/trending` page, which renders
   the identical grid with up to 48 entries from `?limit=48`; full-page

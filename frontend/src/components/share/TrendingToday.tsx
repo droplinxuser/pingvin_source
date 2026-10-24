@@ -18,6 +18,7 @@ import useTranslate from "../../hooks/useTranslate.hook";
 import shareService from "../../services/share.service";
 import { TrendingShare } from "../../types/share.type";
 import { getShareFileUrl } from "../../utils/file.util";
+import LazyVideo from "../core/LazyVideo";
 
 const useStyles = createStyles((theme) => {
   const border =
@@ -246,12 +247,11 @@ const TrendingToday = ({
                 />
               ) : (
                 <>
-                  <video
+                  <LazyVideo
                     className={mediaClassName}
                     src={`${url}#t=0.1`}
                     muted
                     playsInline
-                    preload="metadata"
                     aria-hidden="true"
                     onError={(event) => {
                       event.currentTarget.style.display = "none";

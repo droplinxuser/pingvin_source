@@ -32,7 +32,8 @@ export const getShareFileUrl = (
 ): string => {
   const params = new URLSearchParams();
   if (options.download === false) params.set("download", "false");
-  if (options.webp && options.download !== true) params.set("webp", "true");
+  // The value is versioned so old 1600px CDN/browser caches are bypassed.
+  if (options.webp && options.download !== true) params.set("webp", "300");
   if (options.recipientId) params.set("recipient", options.recipientId);
 
   const query = params.toString();

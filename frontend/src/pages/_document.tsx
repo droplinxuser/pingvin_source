@@ -17,11 +17,18 @@ export default class _Document extends Document {
     const direction =
       Object.values(LOCALES).find((locale) => locale.code === language)
         ?.direction ?? "ltr";
+    const manifestVersion =
+      process.env.COMMIT_HASH || process.env.VERSION || "";
 
     return (
       <Html lang={language} dir={direction}>
         <Head>
-          <link rel="manifest" href="/manifest.json" />
+          <link
+            rel="manifest"
+            href={`/manifest.json${
+              manifestVersion ? `?v=${manifestVersion}` : ""
+            }`}
+          />
           <link rel="icon" type="image/x-icon" href="/favicon.ico" />
           <link
             rel="icon"

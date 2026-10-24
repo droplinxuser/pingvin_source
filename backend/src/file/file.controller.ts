@@ -198,7 +198,7 @@ export class FileController {
 
     // Inline image previews are converted to a smaller WebP once and served
     // from the private preview cache. Downloads keep the original format.
-    if (webp === "true" && !isDownload) {
+    if ((webp === "true" || webp === "300") && !isDownload) {
       const preview = await this.fileService.getWebpPreview(
         shareId,
         fileId,
@@ -211,7 +211,7 @@ export class FileController {
           "X-Content-Type-Options": "nosniff",
           ...getDownloadCacheHeaders(
             (req as FileRequest).shareIsPublic === true,
-            `"${shareId}-${fileId}-webp-v1"`,
+            `"${shareId}-${fileId}-webp-v300"`,
           ),
         });
         return new StreamableFile(createReadStream(preview.path));

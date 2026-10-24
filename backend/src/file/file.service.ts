@@ -4,6 +4,7 @@ import {
   Logger,
   BadRequestException,
   NotFoundException,
+  OnModuleInit,
 } from "@nestjs/common";
 import { CACHE_MANAGER } from "@nestjs/cache-manager";
 import { Cache } from "cache-manager";
@@ -27,9 +28,13 @@ const sharp = require("sharp");
 
 const UPDATED_AT_THROTTLE_MS = 5 * 60 * 1000;
 const DOWNLOAD_NOTIFICATION_COOLDOWN_MS = 15 * 60 * 1000;
-const PREVIEW_DIRECTORY = `${DATA_DIRECTORY}/uploads/_previews`;
+const PREVIEW_ROOT = `${DATA_DIRECTORY}/uploads/_previews`;
+const PREVIEW_VERSION = "v300";
+const PREVIEW_DIRECTORY = `${PREVIEW_ROOT}/${PREVIEW_VERSION}`;
 const PREVIEW_MAX_FILE_SIZE = 100 * 1024 * 1024;
-const PREVIEW_MAX_DIMENSION = 1600;
+// Gallery/trending thumbnails are 150-250px tall; 300px covers them on
+// high-density displays without generating 1600px WebP caches.
+const PREVIEW_MAX_DIMENSION = 300;
 const WEBP_QUALITY = 82;
 const WEBP_IMAGE_TYPES = new Set([
   "image/jpeg",
@@ -41,7 +46,7 @@ const WEBP_IMAGE_TYPES = new Set([
 const SAFE_ID = /^[\w=-]+$/;
 
 @Injectable()
-export class FileService {
+export class FileService implements OnModuleInit {
   constructor(
     private prisma: PrismaService,
     private localFileService: LocalFileService,
@@ -57,6 +62,28 @@ export class FileService {
     string,
     Promise<{ path: string; size: number } | undefined>
   >();
+
+  async onModuleInit() {
+    // Preview files are a derived cache. Drop caches from older dimensions so
+    // the 300px rollout does not leave large WebP files behind.
+    try {
+      const entries = await fs.readdir(PREVIEW_ROOT, { withFileTypes: true });
+      await Promise.all(
+        entries
+          .filter(
+            (entry) => entry.isDirectory() && entry.name !== PREVIEW_VERSION,
+          )
+          .map((entry) =>
+            fs.rm(join(PREVIEW_ROOT, entry.name), {
+              recursive: true,
+              force: true,
+            }),
+          ),
+      );
+    } catch {
+      // Cache directory does not exist yet.
+    }
+  }
 
   // Determine which service to use based on the current config value
   // shareId is optional -> can be used to overwrite a storage provider

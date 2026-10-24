@@ -117,8 +117,7 @@ export const getFileMimeType = (fileName: string) => {
   const cached = mimeTypeCache.get(extension);
   if (cached !== undefined) return cached;
 
-  const mimeType =
-    mimeTypeOverrides[extension] || mime.lookup(extension) || "";
+  const mimeType = mimeTypeOverrides[extension] || mime.lookup(extension) || "";
   mimeTypeCache.set(extension, mimeType);
   return mimeType;
 };
@@ -134,6 +133,18 @@ export const getGalleryMediaKind = (
   )
     return "video";
   return undefined;
+};
+
+/**
+ * Extension-only check used to reserve skeleton space before the client has
+ * loaded the share. Video codec support is checked later by the real gallery.
+ */
+export const isLikelyGalleryMedia = (fileName: string) => {
+  const extension = getFileExtension(fileName);
+  return (
+    GALLERY_IMAGE_EXTENSIONS.has(extension) ||
+    GALLERY_VIDEO_EXTENSIONS.has(extension)
+  );
 };
 
 export const doesFileSupportPreview = (fileName: string) => {

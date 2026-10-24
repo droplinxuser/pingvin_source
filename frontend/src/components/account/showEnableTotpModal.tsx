@@ -2,7 +2,6 @@ import {
   Button,
   Center,
   Group,
-  Image,
   Stack,
   Text,
   TextInput,
@@ -74,7 +73,13 @@ const CreateEnableTotpModal = ({
           <Text>
             <FormattedMessage id="account.modal.totp.step1" />
           </Text>
-          <Image src={options.qrCode} alt="QR Code" />
+          <img
+            src={options.qrCode}
+            alt="QR Code"
+            loading="lazy"
+            decoding="async"
+            style={{ maxWidth: "100%", height: "auto" }}
+          />
 
           <Center>
             <span>

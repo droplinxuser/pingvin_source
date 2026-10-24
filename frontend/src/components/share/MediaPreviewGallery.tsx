@@ -3,6 +3,7 @@ import {
   Card,
   Center,
   SimpleGrid,
+  Skeleton,
   Text,
   ThemeIcon,
   UnstyledButton,
@@ -14,6 +15,7 @@ import { MAX_INLINE_FILE_SIZE } from "../../utils/fileSize.util";
 import { getBaseName, getShareFileUrl } from "../../utils/file.util";
 import { getGalleryMediaKind } from "../../utils/mime.util";
 import useTranslate from "../../hooks/useTranslate.hook";
+import LazyVideo from "../core/LazyVideo";
 import showFilePreviewModal from "./modals/showFilePreviewModal";
 
 const MAX_GALLERY_ITEMS = 30;
@@ -108,11 +110,10 @@ const MediaPreviewGallery = ({
                   />
                 ) : (
                   <>
-                    <video
+                    <LazyVideo
                       src={`${url}#t=0.1`}
                       muted
                       playsInline
-                      preload="metadata"
                       aria-hidden="true"
                       onError={(event) => {
                         event.currentTarget.style.display = "none";
@@ -147,6 +148,30 @@ const MediaPreviewGallery = ({
           </Card>
         );
       })}
+    </SimpleGrid>
+  );
+};
+
+export const MediaPreviewGallerySkeleton = ({ count }: { count: number }) => {
+  if (count <= 0) return null;
+  const itemCount = Math.min(count, MAX_GALLERY_ITEMS);
+
+  return (
+    <SimpleGrid
+      mb="xl"
+      cols={1}
+      spacing="md"
+      breakpoints={[
+        { minWidth: "sm", cols: Math.min(2, itemCount) },
+        { minWidth: "lg", cols: Math.min(3, itemCount) },
+      ]}
+    >
+      {Array.from({ length: itemCount }, (_, index) => (
+        <Card key={index} withBorder radius="md" p="sm">
+          <Skeleton height={GALLERY_MEDIA_HEIGHT} radius="sm" />
+          <Skeleton height={12} width="60%" mt="sm" />
+        </Card>
+      ))}
     </SimpleGrid>
   );
 };
