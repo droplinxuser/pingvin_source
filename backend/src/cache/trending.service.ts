@@ -277,6 +277,22 @@ export class TrendingService {
       .slice(0, GEO_COUNTRY_LIMIT);
     if (topCountries.length === 0) return [];
 
+    // A share can be visited from several countries. Keep it only in the
+    // country with the highest view count for that share, so the five lists
+    // never duplicate a card. Ties resolve by country code for a stable order.
+    const owners = new Map<string, { country: string; views: number }>();
+    for (const [country, countryShares] of shares) {
+      for (const [shareId, count] of countryShares) {
+        const owner = owners.get(shareId);
+        if (
+          !owner ||
+          count > owner.views ||
+          (count === owner.views && country < owner.country)
+        )
+          owners.set(shareId, { country, views: count });
+      }
+    }
+
     // Rank the shares inside each country before fetching metadata, so the
     // MGET below never handles more than five times twenty IDs.
     const ranked = new Map<string, { id: string; views: number }[]>();
@@ -285,6 +301,7 @@ export class TrendingService {
       const candidates = [
         ...(shares.get(country) ?? new Map<string, number>()).entries(),
       ]
+        .filter(([id]) => owners.get(id)?.country === country)
         .sort(
           ([aId, aViews], [bId, bViews]) =>
             bViews - aViews || aId.localeCompare(bId),

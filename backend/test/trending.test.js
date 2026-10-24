@@ -483,8 +483,70 @@ test("returns the top five countries and their top shares", async () => {
     ],
   );
   assert.equal(countries[1].views, 5);
-  assert.equal(countries[1].shares[0].views, 5);
+  assert.deepEqual(countries[1].shares, []);
   assert.equal(countries[2].shares[0].id, "c");
+});
+
+test("lists each share only under its highest-view country", async () => {
+  const buckets = Array.from({ length: 24 }, () => null);
+  buckets[0] = {
+    "c:PH": "12",
+    "c:US": "10",
+    "c:CA": "4",
+    "PH:shared": "6",
+    "PH:ph-only": "4",
+    "US:shared": "7",
+    "US:us-only": "2",
+    "CA:ca-only": "4",
+  };
+  const mock = createMockValkey(
+    () => buckets,
+    [
+      meta("ph-only", 4, recent),
+      meta("shared", 7, recent),
+      meta("us-only", 2, recent),
+      meta("ca-only", 4, recent),
+    ],
+  );
+  const service = createService(mock);
+
+  const countries = await service.getTrendingCountries();
+  const byCountry = Object.fromEntries(
+    countries.map((country) => [
+      country.country,
+      country.shares.map((share) => share.id),
+    ]),
+  );
+
+  assert.deepEqual(byCountry.PH, ["ph-only"]);
+  assert.deepEqual(byCountry.US, ["shared", "us-only"]);
+  assert.deepEqual(byCountry.CA, ["ca-only"]);
+  const listed = countries.flatMap((country) =>
+    country.shares.map((share) => share.id),
+  );
+  assert.equal(new Set(listed).size, listed.length);
+});
+
+test("uses the country code to break equal per-share view counts", async () => {
+  const buckets = Array.from({ length: 24 }, () => null);
+  buckets[0] = {
+    "c:PH": "5",
+    "c:US": "5",
+    "PH:shared": "5",
+    "US:shared": "5",
+  };
+  const mock = createMockValkey(() => buckets, [meta("shared", 5, recent)]);
+  const service = createService(mock);
+
+  const countries = await service.getTrendingCountries();
+
+  assert.deepEqual(
+    countries.map((country) => [country.country, country.shares.length]),
+    [
+      ["PH", 1],
+      ["US", 0],
+    ],
+  );
 });
 
 test("limits each country to twenty shares", async () => {

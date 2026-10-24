@@ -65,7 +65,12 @@ const Trending = ({
         canonicalPath="/trending"
         jsonLd={jsonLd}
       />
-      <TrendingToday initialItems={trending} embedded limit={48}>
+      <TrendingToday
+        initialItems={trending}
+        embedded
+        limit={48}
+        previewBlur={4}
+      >
         <TrendingCountries countries={countries} />
       </TrendingToday>
     </>

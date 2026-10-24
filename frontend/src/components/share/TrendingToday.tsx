@@ -132,6 +132,10 @@ const useStyles = createStyles((theme) => {
       pointerEvents: "none",
     },
 
+    mediaSoft: {
+      filter: "blur(4px) brightness(0.5)",
+    },
+
     scrim: {
       position: "absolute",
       inset: 0,
@@ -219,16 +223,21 @@ const TrendingToday = ({
   initialItems,
   embedded = false,
   limit = 12,
+  previewBlur = 6,
   children,
 }: {
   initialItems?: TrendingShare[];
   embedded?: boolean;
   limit?: number;
+  previewBlur?: 4 | 6;
   children?: ReactNode;
 }) => {
   const { classes } = useStyles();
   const t = useTranslate();
   const intl = useIntl();
+  const mediaClassName = `${classes.media}${
+    previewBlur === 4 ? ` ${classes.mediaSoft}` : ""
+  }`;
   const hasInitialItems = !!initialItems?.length;
   const [items, setItems] = useState<TrendingShare[]>(initialItems ?? []);
   const [isLoading, setIsLoading] = useState(!hasInitialItems);
@@ -307,7 +316,7 @@ const TrendingToday = ({
 
       {children}
 
-      <div className={classes.grid}>
+      <div className={classes.grid} data-testid="trending-grid">
         {visibleItems.map((item) => {
           const name = item.name || item.id;
           const views = item.views.toLocaleString(intl.locale);
@@ -343,7 +352,7 @@ const TrendingToday = ({
               {item.previewKind === "image" ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
-                  className={classes.media}
+                  className={mediaClassName}
                   src={imageUrl}
                   alt=""
                   loading="lazy"
@@ -354,7 +363,7 @@ const TrendingToday = ({
                 />
               ) : (
                 <LazyVideo
-                  className={classes.media}
+                  className={mediaClassName}
                   src={`${url}#t=0.1`}
                   muted
                   playsInline
