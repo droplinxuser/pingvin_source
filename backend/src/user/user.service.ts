@@ -1,4 +1,5 @@
 import { BadRequestException, Injectable, Logger } from "@nestjs/common";
+import { Prisma } from "@prisma/client";
 import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library";
 import * as argon from "argon2";
 import * as crypto from "crypto";
@@ -21,6 +22,25 @@ const USER_SORT_FIELDS = {
   isAdmin: "isAdmin",
   createdAt: "createdAt",
 } as const;
+
+// The admin table only displays these fields, so secrets such as password
+// hashes and TOTP data never leave the database for list requests.
+const USER_SELECT = {
+  id: true,
+  username: true,
+  email: true,
+  displayName: true,
+  isAdmin: true,
+  isActivated: true,
+  ldapDN: true,
+  shareSizeLimit: true,
+  storageQuotaLimit: true,
+  allowShare: true,
+  allowCreateReverseShares: true,
+  maxShares: true,
+  maxReverseShares: true,
+  totpVerified: true,
+} satisfies Prisma.UserSelect;
 
 @Injectable()
 export class UserSevice {
@@ -46,7 +66,7 @@ export class UserSevice {
     if (sortBy === "storageQuotaLimit" || sortBy === "shareSizeLimit") {
       const property = sortBy as "storageQuotaLimit" | "shareSizeLimit";
       const direction = sortDirection === "asc" ? 1 : -1;
-      const users = await this.prisma.user.findMany();
+      const users = await this.prisma.user.findMany({ select: USER_SELECT });
       return users
         .sort((a, b) => {
           const aValue = a[property] == null ? null : parseInt(a[property]);
@@ -62,6 +82,7 @@ export class UserSevice {
     return await this.prisma.user.findMany({
       take,
       skip,
+      select: USER_SELECT,
       orderBy: tableOrderBy(USER_SORT_FIELDS, sortBy, sortDirection) ?? {
         createdAt: "desc",
       },

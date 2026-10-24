@@ -6,11 +6,9 @@ const NO_STORE = "no-store";
 const PUBLIC_CACHE_MAX_AGE = 60 * 60 * 24;
 
 export const SHARE_DATA_CACHE_TTL_MS = 30 * 1000;
-export const SHARE_META_CACHE_TTL_MS = 30 * 1000;
 
 export const shareDataCacheKey = (shareId: string) => `share:data:${shareId}`;
 export const shareGuardCacheKey = (shareId: string) => `share:guard:${shareId}`;
-export const shareMetaCacheKey = (shareId: string) => `share:meta:${shareId}`;
 
 const cacheHeaders = (value: string) => ({
   "Cache-Control": value,
@@ -96,13 +94,6 @@ async function deleteCachedValue(cache: Cache, key: string): Promise<void> {
   }
 }
 
-export async function invalidateShareMetaCache(
-  cache: Cache,
-  shareId: string,
-): Promise<void> {
-  await deleteCachedValue(cache, shareMetaCacheKey(shareId));
-}
-
 export async function invalidateShareDataCache(
   cache: Cache,
   shareId: string,
@@ -110,6 +101,5 @@ export async function invalidateShareDataCache(
   await Promise.all([
     deleteCachedValue(cache, shareDataCacheKey(shareId)),
     deleteCachedValue(cache, shareGuardCacheKey(shareId)),
-    invalidateShareMetaCache(cache, shareId),
   ]);
 }

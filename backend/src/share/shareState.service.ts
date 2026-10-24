@@ -136,9 +136,13 @@ export class ShareStateService implements OnApplicationShutdown {
 
   async invalidateData(shareId: string) {
     await Promise.all([
-      invalidateShareDataCache(this.cache, shareId),
+      this.invalidateDataCache(shareId),
       this.trending.invalidate(shareId),
     ]);
+  }
+
+  async invalidateDataCache(shareId: string) {
+    await invalidateShareDataCache(this.cache, shareId);
   }
 
   async getGuardShare(shareId: string): Promise<GuardShare | null> {

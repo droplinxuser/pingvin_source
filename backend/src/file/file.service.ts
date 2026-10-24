@@ -36,6 +36,7 @@ const PREVIEW_MAX_FILE_SIZE = 100 * 1024 * 1024;
 // high-density displays without generating 1600px WebP caches.
 const PREVIEW_MAX_DIMENSION = 300;
 const WEBP_QUALITY = 82;
+const PREVIEW_MISS_TTL_MS = 10 * 60 * 1000;
 const WEBP_IMAGE_TYPES = new Set([
   "image/jpeg",
   "image/png",
@@ -62,6 +63,8 @@ export class FileService implements OnModuleInit {
     string,
     Promise<{ path: string; size: number } | undefined>
   >();
+  private readonly previewMisses = new Map<string, number>();
+  private readonly lastShareTouch = new Map<string, number>();
 
   async onModuleInit() {
     // Preview files are a derived cache. Drop caches from older dimensions so
@@ -114,17 +117,22 @@ export class FileService implements OnModuleInit {
   }
 
   private async touchShare(shareId: string) {
-    const share = await this.prisma.share.findUnique({
-      where: { id: shareId },
-      select: { updatedAt: true },
-    });
-    if (!share) return;
-    if (
-      share.updatedAt &&
-      Date.now() - share.updatedAt.getTime() < UPDATED_AT_THROTTLE_MS
-    )
+    const now = Date.now();
+    // Chunks arrive in quick succession. Remember the last write in this
+    // process so a large upload costs one UPDATE instead of one SELECT per
+    // chunk (the database timestamp still throttles across restarts).
+    if (now - (this.lastShareTouch.get(shareId) ?? 0) < UPDATED_AT_THROTTLE_MS)
       return;
-    await this.prisma.share.update({
+
+    if (this.lastShareTouch.size > 1000) {
+      for (const [id, touchedAt] of this.lastShareTouch) {
+        if (now - touchedAt >= UPDATED_AT_THROTTLE_MS)
+          this.lastShareTouch.delete(id);
+      }
+    }
+    this.lastShareTouch.set(shareId, now);
+
+    await this.prisma.share.updateMany({
       where: { id: shareId },
       data: { updatedAt: new Date() },
     });
@@ -135,7 +143,6 @@ export class FileService implements OnModuleInit {
     fileName: string,
     totalChunks: number,
   ) {
-    await this.touchShare(shareId);
     const share = await this.prisma.share.findFirst({
       where: { id: shareId },
       select: { storageProvider: true },
@@ -143,6 +150,7 @@ export class FileService implements OnModuleInit {
     if (share?.storageProvider !== "S3") {
       return { directToS3: false };
     }
+    await this.touchShare(shareId);
     const res = await this.s3FileService.createPreSignedUploadUrls(
       shareId,
       fileName,
@@ -158,7 +166,6 @@ export class FileService implements OnModuleInit {
     uploadId: string,
     parts: Array<{ ETag: string; PartNumber: number }>,
   ) {
-    await this.touchShare(shareId);
     const share = await this.prisma.share.findFirst({
       where: { id: shareId },
       select: { storageProvider: true },
@@ -166,6 +173,7 @@ export class FileService implements OnModuleInit {
     if (share?.storageProvider !== "S3") {
       throw new BadRequestException(this.i18n.t("file.s3NotSupported"));
     }
+    await this.touchShare(shareId);
     return this.s3FileService.completePreSignedUpload(
       shareId,
       fileId,
@@ -248,6 +256,12 @@ export class FileService implements OnModuleInit {
     }
 
     const buildKey = `${shareId}:${fileId}`;
+    const missedAt = this.previewMisses.get(buildKey);
+    if (missedAt) {
+      if (Date.now() - missedAt < PREVIEW_MISS_TTL_MS) return undefined;
+      this.previewMisses.delete(buildKey);
+    }
+
     const running = this.previewBuilds.get(buildKey);
     if (running) return running;
 
@@ -257,10 +271,23 @@ export class FileService implements OnModuleInit {
       storageProvider,
       shareDirectory,
       previewPath,
-    ).finally(() => {
-      if (this.previewBuilds.get(buildKey) === build)
-        this.previewBuilds.delete(buildKey);
-    });
+    )
+      .then((result) => {
+        if (result) {
+          this.previewMisses.delete(buildKey);
+        } else {
+          this.previewMisses.set(buildKey, Date.now());
+          if (this.previewMisses.size > 1000) {
+            const oldest = this.previewMisses.keys().next().value;
+            if (oldest) this.previewMisses.delete(oldest);
+          }
+        }
+        return result;
+      })
+      .finally(() => {
+        if (this.previewBuilds.get(buildKey) === build)
+          this.previewBuilds.delete(buildKey);
+      });
     this.previewBuilds.set(buildKey, build);
     return build;
   }
@@ -275,21 +302,24 @@ export class FileService implements OnModuleInit {
     const tempPath = `${previewPath}.${process.pid}.${Math.random()
       .toString(36)
       .slice(2)}.tmp`;
+    let original: File | undefined;
 
     try {
-      const original = await this.get(
-        shareId,
-        fileId,
-        undefined,
-        storageProvider,
-      );
-      const mimeType = getFileMimeType(original.metaData.name, false);
+      // Check the type and size before opening a local file descriptor or an
+      // S3 response body; unsupported gallery images return here on every
+      // request without leaking a stream.
+      const file = await this.prisma.file.findFirst({
+        where: { id: fileId, shareId },
+        select: { name: true, size: true },
+      });
       if (
-        !WEBP_IMAGE_TYPES.has(mimeType) ||
-        parseInt(original.metaData.size, 10) > PREVIEW_MAX_FILE_SIZE
+        !file ||
+        !WEBP_IMAGE_TYPES.has(getFileMimeType(file.name, false)) ||
+        parseInt(file.size, 10) > PREVIEW_MAX_FILE_SIZE
       )
         return undefined;
 
+      original = await this.get(shareId, fileId, undefined, storageProvider);
       await fs.mkdir(shareDirectory, { recursive: true });
       await pipeline(
         original.file,
@@ -308,6 +338,7 @@ export class FileService implements OnModuleInit {
       const stat = await fs.stat(previewPath);
       return { path: previewPath, size: stat.size };
     } catch (error) {
+      original?.file?.destroy();
       await fs.rm(tempPath, { force: true }).catch(() => {});
       this.logger.debug(
         `Could not build WebP preview for ${shareId}/${fileId}: ${error}`,
@@ -321,6 +352,12 @@ export class FileService implements OnModuleInit {
     const target = fileId
       ? join(PREVIEW_DIRECTORY, shareId, `${fileId}.webp`)
       : join(PREVIEW_DIRECTORY, shareId);
+
+    const prefix = `${shareId}:`;
+    for (const key of this.previewMisses.keys()) {
+      if (key === `${prefix}${fileId}` || (!fileId && key.startsWith(prefix)))
+        this.previewMisses.delete(key);
+    }
 
     await fs.rm(target, { recursive: !fileId, force: true }).catch(() => {});
   }
@@ -339,13 +376,17 @@ export class FileService implements OnModuleInit {
     ]);
   }
 
-  async deleteAllFiles(shareId: string) {
+  async deleteAllFiles(shareId: string, invalidateCaches = true) {
     const share = await this.prisma.share.findFirst({
       where: { id: shareId },
       select: { id: true, storageProvider: true },
     });
     const storageService = this.getStorageService(share?.storageProvider);
     await storageService.deleteAllFiles(shareId);
+    if (!invalidateCaches) {
+      await this.removePreviewCache(shareId);
+      return;
+    }
     await Promise.all([
       this.removePreviewCache(shareId),
       invalidateShareDataCache(this.cache, shareId),

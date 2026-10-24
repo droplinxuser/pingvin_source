@@ -1,14 +1,11 @@
 import {
   BadRequestException,
   ForbiddenException,
-  Inject,
   Injectable,
   Logger,
   NotFoundException,
 } from "@nestjs/common";
-import { CACHE_MANAGER } from "@nestjs/cache-manager";
 import { JwtService, JwtSignOptions } from "@nestjs/jwt";
-import { Cache } from "cache-manager";
 import { Prisma, Share, User, ShareSecurity } from "@prisma/client";
 import * as archiver from "archiver";
 import * as argon from "argon2";
@@ -25,13 +22,6 @@ import { FileService } from "src/file/file.service";
 import { PrismaService } from "src/prisma/prisma.service";
 import { ReverseShareService } from "src/reverseShare/reverseShare.service";
 import { SystemService } from "src/system/system.service";
-import {
-  SHARE_META_CACHE_TTL_MS,
-  getCachedValue,
-  invalidateShareMetaCache,
-  setCachedValue,
-  shareMetaCacheKey,
-} from "src/utils/cache.util";
 import { parseRelativeDateToAbsolute } from "src/utils/date.util";
 import { byteToHumanSizeString } from "src/utils/fileSize.util";
 import { getUserActiveStorageUsage } from "src/utils/storageQuota.util";
@@ -82,11 +72,6 @@ const SHARE_INCLUDE = {
   recipients: { select: { email: true } },
 } satisfies Prisma.ShareInclude;
 
-type ShareMetaData = {
-  id: string;
-  isZipReady: boolean;
-};
-
 export type ShareSeo = {
   indexable: boolean;
   id: string;
@@ -115,7 +100,6 @@ export class ShareService {
     private systemService: SystemService,
     private readonly i18n: I18nService,
     private shareState: ShareStateService,
-    @Inject(CACHE_MANAGER) private cache: Cache,
   ) {}
 
   async create(share: CreateShareDTO, user?: User, reverseShareToken?: string) {
@@ -291,7 +275,7 @@ export class ShareService {
             error,
           );
         });
-      await invalidateShareMetaCache(this.cache, shareId);
+      await this.shareState.invalidateDataCache(shareId);
       this.activeZipBuilds.delete(shareId);
       return;
     }
@@ -318,7 +302,7 @@ export class ShareService {
         where: { id: shareId },
         data: { isZipReady: true },
       });
-      await invalidateShareMetaCache(this.cache, shareId);
+      await this.shareState.invalidateDataCache(shareId);
     } catch (error) {
       this.logger.error(`Failed to create zip for share ${shareId}`, error);
       await fs.promises.rm(zipPath, { force: true }).catch(() => {});
@@ -327,7 +311,7 @@ export class ShareService {
     }
   }
 
-  async complete(id: string, reverseShareToken?: string) {
+  async complete(id: string) {
     const share = await this.prisma.share.findUnique({
       where: { id },
       include: {
@@ -486,21 +470,48 @@ export class ShareService {
     sortDirection?: string,
   ) {
     const include = SHARE_INCLUDE;
-    const where = this.buildSearchWhere(search);
 
-    // Size is computed from the files, so it can't be sorted with a Prisma
-    // orderBy clause. Fetch all matching shares and sort them in memory.
+    // Size is derived from the files, so it can't be sorted with a Prisma
+    // orderBy clause. Order just the requested page in SQL instead of loading
+    // every share and its relations into memory.
     if (sortBy === "size") {
-      const direction = sortDirection === "asc" ? 1 : -1;
-      const shares = await this.prisma.share.findMany({ where, include });
-      return shares
-        .map((share) => this.transformShare(share))
-        .sort((a, b) => (a.size - b.size) * direction)
-        .slice(skip ?? 0, (skip ?? 0) + (take ?? 20));
+      const term = search?.trim();
+      // Match Prisma's `contains` semantics (including its LIKE wildcards) so
+      // the page and the count stay consistent for every search term.
+      const pattern = term ? `%${term}%` : undefined;
+      const direction = Prisma.raw(sortDirection === "asc" ? "ASC" : "DESC");
+      const ids = await this.prisma.$queryRaw<{ id: string }[]>`
+        SELECT s."id"
+        FROM "Share" s
+        LEFT JOIN "File" f ON f."shareId" = s."id"
+        LEFT JOIN "User" u ON u."id" = s."creatorId"
+        ${
+          pattern
+            ? Prisma.sql`WHERE s."id" LIKE ${pattern}
+                OR s."name" LIKE ${pattern}
+                OR s."description" LIKE ${pattern}
+                OR u."username" LIKE ${pattern}`
+            : Prisma.empty
+        }
+        GROUP BY s."id"
+        ORDER BY COALESCE(SUM(CAST(f."size" AS INTEGER)), 0) ${direction}
+        LIMIT ${take ?? 20} OFFSET ${skip ?? 0}
+      `;
+      if (ids.length === 0) return [];
+
+      const shares = await this.prisma.share.findMany({
+        where: { id: { in: ids.map((row) => row.id) } },
+        include,
+      });
+      const byId = new Map(shares.map((share) => [share.id, share]));
+      return ids.flatMap(({ id }) => {
+        const share = byId.get(id);
+        return share ? [this.transformShare(share)] : [];
+      });
     }
 
     const shares = await this.prisma.share.findMany({
-      where,
+      where: this.buildSearchWhere(search),
       orderBy: (sortBy === "username"
         ? { creator: { username: sortDirection === "asc" ? "asc" : "desc" } }
         : tableOrderBy(SHARE_SORT_FIELDS, sortBy, sortDirection)) ?? {
@@ -570,43 +581,23 @@ export class ShareService {
   }
 
   async getMetaData(id: string) {
-    const cacheKey = shareMetaCacheKey(id);
-    const cached = await getCachedValue<ShareMetaData>(this.cache, cacheKey);
-    if (cached) return cached;
-
-    const share = await this.prisma.share.findUnique({
-      where: { id },
-      select: {
-        id: true,
-        isZipReady: true,
-        uploadLocked: true,
-        _count: {
-          select: { files: true },
-        },
-      },
-    });
-
-    if (!share || !share.uploadLocked)
-      throw new NotFoundException(this.i18n.t("share.notFound"));
-
-    // The DTO only exposes these two fields; keep the cache payload minimal.
-    const metaData = { id: share.id, isZipReady: share.isZipReady };
-    await setCachedValue(
-      this.cache,
-      cacheKey,
-      metaData,
-      SHARE_META_CACHE_TTL_MS,
-    );
+    // The share data cache already contains isZipReady and the file list, so
+    // the five-second ZIP poll needs neither its own cache key nor a query.
+    const share = (await this.shareState.getShare(id)) as {
+      id: string;
+      isZipReady: boolean;
+      files?: { id: string }[];
+    };
 
     if (
       !share.isZipReady &&
-      share._count.files > 1 &&
+      (share.files?.length ?? 0) > 1 &&
       !this.activeZipBuilds.has(id)
     ) {
       void this.createZip(id);
     }
 
-    return metaData;
+    return { id: share.id, isZipReady: share.isZipReady };
   }
 
   /**
@@ -718,7 +709,8 @@ export class ShareService {
       throw new ForbiddenException(this.i18n.t("share.anonymousNoDelete"));
 
     await this.shareState.invalidateData(shareId);
-    await this.fileService.deleteAllFiles(shareId);
+    // The share-level invalidation below covers this deletion as well.
+    await this.fileService.deleteAllFiles(shareId, false);
     await this.prisma.share.delete({ where: { id: shareId } });
     // A concurrent read can repopulate the cache between the steps above.
     await this.shareState.invalidateData(shareId);
@@ -915,10 +907,9 @@ export class ShareService {
     }
 
     if (share.security?.maxViews) {
-      this.assertViewLimit(
-        await this.getCurrentViews(share.id),
-        share.security.maxViews,
-      );
+      // The guard cache's view count can be slightly old, but the view limit
+      // is enforced against SQLite when the share is actually opened.
+      this.assertViewLimit(share.views, share.security.maxViews);
     }
     return await this.generateShareToken(share);
   }

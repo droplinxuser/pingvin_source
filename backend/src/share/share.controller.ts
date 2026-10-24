@@ -122,9 +122,8 @@ export class ShareController {
     );
   }
 
-  // Lightweight existence check used by the share page SSR so that missing
-  // shares get a real 404 status without touching the share (no view count,
-  // no rolling expiration, no token required).
+  // Lightweight existence check used by external monitors and the share page
+  // SSR so missing shares get a real 404 without recording a view.
   @Head(":id")
   @SkipThrottle({ visitor: true })
   async exists(@Param("id") id: string) {
@@ -209,11 +208,8 @@ export class ShareController {
   @Post(":id/complete")
   @HttpCode(202)
   @UseGuards(IdValidation, CreateShareGuard, StrictShareOwnerGuard)
-  async complete(@Param("id") id: string, @Req() request: Request) {
-    const { reverse_share_token } = request.cookies;
-    return new CompletedShareDTO().from(
-      await this.shareService.complete(id, reverse_share_token),
-    );
+  async complete(@Param("id") id: string) {
+    return new CompletedShareDTO().from(await this.shareService.complete(id));
   }
 
   @Delete(":id/complete")
