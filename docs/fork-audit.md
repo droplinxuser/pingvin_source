@@ -14,7 +14,7 @@ so `git merge upstream/main` stays small.
 | Share reports | `backend/src/share/dto/reportShare.dto.ts`, `backend/src/email/email.service.ts`, `frontend/src/components/share/showReportShareModal.tsx` |
 | Uploader metadata / visitors | `backend/src/utils/uploaderInfo.util.ts`, `ShareDTO.uploaderInfo`, `frontend/src/components/share/UploaderInfoBadges.tsx`, `ShareStats.tsx`; view counts stay in `Share.views` |
 | Inline media gallery | `frontend/src/components/share/MediaPreviewGallery.tsx` (up to 30 supported image/video thumbnails at 250px, opening `FilePreview.tsx` in the full-size modal) |
-| Trending today | `backend/src/cache/trending.service.ts`, `GET /api/shares/trending`, `frontend/src/components/share/TrendingToday.tsx`, `frontend/src/pages/_app.tsx` |
+| Trending today | `backend/src/cache/trending.service.ts`, `GET /api/shares/trending?limit=48`, `frontend/src/components/share/TrendingToday.tsx`, `frontend/src/pages/trending.tsx`, `frontend/src/pages/_app.tsx` |
 | Cache headers / hotlink protection | `backend/src/utils/cache.util.ts` (shared `Cache-Control`, `CDN-Cache-Control`, `Cloudflare-CDN-Cache-Control`, public-file `ETag`), `backend/src/utils/referrer.util.ts`, `frontend/src/middleware.ts` (query-free anonymous page shells), `frontend/next.config.js` |
 | Per-IP+User-Agent rate limiting | `backend/src/utils/visitorIdentity.util.ts`, `backend/src/cache/valkeyThrottler.storage.ts`, `backend/src/cache/throttler.config.ts`, `backend/src/main.ts` |
 | Valkey/Redis cache | `backend/src/utils/cache.util.ts`, `backend/src/share/shareState.service.ts`, `backend/src/cache/cache.module.ts`, `backend/src/cache/valkey.service.ts` |
@@ -41,7 +41,8 @@ other languages show the upstream copy instead of the English fallback.
 5. Smoke-test locally: home page, sign-in, upload, share page, admin
    shares/users (search, sort, pagination), missing share (404), trending
    widget on `/`, `/upload`, `/share/*` and 404 pages (plus no widget on other
-   pages), file download headers, report modal, footer page-view/top-country
+   pages), the clickable widget title and full `/trending` page with up to 48
+   shares, file download headers, report modal, footer page-view/top-country
    metrics, and the dynamic `/manifest.json`. Repeat once with Valkey stopped
    to confirm the fallbacks (the trending widget is hidden without Valkey).
 
@@ -93,11 +94,12 @@ other languages show the upstream copy instead of the English fallback.
   writing. `GET /api/shares/trending` unions the seven daily sets with
   `AGGREGATE MAX`, drops entries without current metadata or older than seven
   days, and returns the top twelve ordered by total views without any SQLite
-  query. The result is cached in-process for 30 seconds and is edge-cacheable
-  for 60 seconds. Editing, expiring or deleting a share (including removing
-  its files or reverse-share parent) clears its metadata immediately. If
-  Valkey is unavailable the endpoint returns an empty list and the widget is
-  hidden.
+  query. `?limit=48` returns the full list for the public `/trending` page;
+  other values are clamped to 48. The result is cached in-process for 30
+  seconds and is edge-cacheable for 60 seconds. Editing, expiring or deleting
+  a share (including removing its files or reverse-share parent) clears its
+  metadata immediately. If Valkey is unavailable the endpoint returns an
+  empty list and the widget is hidden.
 - The footer posts to `POST /api/system/pageview` on every rendered page. The
   endpoint increments a per-hour Valkey hash atomically (one total field plus
   one field per country), expires each hourly bucket after 25 hours and reads
@@ -110,7 +112,8 @@ other languages show the upstream copy instead of the English fallback.
 - `GET /api/configs` is edge-cacheable for 30s and the server-side
   `fetchConfig` helper keeps a 30s in-process copy (5s for bundled defaults),
   so middleware and SSR do not call the backend on every page. Anonymous HTML
-  shells for `/`, `/share/*`, `/imprint` and `/privacy` are edge-cacheable for
+  shells for `/`, `/trending`, `/share/*`, `/imprint` and `/privacy` are
+  edge-cacheable for
   60s with stale-while-revalidate only when the URL has no query string, the
   language is the default and the theme is unset or light (the light shell is
   identical to the default); authenticated, non-default-language, `?lang=` and
@@ -140,8 +143,9 @@ other languages show the upstream copy instead of the English fallback.
 - Cloudflare: bypass cache for `/sw.js` and purge old HTML/service-worker
   responses after deployments. Cloudflare does not cache HTML or JSON by
   default, so the origin headers only apply where a Cache Rule makes those
-  paths eligible; scope that rule to the public HTML routes and the public
-  config, stats and `/api/shares/trending` APIs rather than the whole site, and
+  paths eligible; scope that rule to the public HTML routes (including
+  `/trending`) and the public config, stats and `/api/shares/trending` APIs
+  rather than the whole site, and
   bypass requests carrying an `access_token` cookie if the rule uses an Edge
   TTL. Page HTML is cached for at most 60s and hashed `/_next/static` assets
   stay immutable. Angie/h5bp serves
@@ -237,6 +241,10 @@ sign-in redirect for a protected page and loop between `/upload` and
   and zero measured layout shift; the homepage made no client-side trending
   request. Thumbnails use a 2px blur that clears on hover, the view badge is
   14px, dark mode was checked, and click-through to `/share/<id>` was verified.
+  The widget title links to the public `/trending` page, which renders the
+  identical grid with up to 48 entries from `?limit=48`; the page fetches its
+  data in `getServerSideProps`, has one listing (no duplicate footer widget),
+  and is edge-cacheable as an anonymous shell.
 - Navigating between share pages on the client now remounts the share view by
   share ID. Previously the page only fetched its files on mount, so clicking a
   trending thumbnail could leave the previous share's name, files and visitor

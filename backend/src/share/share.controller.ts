@@ -112,10 +112,14 @@ export class ShareController {
   @Get("trending")
   @SkipThrottle({ default: true, visitor: true })
   async getTrending(
+    @Query("limit") limit: string,
     @Res({ passthrough: true }) response: Response,
   ): Promise<TrendingShare[]> {
     response.set(getEdgeCacheHeaders(60));
-    return this.trending.getTrending();
+    const parsedLimit = Number.parseInt(limit ?? "", 10);
+    return this.trending.getTrending(
+      Number.isFinite(parsedLimit) ? parsedLimit : undefined,
+    );
   }
 
   // Lightweight existence check used by the share page SSR so that missing

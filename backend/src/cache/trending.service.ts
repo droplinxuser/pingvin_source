@@ -11,7 +11,8 @@ const VIEW_TTL_SECONDS = (WINDOW_DAYS + 1) * 24 * 60 * 60;
 const META_TTL_SECONDS = (WINDOW_DAYS + 1) * 24 * 60 * 60;
 const MAX_SHARE_AGE_MS = WINDOW_DAYS * DAY_MS;
 const CANDIDATE_LIMIT = 200;
-const RESULT_LIMIT = 12;
+const DEFAULT_RESULT_LIMIT = 12;
+const MAX_RESULT_LIMIT = 48;
 const RESULT_CACHE_MS = 30 * 1000;
 
 type MediaKind = "image" | "video";
@@ -78,14 +79,20 @@ export class TrendingService {
     if (stored) this.cached = undefined;
   }
 
-  async getTrending(): Promise<TrendingShare[]> {
+  async getTrending(limit = DEFAULT_RESULT_LIMIT): Promise<TrendingShare[]> {
+    const requested =
+      Number.isFinite(limit) && limit > 0
+        ? Math.floor(limit)
+        : DEFAULT_RESULT_LIMIT;
+    const resultLimit = Math.min(requested, MAX_RESULT_LIMIT);
+
     if (this.cached && Date.now() - this.cached.at < RESULT_CACHE_MS)
-      return this.cached.items;
+      return this.cached.items.slice(0, resultLimit);
 
     const items = await this.valkey.run((client) => this.read(client));
     if (!items) return [];
     this.cached = { at: Date.now(), items };
-    return items;
+    return items.slice(0, resultLimit);
   }
 
   /**
@@ -165,7 +172,7 @@ export class TrendingService {
 
     // Keep the visible order in lockstep with the view badge.
     items.sort((a, b) => b.views - a.views);
-    return items.slice(0, RESULT_LIMIT);
+    return items.slice(0, MAX_RESULT_LIMIT);
   }
 }
 

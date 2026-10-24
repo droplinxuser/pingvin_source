@@ -84,12 +84,12 @@ test("ranks the last seven days by total views and filters stale shares", async 
   assert.equal(items[1].previewFileId, "file-b");
 });
 
-test("returns at most twelve shares", async () => {
-  const ranked = Array.from({ length: 15 }, (_, index) => ({
+test("returns twelve by default and caps the full list at forty-eight", async () => {
+  const ranked = Array.from({ length: 50 }, (_, index) => ({
     value: `s${index}`,
     score: 100 - index,
   }));
-  const today = Array.from({ length: 15 }, (_, index) =>
+  const today = Array.from({ length: 50 }, (_, index) =>
     meta(`s${index}`, 100 - index, recent),
   );
 
@@ -104,6 +104,13 @@ test("returns at most twelve shares", async () => {
     items.map((item) => item.id),
     Array.from({ length: 12 }, (_, index) => `s${index}`),
   );
+
+  const expanded = await service.getTrending(48);
+  assert.equal(expanded.length, 48);
+  assert.equal(expanded.at(-1).id, "s47");
+
+  const capped = await service.getTrending(100);
+  assert.equal(capped.length, 48);
 });
 
 test("records only recent public shares with image or video media", async () => {

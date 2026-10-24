@@ -1,4 +1,5 @@
 import {
+  Anchor,
   Box,
   Center,
   Container,
@@ -30,6 +31,15 @@ const useStyles = createStyles((theme) => {
       fontSize: theme.fontSizes.lg,
       fontWeight: 800,
       lineHeight: 1.2,
+    },
+
+    headingLink: {
+      color: "inherit",
+      textDecoration: "none",
+
+      "&:hover": {
+        textDecoration: "underline",
+      },
     },
 
     subheading: {
@@ -122,8 +132,12 @@ const useStyles = createStyles((theme) => {
 
 const TrendingToday = ({
   initialItems,
+  embedded = false,
+  limit = 12,
 }: {
   initialItems?: TrendingShare[];
+  embedded?: boolean;
+  limit?: number;
 }) => {
   const { classes } = useStyles();
   const t = useTranslate();
@@ -135,7 +149,7 @@ const TrendingToday = ({
 
     let cancelled = false;
     shareService
-      .getTrending()
+      .getTrending(limit)
       .then((trending) => {
         if (!cancelled) setItems(trending);
       })
@@ -144,87 +158,107 @@ const TrendingToday = ({
     return () => {
       cancelled = true;
     };
-  }, [initialItems]);
+  }, [initialItems, limit]);
 
   if (items.length === 0) return null;
 
-  return (
-    <section aria-labelledby="trending-title">
-      <Container className={classes.root}>
-        <Group position="apart" align="baseline" mb="md">
+  const title = t("trending.custom.title");
+  const content = (
+    <>
+      <Group position="apart" align="baseline" mb="md">
+        {embedded ? (
           <Text id="trending-title" className={classes.heading}>
-            {t("trending.custom.title")}
+            {title}
           </Text>
-          <Text className={classes.subheading}>
-            {t("trending.custom.description")}
-          </Text>
-        </Group>
+        ) : (
+          <Anchor
+            id="trending-title"
+            component={Link}
+            href="/trending"
+            className={`${classes.heading} ${classes.headingLink}`}
+          >
+            {title}
+          </Anchor>
+        )}
+        <Text className={classes.subheading}>
+          {t("trending.custom.description")}
+        </Text>
+      </Group>
 
-        <div className={classes.grid}>
-          {items.map((item) => {
-            const name = item.name || item.id;
-            const views = item.views.toLocaleString(intl.locale);
-            const url = `/api/shares/${item.id}/files/${item.previewFileId}?download=false`;
+      <div className={classes.grid}>
+        {items.map((item) => {
+          const name = item.name || item.id;
+          const views = item.views.toLocaleString(intl.locale);
+          const url = `/api/shares/${item.id}/files/${item.previewFileId}?download=false`;
 
-            return (
-              <UnstyledButton
-                key={item.id}
-                component={Link}
-                href={`/share/${item.id}`}
-                className={classes.card}
-                aria-label={t("trending.custom.item", { name, count: views })}
-                title={name}
-              >
-                {item.previewKind === "image" ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
+          return (
+            <UnstyledButton
+              key={item.id}
+              component={Link}
+              href={`/share/${item.id}`}
+              className={classes.card}
+              aria-label={t("trending.custom.item", { name, count: views })}
+              title={name}
+            >
+              {item.previewKind === "image" ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  className={classes.media}
+                  src={url}
+                  alt=""
+                  loading="lazy"
+                  decoding="async"
+                  onError={(event) => {
+                    event.currentTarget.style.display = "none";
+                  }}
+                />
+              ) : (
+                <>
+                  <video
                     className={classes.media}
-                    src={url}
-                    alt=""
-                    loading="lazy"
-                    decoding="async"
+                    src={`${url}#t=0.1`}
+                    muted
+                    playsInline
+                    preload="metadata"
+                    aria-hidden="true"
                     onError={(event) => {
                       event.currentTarget.style.display = "none";
                     }}
                   />
-                ) : (
-                  <>
-                    <video
-                      className={classes.media}
-                      src={`${url}#t=0.1`}
-                      muted
-                      playsInline
-                      preload="metadata"
-                      aria-hidden="true"
-                      onError={(event) => {
-                        event.currentTarget.style.display = "none";
+                  <Center className={classes.playIcon}>
+                    <ThemeIcon
+                      size={46}
+                      radius="xl"
+                      variant="filled"
+                      sx={{
+                        backgroundColor: "rgba(0, 0, 0, 0.55)",
+                        color: "white",
                       }}
-                    />
-                    <Center className={classes.playIcon}>
-                      <ThemeIcon
-                        size={46}
-                        radius="xl"
-                        variant="filled"
-                        sx={{
-                          backgroundColor: "rgba(0, 0, 0, 0.55)",
-                          color: "white",
-                        }}
-                      >
-                        <TbPlayerPlay size={22} />
-                      </ThemeIcon>
-                    </Center>
-                  </>
-                )}
+                    >
+                      <TbPlayerPlay size={22} />
+                    </ThemeIcon>
+                  </Center>
+                </>
+              )}
 
-                <Box component="span" className={classes.views} aria-hidden>
-                  <TbEye size={16} />
-                  {views}
-                </Box>
-              </UnstyledButton>
-            );
-          })}
-        </div>
-      </Container>
+              <Box component="span" className={classes.views} aria-hidden>
+                <TbEye size={16} />
+                {views}
+              </Box>
+            </UnstyledButton>
+          );
+        })}
+      </div>
+    </>
+  );
+
+  return (
+    <section aria-labelledby="trending-title">
+      {embedded ? (
+        <div className={classes.root}>{content}</div>
+      ) : (
+        <Container className={classes.root}>{content}</Container>
+      )}
     </section>
   );
 };

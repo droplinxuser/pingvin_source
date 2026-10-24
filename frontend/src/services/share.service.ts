@@ -97,8 +97,8 @@ const getMetaData = async (id: string): Promise<ShareMetaData> => {
   return (await api.get(`shares/${id}/metaData`)).data;
 };
 
-const getTrending = async (): Promise<TrendingShare[]> => {
-  return (await api.get("shares/trending")).data;
+const getTrending = async (limit?: number): Promise<TrendingShare[]> => {
+  return (await api.get("shares/trending", { params: { limit } })).data;
 };
 
 const remove = async (id: string) => {

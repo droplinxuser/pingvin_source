@@ -42,7 +42,7 @@ import AdminNoticeModal, {
 import adminNoticeService from "../services/adminNotice.service";
 
 const excludeDefaultLayoutRoutes = ["/admin/config/[category]"];
-const trendingRoutes = ["/", "/upload", "/share/[shareId]", "/404"];
+const trendingWidgetRoutes = ["/", "/upload", "/share/[shareId]", "/404"];
 const availableMantineColors = [
   "dark",
   "gray",
@@ -307,7 +307,7 @@ function App({ Component, pageProps }: AppProps) {
     }
   }, [user?.id, user?.isAdmin]);
 
-  const showTrending = trendingRoutes.includes(router.pathname);
+  const showTrending = trendingWidgetRoutes.includes(router.pathname);
 
   const handleDismissNotice = async (noticeId: string) => {
     setPendingNotices((prev) => prev.filter((n) => n.id !== noticeId));
@@ -425,7 +425,7 @@ App.getInitialProps = async ({
     const apiURL = process.env.API_URL || "http://localhost:8080";
     const cookieHeader = ctx.req.headers.cookie;
     const trendingRequest =
-      ctx.pathname && trendingRoutes.includes(ctx.pathname)
+      ctx.pathname && trendingWidgetRoutes.includes(ctx.pathname)
         ? fetch(`${apiURL}/api/shares/trending`, {
             cache: "no-store",
             signal: AbortSignal.timeout(1500),
