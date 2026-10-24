@@ -239,12 +239,13 @@ sign-in redirect for a protected page and loop between `/upload` and
   server-side with twelve 150px-tall cards spanning the content width in a 4x3
   desktop grid, a 3-column tablet grid, a 2-column/6-row mobile grid at 390px
   and zero measured layout shift; the homepage made no client-side trending
-  request. Thumbnails use a 2px blur that clears on hover, the view badge is
-  14px, dark mode was checked, and click-through to `/share/<id>` was verified.
-  The widget title links to the public `/trending` page, which renders the
-  identical grid with up to 48 entries from `?limit=48`; the page fetches its
-  data in `getServerSideProps`, has one listing (no duplicate footer widget),
-  and is edge-cacheable as an anonymous shell.
+  request. Widget thumbnails use a 2px blur that clears on hover, the view
+  badge is 14px, dark mode was checked, and click-through to `/share/<id>` was
+  verified. The widget title links to the public `/trending` page, which renders
+  the identical grid with up to 48 entries from `?limit=48`; full-page
+  thumbnails are unblurred, the page fetches its data in `getServerSideProps`,
+  has one listing (no duplicate footer widget), and is edge-cacheable as an
+  anonymous shell.
 - Navigating between share pages on the client now remounts the share view by
   share ID. Previously the page only fetched its files on mount, so clicking a
   trending thumbnail could leave the previous share's name, files and visitor

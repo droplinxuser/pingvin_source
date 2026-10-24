@@ -105,6 +105,10 @@ const useStyles = createStyles((theme) => {
       transition: "filter 120ms ease",
     },
 
+    mediaSharp: {
+      filter: "none",
+    },
+
     views: {
       position: "absolute",
       top: 10,
@@ -165,6 +169,9 @@ const TrendingToday = ({
   if (visibleItems.length === 0) return null;
 
   const title = t("trending.custom.title");
+  const mediaClassName = embedded
+    ? `${classes.media} ${classes.mediaSharp}`
+    : classes.media;
   const content = (
     <>
       <Group position="apart" align="baseline" mb="md">
@@ -205,7 +212,7 @@ const TrendingToday = ({
               {item.previewKind === "image" ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
-                  className={classes.media}
+                  className={mediaClassName}
                   src={url}
                   alt=""
                   loading="lazy"
@@ -217,7 +224,7 @@ const TrendingToday = ({
               ) : (
                 <>
                   <video
-                    className={classes.media}
+                    className={mediaClassName}
                     src={`${url}#t=0.1`}
                     muted
                     playsInline
