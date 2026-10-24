@@ -162,7 +162,13 @@ other languages show the upstream copy instead of the English fallback.
   totals are fetched in one SQL query and cached in-process for 60s.
 - `GET /api/configs` is edge-cacheable for 30s and the server-side
   `fetchConfig` helper keeps a 30s in-process copy (5s for bundled defaults),
-  so middleware and SSR do not call the backend on every page. Anonymous HTML
+  so middleware and SSR do not call the backend on every page.
+  The bundled fallback config includes the upload/share keys used during SSR
+  (`share.chunkSize`, `share.maxSize`, `share.shareIdLength`,
+  `share.autoOpenShareModal`, email-recipient flags, retention,
+  `appearance.uploadProgressStyle`, password-policy settings and
+  `oauth.disablePassword`), so an API-config timeout no longer crashes
+  `/upload` with `Config variable share.chunkSize not found`. Anonymous HTML
   shells for `/`, `/trending`, `/share/*`, `/imprint` and `/privacy` are
   edge-cacheable for
   60s with stale-while-revalidate only when the URL has no query string, the
@@ -193,6 +199,12 @@ other languages show the upstream copy instead of the English fallback.
   must run as root: `sudo bash /var/www/pingvin_source/update.sh`.
 - Keep an up-to-date database copy at `/home/rt/Documents/pingvin-share.db`
   (`sqlite3 ... "PRAGMA integrity_check;"` must return `ok`).
+- The production reverse proxy must send `/api/*` directly to the backend
+  (`127.0.0.1:8080`), not to the Next frontend on `3030`. The Next
+  `/api/[...all]` route is only a development proxy; using it in production
+  logs `API response ... exceeds 4MB`, buffers large uploads/downloads and
+  contributes to aborted requests. Include `proxy_buffering off`,
+  `proxy_request_buffering off` and long proxy timeouts on the API location.
 - Cloudflare: bypass cache for `/sw.js` and purge old HTML/service-worker
   responses after deployments. Cloudflare does not cache HTML or JSON by
   default, so the origin headers only apply where a Cache Rule makes those
@@ -542,6 +554,11 @@ sign-in redirect for a protected page and loop between `/upload` and
 
 ## Known non-issues
 
+- A blank gap above the file list on shares without image/video content is the
+  reserved ad container (`Ads`: 90px minimum height plus 24px vertical
+  margins). It stays blank when the third-party ad does not fill or is blocked;
+  it is not a missing gallery or a layout bug. The media gallery is absent only
+  when the share has no supported image/video files.
 - Backend lint reports upstream warnings only.
 - A fresh data directory logs one `ENOENT` from the temporary-file cron.
 - Chrome may log the expected `403` while a protected share page fetches its
