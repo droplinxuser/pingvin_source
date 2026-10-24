@@ -308,14 +308,15 @@ export class VirusTotalService implements OnModuleInit, OnApplicationShutdown {
       const cached = await this.getVerdict(hash);
       if (cached === "malicious") {
         const uploader = await this.audit.captureUploader(job.shareId);
-        const removed = await this.removeMaliciousShare(job);
+        const remainingFiles = await this.removeMaliciousFile(job);
         this.audit.recordEvent({
           type: "malicious",
           ...this.jobEvent(job),
           hash,
           verdict: "malicious",
           cached: true,
-          removed,
+          removed: remainingFiles !== undefined,
+          detail: this.removalDetail(remainingFiles),
           uploader,
         });
         return undefined;
@@ -818,9 +819,9 @@ export class VirusTotalService implements OnModuleInit, OnApplicationShutdown {
   }
 
   /**
-   * Caches a terminal verdict and removes the share for a malicious result.
-   * Returns false when VirusTotal has no verdict yet (for example a queued
-   * analysis), so the caller can continue polling.
+   * Caches a terminal verdict and removes only the offending file for a
+   * malicious result. Returns false when VirusTotal has no verdict yet (for
+   * example a queued analysis), so the caller can continue polling.
    */
   private async applyVerdict(
     job: ScanJob,
@@ -832,13 +833,14 @@ export class VirusTotalService implements OnModuleInit, OnApplicationShutdown {
     await this.setVerdict(job.hash, verdict);
     if (verdict === "malicious") {
       const uploader = await this.audit.captureUploader(job.shareId);
-      const removed = await this.removeMaliciousShare(job);
+      const remainingFiles = await this.removeMaliciousFile(job);
       this.audit.recordEvent({
         type: "malicious",
         ...this.jobEvent(job),
         verdict,
         stats,
-        removed,
+        removed: remainingFiles !== undefined,
+        detail: this.removalDetail(remainingFiles),
         uploader,
       });
     } else {
@@ -868,19 +870,32 @@ export class VirusTotalService implements OnModuleInit, OnApplicationShutdown {
     });
   }
 
-  private async removeMaliciousShare(job: ScanJob): Promise<boolean> {
+  private async removeMaliciousFile(job: ScanJob): Promise<number | undefined> {
     this.logger.warn(
-      `VirusTotal flagged ${job.name} in share ${job.shareId}; removing the share files`,
+      `VirusTotal flagged ${job.name} in share ${job.shareId}; removing only the offending file`,
     );
     try {
-      await this.clamScanService.removeMaliciousShare(job.shareId, job.name);
-      return true;
+      const remainingFiles = await this.clamScanService.removeMaliciousFile(
+        job.shareId,
+        job.fileId,
+        job.name,
+      );
+      this.logger.warn(
+        `VirusTotal removed ${job.name} from share ${job.shareId}; ${remainingFiles} file(s) remain`,
+      );
+      return remainingFiles;
     } catch (error) {
       this.logger.error(
-        `VirusTotal could not remove malicious share ${job.shareId}: ${errorMessage(error)}`,
+        `VirusTotal could not remove malicious file ${job.fileId} from share ${job.shareId}: ${errorMessage(error)}`,
       );
-      return false;
+      return undefined;
     }
+  }
+
+  private removalDetail(remainingFiles: number | undefined): string {
+    if (remainingFiles === undefined) return "Failed to remove offending file";
+    if (remainingFiles === 0) return "Offending file removed; no files remain";
+    return `Offending file removed; ${remainingFiles} clean file${remainingFiles === 1 ? "" : "s"} retained`;
   }
 
   async getAdminStatus() {

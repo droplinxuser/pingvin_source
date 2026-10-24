@@ -152,8 +152,7 @@ export class ClamScanService {
   }
 
   /**
-   * Removes every file of a share after a scanner has flagged it. Kept in this
-   * service so ClamAV and VirusTotal use the exact same deletion path.
+   * ClamAV continues to remove the whole share when any file is infected.
    */
   async removeMaliciousShare(shareId: string, fileNames: string) {
     await this.fileService.deleteAllFiles(shareId);
@@ -165,5 +164,52 @@ export class ClamScanService {
       },
     });
     await invalidateShareDataCache(this.cache, shareId);
+  }
+
+  /**
+   * Removes one malicious file from a share. Clean files stay available. If
+   * the share becomes empty it is marked removed; otherwise its ZIP is
+   * invalidated so the next request rebuilds it from the remaining files.
+   */
+  async removeMaliciousFile(
+    shareId: string,
+    fileId: string,
+    fileName: string,
+  ): Promise<number> {
+    const storageProvider = await this.fileService.getStorageProvider(shareId);
+    await this.fileService.remove(shareId, fileId);
+
+    if (storageProvider !== "S3") {
+      await fs.promises
+        .rm(`${SHARE_DIRECTORY}/${shareId}/archive.zip`, { force: true })
+        .catch((error) => {
+          this.logger.warn(
+            `Could not delete stale ZIP for share ${shareId}: ${error instanceof Error ? error.message : error}`,
+          );
+        });
+    }
+
+    const remainingFiles = await this.prisma.file.count({
+      where: { shareId },
+    });
+
+    if (remainingFiles === 0) {
+      await this.fileService.deleteAllFiles(shareId);
+      await this.prisma.share.update({
+        where: { id: shareId },
+        data: {
+          isZipReady: false,
+          removedReason: `Your share got removed because the file(s) ${fileName} are malicious.`,
+        },
+      });
+    } else {
+      await this.prisma.share.update({
+        where: { id: shareId },
+        data: { isZipReady: false },
+      });
+    }
+
+    await invalidateShareDataCache(this.cache, shareId);
+    return remainingFiles;
   }
 }

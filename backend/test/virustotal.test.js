@@ -66,8 +66,9 @@ function createService(overrides = {}) {
       get: async () => ({ file: Readable.from([content]) }),
     },
     {
-      removeMaliciousShare: async (shareId, fileNames) => {
-        removed.push({ shareId, fileNames });
+      removeMaliciousFile: async (shareId, fileId, fileNames) => {
+        removed.push({ shareId, fileId, fileNames });
+        return 1;
       },
     },
     valkeyMock.valkey,
@@ -191,11 +192,12 @@ test("reuses a cached malicious verdict without an API request", async () => {
   const next = await service.hashJob(job({ stage: "hash", hash: undefined }));
   assert.equal(next, undefined);
   assert.deepEqual(removed, [
-    { shareId: "share-1", fileNames: "document.pdf" },
+    { shareId: "share-1", fileId: "file-1", fileNames: "document.pdf" },
   ]);
   assert.equal(auditEvents.length, 1);
   assert.equal(auditEvents[0].type, "malicious");
   assert.equal(auditEvents[0].removed, true);
+  assert.match(auditEvents[0].detail, /1 clean file retained/);
   assert.equal(auditEvents[0].uploader.creator.username, "tester");
 });
 
@@ -241,7 +243,7 @@ test("uploads an unknown file and starts polling its analysis", async () => {
   }
 });
 
-test("removes a share when the completed analysis is malicious", async () => {
+test("removes only the offending file when the completed analysis is malicious", async () => {
   const { service, removed, auditEvents } = createService();
   const originalFetch = global.fetch;
   global.fetch = async () =>
@@ -260,10 +262,11 @@ test("removes a share when the completed analysis is malicious", async () => {
     );
     assert.equal(next, undefined);
     assert.deepEqual(removed, [
-      { shareId: "share-1", fileNames: "document.pdf" },
+      { shareId: "share-1", fileId: "file-1", fileNames: "document.pdf" },
     ]);
     assert.equal(auditEvents.at(-1).type, "malicious");
     assert.equal(auditEvents.at(-1).removed, true);
+    assert.match(auditEvents.at(-1).detail, /1 clean file retained/);
     assert.equal(auditEvents.at(-1).stats.malicious, 3);
   } finally {
     global.fetch = originalFetch;

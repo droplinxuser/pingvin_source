@@ -386,7 +386,7 @@ export default {
   "admin.virustotal.custom.stats.detections-today": "Detections — today",
   "admin.virustotal.custom.stats.detections-value":
     "{malicious} malicious · {suspicious} suspicious",
-  "admin.virustotal.custom.stats.removed-today": "Removed — today",
+  "admin.virustotal.custom.stats.removed-today": "Files removed — today",
   "admin.virustotal.custom.stats.clean-today": "Clean — today",
   "admin.virustotal.custom.stats.errors-today": "Errors — today",
   "admin.virustotal.custom.stats.errors-value":
@@ -412,8 +412,8 @@ export default {
     "via reverse share of {name}",
   "admin.virustotal.custom.events.hash": "Hash {hash}",
   "admin.virustotal.custom.events.cached": "Cached verdict",
-  "admin.virustotal.custom.events.removed": "Removed",
-  "admin.virustotal.custom.events.not-removed": "Removal failed",
+  "admin.virustotal.custom.events.removed": "File removed",
+  "admin.virustotal.custom.events.not-removed": "File removal failed",
   "admin.virustotal.custom.events.detection-stats":
     "{malicious} malicious · {suspicious} suspicious · {undetected} undetected",
   "admin.virustotal.custom.events.uploader-meta":

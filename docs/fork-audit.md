@@ -112,8 +112,11 @@ other languages show the upstream copy instead of the English fallback.
   Terminal verdicts are cached as one `pingvin:virustotal:verdict:<sha256>` key
   for seven days. HTTP 429 sets a cooldown key, 401/403 pauses scanning until
   the backend restarts, and 5xx/network failures retry up to three times. A
-  malicious verdict uses the same file-deletion and `removedReason` path as
-  ClamAV. No scan state is written to SQLite.
+  malicious VirusTotal verdict removes only the offending file and keeps clean
+  files online. If no files remain, the share gets a `removedReason` and
+  returns 404; otherwise its stale ZIP is deleted and `isZipReady` is reset so
+  the next page load rebuilds it from the remaining files. ClamAV continues to
+  remove the whole share. No scan state is written to SQLite.
   Operational history is file-backed at
   `DATA_DIRECTORY/virustotal/state.json` (mode `600`): the latest 200 events,
   48 hours of API-call timestamps and 30 days of daily counters. The
@@ -492,8 +495,17 @@ sign-in redirect for a protected page and loop between `/upload` and
   file path at 1366px and 390px with no console errors or page overflow. A real
   local PDF scan added queued, uploaded and clean events and persisted them to
   the JSON file. The admin link was added to `/admin`; anonymous API access
-  returned 403. All 36 backend tests pass (three new audit-state tests), and
-  both production builds pass. No SQLite schema or migration was added.
+  returned 403. All 38 backend tests pass (three audit-state tests and two
+  malicious-file removal tests), and both production builds pass. No SQLite
+  schema or migration was added.
+- VirusTotal single-file removal (2026-10-25): a local share containing the
+  EICAR test file and a clean PDF was scanned. VirusTotal flagged the EICAR
+  file; only that file was deleted, while the PDF remained online (share 200,
+  one file). The stale `archive.zip` was removed, `isZipReady` was reset, and
+  `removedReason` stayed null. The admin event detail read `Offending file
+  removed; 1 clean file retained`. Deleting the share afterwards returned 404.
+  All 38 backend tests pass, including the new retained-file and empty-share
+  cases.
 - VirusTotal rate-limit change (2026-10-24): the shared request lock is now
   **173 seconds**, which allows exactly 500 request starts in a 24-hour window
   (499 intervals of 173s fit inside 86,400s) instead of the previous 480/day.
