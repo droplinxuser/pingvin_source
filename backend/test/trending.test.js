@@ -2,21 +2,20 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const { TrendingService } = require("../dist/src/cache/trending.service.js");
 
-function createMockValkey(execute) {
+function createMockValkey(execute, metaValues = []) {
   const calls = [];
   const client = {
+    mGet: async () => metaValues,
     multi() {
       const queue = [];
       const chain = {};
       for (const method of [
         "zAdd",
         "expire",
-        "hSet",
-        "hDel",
+        "set",
+        "del",
         "zUnionStore",
         "zRangeWithScores",
-        "del",
-        "hmGet",
       ]) {
         chain[method] = (...args) => {
           queue.push([method, args]);
@@ -61,15 +60,14 @@ test("ranks the last seven days by total views and filters stale shares", async 
     { value: "b", score: 20 },
     { value: "broken", score: 10 },
   ];
-  const today = [meta("a", 400, recent), null];
-  const yesterday = [
-    meta("old", 300, old),
-    meta("a", 350, recent),
-    meta("b", 200, recent, "video"),
-  ];
-
-  const mock = createMockValkey((queue) =>
-    queue[0][0] === "zUnionStore" ? [1, ranked, 1] : [today, yesterday],
+  const mock = createMockValkey(
+    () => [1, ranked, 1],
+    [
+      meta("a", 400, recent),
+      meta("old", 300, old),
+      meta("b", 200, recent, "video"),
+      null,
+    ],
   );
   const service = new TrendingService(mock.valkey);
 
@@ -89,13 +87,11 @@ test("returns twelve by default and caps the full list at forty-eight", async ()
     value: `s${index}`,
     score: 100 - index,
   }));
-  const today = Array.from({ length: 50 }, (_, index) =>
+  const metas = Array.from({ length: 50 }, (_, index) =>
     meta(`s${index}`, 100 - index, recent),
   );
 
-  const mock = createMockValkey((queue) =>
-    queue[0][0] === "zUnionStore" ? [1, ranked, 1] : [today, []],
-  );
+  const mock = createMockValkey(() => [1, ranked, 1], metas);
   const service = new TrendingService(mock.valkey);
   const items = await service.getTrending();
 
@@ -146,21 +142,19 @@ test("records only recent public shares with image or video media", async () => 
   assert.equal(mock.calls.length, 1);
 
   const methods = mock.calls[0].map(([method]) => method);
-  assert.deepEqual(methods, ["zAdd", "expire", "hSet", "expire"]);
+  assert.deepEqual(methods, ["zAdd", "expire", "set"]);
   assert.deepEqual(mock.calls[0][0][1][1], { score: 7, value: "share" });
 
-  const stored = JSON.parse(mock.calls[0][2][1][2]);
+  const stored = JSON.parse(mock.calls[0][2][1][1]);
   assert.equal(stored.previewFileId, "video");
   assert.equal(stored.previewKind, "video");
   assert.equal(stored.views, 7);
 });
 
 test("invalidates cached rankings and share metadata", async () => {
-  const mock = createMockValkey((queue) =>
-    queue[0][0] === "zUnionStore"
-      ? [1, [{ value: "a", score: 1 }], 1]
-      : [[meta("a", 1, recent)], [null]],
-  );
+  const mock = createMockValkey(() => [1, [{ value: "a", score: 1 }], 1], [
+    meta("a", 1, recent),
+  ]);
   const service = new TrendingService(mock.valkey);
   assert.deepEqual(
     (await service.getTrending()).map((item) => item.id),
@@ -170,5 +164,6 @@ test("invalidates cached rankings and share metadata", async () => {
   await service.invalidate("a");
 
   const calls = mock.calls.map((queue) => queue.map(([method]) => method));
-  assert.deepEqual(calls.at(-1), Array(7).fill("hDel"));
+  assert.deepEqual(calls.at(-1), ["del"]);
+  assert.deepEqual(mock.calls.at(-1)[0][1], ["pingvin:trending:meta:a"]);
 });

@@ -324,7 +324,7 @@ export class ShareService {
       },
     });
 
-    if (await this.isShareCompleted(id))
+    if (share.uploadLocked)
       throw new BadRequestException(this.i18n.t("share.alreadyCompleted"));
 
     if (share.files.length == 0)
@@ -598,7 +598,12 @@ export class ShareService {
   async report(id: string, report: ReportShareDTO) {
     const share = await this.prisma.share.findUnique({
       where: { id },
-      include: { files: true },
+      select: {
+        id: true,
+        name: true,
+        uploadLocked: true,
+        files: { select: { name: true } },
+      },
     });
 
     if (!share || !share.uploadLocked)
@@ -616,6 +621,7 @@ export class ShareService {
   async remove(shareId: string, isDeleterAdmin = false) {
     const share = await this.prisma.share.findUnique({
       where: { id: shareId },
+      select: { creatorId: true },
     });
 
     if (!share) throw new NotFoundException(this.i18n.t("share.notFound"));
@@ -633,6 +639,7 @@ export class ShareService {
   async expire(shareId: string) {
     const share = await this.prisma.share.findUnique({
       where: { id: shareId },
+      select: { creatorId: true },
     });
 
     if (!share) throw new NotFoundException(this.i18n.t("share.notFound"));
@@ -673,21 +680,18 @@ export class ShareService {
         body.description !== undefined ? body.description || null : undefined,
     };
 
-    await this.prisma.share.update({
-      where: { id: shareId },
-      data,
-    });
-
     if (body.security) {
       await this.updateSecurity(shareId, body, currentShare.security);
     }
 
-    await this.shareState.invalidateData(shareId);
-
-    const updatedShare = await this.prisma.share.findUnique({
+    // The update response already contains every relation the DTO needs, so
+    // there is no follow-up read after writing (and invalidating the cache).
+    const updatedShare = await this.prisma.share.update({
       where: { id: shareId },
-      include: { creator: true, files: true, recipients: true, security: true },
+      data,
+      include: SHARE_INCLUDE,
     });
+    await this.shareState.invalidateData(shareId);
 
     return this.transformShare(updatedShare);
   }
@@ -728,10 +732,6 @@ export class ShareService {
     });
   }
 
-  async isShareCompleted(id: string) {
-    return (await this.prisma.share.findUnique({ where: { id } })).uploadLocked;
-  }
-
   async getReceivedShares(userId: string) {
     return this.prisma.shareUserRecipient.findMany({
       where: { userId },
@@ -769,7 +769,10 @@ export class ShareService {
   }
 
   async isShareIdAvailable(id: string) {
-    const share = await this.prisma.share.findUnique({ where: { id } });
+    const share = await this.prisma.share.findUnique({
+      where: { id },
+      select: { id: true },
+    });
     return { isAvailable: !share };
   }
 

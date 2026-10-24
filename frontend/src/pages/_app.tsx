@@ -36,6 +36,7 @@ import userPreferences from "../utils/userPreferences.util";
 import Footer from "../components/footer/Footer";
 import TrendingToday from "../components/share/TrendingToday";
 import { fetchConfig } from "../utils/config.server.util";
+import { fetchTrending } from "../utils/trending.server.util";
 import AdminNoticeModal, {
   AdminNotice,
 } from "../components/admin/AdminNoticeModal";
@@ -426,17 +427,12 @@ App.getInitialProps = async ({
     const cookieHeader = ctx.req.headers.cookie;
     const trendingRequest =
       ctx.pathname && trendingWidgetRoutes.includes(ctx.pathname)
-        ? fetch(`${apiURL}/api/shares/trending`, {
-            cache: "no-store",
-            signal: AbortSignal.timeout(1500),
-          })
-            .then((response) =>
-              response.ok
-                ? (response.json() as Promise<TrendingShare[]>)
-                : undefined,
-            )
-            .catch(() => undefined)
+        ? fetchTrending(apiURL)
         : undefined;
+
+    // Start the public config request before the account lookup so SSR only
+    // waits for the slower of the two, not for both in sequence.
+    const configRequest = fetchConfig(apiURL);
 
     // Never put account data in a shell that may be cached by the CDN, even
     // when an edge Cache Rule ignores the origin's no-store header. The client
@@ -451,7 +447,7 @@ App.getInitialProps = async ({
         .catch(() => null);
     }
 
-    const { config, fallback } = await fetchConfig(apiURL);
+    const { config, fallback } = await configRequest;
     pageProps.configVariables = config;
     pageProps.isConfigFallback = fallback;
     if (trendingRequest) pageProps.trending = await trendingRequest;

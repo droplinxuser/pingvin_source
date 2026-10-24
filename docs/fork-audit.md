@@ -61,7 +61,10 @@ other languages show the upstream copy instead of the English fallback.
   `DATABASE_URL="file:/var/www/pingvin_data/pingvin-share.db?connection_limit=1"`
 - `DATA_DIRECTORY="/var/www/pingvin_data"`; uploader/visitor metadata is stored
   per share at `uploads/shares/<shareId>/uploader.json` with mode `600`. View
-  counts live in `Share.views` and are updated directly in SQLite.
+  counts live in `Share.views` and are updated directly in SQLite. Visitor
+  writes are batched for one second per share: the response still includes the
+  new visitor immediately, while a burst of views produces a single atomic
+  file write (pending entries are flushed on shutdown).
 - Global rate limiting is 90 requests per 60 seconds per client, identified by
   client IP + browser `User-Agent`, blocking for 60 seconds after the limit.
   Configure it with `VISITOR_RATE_LIMIT`, `VISITOR_RATE_TTL_MS` and
@@ -81,25 +84,32 @@ other languages show the upstream copy instead of the English fallback.
   enables both automatically when a local `valkey-server` is active). Share-page
   data, guard data and metadata are cached for 30s/30s/5s; the metadata entry
   contains only `{ id, isZipReady }`. A data-cache miss also resets the rolling
-  expiration to 100 days. Share views and visitor metadata are written directly
-  to SQLite and `uploader.json` on each view; shares without a view limit use a
-  single atomic update instead of a transaction. The footer's base counters use
-  a 60-second in-process cache and do not add a Valkey key.
+  expiration to 100 days. Share view counts are written directly to SQLite;
+  shares without a view limit use a single atomic update instead of a
+  transaction. Visitor metadata is coalesced into one `uploader.json` write per
+  second and per share, and pending entries are flushed on shutdown. The
+  footer's base counters use a 60-second in-process cache and do not add a
+  Valkey key.
 - "Trending today" is stored entirely in Valkey. A public share `GET` records
   the share's total view count as its score in a per-day sorted set
   (`pingvin:trending:views:<day>`, 8-day TTL) and writes
-  `{ id, name, views, previewFileId, previewKind, createdAt }` to a per-day
-  hash (`pingvin:trending:meta:<day>`, 8-day TTL) in the same `MULTI`. Shares
-  older than seven days and shares without an image/video are skipped before
-  writing. `GET /api/shares/trending` unions the seven daily sets with
-  `AGGREGATE MAX`, drops entries without current metadata or older than seven
-  days, and returns the top twelve ordered by total views without any SQLite
-  query. `?limit=48` returns the full list for the public `/trending` page;
-  other values are clamped to 48. The result is cached in-process for 30
-  seconds and is edge-cacheable for 60 seconds. Editing, expiring or deleting
-  a share (including removing its files or reverse-share parent) clears its
-  metadata immediately. If Valkey is unavailable the endpoint returns an
-  empty list and the widget is hidden.
+  `{ id, name, views, previewFileId, previewKind, createdAt }` to one
+  per-share key (`pingvin:trending:meta:<shareId>`, 8-day TTL) in the same
+  `MULTI`. One metadata entry per share replaces the old per-day copies, so a
+  share viewed on several days no longer duplicates its JSON up to seven
+  times. Shares older than seven days and shares without an image/video are
+  skipped before writing. `GET /api/shares/trending` unions the seven daily
+  sets with `AGGREGATE MAX`, reads every candidate's metadata with a single
+  `MGET`, drops entries without current metadata or older than seven days, and
+  returns the top twelve ordered by total views without any SQLite query.
+  `?limit=48` returns the full list for the public `/trending` page; other
+  values are clamped to 48. The result is cached in-process for 30 seconds and
+  is edge-cacheable for 60 seconds. The frontend also caches the public list
+  for 30 seconds on the server (`trending.server.util.ts`, used by `_app` and
+  `/trending`) and in the browser service, so client navigation does not repeat
+  the request. Editing, expiring or deleting a share (including removing its
+  files or reverse-share parent) deletes its metadata immediately. If Valkey
+  is unavailable the endpoint returns an empty list and the widget is hidden.
 - The footer posts to `POST /api/system/pageview` on every rendered page. The
   endpoint increments a per-hour Valkey hash atomically (one total field plus
   one field per country), expires each hourly bucket after 25 hours and reads
@@ -165,9 +175,10 @@ sign-in redirect for a protected page and loop between `/upload` and
 ## Verified locally
 
 - Node `22.23.3` production builds pass for backend and frontend. `npm run
-  test:unit` passes all 19 tests, covering view limits, IP+User-Agent identity,
-  Valkey/fallback throttling, uploader metadata, page-view metrics and trending
-  ranking/eligibility/result cap. A local smoke run rechecked config/stats cache headers,
+  test:unit` passes all 21 tests, covering view limits, IP+User-Agent identity,
+  Valkey/fallback throttling, uploader metadata, batched visitor writes,
+  page-view metrics and trending ranking/eligibility/result cap. A local smoke
+  run rechecked config/stats cache headers,
   share `HEAD`/token/view flow and rolling expiration; the aggregate cache and
   upload-throttle exemptions were reviewed without a live Valkey instance.
 - A follow-up caching review (local Node `26.12.1`; the server remains on
@@ -254,6 +265,22 @@ sign-in redirect for a protected page and loop between `/upload` and
   `archive.zip` returns `404` instead of `500` (both verified locally).
 - `bash -n update.sh` passes; its env writer produces the exact live
   `DATABASE_URL` above.
+- Optimization pass (2026-10-24): backend and frontend production builds pass,
+  all 21 unit tests pass, and a 21-route Playwright run covered guest,
+  signed-in and admin views, the upload/account pages, share preview and report
+  modals, admin search/sort/pagination, mobile width, dark mode and 404s with
+  zero console errors or warnings. Trending and page-view metrics were
+  exercised against a real Valkey-compatible server: one
+  `pingvin:trending:meta:<shareId>` key per share (8-day TTL), one MGET per
+  ranking read, immediate metadata invalidation on edit, and one hourly
+  metrics hash. A share view followed by an immediate shutdown still persisted
+  the visitor, confirming the batched writer's shutdown flush. Public HTML
+  shells returned the expected 60-second edge cache headers while
+  authenticated and query-string requests stayed `no-store`; public file and
+  ZIP responses carried the day-long immutable cache headers and ETag. The
+  first deploy after the metadata key change starts with an empty trending
+  list until shares are viewed again; old per-day hash keys expire on their
+  own.
 
 ## Known non-issues
 

@@ -27,7 +27,10 @@ import { FileSecurityGuard } from "./guard/fileSecurity.guard";
 
 const VALID_ID_REGEX = /^[a-zA-Z0-9-]*={0,2}$/;
 
-type FileRequest = Request & { shareIsPublic?: boolean };
+type FileRequest = Request & {
+  shareIsPublic?: boolean;
+  shareStorageProvider?: string;
+};
 
 function getValidRecipientId(recipientId?: string): string | undefined {
   if (!recipientId) return undefined;
@@ -139,7 +142,10 @@ export class FileController {
       return;
     }
 
-    const zipStream = await this.fileService.getZip(shareId);
+    const zipStream = await this.fileService.getZip(
+      shareId,
+      (req as FileRequest).shareStorageProvider,
+    );
 
     res.set({
       "Content-Type": "application/zip",
@@ -181,7 +187,11 @@ export class FileController {
     }
 
     const isDownload = download === "true";
-    const storageProvider = await this.fileService.getStorageProvider(shareId);
+    // The file guard already loaded the share, so its storage provider comes
+    // from the request instead of another SQLite lookup.
+    const storageProvider =
+      (req as FileRequest).shareStorageProvider ??
+      (await this.fileService.getStorageProvider(shareId));
 
     if (storageProvider === "S3") {
       const url = await this.fileService.getPreSignedDownloadUrl(
@@ -203,7 +213,12 @@ export class FileController {
       return;
     }
 
-    const file = await this.fileService.get(shareId, fileId, req.headers.range);
+    const file = await this.fileService.get(
+      shareId,
+      fileId,
+      req.headers.range,
+      storageProvider,
+    );
 
     const totalSize = parseInt(file.metaData.size, 10);
 

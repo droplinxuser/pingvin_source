@@ -22,6 +22,11 @@ const isValidId = (id: string) => {
   return /^[a-zA-Z0-9_-]+$/.test(id);
 };
 
+const TRENDING_CACHE_TTL_MS = 30_000;
+let trendingCache:
+  | { at: number; limit: number; items: TrendingShare[] }
+  | undefined;
+
 const list = async (
   page = 1,
   pageSize = 20,
@@ -98,7 +103,20 @@ const getMetaData = async (id: string): Promise<ShareMetaData> => {
 };
 
 const getTrending = async (limit?: number): Promise<TrendingShare[]> => {
-  return (await api.get("shares/trending", { params: { limit } })).data;
+  const requested = limit && limit > 0 ? limit : 12;
+  if (
+    trendingCache &&
+    Date.now() - trendingCache.at < TRENDING_CACHE_TTL_MS &&
+    trendingCache.limit >= requested
+  ) {
+    return trendingCache.items.slice(0, requested);
+  }
+
+  const items = (
+    await api.get("shares/trending", { params: { limit: requested } })
+  ).data as TrendingShare[];
+  trendingCache = { at: Date.now(), limit: requested, items };
+  return items.slice(0, requested);
 };
 
 const remove = async (id: string) => {

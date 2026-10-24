@@ -3,17 +3,11 @@ import Meta from "../components/Meta";
 import TrendingToday from "../components/share/TrendingToday";
 import useTranslate from "../hooks/useTranslate.hook";
 import { TrendingShare } from "../types/share.type";
+import { fetchTrending } from "../utils/trending.server.util";
 
 export const getServerSideProps: GetServerSideProps = async () => {
   const apiURL = process.env.API_URL || "http://localhost:8080";
-  const trending = await fetch(`${apiURL}/api/shares/trending?limit=48`, {
-    cache: "no-store",
-    signal: AbortSignal.timeout(1500),
-  })
-    .then((response) =>
-      response.ok ? (response.json() as Promise<TrendingShare[]>) : undefined,
-    )
-    .catch(() => undefined);
+  const trending = await fetchTrending(apiURL, 48);
 
   return { props: { trending: trending ?? [] } };
 };

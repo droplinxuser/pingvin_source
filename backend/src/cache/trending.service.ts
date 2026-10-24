@@ -66,12 +66,15 @@ export class TrendingService {
 
     const stored = await this.valkey.run(async (client) => {
       const viewKey = viewKeyFor(currentDay());
-      const metaKey = metaKeyFor(currentDay());
       const multi = client.multi();
       multi.zAdd(viewKey, { score: share.views, value: share.id });
       multi.expire(viewKey, VIEW_TTL_SECONDS);
-      multi.hSet(metaKey, share.id, JSON.stringify(meta));
-      multi.expire(metaKey, META_TTL_SECONDS);
+      // One metadata entry per share instead of one copy in every day bucket:
+      // a share viewed on several days used to duplicate its metadata up to
+      // seven times. The TTL refreshes on each view and invalidates the entry.
+      multi.set(metaKeyFor(share.id), JSON.stringify(meta), {
+        EX: META_TTL_SECONDS,
+      });
       await multi.exec();
       return true;
     });
@@ -96,19 +99,17 @@ export class TrendingService {
   }
 
   /**
-   * Removes a share from the current ranking when it is edited, expires or is
-   * deleted. Score buckets are short-lived, so only metadata has to be purged.
+   * Removes a share from the ranking when it is edited, expires or is deleted.
+   * Score buckets are short-lived, so only the share metadata has to be purged.
    */
   async invalidate(shareIds: string | string[]): Promise<void> {
     const ids = Array.isArray(shareIds) ? shareIds : [shareIds];
     if (ids.length === 0) return;
     this.cached = undefined;
 
-    const day = currentDay();
     await this.valkey.run(async (client) => {
       const multi = client.multi();
-      for (let offset = 0; offset < WINDOW_DAYS; offset++)
-        multi.hDel(metaKeyFor(day - offset), ids);
+      for (const id of ids) multi.del(metaKeyFor(id));
       await multi.exec();
     });
   }
@@ -132,25 +133,18 @@ export class TrendingService {
     if (!ranked?.length) return [];
 
     const ids = ranked.map((item) => item.value);
-    const metaMulti = client.multi();
-    for (let offset = 0; offset < WINDOW_DAYS; offset++)
-      metaMulti.hmGet(metaKeyFor(day - offset), ids);
-    const metaReplies = await metaMulti.exec();
+    // One MGET for every candidate replaces seven per-day HGETs.
+    const values = await client.mGet(ids.map(metaKeyFor));
     const metas = new Map<string, TrendingMeta>();
 
-    for (const reply of metaReplies ?? []) {
-      for (const value of (reply as (string | null)[]) ?? []) {
-        if (!value) continue;
-        try {
-          const meta = JSON.parse(value) as TrendingMeta;
-          if (!meta?.id) continue;
-          const current = metas.get(meta.id);
-          // A share can be viewed on several days; keep its highest view count
-          // so the badge matches the MAX score used for the ranking.
-          if (!current || meta.views >= current.views) metas.set(meta.id, meta);
-        } catch {
-          // Ignore malformed cache entries; they expire with the day key.
-        }
+    for (const value of values ?? []) {
+      if (!value) continue;
+      try {
+        const meta = JSON.parse(value) as TrendingMeta;
+        if (!meta?.id) continue;
+        metas.set(meta.id, meta);
+      } catch {
+        // Ignore malformed cache entries; their keys expire on their own.
       }
     }
 
@@ -195,6 +189,6 @@ function viewKeyFor(day: number) {
   return `${VIEW_KEY_PREFIX}${day}`;
 }
 
-function metaKeyFor(day: number) {
-  return `${META_KEY_PREFIX}${day}`;
+function metaKeyFor(shareId: string) {
+  return `${META_KEY_PREFIX}${shareId}`;
 }

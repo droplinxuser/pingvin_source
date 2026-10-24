@@ -87,6 +87,7 @@ const GALLERY_VIDEO_EXTENSIONS = new Set([
 ]);
 
 const videoSupport = new Map<string, boolean>();
+const mimeTypeCache = new Map<string, string>();
 
 const getFileExtension = (fileName: string) => {
   const baseName = getBaseName(fileName);
@@ -113,7 +114,13 @@ const canPlayVideo = (mimeType: string) => {
 
 export const getFileMimeType = (fileName: string) => {
   const extension = getFileExtension(fileName);
-  return mimeTypeOverrides[extension] || mime.lookup(extension) || "";
+  const cached = mimeTypeCache.get(extension);
+  if (cached !== undefined) return cached;
+
+  const mimeType =
+    mimeTypeOverrides[extension] || mime.lookup(extension) || "";
+  mimeTypeCache.set(extension, mimeType);
+  return mimeType;
 };
 
 export const getGalleryMediaKind = (

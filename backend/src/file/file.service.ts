@@ -162,11 +162,17 @@ export class FileService {
     shareId: string,
     fileId: string,
     range?: { start: number; end?: number } | string,
+    storageProvider?: string,
   ): Promise<File> {
-    const share = await this.prisma.share.findFirst({
-      where: { id: shareId },
-    });
-    const storageService = this.getStorageService(share?.storageProvider);
+    const provider =
+      storageProvider ??
+      (
+        await this.prisma.share.findFirst({
+          where: { id: shareId },
+          select: { storageProvider: true },
+        })
+      )?.storageProvider;
+    const storageService = this.getStorageService(provider);
     return storageService.get(shareId, fileId, range);
   }
 
@@ -196,12 +202,16 @@ export class FileService {
     ]);
   }
 
-  async getZip(shareId: string): Promise<Readable> {
-    const share = await this.prisma.share.findFirst({
-      where: { id: shareId },
-      select: { storageProvider: true },
-    });
-    const storageService = this.getStorageService(share?.storageProvider);
+  async getZip(shareId: string, storageProvider?: string): Promise<Readable> {
+    const provider =
+      storageProvider ??
+      (
+        await this.prisma.share.findFirst({
+          where: { id: shareId },
+          select: { storageProvider: true },
+        })
+      )?.storageProvider;
+    const storageService = this.getStorageService(provider);
     return await storageService.getZip(shareId);
   }
 

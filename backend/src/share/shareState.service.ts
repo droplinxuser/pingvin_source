@@ -4,6 +4,7 @@ import {
   Inject,
   Injectable,
   NotFoundException,
+  OnApplicationShutdown,
 } from "@nestjs/common";
 import { Prisma } from "@prisma/client";
 import { Cache } from "cache-manager";
@@ -30,6 +31,10 @@ import {
 } from "src/utils/cache.util";
 import { SHARE_EXPIRATION, isViewLimitExceeded } from "./share.util";
 
+// Collapse bursts of share views into one metadata write per share. The
+// returned visitor list is updated immediately; only the disk write is delayed.
+const VISITOR_WRITE_DELAY_MS = 1000;
+
 const GUARD_INCLUDE = {
   security: {
     select: {
@@ -49,8 +54,13 @@ export type GuardShare = Prisma.ShareGetPayload<{
 }>;
 
 @Injectable()
-export class ShareStateService {
+export class ShareStateService implements OnApplicationShutdown {
   private readonly visitorLocks = new Map<string, Promise<void>>();
+  private readonly pendingVisitors = new Map<string, UploaderInfo>();
+  private readonly visitorTimers = new Map<string, NodeJS.Timeout>();
+  private readonly visitorWrites = new Map<string, Promise<void>>();
+  private readonly dirtyVisitors = new Set<string>();
+  private shuttingDown = false;
 
   constructor(
     private prisma: PrismaService,
@@ -241,15 +251,71 @@ export class ShareStateService {
     request: Request,
   ): Promise<UploaderInfo> {
     return this.withVisitorLock(shareId, async () => {
-      const info = (await readUploaderInfo(shareId)) ?? {
-        createdAt: new Date().toISOString(),
-      };
+      let info = this.pendingVisitors.get(shareId);
+      if (!info) {
+        info = (await readUploaderInfo(shareId)) ?? {
+          createdAt: new Date().toISOString(),
+        };
+        this.pendingVisitors.set(shareId, info);
+      }
+
       info.visitors = [...(info.visitors ?? []), getVisitorInfo(request)].slice(
         -MAX_VISITORS,
       );
-
-      await writeUploaderInfo(shareId, info);
+      this.queueVisitorWrite(shareId);
       return info;
     });
+  }
+
+  private queueVisitorWrite(shareId: string) {
+    this.dirtyVisitors.add(shareId);
+    if (this.shuttingDown || this.visitorTimers.has(shareId)) return;
+
+    const timer = setTimeout(
+      () => void this.flushVisitorInfo(shareId),
+      VISITOR_WRITE_DELAY_MS,
+    );
+    timer.unref();
+    this.visitorTimers.set(shareId, timer);
+  }
+
+  private async flushVisitorInfo(shareId: string) {
+    this.visitorTimers.delete(shareId);
+    if (!this.dirtyVisitors.delete(shareId)) return;
+
+    const info = this.pendingVisitors.get(shareId);
+    if (!info) return;
+
+    const write = writeUploaderInfo(shareId, info);
+    this.visitorWrites.set(shareId, write);
+    await write;
+    if (this.visitorWrites.get(shareId) === write)
+      this.visitorWrites.delete(shareId);
+
+    // A view that arrived during the write is kept for the next flush instead
+    // of being dropped from the on-disk visitor list.
+    if (this.dirtyVisitors.has(shareId)) {
+      this.queueVisitorWrite(shareId);
+    } else if (this.pendingVisitors.get(shareId) === info) {
+      this.pendingVisitors.delete(shareId);
+    }
+  }
+
+  async onApplicationShutdown() {
+    this.shuttingDown = true;
+    for (const timer of this.visitorTimers.values()) clearTimeout(timer);
+    this.visitorTimers.clear();
+
+    // Let older snapshots finish first; otherwise one could overwrite the
+    // final write below after this hook resolves.
+    await Promise.all([...this.visitorWrites.values()]);
+
+    const pending = [...this.pendingVisitors];
+    this.pendingVisitors.clear();
+    this.visitorWrites.clear();
+    this.dirtyVisitors.clear();
+    await Promise.all(
+      pending.map(([shareId, info]) => writeUploaderInfo(shareId, info)),
+    );
   }
 }

@@ -81,8 +81,9 @@ export class ShareSecurityGuard extends JwtGuard {
 
     if (!share) throw new NotFoundException(this.i18n.t("share.notFound"));
 
+    const publicShare = isPublicShare(share);
     (request as Request & { shareIsPublic?: boolean }).shareIsPublic =
-      isPublicShare(share);
+      publicShare;
 
     const user = await this.authenticateUser(context);
 
@@ -119,7 +120,7 @@ export class ShareSecurityGuard extends JwtGuard {
 
     // Public shares need no token: their files are already readable without
     // one by the file guard. This saves the 403 -> token -> retry round trip.
-    if (isPublicShare(share)) return true;
+    if (publicShare) return true;
 
     if (share.security?.password && !shareToken)
       throw new ForbiddenException(

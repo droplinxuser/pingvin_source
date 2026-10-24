@@ -48,8 +48,12 @@ export class FileSecurityGuard extends ShareSecurityGuard {
 
     const share = await this._shareService.getGuardShare(shareId);
 
-    (request as Request & { shareIsPublic?: boolean }).shareIsPublic =
-      isPublicShare(share);
+    const shareRequest = request as Request & {
+      shareIsPublic?: boolean;
+      shareStorageProvider?: string;
+    };
+    shareRequest.shareIsPublic = isPublicShare(share);
+    shareRequest.shareStorageProvider = share?.storageProvider ?? "LOCAL";
 
     // If there is no share token the user requests a file directly
     if (!shareToken) {
