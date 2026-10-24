@@ -10,7 +10,7 @@ so `git merge upstream/main` stays small.
 |---|---|
 | Environment loading / production config | `backend/src/constants.ts`, `backend/src/config/config.service.ts`, `backend/src/main.ts`, `backend/.env.example` |
 | Rolling 100-day expiration | `backend/src/share/share.util.ts` (`SHARE_EXPIRATION`), migrations `20261016000000` / `20261016000001`, share create/edit modals |
-| Admin pagination, search and sorting | `backend/src/share/share.service.ts`, `backend/src/user/user.service.ts`, `frontend/src/pages/admin/*`, `frontend/src/components/core/SortIcon.tsx` |
+| Admin pagination, search and sorting | `backend/src/share/share.service.ts`, `backend/src/user/user.service.ts` (quota columns sorted and paged in SQL), `frontend/src/pages/admin/*`, `frontend/src/components/core/SortIcon.tsx` |
 | Share reports | `backend/src/share/dto/reportShare.dto.ts`, `backend/src/email/email.service.ts`, `frontend/src/components/share/showReportShareModal.tsx` |
 | Uploader metadata / visitors | `backend/src/utils/uploaderInfo.util.ts`, `ShareDTO.uploaderInfo`, `frontend/src/components/share/UploaderInfoBadges.tsx`, `ShareStats.tsx`; view counts stay in `Share.views`. The recent-visitor list is shown to every visitor (guest, owner, administrator) |
 | Inline media gallery | `frontend/src/components/share/MediaPreviewGallery.tsx` (up to 30 supported image/video thumbnails at 250px for any file size, opening `FilePreview.tsx` in the full-size modal) |
@@ -803,6 +803,25 @@ sign-in redirect for a protected page and loop between `/upload` and
   covered guest, owner, 390px mobile and dark mode with no horizontal overflow
   and zero application console errors or warnings; a separate real-ad load
   also produced no console messages. No temporary QA shares remain.
+
+- Admin-list/query pass (2026-10-25): the two numeric-string user quota
+  columns (`storageQuotaLimit`, `shareSizeLimit`) are now ordered and paged in
+  SQL instead of loading every user into process memory; unset quotas still
+  sort last in both directions, and the admin table re-fetches the matching
+  page. The user-delete path selects only `isAdmin` and share IDs instead of
+  every share column. `/robots.txt` and `/sitemap.xml` now use the short
+  60-second fallback TTL whenever the backend artifact request fails or returns
+  an empty body, even when the config fetch itself succeeded (the previous
+  check only looked at config fallback). Verified on an isolated 16k-share
+  database with Valkey 9.1.2: asc/desc quota sorting returned 1/9/10 GB in the
+  expected order through the real admin API and table UI, create-and-delete of
+  a temporary user succeeded, normal sitemap/robots headers remained one
+  hour/one day, and stopping only the backend produced 60-second fallback
+  headers for both. A Playwright guest/admin/mobile pass covered home,
+  trending, public shares, legal pages, sign-in, upload, account pages, all
+  admin pages, 390px width and the 404 page with zero application console
+  errors or warnings; an upload → share → WebP preview (300px) → file download
+  → delete flow also passed with a clean console.
 
 ## Known non-issues
 

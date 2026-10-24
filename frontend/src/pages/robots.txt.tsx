@@ -39,15 +39,18 @@ export async function getServerSideProps({
       cache: "no-store",
       signal: AbortSignal.timeout(8000),
     });
-    if (response.ok) text = await response.text();
+    if (response.ok) {
+      const body = (await response.text()).trim();
+      if (body) text = body;
+    }
   } catch {
     // Fall through to the static rule set when the backend is unavailable.
   }
 
   res.setHeader("Content-Type", "text/plain; charset=utf-8");
-  // A fallback generated while the backend is down must not be cached for a
-  // day with a possibly stale sitemap URL.
-  const maxAge = fallback ? 60 : 86_400;
+  // A fallback generated while the backend (or its sitemap artifact) is down
+  // must not be cached for a day with a possibly stale sitemap URL.
+  const maxAge = fallback || !text ? 60 : 86_400;
   setPublicCacheHeaders(res, maxAge, maxAge);
   res.end(text ?? buildFallbackRobots(resolveSiteUrl(req, config)));
   return { props: {} };

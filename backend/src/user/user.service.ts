@@ -23,6 +23,14 @@ const USER_SORT_FIELDS = {
   createdAt: "createdAt",
 } as const;
 
+// These quota columns are stored as decimal strings. Sorting them with Prisma
+// would be lexicographic ("9" after "10"), so they are ordered with SQLite's
+// numeric CAST instead of loading every user into memory.
+const USER_NUMERIC_SORT_FIELDS = {
+  storageQuotaLimit: Prisma.raw('"storageQuotaLimit"'),
+  shareSizeLimit: Prisma.raw('"shareSizeLimit"'),
+} as const;
+
 // The admin table only displays these fields, so secrets such as password
 // hashes and TOTP data never leave the database for list requests.
 const USER_SELECT = {
@@ -60,23 +68,30 @@ export class UserSevice {
     sortBy?: string,
     sortDirection?: string,
   ) {
-    // Storage quota and max share size are stored as strings, so they can't be
-    // sorted numerically with a Prisma orderBy clause. Fetch all users and sort
-    // them in memory instead.
     if (sortBy === "storageQuotaLimit" || sortBy === "shareSizeLimit") {
-      const property = sortBy as "storageQuotaLimit" | "shareSizeLimit";
-      const direction = sortDirection === "asc" ? 1 : -1;
-      const users = await this.prisma.user.findMany({ select: USER_SELECT });
-      return users
-        .sort((a, b) => {
-          const aValue = a[property] == null ? null : parseInt(a[property]);
-          const bValue = b[property] == null ? null : parseInt(b[property]);
-          if (aValue == null && bValue == null) return 0;
-          if (aValue == null) return 1;
-          if (bValue == null) return -1;
-          return (aValue - bValue) * direction;
-        })
-        .slice(skip ?? 0, (skip ?? 0) + (take ?? 20));
+      const column = USER_NUMERIC_SORT_FIELDS[sortBy];
+      const direction = Prisma.raw(sortDirection === "asc" ? "ASC" : "DESC");
+      // Keep unset quotas after numeric values in both directions, matching
+      // the previous in-memory sort, and page in SQL.
+      const rows = await this.prisma.$queryRaw<{ id: string }[]>`
+        SELECT "id"
+        FROM "User"
+        ORDER BY (${column} IS NULL) ASC,
+                 CAST(${column} AS INTEGER) ${direction},
+                 "id" ASC
+        LIMIT ${take ?? 20} OFFSET ${skip ?? 0}
+      `;
+      if (rows.length === 0) return [];
+
+      const users = await this.prisma.user.findMany({
+        where: { id: { in: rows.map((row) => row.id) } },
+        select: USER_SELECT,
+      });
+      const byId = new Map(users.map((user) => [user.id, user]));
+      return rows.flatMap(({ id }) => {
+        const user = byId.get(id);
+        return user ? [user] : [];
+      });
     }
 
     return await this.prisma.user.findMany({
@@ -201,7 +216,7 @@ export class UserSevice {
   async delete(id: string) {
     const user = await this.prisma.user.findUnique({
       where: { id },
-      include: { shares: true },
+      select: { isAdmin: true, shares: { select: { id: true } } },
     });
     if (!user) throw new BadRequestException(this.i18n.t("auth.userNotFound"));
 

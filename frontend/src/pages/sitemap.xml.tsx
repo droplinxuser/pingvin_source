@@ -46,15 +46,19 @@ export async function getServerSideProps({
       cache: "no-store",
       signal: AbortSignal.timeout(8000),
     });
-    if (response.ok) xml = await response.text();
+    if (response.ok) {
+      const body = (await response.text()).trim();
+      if (body) xml = body;
+    }
   } catch {
     // Fall through to the static route list when the backend is unavailable.
   }
 
   res.setHeader("Content-Type", "application/xml; charset=utf-8");
-  // Do not cache the small fallback sitemap for an hour when the backend was
-  // unavailable; retry soon after it recovers.
-  const maxAge = fallback ? 60 : 3_600;
+  // Do not cache the small fallback sitemap when the backend (or its sitemap
+  // artifact) was unavailable; retry soon after it recovers. Config fallback
+  // can happen independently of a sitemap fetch failure, so check both.
+  const maxAge = fallback || !xml ? 60 : 3_600;
   setPublicCacheHeaders(res, maxAge, maxAge);
   res.end(xml ?? buildFallbackSitemap(resolveSiteUrl(req, config), config));
   return { props: {} };
