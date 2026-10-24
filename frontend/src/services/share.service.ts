@@ -159,12 +159,16 @@ const downloadFile = async (
   shareId: string,
   fileId: string,
   recipientId?: string,
+  fileName?: string,
 ) => {
   const link = document.createElement("a");
   link.href = `${window.location.origin}${getShareFileUrl(shareId, fileId, {
     download: true,
     recipientId,
   })}`;
+  // The explicit attribute keeps a blocked/pending download from becoming a
+  // navigation that reloads the share page or opens extra tabs.
+  link.setAttribute("download", fileName || "");
   link.rel = "noopener";
   link.style.display = "none";
   document.body.appendChild(link);

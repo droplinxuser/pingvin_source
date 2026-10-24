@@ -221,7 +221,12 @@ other languages show the upstream copy instead of the English fallback.
   downloads. Each file is fetched through a hidden same-origin anchor with a
   short gap so Chrome/Firefox can show their multiple-download prompt; a short
   settle delay after confirmation prevents the first click being lost while the
-  modal closes. The
+  modal closes. Every anchor sets the explicit `download` attribute, so a
+  blocked or still-pending multiple-download prompt cannot turn the click into
+  a navigation/reload or extra tab. Browsers do not expose the automatic
+  downloads content setting through the Permissions API, so the page cannot
+  pre-check whether the user has already allowed it; the modal tells the user
+  to choose Allow when prompted. The
   legacy `GET /api/shares/:id/files/zip` endpoint still serves archives already
   on disk (and builds S3 archives on explicit request), but `share.complete`
   and `share.getMetaData` no longer create `archive.zip`; this avoids archive

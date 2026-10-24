@@ -9,7 +9,7 @@ import shareService from "../../services/share.service";
 const DOWNLOAD_GAP_MS = 1000;
 const MODAL_SETTLE_MS = 400;
 
-type DownloadableFile = { id: string };
+type DownloadableFile = { id: string; name: string };
 
 const DownloadAllButton = ({
   shareId,
@@ -30,7 +30,12 @@ const DownloadAllButton = ({
       // Let the confirmation modal finish closing before the first download.
       await new Promise((resolve) => setTimeout(resolve, MODAL_SETTLE_MS));
       for (const [index, file] of files.entries()) {
-        await shareService.downloadFile(shareId, file.id, recipientId);
+        await shareService.downloadFile(
+          shareId,
+          file.id,
+          recipientId,
+          file.name,
+        );
         if (index < files.length - 1) {
           await new Promise((resolve) => setTimeout(resolve, DOWNLOAD_GAP_MS));
         }

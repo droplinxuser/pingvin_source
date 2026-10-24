@@ -266,6 +266,7 @@ const FileList = ({
                             share.id,
                             file.id,
                             recipientId,
+                            file.name,
                           );
                         }}
                       >
