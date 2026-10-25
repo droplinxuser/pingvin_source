@@ -38,8 +38,8 @@ const ShareStats = ({ share }: { share: Share }) => {
     >
       <Group position="apart" align="center" spacing="md">
         <Group spacing="xs" align="center" noWrap>
-          <ThemeIcon size={30} radius="sm" variant="light">
-            <TbActivity size={16} />
+          <ThemeIcon size={28} radius="sm" variant="light">
+            <TbActivity size={15} />
           </ThemeIcon>
           <Text
             component="h2"
@@ -62,9 +62,9 @@ const ShareStats = ({ share }: { share: Share }) => {
         </Group>
       </Group>
 
-      <Divider my="xs" />
+      <Divider my={4} />
 
-      <Group position="apart" mb={4}>
+      <Group position="apart" mb={2}>
         <Text size="xs" weight={600}>
           {t("share.custom.stats.recent")}
         </Text>
@@ -82,8 +82,11 @@ const ShareStats = ({ share }: { share: Share }) => {
       ) : (
         <SimpleGrid
           cols={1}
-          spacing="xs"
-          breakpoints={[{ minWidth: "sm", cols: 2 }]}
+          spacing={4}
+          breakpoints={[
+            { minWidth: "sm", cols: 2 },
+            { minWidth: "md", cols: 3 },
+          ]}
         >
           {visitors.map((visitor, index) => {
             const countryName = visitor.country
@@ -98,29 +101,37 @@ const ShareStats = ({ share }: { share: Share }) => {
                 key={`${visitor.createdAt}-${index}`}
                 radius="sm"
                 px="xs"
-                py={5}
+                py={2}
                 withBorder
               >
                 <Group position="apart" align="center" noWrap spacing="xs">
-                  <Group spacing={8} noWrap sx={{ minWidth: 0, flex: 1 }}>
-                    <Text size="lg" aria-hidden>
+                  <Group spacing={6} noWrap sx={{ minWidth: 0, flex: 1 }}>
+                    <Text size="sm" aria-hidden>
                       {countryCodeToFlag(visitor.country)}
                     </Text>
-                    <Box sx={{ minWidth: 0 }}>
-                      <Text size="sm" weight={600} truncate lh={1.3}>
-                        {location}
-                      </Text>
-                      <Text size="xs" color="dimmed" truncate lh={1.3}>
-                        {moment(visitor.createdAt).fromNow()} ·{" "}
-                        {visitor.referrer
+                    <Text size="xs" weight={600} truncate lh={1.3}>
+                      {location}
+                    </Text>
+                    <HoverTip
+                      label={
+                        visitor.referrer
                           ? t("share.custom.stats.via", {
                               domain: visitor.referrer,
                             })
-                          : t("share.custom.stats.direct")}
+                          : t("share.custom.stats.direct")
+                      }
+                    >
+                      <Text
+                        size="xs"
+                        color="dimmed"
+                        lh={1.3}
+                        sx={{ whiteSpace: "nowrap" }}
+                      >
+                        {moment(visitor.createdAt).fromNow()}
                       </Text>
-                    </Box>
+                    </HoverTip>
                   </Group>
-                  <Group spacing={4} noWrap>
+                  <Group spacing={2} noWrap>
                     <HoverTip
                       label={visitor.os || t("share.custom.uploader.unknown")}
                     >

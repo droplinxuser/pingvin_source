@@ -1,4 +1,5 @@
 import {
+  ActionIcon,
   Avatar,
   Badge,
   Box,
@@ -14,10 +15,17 @@ import {
   Textarea,
   ThemeIcon,
 } from "@mantine/core";
+import { useModals } from "@mantine/modals";
 import moment from "moment";
 import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useState } from "react";
-import { TbLogin, TbMessageCircle, TbSend } from "react-icons/tb";
+import {
+  TbLogin,
+  TbMessageCircle,
+  TbPencil,
+  TbSend,
+  TbTrash,
+} from "react-icons/tb";
 import useTranslate from "../../hooks/useTranslate.hook";
 import useUser from "../../hooks/user.hook";
 import commentService, {
@@ -25,9 +33,13 @@ import commentService, {
 } from "../../services/comment.service";
 import { ShareComment } from "../../types/share.type";
 import toast from "../../utils/toast.util";
+import { HoverTip } from "../core/HoverTip";
 
 const avatarLabel = (name: string) =>
   name.trim().charAt(0).toUpperCase() || "?";
+
+const commentName = (comment: ShareComment) =>
+  comment.displayName?.trim() || comment.username;
 
 const commentRowStyle = (theme: MantineTheme) => ({
   paddingTop: theme.spacing.xs,
@@ -60,18 +72,29 @@ const responsiveButtonStyle = (theme: MantineTheme) => ({
   },
 });
 
-const ShareComments = ({ shareId }: { shareId: string }) => {
+const ShareComments = ({
+  shareId,
+  initialVersion = 0,
+}: {
+  shareId: string;
+  initialVersion?: number;
+}) => {
   const t = useTranslate();
   const { user } = useUser();
+  const modals = useModals();
 
   const [comments, setComments] = useState<ShareComment[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
-  const [version, setVersion] = useState(0);
+  const [version, setVersion] = useState(initialVersion);
   const [isLoading, setIsLoading] = useState(true);
   const [loadFailed, setLoadFailed] = useState(false);
   const [content, setContent] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [editingId, setEditingId] = useState<string>();
+  const [editContent, setEditContent] = useState("");
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
+  const [isDeletingId, setIsDeletingId] = useState<string>();
   const [notice, setNotice] = useState<string>();
 
   const fetchPage = useCallback(
@@ -94,7 +117,7 @@ const ShareComments = ({ shareId }: { shareId: string }) => {
 
     setIsLoading(true);
     commentService
-      .list(shareId, 1, 0)
+      .list(shareId, 1, initialVersion)
       .then((data) => {
         if (cancelled) return;
         setComments(data.comments);
@@ -113,7 +136,7 @@ const ShareComments = ({ shareId }: { shareId: string }) => {
     return () => {
       cancelled = true;
     };
-  }, [shareId]);
+  }, [shareId, initialVersion]);
 
   const loadPage = async (nextPage: number) => {
     if (isLoading) return;
@@ -151,6 +174,78 @@ const ShareComments = ({ shareId }: { shareId: string }) => {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const startEdit = (comment: ShareComment) => {
+    setEditingId(comment.id);
+    setEditContent(comment.content);
+    setNotice(undefined);
+  };
+
+  const cancelEdit = () => {
+    setEditingId(undefined);
+    setEditContent("");
+  };
+
+  const saveEdit = async (comment: ShareComment) => {
+    const value = editContent.trim();
+    if (!value || isSavingEdit) return;
+
+    setIsSavingEdit(true);
+    try {
+      const updated = await commentService.update(shareId, comment.id, value);
+      setEditingId(undefined);
+      setEditContent("");
+      setNotice(t("share.custom.comments.updated"));
+
+      try {
+        await fetchPage(page, updated.version);
+        setLoadFailed(false);
+      } catch {
+        setLoadFailed(true);
+      }
+    } catch (error) {
+      toast.axiosError(error);
+    } finally {
+      setIsSavingEdit(false);
+    }
+  };
+
+  const deleteComment = async (comment: ShareComment) => {
+    if (isDeletingId) return;
+
+    setIsDeletingId(comment.id);
+    try {
+      const result = await commentService.remove(shareId, comment.id);
+      if (editingId === comment.id) cancelEdit();
+      setNotice(t("share.custom.comments.deleted"));
+
+      try {
+        await fetchPage(page, result.version);
+        setLoadFailed(false);
+      } catch {
+        setLoadFailed(true);
+      }
+    } catch (error) {
+      toast.axiosError(error);
+    } finally {
+      setIsDeletingId(undefined);
+    }
+  };
+
+  const confirmDelete = (comment: ShareComment) => {
+    modals.openConfirmModal({
+      title: t("share.custom.comments.delete-title"),
+      children: (
+        <Text size="sm">{t("share.custom.comments.delete-description")}</Text>
+      ),
+      labels: {
+        confirm: t("common.button.delete"),
+        cancel: t("common.button.cancel"),
+      },
+      confirmProps: { color: "red" },
+      onConfirm: () => void deleteComment(comment),
+    });
   };
 
   const totalPages = Math.max(1, Math.ceil(total / COMMENTS_PAGE_SIZE));
@@ -298,63 +393,148 @@ const ShareComments = ({ shareId }: { shareId: string }) => {
               transition: "opacity 120ms ease",
             }}
           >
-            {comments.map((comment) => (
-              <Box
-                key={comment.id}
-                id={`comment-${comment.id}`}
-                component="article"
-                itemScope
-                itemType="https://schema.org/Comment"
-                sx={commentRowStyle}
-                data-testid="share-comment"
-              >
-                <Group align="flex-start" spacing="sm" noWrap>
-                  <Avatar
-                    size={28}
-                    radius="xl"
-                    color="blue"
-                    variant="light"
-                    aria-hidden
-                  >
-                    {avatarLabel(comment.username)}
-                  </Avatar>
-                  <Box sx={{ minWidth: 0, flex: 1 }}>
-                    <Group spacing={6} align="baseline" noWrap>
-                      <Text size="sm" weight={600} truncate lh={1.3}>
-                        <span
-                          itemProp="author"
-                          itemScope
-                          itemType="https://schema.org/Person"
-                        >
-                          <span itemProp="name">{comment.username}</span>
-                        </span>
-                      </Text>
-                      <Text
-                        component="time"
-                        dateTime={comment.createdAt}
-                        itemProp="dateCreated"
-                        size="xs"
-                        color="dimmed"
-                        lh={1.3}
-                      >
-                        {moment(comment.createdAt).fromNow()}
-                      </Text>
-                    </Group>
-                    <Text
-                      itemProp="text"
-                      size="sm"
-                      lh={1.4}
-                      sx={{
-                        whiteSpace: "pre-wrap",
-                        overflowWrap: "anywhere",
-                      }}
+            {comments.map((comment) => {
+              const name = commentName(comment);
+              const canManage =
+                !!user && (comment.userId === user.id || user.isAdmin === true);
+              const isEditing = editingId === comment.id;
+
+              return (
+                <Box
+                  key={comment.id}
+                  id={`comment-${comment.id}`}
+                  component="article"
+                  itemScope
+                  itemType="https://schema.org/Comment"
+                  sx={commentRowStyle}
+                  data-testid="share-comment"
+                >
+                  <Group align="flex-start" spacing="sm" noWrap>
+                    <Avatar
+                      size={28}
+                      radius="xl"
+                      color="blue"
+                      variant="light"
+                      aria-hidden
                     >
-                      {comment.content}
-                    </Text>
-                  </Box>
-                </Group>
-              </Box>
-            ))}
+                      {avatarLabel(name)}
+                    </Avatar>
+                    <Box sx={{ minWidth: 0, flex: 1 }}>
+                      <Group
+                        position="apart"
+                        align="center"
+                        noWrap
+                        spacing="xs"
+                      >
+                        <Group
+                          spacing={6}
+                          align="baseline"
+                          sx={{ minWidth: 0, flex: 1 }}
+                        >
+                          <Text size="sm" weight={600} truncate lh={1.3}>
+                            <span
+                              itemProp="author"
+                              itemScope
+                              itemType="https://schema.org/Person"
+                            >
+                              <span itemProp="name">{name}</span>
+                            </span>
+                          </Text>
+                          <Text
+                            component="time"
+                            dateTime={comment.createdAt}
+                            itemProp="dateCreated"
+                            size="xs"
+                            color="dimmed"
+                            lh={1.3}
+                          >
+                            {moment(comment.createdAt).fromNow()}
+                          </Text>
+                        </Group>
+                        {canManage && !isEditing && (
+                          <Group spacing={2} noWrap>
+                            <HoverTip label={t("share.custom.comments.edit")}>
+                              <ActionIcon
+                                size="sm"
+                                radius="sm"
+                                variant="subtle"
+                                aria-label={t("share.custom.comments.edit")}
+                                onClick={() => startEdit(comment)}
+                                disabled={!!isDeletingId || isSavingEdit}
+                              >
+                                <TbPencil size={14} />
+                              </ActionIcon>
+                            </HoverTip>
+                            <HoverTip label={t("share.custom.comments.delete")}>
+                              <ActionIcon
+                                size="sm"
+                                radius="sm"
+                                variant="subtle"
+                                color="red"
+                                aria-label={t("share.custom.comments.delete")}
+                                onClick={() => confirmDelete(comment)}
+                                disabled={!!isDeletingId || isSavingEdit}
+                                loading={isDeletingId === comment.id}
+                              >
+                                <TbTrash size={14} />
+                              </ActionIcon>
+                            </HoverTip>
+                          </Group>
+                        )}
+                      </Group>
+
+                      {isEditing ? (
+                        <Box mt={6}>
+                          <Textarea
+                            value={editContent}
+                            onChange={(event) =>
+                              setEditContent(event.currentTarget.value)
+                            }
+                            aria-label={t("share.custom.comments.edit")}
+                            maxLength={1000}
+                            minRows={2}
+                            maxRows={4}
+                            autosize
+                          />
+                          <Group position="right" spacing="xs" mt={6}>
+                            <Button
+                              size="xs"
+                              radius="sm"
+                              variant="default"
+                              onClick={cancelEdit}
+                              disabled={isSavingEdit}
+                            >
+                              {t("common.button.cancel")}
+                            </Button>
+                            <Button
+                              size="xs"
+                              radius="sm"
+                              onClick={() => void saveEdit(comment)}
+                              loading={isSavingEdit}
+                              disabled={!editContent.trim()}
+                            >
+                              {t("common.button.save")}
+                            </Button>
+                          </Group>
+                        </Box>
+                      ) : (
+                        <Text
+                          itemProp="text"
+                          size="sm"
+                          lh={1.4}
+                          sx={{
+                            whiteSpace: "pre-wrap",
+                            overflowWrap: "anywhere",
+                          }}
+                        >
+                          {comment.content}
+                        </Text>
+                      )}
+                    </Box>
+                  </Group>
+                </Box>
+              );
+            })}
           </Box>
         )}
       </Box>

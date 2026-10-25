@@ -9,6 +9,7 @@ process.env.DATA_DIRECTORY = dataDirectory;
 
 const {
   CommentService,
+  readCommentVersion,
   sanitizeCommentContent,
 } = require("../dist/src/share/comment.service.js");
 
@@ -81,9 +82,11 @@ test("stores comments beside uploader.json with a cache version", async () => {
 
   assert.equal(result.comment.content, "Hello world");
   assert.equal(result.comment.userId, "user-1");
-  assert.equal(result.comment.username, "Alice");
+  assert.equal(result.comment.username, "alice");
+  assert.equal(result.comment.displayName, "Alice");
   assert.equal(result.version, 1);
   assert.equal(result.total, 1);
+  assert.equal(await readCommentVersion("demo"), 1);
 
   const file = JSON.parse(
     fs.readFileSync(path.join(shareDirectory, "comments.json"), "utf8"),
@@ -92,6 +95,7 @@ test("stores comments beside uploader.json with a cache version", async () => {
   assert.deepEqual(Object.keys(file.comments[0]).sort(), [
     "content",
     "createdAt",
+    "displayName",
     "id",
     "userId",
     "username",
@@ -153,6 +157,71 @@ test("serializes concurrent writes without losing comments", async () => {
     after.comments.slice(0, 10).map((comment) => comment.content).sort(),
     Array.from({ length: 10 }, (_, index) => `Concurrent ${index}`).sort(),
   );
+});
+
+test("lets authors and admins edit or delete comments", async () => {
+  const shareId = "mutations";
+  fs.mkdirSync(path.join(dataDirectory, "uploads", "shares", shareId), {
+    recursive: true,
+  });
+
+  const service = createService();
+  const bob = { id: "user-2", username: "bob", displayName: null };
+  const admin = {
+    id: "admin-1",
+    username: "admin",
+    displayName: "Admin",
+    isAdmin: true,
+  };
+
+  const first = await service.create(shareId, user, "First comment");
+  const second = await service.create(shareId, bob, "Second comment");
+
+  await assert.rejects(
+    () => service.update(shareId, first.comment.id, bob, "Hijacked"),
+    /share.commentsForbidden/,
+  );
+
+  const updated = await service.update(
+    shareId,
+    first.comment.id,
+    user,
+    "Edited https://example.com",
+  );
+  assert.equal(updated.comment.content, "Edited");
+  assert.equal(updated.version, 3);
+
+  await assert.rejects(
+    () => service.remove(shareId, second.comment.id, user),
+    /share.commentsForbidden/,
+  );
+
+  const removed = await service.remove(shareId, second.comment.id, admin);
+  assert.equal(removed.total, 1);
+  assert.equal(removed.version, 4);
+  assert.equal(await readCommentVersion(shareId), 4);
+
+  await assert.rejects(
+    () => service.update(shareId, "missing", user, "Nothing"),
+    /share.commentsNotFound/,
+  );
+});
+
+test("uses the username when a display name is unavailable", async () => {
+  const shareId = "no-display-name";
+  fs.mkdirSync(path.join(dataDirectory, "uploads", "shares", shareId), {
+    recursive: true,
+  });
+
+  const service = createService();
+  const result = await service.create(
+    shareId,
+    { id: "user-3", username: "carol", displayName: "" },
+    "Fallback name",
+  );
+
+  assert.equal(result.comment.username, "carol");
+  assert.equal(result.comment.displayName, undefined);
 });
 
 test.after(() => {

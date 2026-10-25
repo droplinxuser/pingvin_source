@@ -14,12 +14,14 @@ export type Share = {
   maxViews?: number;
   isZipReady?: boolean;
   uploaderInfo?: UploaderInfo;
+  commentsVersion?: number;
 };
 
 export type ShareComment = {
   id: string;
   userId: string;
   username: string;
+  displayName?: string;
   content: string;
   createdAt: string;
 };

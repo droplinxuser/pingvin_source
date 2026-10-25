@@ -19,5 +19,7 @@
   "notAllowedToShare": "You do not have permission to create shares",
   "maxSharesExceeded": "Maximum active shares limit ({max}) reached",
   "commentsEmpty": "Comment cannot be empty",
-  "commentsOnlyLinks": "Links are not allowed in comments"
+  "commentsOnlyLinks": "Links are not allowed in comments",
+  "commentsNotFound": "Comment not found",
+  "commentsForbidden": "You can only change your own comments"
 }

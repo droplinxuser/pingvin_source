@@ -29,6 +29,7 @@ import {
   shareDataCacheKey,
   shareGuardCacheKey,
 } from "src/utils/cache.util";
+import { readCommentVersion } from "./comment.service";
 import { SHARE_EXPIRATION, sumFileSizes } from "./share.util";
 
 // Collapse bursts of share views into one metadata write per share. The
@@ -152,11 +153,13 @@ export class ShareStateService implements OnApplicationShutdown {
     }
 
     const { security, ...shareData } = share;
+    const commentsVersion = await readCommentVersion(id);
     const result = {
       ...shareData,
       size: sumFileSizes(share.files),
       hasPassword: !!security?.password,
       maxViews: security?.maxViews,
+      commentsVersion,
     };
     await setCachedValue(this.cache, cacheKey, result, SHARE_DATA_CACHE_TTL_MS);
     return result;

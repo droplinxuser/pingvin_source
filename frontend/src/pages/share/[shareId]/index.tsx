@@ -389,7 +389,12 @@ const SharePage = ({
         skeletonCount={displayFileCount || 5}
       />
 
-      {share && <ShareComments shareId={shareId} />}
+      {share && (
+        <ShareComments
+          shareId={shareId}
+          initialVersion={share.commentsVersion ?? 0}
+        />
+      )}
 
       {share && <ShareStats share={share} />}
     </article>

@@ -28,4 +28,25 @@ const create = async (
   return (await api.post(`shares/${shareId}/comments`, { content })).data;
 };
 
-export default { list, create };
+const update = async (
+  shareId: string,
+  commentId: string,
+  content: string,
+): Promise<{ comment: ShareComment; version: number; total: number }> => {
+  if (!isValidId(shareId) || !isValidId(commentId))
+    throw new Error("Invalid ID");
+  return (
+    await api.patch(`shares/${shareId}/comments/${commentId}`, { content })
+  ).data;
+};
+
+const remove = async (
+  shareId: string,
+  commentId: string,
+): Promise<{ version: number; total: number }> => {
+  if (!isValidId(shareId) || !isValidId(commentId))
+    throw new Error("Invalid ID");
+  return (await api.delete(`shares/${shareId}/comments/${commentId}`)).data;
+};
+
+export default { list, create, update, remove };

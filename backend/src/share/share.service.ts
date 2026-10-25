@@ -518,6 +518,15 @@ export class ShareService {
     return this.shareState.getCurrentViews(id);
   }
 
+  /**
+   * Comment mutations change the version embedded in the share payload. Drop
+   * the short-lived share cache so the next page load requests the new
+   * comments cache key instead of a month-old edge entry.
+   */
+  async invalidateDataCache(id: string): Promise<void> {
+    await this.shareState.invalidateDataCache(id);
+  }
+
   async getMetaData(id: string) {
     // ZIP archives are not built automatically. Existing archives remain
     // downloadable through the API; the flag is kept for client compatibility.

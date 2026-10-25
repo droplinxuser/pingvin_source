@@ -45,6 +45,9 @@ export class ShareDTO {
   @Expose()
   uploaderInfo?: UploaderInfo;
 
+  @Expose()
+  commentsVersion?: number;
+
   from(partial: Partial<ShareDTO>) {
     return plainToClass(ShareDTO, partial, { excludeExtraneousValues: true });
   }

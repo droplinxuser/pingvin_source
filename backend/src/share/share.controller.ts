@@ -36,9 +36,9 @@ import {
   getUploaderInfo,
   writeUploaderInfo,
 } from "src/utils/uploaderInfo.util";
-import { CommentService } from "./comment.service";
+import { COMMENTS_EDGE_CACHE_SECONDS, CommentService } from "./comment.service";
 import { AdminShareDTO } from "./dto/adminShare.dto";
-import { CreateCommentDTO } from "./dto/createComment.dto";
+import { CommentContentDTO } from "./dto/commentContent.dto";
 import { CreateShareDTO } from "./dto/createShare.dto";
 import { MyShareDTO } from "./dto/myShare.dto";
 import { ReceivedShareDTO } from "./dto/receivedShare.dto";
@@ -183,10 +183,11 @@ export class ShareController {
   }
 
   /**
-   * Lazy-loaded comment listing. Public shares are cached at the edge; the
-   * `v` query string is a sequence counter that changes on every new comment,
-   * so the poster's next request bypasses any stale edge entry. Protected
-   * shares are never stored by Cloudflare.
+   * Lazy-loaded comment listing. Public shares are cached at the edge for a
+   * month; the `v` query string comes from the share payload and changes on
+   * every create/edit/delete, so a new visitor always requests the current
+   * version instead of a stale edge entry. Protected shares are never stored
+   * by Cloudflare.
    */
   @Get(":id/comments")
   @SkipThrottle({ visitor: true })
@@ -199,7 +200,11 @@ export class ShareController {
   ) {
     const isPublic = (request as Request & { shareIsPublic?: boolean })
       .shareIsPublic;
-    response.set(isPublic ? getEdgeCacheHeaders(60) : NO_STORE_HEADERS);
+    response.set(
+      isPublic
+        ? getEdgeCacheHeaders(COMMENTS_EDGE_CACHE_SECONDS)
+        : NO_STORE_HEADERS,
+    );
     return this.commentService.list(id, page);
   }
 
@@ -213,11 +218,57 @@ export class ShareController {
   @Post(":id/comments")
   async createComment(
     @Param("id") id: string,
-    @Body() body: CreateCommentDTO,
+    @Body() body: CommentContentDTO,
     @GetUser() user: User,
   ) {
     if (!user) throw new UnauthorizedException();
-    return this.commentService.create(id, user, body.content);
+    const result = await this.commentService.create(id, user, body.content);
+    await this.shareService.invalidateDataCache(id);
+    return result;
+  }
+
+  @Throttle({
+    default: {
+      limit: 10,
+      ttl: 60 * 1000,
+    },
+  })
+  @UseGuards(IdValidation, ShareSecurityGuard)
+  @Patch(":id/comments/:commentId")
+  async updateComment(
+    @Param("id") id: string,
+    @Param("commentId") commentId: string,
+    @Body() body: CommentContentDTO,
+    @GetUser() user: User,
+  ) {
+    if (!user) throw new UnauthorizedException();
+    const result = await this.commentService.update(
+      id,
+      commentId,
+      user,
+      body.content,
+    );
+    await this.shareService.invalidateDataCache(id);
+    return result;
+  }
+
+  @Throttle({
+    default: {
+      limit: 10,
+      ttl: 60 * 1000,
+    },
+  })
+  @UseGuards(IdValidation, ShareSecurityGuard)
+  @Delete(":id/comments/:commentId")
+  async deleteComment(
+    @Param("id") id: string,
+    @Param("commentId") commentId: string,
+    @GetUser() user: User,
+  ) {
+    if (!user) throw new UnauthorizedException();
+    const result = await this.commentService.remove(id, commentId, user);
+    await this.shareService.invalidateDataCache(id);
+    return result;
   }
 
   @Get(":id/from-owner")

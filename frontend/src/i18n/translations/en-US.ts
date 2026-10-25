@@ -704,6 +704,13 @@ export default {
   "share.custom.comments.signin-hint":
     "Only signed-in users can post comments.",
   "share.custom.comments.plaintext": "Plain text only. Links are removed.",
+  "share.custom.comments.edit": "Edit comment",
+  "share.custom.comments.delete": "Delete comment",
+  "share.custom.comments.updated": "Comment updated.",
+  "share.custom.comments.deleted": "Comment deleted.",
+  "share.custom.comments.delete-title": "Delete comment",
+  "share.custom.comments.delete-description":
+    "This comment will be permanently deleted.",
   "share.custom.uploader.by": "Uploaded by {name}",
   "share.custom.uploader.anonymous": "Anonymous uploader",
   "share.custom.uploader.uploaded-at": "Uploaded {date}",
