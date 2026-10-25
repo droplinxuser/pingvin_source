@@ -552,4 +552,32 @@ const ShareComments = ({
   );
 };
 
+export const ShareCommentsSkeleton = () => (
+  <Paper
+    radius="md"
+    p={{ base: "xs", sm: "sm" }}
+    mt="lg"
+    withBorder
+    aria-hidden
+  >
+    <Group spacing="xs" align="center" noWrap>
+      <Skeleton height={32} width={32} radius="sm" />
+      <Skeleton height={14} width={140} radius="sm" />
+    </Group>
+    <Divider my="sm" />
+    <Skeleton height={58} radius="sm" />
+    <Group position="apart" align="center" mt="xs">
+      <Skeleton height={10} width={150} radius="sm" />
+      <Skeleton height={36} width={96} radius="sm" />
+    </Group>
+    <Box mt="sm">
+      <Stack spacing="xs">
+        {[0, 1, 2].map((index) => (
+          <Skeleton key={index} height={44} radius="sm" />
+        ))}
+      </Stack>
+    </Box>
+  </Paper>
+);
+
 export default ShareComments;

@@ -4,15 +4,18 @@ import {
   Group,
   Paper,
   SimpleGrid,
+  Skeleton,
   Tabs,
   Text,
   Title,
   UnstyledButton,
 } from "@mantine/core";
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { useIntl } from "react-intl";
 import { TbClockHour4, TbEye, TbPlayerPlay, TbWorld } from "react-icons/tb";
 import useTranslate from "../../hooks/useTranslate.hook";
+import shareService from "../../services/share.service";
 import { TrendingCountry } from "../../types/share.type";
 import { countryCodeToFlag, getCountryName } from "../../utils/country.util";
 import { getShareFileUrl } from "../../utils/file.util";
@@ -252,12 +255,37 @@ const TrendingCountries = ({
   const { classes } = useStyles();
   const t = useTranslate();
   const intl = useIntl();
+  const [items, setItems] = useState<TrendingCountry[]>(countries ?? []);
+  const [isLoading, setIsLoading] = useState(!countries?.length);
 
-  if (!countries?.length) return null;
+  useEffect(() => {
+    if (countries?.length) {
+      setItems(countries);
+      setIsLoading(false);
+      return;
+    }
 
-  const visibleCountries = countries.filter(
-    (country) => country.shares.length > 0,
-  );
+    let cancelled = false;
+    setIsLoading(true);
+    shareService
+      .getTrendingCountries()
+      .then((value) => {
+        if (!cancelled) setItems(value);
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setIsLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [countries]);
+
+  if (isLoading) return <TrendingCountriesSkeleton />;
+  if (!items.length) return null;
+
+  const visibleCountries = items.filter((country) => country.shares.length > 0);
   if (visibleCountries.length === 0) return null;
 
   const formatCount = (value: number) => intl.formatNumber(value);
@@ -434,6 +462,56 @@ const TrendingCountries = ({
           );
         })}
       </Tabs>
+    </Paper>
+  );
+};
+
+export const TrendingCountriesSkeleton = () => {
+  const { classes } = useStyles();
+
+  return (
+    <Paper
+      withBorder
+      radius="md"
+      className={classes.root}
+      aria-hidden
+      data-testid="trending-countries-placeholder"
+    >
+      <Group
+        position="apart"
+        align="flex-start"
+        spacing="md"
+        mb="md"
+        className={classes.header}
+      >
+        <Group spacing="sm" noWrap>
+          <Skeleton height={38} width={38} radius="md" />
+          <Box sx={{ minWidth: 0 }}>
+            <Skeleton height={14} width={220} radius="sm" />
+            <Skeleton height={10} width={170} mt={6} radius="sm" />
+          </Box>
+        </Group>
+        <Skeleton height={12} width={110} radius="sm" />
+      </Group>
+
+      <Group spacing={6}>
+        {[110, 96, 104, 90, 100].map((width, index) => (
+          <Skeleton key={index} height={36} width={width} radius="sm" />
+        ))}
+      </Group>
+
+      <SimpleGrid
+        cols={2}
+        spacing="sm"
+        verticalSpacing="sm"
+        className={classes.list}
+        breakpoints={[{ maxWidth: "sm", cols: 1 }]}
+      >
+        {/* The backend caps each country panel at ten shares (five rows). */}
+        {Array.from({ length: 10 }, (_, index) => (
+          <Skeleton key={index} height={62} radius="sm" />
+        ))}
+      </SimpleGrid>
     </Paper>
   );
 };

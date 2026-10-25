@@ -17,13 +17,18 @@ import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 import { FormattedMessage } from "react-intl";
 import Meta from "../../../components/Meta";
-import FileList from "../../../components/share/FileList";
+import LazySection from "../../../components/core/LazySection";
+import FileList, { FileListSkeleton } from "../../../components/share/FileList";
 import MediaPreviewGallery, {
   MediaPreviewGallerySkeleton,
 } from "../../../components/share/MediaPreviewGallery";
 import ShareActions from "../../../components/share/ShareActions";
-import ShareComments from "../../../components/share/ShareComments";
-import ShareStats from "../../../components/share/ShareStats";
+import ShareComments, {
+  ShareCommentsSkeleton,
+} from "../../../components/share/ShareComments";
+import ShareStats, {
+  ShareStatsSkeleton,
+} from "../../../components/share/ShareStats";
 import UploaderInfoBadges from "../../../components/share/UploaderInfoBadges";
 import Ads from "../../../components/Ads";
 import showEnterPasswordModal from "../../../components/share/showEnterPasswordModal";
@@ -101,11 +106,16 @@ const SharePage = ({
     ? (seo?.files ?? []).filter((file) => isLikelyGalleryMedia(file.name))
         .length
     : 0;
-  const hasGalleryMedia = share
-    ? share.files.some((file: { name: string }) =>
-        isLikelyGalleryMedia(file.name),
-      )
-    : skeletonMediaCount > 0;
+  const galleryPlaceholderCount = Math.min(
+    share
+      ? share.files.filter((file: { name: string }) =>
+          isLikelyGalleryMedia(file.name),
+        ).length
+      : skeletonMediaCount,
+    30,
+  );
+  const hasGalleryMedia = galleryPlaceholderCount > 0;
+  const fileSkeletonCount = displayFileCount || 5;
   const metaTitle = indexable
     ? shareName
       ? t("seo.custom.share.title", { name: shareName })
@@ -373,30 +383,58 @@ const SharePage = ({
         />
       </Group>
 
-      {share ? (
-        <MediaPreviewGallery shareId={shareId} files={share.files} />
-      ) : (
-        <MediaPreviewGallerySkeleton count={skeletonMediaCount} />
-      )}
+      <LazySection
+        placeholder={
+          <MediaPreviewGallerySkeleton count={galleryPlaceholderCount} />
+        }
+        rootMargin="600px"
+        busy={!share}
+      >
+        {share ? (
+          <MediaPreviewGallery shareId={shareId} files={share.files} />
+        ) : (
+          <MediaPreviewGallerySkeleton count={galleryPlaceholderCount} />
+        )}
+      </LazySection>
 
       <Ads gallery={hasGalleryMedia} />
 
-      <FileList
-        files={share?.files}
-        share={share!}
-        isLoading={!share}
-        recipientId={recipientId}
-        skeletonCount={displayFileCount || 5}
-      />
-
-      {share && (
-        <ShareComments
-          shareId={shareId}
-          initialVersion={share.commentsVersion ?? 0}
+      <LazySection
+        placeholder={<FileListSkeleton count={fileSkeletonCount} />}
+        rootMargin="400px"
+        busy={!share}
+      >
+        <FileList
+          files={share?.files}
+          share={share!}
+          isLoading={!share}
+          recipientId={recipientId}
+          skeletonCount={fileSkeletonCount}
         />
-      )}
+      </LazySection>
 
-      {share && <ShareStats share={share} />}
+      <LazySection
+        placeholder={<ShareCommentsSkeleton />}
+        rootMargin="400px"
+        busy={!share}
+      >
+        {share ? (
+          <ShareComments
+            shareId={shareId}
+            initialVersion={share.commentsVersion ?? 0}
+          />
+        ) : (
+          <ShareCommentsSkeleton />
+        )}
+      </LazySection>
+
+      <LazySection
+        placeholder={<ShareStatsSkeleton />}
+        rootMargin="400px"
+        busy={!share}
+      >
+        {share ? <ShareStats share={share} /> : <ShareStatsSkeleton />}
+      </LazySection>
     </article>
   );
 };

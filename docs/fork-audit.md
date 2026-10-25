@@ -13,10 +13,10 @@ so `git merge upstream/main` stays small.
 | Admin pagination, search and sorting | `backend/src/share/share.service.ts`, `backend/src/user/user.service.ts` (quota columns sorted and paged in SQL), `frontend/src/pages/admin/*`, `frontend/src/components/core/SortIcon.tsx` |
 | Share reports | `backend/src/share/dto/reportShare.dto.ts`, `backend/src/email/email.service.ts`, `frontend/src/components/share/showReportShareModal.tsx` |
 | Uploader metadata / visitors | `backend/src/utils/uploaderInfo.util.ts`, `ShareDTO.uploaderInfo`, `frontend/src/components/share/UploaderInfoBadges.tsx`, `ShareStats.tsx`; view counts stay in `Share.views`. The recent-visitor list is shown to every visitor (guest, owner, administrator) |
-| Inline media gallery | `frontend/src/components/share/MediaPreviewGallery.tsx` (up to 30 supported image/video thumbnails at 250px for any file size, opening `FilePreview.tsx` in the full-size modal) |
+| Inline media gallery | `frontend/src/components/share/MediaPreviewGallery.tsx` (up to 30 supported image/video thumbnails at 250px for any file size, opening `FilePreview.tsx` in a viewport-fit full-size modal); `frontend/src/components/core/LazySection.tsx` reserves space for the gallery, file list, comments and visitor insights |
 | Individual downloads / legacy ZIP | `frontend/src/components/share/DownloadAllButton.tsx` (confirmation + sequential per-file downloads), `frontend/src/services/share.service.ts` (anchor-based downloads), `backend/src/share/share.service.ts` (no automatic archive creation); existing `archive.zip` files remain served by the legacy API. The share file count uses `share.custom.fileCount` without the old ZIP note. |
 | Share and file size limits | `backend/prisma/seed/config.seed.ts` (`share.maxSize` 5 GB, `share.maxFileSize` 512 MB), migration `20261025000000_raise_share_size_limit`, `backend/src/share/share.util.ts` (`resolveShareSizeLimit`), local/S3 upload guards, `frontend/src/components/upload/Dropzone.tsx` and upload pages |
-| Trending today | `backend/src/cache/trending.service.ts`, `GET /api/shares/trending?limit=48`, `frontend/src/components/share/TrendingToday.tsx`, `frontend/src/pages/trending.tsx`, `frontend/src/pages/_app.tsx` |
+| Trending today | `backend/src/cache/trending.service.ts`, `GET /api/shares/trending?limit=48`, `frontend/src/components/share/TrendingToday.tsx` (client-side, viewport-triggered load with skeleton), `frontend/src/components/share/TrendingCountries.tsx`, `frontend/src/pages/trending.tsx`, `frontend/src/pages/_app.tsx` |
 | Cache headers / hotlink protection | `backend/src/utils/cache.util.ts` (shared `Cache-Control`, `CDN-Cache-Control`, `Cloudflare-CDN-Cache-Control`, public-file `ETag`), `backend/src/utils/referrer.util.ts`, `frontend/src/middleware.ts` (query-free anonymous page shells), `frontend/next.config.js` |
 | Per-IP+User-Agent rate limiting | `backend/src/utils/visitorIdentity.util.ts`, `backend/src/cache/valkeyThrottler.storage.ts`, `backend/src/cache/throttler.config.ts`, `backend/src/main.ts` |
 | Valkey/Redis cache | `backend/src/utils/cache.util.ts`, `backend/src/share/shareState.service.ts`, `backend/src/cache/cache.module.ts`, `backend/src/cache/valkey.service.ts` |
@@ -236,12 +236,15 @@ other languages show the upstream copy instead of the English fallback.
   additional requests.
   `?limit=48` returns the full list for the public `/trending` page; other
   values are clamped to 48. The result is cached in-process for 30 seconds and
-  is edge-cacheable for 60 seconds. The frontend also caches the public list
-  for 30 seconds on the server (`trending.server.util.ts`, used by `_app` and
-  `/trending`) and in the browser service, so client navigation does not repeat
-  the request. Editing, expiring or deleting a share (including removing its
-  files or reverse-share parent) deletes its metadata immediately. If Valkey
-  is unavailable the endpoint returns an empty list and the widget is hidden.
+  is edge-cacheable for 60 seconds. The browser service caches the public list
+  for 30 seconds and the country list for five minutes. Pages no longer fetch
+  trending during SSR: `TrendingToday` waits until the section is near the
+  viewport, then requests the list from the browser. A same-size skeleton grid
+  holds the section open until the cards arrive, so the first share request is
+  never delayed by the ranking request and the page does not jump when it
+  loads. Editing, expiring or deleting a share (including removing its files
+  or reverse-share parent) deletes its metadata immediately. If Valkey is
+  unavailable the endpoint returns an empty list and the widget is hidden.
   Trending cards use a dark gradient over a lightly blurred preview; hovering
   clears the blur and restores the image brightness while the name,
   description, file count, size, upload date and view count stay readable. The
@@ -399,9 +402,24 @@ sign-in redirect for a protected page and loop between `/upload` and
   HTML/`__NEXT_DATA__` instead of importing all 34 files into `_app`. Moment
   locales load on demand only for non-English visitors. The trending widget is
   a lazy SSR chunk shown only on share and 404 pages; it is no longer rendered
-  on the home page or `/upload`. The shared first-load JS dropped from ~744 kB
-  to ~250 kB in the local production build; `/upload` dropped from ~707 kB to
-  ~356 kB after removing the static MDEditor command import.
+  on the home page or `/upload`, and its ranking request starts in the browser
+  only when the widget approaches the viewport. The shared first-load JS
+  dropped from ~744 kB to ~250 kB in the local production build; `/upload`
+  dropped from ~707 kB to ~356 kB after removing the static MDEditor command
+  import.
+- The share page defers its heavy sections with `components/core/LazySection`:
+  the media gallery, file list, comments and visitor insights mount when they
+  are within 400-600px of the viewport. Each section renders its matching
+  skeleton first (or a dedicated skeleton component exported beside it), so
+  the space is reserved and the page does not shift when the content arrives.
+  The comments request is therefore only sent when the section approaches the
+  viewport; the gallery/file list data still comes from the single share
+  response. Native `loading="lazy"` and `LazyVideo` continue to defer the
+  actual media bytes. The full-size file modal is centered, capped at the
+  viewport height, hides its own overflow, and sizes images/videos with
+  `max-width`/`max-height` and `object-fit: contain`, so portrait, landscape
+  and video previews never add a scrollbar at desktop or phone widths (long
+  text previews keep an inner scroll area).
 - Raster share images get a resized 300px WebP preview on first request
   (`?download=false&webp=300`, quality 82) cached under
   `uploads/_previews/v300/<shareId>/<fileId>.webp`. The backend checks the MIME
@@ -919,6 +937,21 @@ sign-in redirect for a protected page and loop between `/upload` and
   scan quota. The admin dashboard and removal email were not exercised live
   because the test account is non-admin and no malicious file was uploaded to
   production.
+
+- Lazy share sections and viewport-fit previews (2026-10-25): `TrendingToday`
+  no longer blocks SSR on `/trending`, `/share/*` or `/404`; it starts its API
+  request from an `IntersectionObserver` and renders the same grid skeleton
+  while loading. The share page now wraps the media gallery, file list,
+  comments and visitor insights in `LazySection` with dedicated skeletons, so
+  comments are fetched only near the viewport and every section keeps its
+  height while loading. The file preview modal is centered and constrained:
+  a 1200x2000 portrait, a 2400x900 landscape, a 640x360 video and a text
+  preview all fit inside 1366x768, 390x844 and 844x390 viewports with zero
+  dialog or horizontal overflow. Guest, signed-in (test account), desktop and
+  mobile Playwright runs covered `/trending`, `/share/*`, `/404`, lazy
+  placeholders and all modal types with no application console errors or
+  warnings; the only console entry was the expected 404 document status for
+  the deliberately missing URL. Backend and frontend production builds pass.
 
 ## Known non-issues
 

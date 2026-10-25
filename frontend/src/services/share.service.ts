@@ -7,6 +7,7 @@ import {
   MyReverseShare,
   MyShare,
   Share,
+  TrendingCountry,
   TrendingShare,
   UpdateShare,
 } from "../types/share.type";
@@ -25,6 +26,10 @@ const isValidId = (id: string) => {
 const TRENDING_CACHE_TTL_MS = 30_000;
 let trendingCache:
   | { at: number; limit: number; items: TrendingShare[] }
+  | undefined;
+const TRENDING_COUNTRIES_CACHE_TTL_MS = 5 * 60 * 1000;
+let trendingCountriesCache:
+  | { at: number; items: TrendingCountry[] }
   | undefined;
 
 const list = async (
@@ -115,6 +120,21 @@ const getTrending = async (limit?: number): Promise<TrendingShare[]> => {
   trendingCache =
     items.length > 0 ? { at: Date.now(), limit: requested, items } : undefined;
   return items.slice(0, requested);
+};
+
+const getTrendingCountries = async (): Promise<TrendingCountry[]> => {
+  if (
+    trendingCountriesCache &&
+    Date.now() - trendingCountriesCache.at < TRENDING_COUNTRIES_CACHE_TTL_MS
+  ) {
+    return trendingCountriesCache.items;
+  }
+
+  const items = (await api.get("shares/trending/countries"))
+    .data as TrendingCountry[];
+  trendingCountriesCache =
+    items.length > 0 ? { at: Date.now(), items } : undefined;
+  return items;
 };
 
 const remove = async (id: string) => {
@@ -468,6 +488,7 @@ export default {
   report,
   expire,
   getTrending,
+  getTrendingCountries,
   getMyShares,
   getReceivedShares,
   isShareIdAvailable,

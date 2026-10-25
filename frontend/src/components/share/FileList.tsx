@@ -11,7 +11,7 @@ import {
 } from "@mantine/core";
 import { useClipboard } from "@mantine/hooks";
 import { useModals } from "@mantine/modals";
-import { useMemo, useState } from "react";
+import { Dispatch, SetStateAction, useMemo, useState } from "react";
 import {
   TbClipboard,
   TbDownload,
@@ -84,6 +84,65 @@ const rowStyle = (theme: MantineTheme) => ({
   },
 });
 
+const FileListHeader = ({
+  sort,
+  setSort,
+}: {
+  sort?: TableSort;
+  setSort?: Dispatch<SetStateAction<TableSort>>;
+}) => {
+  return (
+    <Box
+      px="md"
+      py="xs"
+      sx={(theme) => ({
+        backgroundColor:
+          theme.colorScheme === "dark"
+            ? theme.colors.dark[7]
+            : theme.colors.gray[0],
+        borderBottom: `1px solid ${
+          theme.colorScheme === "dark"
+            ? theme.colors.dark[5]
+            : theme.colors.gray[2]
+        }`,
+      })}
+    >
+      <Box sx={gridStyle}>
+        <Box component="span" aria-hidden />
+        <Group spacing={4} noWrap>
+          <Text size="xs" weight={700} tt="uppercase" color="dimmed">
+            <FormattedMessage id="share.table.name" />
+          </Text>
+          {sort && setSort && (
+            <TableSortIcon sort={sort} setSort={setSort} property="name" />
+          )}
+        </Group>
+        <Group
+          spacing={4}
+          noWrap
+          sx={(theme) => ({
+            [theme.fn.smallerThan("sm")]: { display: "none" },
+          })}
+        >
+          <Text size="xs" weight={700} tt="uppercase" color="dimmed">
+            <FormattedMessage id="share.table.size" />
+          </Text>
+          {sort && setSort && (
+            <TableSortIcon sort={sort} setSort={setSort} property="size" />
+          )}
+        </Group>
+        <Box
+          component="span"
+          aria-hidden
+          sx={(theme) => ({
+            [theme.fn.smallerThan("sm")]: { display: "none" },
+          })}
+        />
+      </Box>
+    </Box>
+  );
+};
+
 const FileList = ({
   files,
   share,
@@ -126,50 +185,7 @@ const FileList = ({
       radius="md"
       sx={{ overflow: "hidden" }}
     >
-      <Box
-        px="md"
-        py="xs"
-        sx={(theme) => ({
-          backgroundColor:
-            theme.colorScheme === "dark"
-              ? theme.colors.dark[7]
-              : theme.colors.gray[0],
-          borderBottom: `1px solid ${
-            theme.colorScheme === "dark"
-              ? theme.colors.dark[5]
-              : theme.colors.gray[2]
-          }`,
-        })}
-      >
-        <Box sx={gridStyle}>
-          <Box component="span" aria-hidden />
-          <Group spacing={4} noWrap>
-            <Text size="xs" weight={700} tt="uppercase" color="dimmed">
-              <FormattedMessage id="share.table.name" />
-            </Text>
-            <TableSortIcon sort={sort} setSort={setSort} property="name" />
-          </Group>
-          <Group
-            spacing={4}
-            noWrap
-            sx={(theme) => ({
-              [theme.fn.smallerThan("sm")]: { display: "none" },
-            })}
-          >
-            <Text size="xs" weight={700} tt="uppercase" color="dimmed">
-              <FormattedMessage id="share.table.size" />
-            </Text>
-            <TableSortIcon sort={sort} setSort={setSort} property="size" />
-          </Group>
-          <Box
-            component="span"
-            aria-hidden
-            sx={(theme) => ({
-              [theme.fn.smallerThan("sm")]: { display: "none" },
-            })}
-          />
-        </Box>
-      </Box>
+      <FileListHeader sort={sort} setSort={setSort} />
 
       <Stack spacing={0}>
         {isLoading
@@ -336,5 +352,12 @@ const skeletonRows = (count: number) =>
       </Group>
     </Box>
   ));
+
+export const FileListSkeleton = ({ count = 5 }: { count?: number }) => (
+  <Paper withBorder radius="md" sx={{ overflow: "hidden" }}>
+    <FileListHeader />
+    <Stack spacing={0}>{skeletonRows(count)}</Stack>
+  </Paper>
+);
 
 export default FileList;

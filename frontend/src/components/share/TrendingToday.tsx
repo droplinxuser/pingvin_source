@@ -4,12 +4,13 @@ import {
   Container,
   createStyles,
   Group,
+  Skeleton,
   Text,
   Title,
   UnstyledButton,
 } from "@mantine/core";
 import Link from "next/link";
-import { ReactNode, useEffect, useState } from "react";
+import { ReactNode, useEffect, useRef, useState } from "react";
 import { useIntl } from "react-intl";
 import {
   TbCalendar,
@@ -238,16 +239,45 @@ const TrendingToday = ({
   const mediaClassName = `${classes.media}${
     previewBlur === 4 ? ` ${classes.mediaSoft}` : ""
   }`;
-  const hasInitialItems = !!initialItems?.length;
   const [items, setItems] = useState<TrendingShare[]>(initialItems ?? []);
-  const [isLoading, setIsLoading] = useState(!hasInitialItems);
+  const [isLoading, setIsLoading] = useState(!initialItems?.length);
+  const [shouldLoad, setShouldLoad] = useState(!!initialItems?.length);
+  const sectionRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
-    if (initialItems?.length) {
-      setItems(initialItems);
-      setIsLoading(false);
+    if (!initialItems?.length) return;
+    setItems(initialItems);
+    setIsLoading(false);
+    setShouldLoad(true);
+  }, [initialItems]);
+
+  // Trending is below the main content on the share and 404 pages. Wait until
+  // it is close to the viewport before asking the API, so a new visitor's first
+  // paint and share request are not competing with this ranking request.
+  useEffect(() => {
+    if (shouldLoad) return;
+    const element = sectionRef.current;
+    if (!element) return;
+
+    if (typeof IntersectionObserver === "undefined") {
+      setShouldLoad(true);
       return;
     }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (!entries[0]?.isIntersecting) return;
+        setShouldLoad(true);
+        observer.disconnect();
+      },
+      { rootMargin: "400px" },
+    );
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [shouldLoad]);
+
+  useEffect(() => {
+    if (!shouldLoad || items.length > 0) return;
 
     // An SSR timeout or an empty edge response must not lock the page into the
     // empty state. Retry in the browser and only show "empty" once that
@@ -267,29 +297,13 @@ const TrendingToday = ({
     return () => {
       cancelled = true;
     };
-  }, [initialItems, limit]);
+  }, [shouldLoad, limit]);
 
-  const visibleItems = initialItems?.length ? initialItems : items;
+  const visibleItems = items;
   const title = t("trending.custom.title");
-  if (visibleItems.length === 0) {
-    if (!embedded) return null;
+  const showPlaceholder = isLoading || !shouldLoad;
 
-    return (
-      <Container className={classes.root}>
-        <section aria-labelledby="trending-title">
-          <Title order={1} id="trending-title" className={classes.heading}>
-            {title}
-          </Title>
-          <Text className={classes.subheading} mt="xs">
-            {isLoading
-              ? t("trending.custom.loading")
-              : t("trending.custom.empty")}
-          </Text>
-        </section>
-        {children}
-      </Container>
-    );
-  }
+  if (!showPlaceholder && visibleItems.length === 0 && !embedded) return null;
 
   const content = (
     <>
@@ -310,141 +324,161 @@ const TrendingToday = ({
           </Title>
         )}
         <Text className={classes.subheading}>
-          {t("trending.custom.description")}
+          {showPlaceholder
+            ? t("trending.custom.loading")
+            : t("trending.custom.description")}
         </Text>
       </Group>
 
       {children}
 
-      <div className={classes.grid} data-testid="trending-grid">
-        {visibleItems.map((item) => {
-          const name = item.name || item.id;
-          const views = item.views.toLocaleString(intl.locale);
-          const url = getShareFileUrl(item.id, item.previewFileId, {
-            download: false,
-          });
-          const imageUrl = getShareFileUrl(item.id, item.previewFileId, {
-            download: false,
-            webp: true,
-          });
-          const createdAt = item.createdAt
-            ? new Date(item.createdAt)
-            : undefined;
-          const uploadedAt =
-            createdAt && !Number.isNaN(createdAt.getTime())
-              ? intl.formatDate(createdAt, {
-                  year: "numeric",
-                  month: "short",
-                  day: "numeric",
-                  timeZone: "UTC",
-                })
-              : undefined;
-          const description = item.description?.trim();
-
-          return (
-            <UnstyledButton
-              key={item.id}
-              component={Link}
-              href={`/share/${item.id}`}
+      {!showPlaceholder && visibleItems.length === 0 ? (
+        <Text className={classes.subheading} mt="xs">
+          {t("trending.custom.empty")}
+        </Text>
+      ) : showPlaceholder ? (
+        <div className={classes.grid} aria-hidden>
+          {Array.from({ length: Math.min(limit, 48) }, (_, index) => (
+            <Box
+              key={index}
               className={classes.card}
-              title={name}
+              sx={{ pointerEvents: "none" }}
             >
-              {item.previewKind === "image" ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  className={mediaClassName}
-                  src={imageUrl}
-                  alt=""
-                  loading="lazy"
-                  decoding="async"
-                  onError={(event) => {
-                    event.currentTarget.style.display = "none";
-                  }}
-                />
-              ) : (
-                <LazyVideo
-                  className={mediaClassName}
-                  src={`${url}#t=0.1`}
-                  muted
-                  playsInline
-                  aria-hidden="true"
-                  onError={(event) => {
-                    event.currentTarget.style.display = "none";
-                  }}
-                />
-              )}
+              <Skeleton height={210} radius={0} />
+            </Box>
+          ))}
+        </div>
+      ) : (
+        <div className={classes.grid} data-testid="trending-grid">
+          {visibleItems.map((item) => {
+            const name = item.name || item.id;
+            const views = item.views.toLocaleString(intl.locale);
+            const url = getShareFileUrl(item.id, item.previewFileId, {
+              download: false,
+            });
+            const imageUrl = getShareFileUrl(item.id, item.previewFileId, {
+              download: false,
+              webp: true,
+            });
+            const createdAt = item.createdAt
+              ? new Date(item.createdAt)
+              : undefined;
+            const uploadedAt =
+              createdAt && !Number.isNaN(createdAt.getTime())
+                ? intl.formatDate(createdAt, {
+                    year: "numeric",
+                    month: "short",
+                    day: "numeric",
+                    timeZone: "UTC",
+                  })
+                : undefined;
+            const description = item.description?.trim();
 
-              <Box component="span" className={classes.scrim} aria-hidden />
+            return (
+              <UnstyledButton
+                key={item.id}
+                component={Link}
+                href={`/share/${item.id}`}
+                className={classes.card}
+                title={name}
+              >
+                {item.previewKind === "image" ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    className={mediaClassName}
+                    src={imageUrl}
+                    alt=""
+                    loading="lazy"
+                    decoding="async"
+                    onError={(event) => {
+                      event.currentTarget.style.display = "none";
+                    }}
+                  />
+                ) : (
+                  <LazyVideo
+                    className={mediaClassName}
+                    src={`${url}#t=0.1`}
+                    muted
+                    playsInline
+                    aria-hidden="true"
+                    onError={(event) => {
+                      event.currentTarget.style.display = "none";
+                    }}
+                  />
+                )}
 
-              <Box component="span" className={classes.topRow}>
-                {item.previewKind === "video" && (
+                <Box component="span" className={classes.scrim} aria-hidden />
+
+                <Box component="span" className={classes.topRow}>
+                  {item.previewKind === "video" && (
+                    <Box
+                      component="span"
+                      className={`${classes.badge} ${classes.mediaBadge}`}
+                    >
+                      <TbPlayerPlay size={14} aria-hidden />
+                      {t("trending.custom.video")}
+                    </Box>
+                  )}
                   <Box
                     component="span"
-                    className={`${classes.badge} ${classes.mediaBadge}`}
+                    className={classes.badge}
+                    aria-label={t("trending.custom.views", {
+                      count: item.views,
+                    })}
                   >
-                    <TbPlayerPlay size={14} aria-hidden />
-                    {t("trending.custom.video")}
+                    <TbEye size={15} aria-hidden />
+                    {views}
                   </Box>
-                )}
-                <Box
-                  component="span"
-                  className={classes.badge}
-                  aria-label={t("trending.custom.views", {
-                    count: item.views,
-                  })}
-                >
-                  <TbEye size={15} aria-hidden />
-                  {views}
                 </Box>
-              </Box>
 
-              <Box component="span" className={classes.body}>
-                <Text component="span" className={classes.name} lineClamp={2}>
-                  {name}
-                </Text>
-                {description && (
-                  <Text
-                    component="span"
-                    className={classes.description}
-                    lineClamp={2}
-                  >
-                    {description}
+                <Box component="span" className={classes.body}>
+                  <Text component="span" className={classes.name} lineClamp={2}>
+                    {name}
                   </Text>
-                )}
-                <Box component="span" className={classes.meta}>
-                  {!!item.fileCount && (
-                    <Box component="span" className={classes.metaItem}>
-                      <TbFiles size={14} aria-hidden />
-                      {t("trending.custom.files", {
-                        count: item.fileCount,
-                      })}
-                    </Box>
+                  {description && (
+                    <Text
+                      component="span"
+                      className={classes.description}
+                      lineClamp={2}
+                    >
+                      {description}
+                    </Text>
                   )}
-                  {!!item.size && (
-                    <Box component="span" className={classes.metaItem}>
-                      <TbDatabase size={14} aria-hidden />
-                      {byteToHumanSizeString(item.size)}
-                    </Box>
-                  )}
-                  {uploadedAt && (
-                    <Box component="span" className={classes.metaItem}>
-                      <TbCalendar size={14} aria-hidden />
-                      <time dateTime={item.createdAt}>
-                        {t("trending.custom.uploaded", { date: uploadedAt })}
-                      </time>
-                    </Box>
-                  )}
+                  <Box component="span" className={classes.meta}>
+                    {!!item.fileCount && (
+                      <Box component="span" className={classes.metaItem}>
+                        <TbFiles size={14} aria-hidden />
+                        {t("trending.custom.files", {
+                          count: item.fileCount,
+                        })}
+                      </Box>
+                    )}
+                    {!!item.size && (
+                      <Box component="span" className={classes.metaItem}>
+                        <TbDatabase size={14} aria-hidden />
+                        {byteToHumanSizeString(item.size)}
+                      </Box>
+                    )}
+                    {uploadedAt && (
+                      <Box component="span" className={classes.metaItem}>
+                        <TbCalendar size={14} aria-hidden />
+                        <time dateTime={item.createdAt}>
+                          {t("trending.custom.uploaded", { date: uploadedAt })}
+                        </time>
+                      </Box>
+                    )}
+                  </Box>
                 </Box>
-              </Box>
-            </UnstyledButton>
-          );
-        })}
-      </div>
+              </UnstyledButton>
+            );
+          })}
+        </div>
+      )}
     </>
   );
 
   return (
-    <section aria-labelledby="trending-title">
+    <section ref={sectionRef} aria-labelledby="trending-title">
       {embedded ? (
         <div className={classes.root}>{content}</div>
       ) : (

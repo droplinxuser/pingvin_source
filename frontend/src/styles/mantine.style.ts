@@ -22,6 +22,10 @@ export default <MantineThemeOverride>{
         title: {
           fontSize: theme.fontSizes.lg,
           fontWeight: 700,
+          maxWidth: "calc(100% - 40px)",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap",
         },
       }),
     },

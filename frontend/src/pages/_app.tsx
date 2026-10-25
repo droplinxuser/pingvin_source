@@ -28,14 +28,12 @@ import userService from "../services/user.service";
 import GlobalStyle from "../styles/global.style";
 import globalStyle from "../styles/mantine.style";
 import Config from "../types/config.type";
-import { TrendingShare } from "../types/share.type";
 import { CurrentUser } from "../types/user.type";
 import i18nUtil from "../utils/i18n.util";
 import { isPublicPageRoute } from "../utils/router.util";
 import userPreferences from "../utils/userPreferences.util";
 import Footer from "../components/footer/Footer";
 import { fetchConfig } from "../utils/config.server.util";
-import { fetchTrending } from "../utils/trending.server.util";
 import { installGlobalErrorReporter } from "../utils/errorReporter.util";
 import AdminNoticeModal, {
   AdminNotice,
@@ -424,9 +422,7 @@ function App({ Component, pageProps }: AppProps) {
                         <Container>
                           <Component {...pageProps} />
                         </Container>
-                        {showTrending && (
-                          <TrendingToday initialItems={pageProps.trending} />
-                        )}
+                        {showTrending && <TrendingToday />}
                       </Box>
                       <Footer />
                     </Stack>
@@ -456,7 +452,6 @@ App.getInitialProps = async ({
     language?: string;
     messages?: Record<string, string>;
     isConfigFallback?: boolean;
-    trending?: TrendingShare[];
   } = {
     route: ctx.resolvedUrl,
     colorScheme:
@@ -466,10 +461,6 @@ App.getInitialProps = async ({
   if (ctx.req) {
     const apiURL = process.env.API_URL || "http://localhost:8080";
     const cookieHeader = ctx.req.headers.cookie;
-    const trendingRequest =
-      ctx.pathname && trendingWidgetRoutes.includes(ctx.pathname)
-        ? fetchTrending(apiURL)
-        : undefined;
 
     // Start the public config request before the account lookup so SSR only
     // waits for the slower of the two, not for both in sequence.
@@ -491,7 +482,6 @@ App.getInitialProps = async ({
     const { config, fallback } = await configRequest;
     pageProps.configVariables = config;
     pageProps.isConfigFallback = fallback;
-    if (trendingRequest) pageProps.trending = await trendingRequest;
 
     pageProps.route = ctx.req.url;
 

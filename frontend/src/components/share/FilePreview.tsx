@@ -1,5 +1,6 @@
 import {
   ActionIcon,
+  Box,
   Center,
   Group,
   Stack,
@@ -16,6 +17,10 @@ import api from "../../services/api.service";
 import { getShareFileUrl } from "../../utils/file.util";
 import { HoverTip } from "../core/HoverTip";
 import LazyVideo from "../core/LazyVideo";
+
+// The modal itself is capped at 90dvh. Leave room for its header, body padding
+// and the action row so images and videos never make the dialog scroll.
+const MEDIA_MAX_HEIGHT = "calc(90dvh - 160px)";
 
 const FilePreviewContext = React.createContext<{
   shareId: string;
@@ -136,13 +141,27 @@ const VideoPreview = () => {
   const { shareId, fileId, setIsNotSupported } =
     React.useContext(FilePreviewContext);
   return (
-    <LazyVideo
-      src={getShareFileUrl(shareId, fileId, { download: false })}
-      width="100%"
-      controls
-      playsInline
-      onError={() => setIsNotSupported(true)}
-    />
+    <Box
+      sx={{
+        display: "flex",
+        justifyContent: "center",
+        maxWidth: "100%",
+      }}
+    >
+      <LazyVideo
+        src={getShareFileUrl(shareId, fileId, { download: false })}
+        controls
+        playsInline
+        style={{
+          maxWidth: "100%",
+          maxHeight: MEDIA_MAX_HEIGHT,
+          width: "auto",
+          height: "auto",
+          objectFit: "contain",
+        }}
+        onError={() => setIsNotSupported(true)}
+      />
+    </Box>
   );
 };
 
@@ -150,17 +169,31 @@ const ImagePreview = () => {
   const { shareId, fileId, fileName, setIsNotSupported } =
     React.useContext(FilePreviewContext);
   return (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img
-      // The full-size modal uses the original image; 300px WebP thumbnails are
-      // only for the gallery and trending grids.
-      src={getShareFileUrl(shareId, fileId, { download: false })}
-      alt={`Preview of ${fileName || fileId}`}
-      style={{ width: "100%", height: "auto" }}
-      loading="lazy"
-      decoding="async"
-      onError={() => setIsNotSupported(true)}
-    />
+    <Box
+      sx={{
+        display: "flex",
+        justifyContent: "center",
+        maxWidth: "100%",
+      }}
+    >
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        // The full-size modal uses the original image; 300px WebP thumbnails
+        // are only for the gallery and trending grids.
+        src={getShareFileUrl(shareId, fileId, { download: false })}
+        alt={`Preview of ${fileName || fileId}`}
+        style={{
+          maxWidth: "100%",
+          maxHeight: MEDIA_MAX_HEIGHT,
+          width: "auto",
+          height: "auto",
+          objectFit: "contain",
+        }}
+        loading="lazy"
+        decoding="async"
+        onError={() => setIsNotSupported(true)}
+      />
+    </Box>
   );
 };
 
@@ -210,7 +243,17 @@ const TextPreview = () => {
     },
   };
 
-  return <Markdown options={options}>{text}</Markdown>;
+  return (
+    <Box
+      sx={{
+        maxHeight: MEDIA_MAX_HEIGHT,
+        overflowY: "auto",
+        overflowWrap: "anywhere",
+      }}
+    >
+      <Markdown options={options}>{text}</Markdown>
+    </Box>
+  );
 };
 
 const PdfPreview = () => {

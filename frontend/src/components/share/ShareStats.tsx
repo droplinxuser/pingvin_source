@@ -5,6 +5,7 @@ import {
   Group,
   Paper,
   SimpleGrid,
+  Skeleton,
   Text,
   ThemeIcon,
 } from "@mantine/core";
@@ -158,5 +159,36 @@ const ShareStats = ({ share }: { share: Share }) => {
     </Paper>
   );
 };
+
+export const ShareStatsSkeleton = () => (
+  <Paper
+    radius="md"
+    p={{ base: "xs", sm: "sm" }}
+    mt="md"
+    withBorder
+    aria-hidden
+  >
+    <Group position="apart" align="center" spacing="md">
+      <Group spacing="xs" align="center" noWrap>
+        <Skeleton height={28} width={28} radius="sm" />
+        <Skeleton height={12} width={110} radius="sm" />
+      </Group>
+      <Skeleton height={20} width={42} radius="sm" />
+    </Group>
+    <Divider my={4} />
+    <SimpleGrid
+      cols={1}
+      spacing={4}
+      breakpoints={[
+        { minWidth: "sm", cols: 2 },
+        { minWidth: "md", cols: 3 },
+      ]}
+    >
+      {[0, 1, 2].map((index) => (
+        <Skeleton key={index} height={38} radius="sm" />
+      ))}
+    </SimpleGrid>
+  </Paper>
+);
 
 export default ShareStats;
