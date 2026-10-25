@@ -11,5 +11,9 @@
   "reportText": "A share on {appName} was reported.\n\nShare: {shareName}\nShare ID: {shareId}\nLink: {shareUrl}\n\nFiles:\n{fileList}\n\nReason: {reason}\n\nAdditional details:\n{message}",
   "reportMessageFallback": "None",
   "reportEmailNotConfigured": "No email address is configured for report notifications",
+  "malwareRemovedSubject": "VirusTotal removed a file from your share",
+  "malwareRemovedText": "Hey {name}!\n\nVirusTotal flagged {fileName} as malicious, so it was removed from your share {shareId}.\n\n{status}\n\nShare: {shareUrl}\n\nIf you believe this is a mistake, contact the site administrator.\n\n{appName}",
+  "malwareRemovedShareRemoved": "The share was removed because no files remained.",
+  "malwareRemovedShareKept": "The share is still available with {count} clean file(s).",
   "locale": "en-US"
 }

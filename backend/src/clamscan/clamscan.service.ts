@@ -175,6 +175,7 @@ export class ClamScanService {
     shareId: string,
     fileId: string,
     fileName: string,
+    removedReason?: string,
   ): Promise<number> {
     const storageProvider = await this.fileService.getStorageProvider(shareId);
     await this.fileService.remove(shareId, fileId);
@@ -199,7 +200,9 @@ export class ClamScanService {
         where: { id: shareId },
         data: {
           isZipReady: false,
-          removedReason: `Your share got removed because the file(s) ${fileName} are malicious.`,
+          removedReason:
+            removedReason ??
+            `Your share got removed because the file(s) ${fileName} are malicious.`,
         },
       });
     } else {

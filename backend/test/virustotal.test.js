@@ -45,8 +45,11 @@ function createValkey() {
 function createService(overrides = {}) {
   const content = Buffer.from("test payload");
   const removed = [];
+  const removalReasons = [];
   const auditEvents = [];
   const auditCalls = [];
+  const knownHashes = new Set();
+  const emails = [];
   const valkeyMock = overrides.valkey ?? createValkey();
   const queue = overrides.queue ?? {
     jobs: [],
@@ -76,6 +79,13 @@ function createService(overrides = {}) {
         email: "tester@example.com",
       },
     }),
+    isKnownMaliciousHash: async (hash) => knownHashes.has(hash),
+    rememberMaliciousHash: async (hash) => knownHashes.add(hash),
+  };
+  const email = {
+    sendMalwareRemovalEmail: async (...args) => {
+      emails.push(args);
+    },
   };
   const service = new VirusTotalService(
     {
@@ -83,14 +93,16 @@ function createService(overrides = {}) {
       exists: overrides.exists ?? (async () => true),
     },
     {
-      removeMaliciousFile: async (shareId, fileId, fileNames) => {
+      removeMaliciousFile: async (shareId, fileId, fileNames, reason) => {
         removed.push({ shareId, fileId, fileNames });
-        return 1;
+        removalReasons.push(reason);
+        return overrides.remainingFiles ?? 1;
       },
     },
     valkeyMock.valkey,
     audit,
     queue,
+    email,
   );
   service.waitForRequestSlot = async () => true;
   service.running = true;
@@ -99,8 +111,11 @@ function createService(overrides = {}) {
     service,
     content,
     removed,
+    removalReasons,
     auditEvents,
     auditCalls,
+    knownHashes,
+    emails,
     valkey: valkeyMock,
     queue,
   };
@@ -263,7 +278,14 @@ test("uploads an unknown file and starts polling its analysis", async () => {
 });
 
 test("removes only the offending file when the completed analysis is malicious", async () => {
-  const { service, removed, auditEvents } = createService();
+  const {
+    service,
+    removed,
+    removalReasons,
+    auditEvents,
+    knownHashes,
+    emails,
+  } = createService();
   const originalFetch = global.fetch;
   global.fetch = async () =>
     jsonResponse({
@@ -276,12 +298,22 @@ test("removes only the offending file when the completed analysis is malicious",
     });
 
   try {
-    const next = await service.analysisJob(
-      job({ stage: "analysis", analysisId: "analysis-1" }),
-    );
+    const target = job({ stage: "analysis", analysisId: "analysis-1" });
+    const next = await service.analysisJob(target);
     assert.equal(next, undefined);
     assert.deepEqual(removed, [
       { shareId: "share-1", fileId: "file-1", fileNames: "document.pdf" },
+    ]);
+    assert.match(removalReasons[0], /VirusTotal flagged/);
+    assert.equal(knownHashes.has(target.hash), true);
+    assert.deepEqual(emails, [
+      [
+        "tester@example.com",
+        "share-1",
+        "document.pdf",
+        1,
+        "Test User",
+      ],
     ]);
     assert.equal(auditEvents.at(-1).type, "malicious");
     assert.equal(auditEvents.at(-1).removed, true);
@@ -290,6 +322,69 @@ test("removes only the offending file when the completed analysis is malicious",
   } finally {
     global.fetch = originalFetch;
   }
+});
+
+test("removes a permanently known malicious hash without an API call", async () => {
+  const {
+    service,
+    content,
+    removed,
+    removalReasons,
+    auditEvents,
+    knownHashes,
+    emails,
+  } = createService();
+  const hash = crypto.createHash("sha256").update(content).digest("hex");
+  knownHashes.add(hash);
+
+  const originalFetch = global.fetch;
+  let fetched = false;
+  global.fetch = async () => {
+    fetched = true;
+    return jsonResponse({});
+  };
+
+  try {
+    const next = await service.hashJob(job({ stage: "hash", hash: undefined }));
+    assert.equal(next, undefined);
+    assert.equal(fetched, false);
+    assert.deepEqual(removed, [
+      { shareId: "share-1", fileId: "file-1", fileNames: "document.pdf" },
+    ]);
+    assert.match(removalReasons[0], /VirusTotal flagged/);
+    assert.equal(emails.length, 1);
+    assert.equal(auditEvents.at(-1).type, "malicious");
+    assert.equal(auditEvents.at(-1).cached, true);
+  } finally {
+    global.fetch = originalFetch;
+  }
+});
+
+test("notifies the reverse-share owner when an anonymous upload is removed", async () => {
+  const { service, auditEvents, emails } = createService({ remainingFiles: 0 });
+  service.audit.captureUploader = async () => ({
+    anonymous: true,
+    reverseShareCreator: {
+      id: "user-2",
+      username: "owner",
+      displayName: "Reverse Owner",
+      email: "owner@example.com",
+    },
+  });
+  service.audit.isKnownMaliciousHash = async () => true;
+
+  const next = await service.hashJob(job({ stage: "hash", hash: undefined }));
+  assert.equal(next, undefined);
+  assert.deepEqual(emails, [
+    [
+      "owner@example.com",
+      "share-1",
+      "document.pdf",
+      0,
+      "Reverse Owner",
+    ],
+  ]);
+  assert.equal(auditEvents.at(-1).type, "malicious");
 });
 
 test("sets a cooldown and keeps the job after HTTP 429", async () => {

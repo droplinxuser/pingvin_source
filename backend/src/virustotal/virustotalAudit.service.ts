@@ -14,6 +14,8 @@ import { AnalysisStats, ScanVerdict } from "./virustotal.util";
 
 const STATE_DIRECTORY = join(DATA_DIRECTORY, "virustotal");
 const STATE_FILE = join(STATE_DIRECTORY, "state.json");
+const MALICIOUS_HASH_FILE = join(STATE_DIRECTORY, "malicious-hashes.txt");
+const SHA256_PATTERN = /^[a-f0-9]{64}$/;
 const STATE_VERSION = 1;
 const MAX_EVENTS = 200;
 const CALL_RETENTION_MS = 48 * 60 * 60 * 1000;
@@ -152,9 +154,11 @@ function localDayStart(timestamp: number) {
 }
 
 /**
- * Bounded, file-backed operational history for the VirusTotal worker. It is
- * deliberately not stored in SQLite: one JSON state file under the data
- * directory holds recent events, API-call timestamps and daily counters.
+ * Bounded, file-backed operational history and permanent malicious-hash
+ * blocklist for the VirusTotal worker. It is deliberately not stored in
+ * SQLite: one JSON state file holds recent events, API-call timestamps and
+ * daily counters, while confirmed malicious hashes live in a separate plain
+ * text file under the data directory.
  */
 @Injectable()
 export class VirusTotalAuditService
@@ -166,11 +170,15 @@ export class VirusTotalAuditService
   private writeTimer?: NodeJS.Timeout;
   private writePromise: Promise<void> = Promise.resolve();
   private lastWriteErrorLog = 0;
+  private readonly maliciousHashes = new Set<string>();
+  private hashesLoaded = false;
+  private hashesLoadPromise?: Promise<void>;
 
   constructor(private readonly prisma: PrismaService) {}
 
   async onModuleInit() {
     await this.load();
+    await this.ensureMaliciousHashesLoaded();
     // Make the file-backed store visible to administrators before the first
     // scan event, without overwriting an existing or corrupt file.
     try {
@@ -345,6 +353,63 @@ export class VirusTotalAuditService
         `Could not capture uploader context for share ${shareId}: ${error}`,
       );
       return undefined;
+    }
+  }
+
+  /**
+   * Permanent malicious-hash blocklist. Confirmed malicious SHA-256 values are
+   * appended to one small text file under the data directory, so a repeated
+   * upload can be removed without spending a VirusTotal API call. This file is
+   * deliberately separate from the Valkey verdict cache and SQLite: it only
+   * grows with confirmed malicious files, not every upload.
+   */
+  async isKnownMaliciousHash(hash: string): Promise<boolean> {
+    await this.ensureMaliciousHashesLoaded();
+    return this.maliciousHashes.has(hash.trim().toLowerCase());
+  }
+
+  async rememberMaliciousHash(hash: string): Promise<void> {
+    const normalized = hash.trim().toLowerCase();
+    if (!SHA256_PATTERN.test(normalized)) return;
+
+    await this.ensureMaliciousHashesLoaded();
+    if (this.maliciousHashes.has(normalized)) return;
+    this.maliciousHashes.add(normalized);
+
+    try {
+      await fs.mkdir(STATE_DIRECTORY, { recursive: true });
+      await fs.appendFile(MALICIOUS_HASH_FILE, `${normalized}\n`, {
+        mode: 0o600,
+      });
+    } catch (error) {
+      this.logger.warn(
+        `Could not persist malicious hash: ${error instanceof Error ? error.message : error}`,
+      );
+    }
+  }
+
+  private async ensureMaliciousHashesLoaded() {
+    if (this.hashesLoaded) return;
+    this.hashesLoadPromise ??= this.loadMaliciousHashes().finally(() => {
+      this.hashesLoaded = true;
+      this.hashesLoadPromise = undefined;
+    });
+    await this.hashesLoadPromise;
+  }
+
+  private async loadMaliciousHashes() {
+    try {
+      const contents = await fs.readFile(MALICIOUS_HASH_FILE, "utf8");
+      for (const line of contents.split("\n")) {
+        const hash = line.trim().toLowerCase();
+        if (SHA256_PATTERN.test(hash)) this.maliciousHashes.add(hash);
+      }
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
+        this.logger.warn(
+          `Could not read malicious hashes: ${error instanceof Error ? error.message : error}`,
+        );
+      }
     }
   }
 

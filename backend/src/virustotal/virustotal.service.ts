@@ -11,8 +11,12 @@ import * as https from "https";
 import { Readable } from "stream";
 import { ValkeyService } from "src/cache/valkey.service";
 import { ClamScanService } from "src/clamscan/clamscan.service";
+import { EmailService } from "src/email/email.service";
 import { FileService } from "src/file/file.service";
-import { VirusTotalAuditService } from "./virustotalAudit.service";
+import {
+  VirusTotalAuditService,
+  VirusTotalUploader,
+} from "./virustotalAudit.service";
 import {
   ScanJob,
   ScanStage,
@@ -117,6 +121,7 @@ export class VirusTotalService implements OnModuleInit, OnApplicationShutdown {
     private readonly valkey: ValkeyService,
     private readonly audit: VirusTotalAuditService,
     private readonly queue: VirusTotalQueueService,
+    private readonly email: EmailService,
   ) {}
 
   onModuleInit() {
@@ -286,34 +291,32 @@ export class VirusTotalService implements OnModuleInit, OnApplicationShutdown {
       this.currentStream = stream;
 
       const hash = await sha256Stream(stream);
+      const hashedJob = { ...job, hash };
+
+      // A permanent malicious-hash ledger under the data directory catches
+      // re-uploads without spending an API call, even after the Valkey verdict
+      // cache has expired or the backend has restarted.
+      if (await this.audit.isKnownMaliciousHash(hash)) {
+        await this.handleMalicious(hashedJob, { cached: true });
+        return undefined;
+      }
+
       const cached = await this.getVerdict(hash);
       if (cached === "malicious") {
-        const uploader = await this.audit.captureUploader(job.shareId);
-        const remainingFiles = await this.removeMaliciousFile(job);
-        this.audit.recordEvent({
-          type: "malicious",
-          ...this.jobEvent(job),
-          hash,
-          verdict: "malicious",
-          cached: true,
-          removed: remainingFiles !== undefined,
-          detail: this.removalDetail(remainingFiles),
-          uploader,
-        });
+        await this.handleMalicious(hashedJob, { cached: true });
         return undefined;
       }
       if (cached) {
         this.audit.recordEvent({
           type: cached,
-          ...this.jobEvent(job),
-          hash,
+          ...this.jobEvent(hashedJob),
           verdict: cached,
           cached: true,
         });
         return undefined;
       }
 
-      return { ...job, stage: "lookup", hash, attempts: 0 };
+      return { ...hashedJob, stage: "lookup", attempts: 0 };
     } catch (error) {
       stream?.destroy();
       this.logger.debug(
@@ -975,17 +978,7 @@ export class VirusTotalService implements OnModuleInit, OnApplicationShutdown {
 
     await this.setVerdict(job.hash, verdict);
     if (verdict === "malicious") {
-      const uploader = await this.audit.captureUploader(job.shareId);
-      const remainingFiles = await this.removeMaliciousFile(job);
-      this.audit.recordEvent({
-        type: "malicious",
-        ...this.jobEvent(job),
-        verdict,
-        stats,
-        removed: remainingFiles !== undefined,
-        detail: this.removalDetail(remainingFiles),
-        uploader,
-      });
+      await this.handleMalicious(job, { stats });
     } else {
       this.audit.recordEvent({
         type: verdict,
@@ -1000,6 +993,54 @@ export class VirusTotalService implements OnModuleInit, OnApplicationShutdown {
       }
     }
     return true;
+  }
+
+  private async handleMalicious(
+    job: ScanJob,
+    extra: { stats?: AnalysisStats; cached?: boolean } = {},
+  ) {
+    const uploader = await this.audit.captureUploader(job.shareId);
+    const remainingFiles = await this.removeMaliciousFile(job);
+
+    if (job.hash) await this.audit.rememberMaliciousHash(job.hash);
+
+    this.audit.recordEvent({
+      type: "malicious",
+      ...this.jobEvent(job),
+      verdict: "malicious",
+      ...extra,
+      removed: remainingFiles !== undefined,
+      detail: this.removalDetail(remainingFiles),
+      uploader,
+    });
+
+    if (remainingFiles !== undefined)
+      await this.notifyMalwareRemoval(job, uploader, remainingFiles);
+  }
+
+  private async notifyMalwareRemoval(
+    job: ScanJob,
+    uploader: VirusTotalUploader | undefined,
+    remainingFiles: number,
+  ) {
+    // Registered creators are the uploader. For an anonymous reverse-share
+    // upload there is no uploader account, so notify the reverse-share owner.
+    const recipient = uploader?.creator ?? uploader?.reverseShareCreator;
+    if (!recipient?.email) return;
+
+    try {
+      await this.email.sendMalwareRemovalEmail(
+        recipient.email,
+        job.shareId,
+        job.name,
+        remainingFiles,
+        recipient.displayName || recipient.username,
+      );
+    } catch (error) {
+      this.logger.warn(
+        `Could not send VirusTotal removal notice for share ${job.shareId}: ${errorMessage(error)}`,
+      );
+    }
   }
 
   private rememberVerdict(hash: string, verdict: ScanVerdict) {
@@ -1022,6 +1063,7 @@ export class VirusTotalService implements OnModuleInit, OnApplicationShutdown {
         job.shareId,
         job.fileId,
         job.name,
+        `Your share got removed because VirusTotal flagged the file(s) ${job.name} as malicious.`,
       );
       this.logger.warn(
         `VirusTotal removed ${job.name} from share ${job.shareId}; ${remainingFiles} file(s) remain`,

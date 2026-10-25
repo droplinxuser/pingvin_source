@@ -207,6 +207,30 @@ test("captures registered and anonymous reverse-share uploaders", async () => {
   await service.onApplicationShutdown();
 });
 
+test("persists malicious hashes in a static file across restarts", async () => {
+  const hash = "c".repeat(64);
+  const service = new VirusTotalAuditService(mockPrisma(null));
+  await service.onModuleInit();
+  assert.equal(await service.isKnownMaliciousHash(hash), false);
+
+  await service.rememberMaliciousHash(hash.toUpperCase());
+  assert.equal(await service.isKnownMaliciousHash(hash), true);
+  await service.onApplicationShutdown();
+
+  const hashFile = path.join(
+    dataDirectory,
+    "virustotal",
+    "malicious-hashes.txt",
+  );
+  assert.equal(fs.readFileSync(hashFile, "utf8"), `${hash}\n`);
+  assert.equal(fs.statSync(hashFile).mode & 0o777, 0o600);
+
+  const reloaded = new VirusTotalAuditService(mockPrisma(null));
+  await reloaded.onModuleInit();
+  assert.equal(await reloaded.isKnownMaliciousHash(hash), true);
+  await reloaded.onApplicationShutdown();
+});
+
 test("caps retained events at two hundred", async () => {
   const service = new VirusTotalAuditService(mockPrisma(null));
   await service.onModuleInit();

@@ -132,12 +132,22 @@ other languages show the upstream copy instead of the English fallback.
   up to 512 MB (files above 32 MiB use VirusTotal's large-file upload URL,
   which also requires the `x-apikey` header).
   Terminal verdicts are cached as one `pingvin:virustotal:verdict:<sha256>` key
-  for seven days. HTTP 429 sets a cooldown key, 401 pauses scanning until the
-  backend restarts, 403 is treated as a per-operation ForbiddenError, and
-  5xx/network failures retry up to three times. A
-  malicious VirusTotal verdict removes only the offending file and keeps clean
-  files online. If no files remain, the share gets a `removedReason` and
-  returns 404; otherwise its stale ZIP is deleted and `isZipReady` is reset.
+  for seven days. Confirmed malicious SHA-256 values are also appended to a
+  permanent static ledger at
+  `DATA_DIRECTORY/virustotal/malicious-hashes.txt` (one hash per line, mode
+  `600`), loaded once at startup, so re-uploading a known malicious file is
+  removed immediately without an API request. Clean and suspicious verdicts
+  stay in the seven-day Valkey cache and are rechecked, because a clean result
+  can become malicious as VirusTotal signatures change. HTTP 429 sets a
+  cooldown key, 401 pauses scanning until the backend restarts, 403 is treated
+  as a per-operation ForbiddenError, and 5xx/network failures retry up to three
+  times. A malicious VirusTotal verdict removes only the offending file and
+  keeps clean files online. If no files remain, the share gets a
+  VirusTotal-specific `removedReason` and returns 404; otherwise its stale ZIP
+  is deleted and `isZipReady` is reset. The registered share creator (or the
+  reverse-share owner for an anonymous upload) receives an email naming the
+  removed file, the share, and whether clean files remain; an SMTP failure is
+  logged without interrupting the scan.
   No replacement archive is built because automatic ZIP generation is disabled.
   ClamAV continues to remove the whole share. No scan state is written to SQLite.
   Operational history is file-backed at
@@ -837,6 +847,26 @@ sign-in redirect for a protected page and loop between `/upload` and
   builds pass, and the local admin dashboard showed "API key accepted" and
   "Worker running" at 1366px and 390px with zero console errors or warnings
   across guest, signed-in and admin pages.
+- VirusTotal removal notices and permanent hashes (2026-10-25): confirmed
+  malicious SHA-256 values are now appended to
+  `DATA_DIRECTORY/virustotal/malicious-hashes.txt` and loaded on startup. A
+  local share whose file hash was pre-seeded in that file was removed by the
+  hash stage with `cached=true` and no new VirusTotal API call; the share
+  returned 404 and its stored reason names VirusTotal. A mock SMTP server
+  captured the uploader notice with the file name, share link and
+  "share removed because no files remained" status, and the SMTP-disabled path
+  silently skips the notice. The admin dashboard rendered the malicious event
+  at 1366px with no console messages. All 93 backend unit tests pass (new
+  permanent-ledger, repeat-hash, reverse-owner recipient, email and
+  custom-reason cases), and both production builds pass.
+- Live post-update audit (2026-10-25): after the large-upload fix was deployed,
+  a Playwright pass covered the home, trending, sign-in, legal, public-share,
+  upload, account, received and reverse-share pages as a guest and with the
+  non-admin test account at 1366px, plus home/trending/upload/share at 390px.
+  Every page had one H1 and no horizontal overflow; there were no console
+  errors or warnings. `/admin` redirected the non-admin account to `/upload`.
+  The admin dashboard itself was not opened live because the test account is
+  non-admin.
 
 ## Known non-issues
 

@@ -187,6 +187,39 @@ export class EmailService {
     );
   }
 
+  async sendMalwareRemovalEmail(
+    recipientEmail: string,
+    shareId: string,
+    fileName: string,
+    remainingFiles: number,
+    recipientName?: string,
+  ) {
+    if (!this.config.get("smtp.enabled")) return;
+
+    const shareUrl = `${this.config.get("general.appUrl")}/s/${shareId}`;
+    const vars = {
+      appName: this.config.get("general.appName"),
+      name: recipientName ?? "",
+      fileName,
+      shareId,
+      shareUrl,
+      status:
+        remainingFiles === 0
+          ? this.i18n.t("email.malwareRemovedShareRemoved")
+          : this.i18n.t("email.malwareRemovedShareKept", {
+              args: { count: remainingFiles },
+            }),
+    };
+
+    await this.sendMail(
+      recipientEmail,
+      this.i18n.t("email.malwareRemovedSubject", { args: vars }),
+      this.i18n.t("email.malwareRemovedText", { args: vars }),
+      undefined,
+      recipientName,
+    );
+  }
+
   async sendMailToReverseShareCreator(
     recipientEmail: string,
     shareId: string,

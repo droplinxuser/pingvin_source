@@ -85,6 +85,23 @@ test("removes only the offending file and keeps clean files", async () => {
   assert.equal(calls.cacheDel.length, 2);
 });
 
+test("uses a custom removed reason when provided", async () => {
+  writeArchive();
+  const { service, calls } = createService(0);
+
+  await service.removeMaliciousFile(
+    shareId,
+    fileId,
+    fileName,
+    "Your share got removed because VirusTotal flagged the file(s) infected.zip as malicious.",
+  );
+
+  assert.equal(
+    calls.updates[0].data.removedReason,
+    "Your share got removed because VirusTotal flagged the file(s) infected.zip as malicious.",
+  );
+});
+
 test("marks the share removed when the offending file was the last file", async () => {
   writeArchive();
   const { service, calls } = createService(0);
