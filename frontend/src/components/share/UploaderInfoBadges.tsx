@@ -1,7 +1,7 @@
 import { Group, Stack, Text } from "@mantine/core";
 import moment from "moment";
-import { ReactNode } from "react";
 import { useIntl } from "react-intl";
+import type { IconType } from "react-icons";
 import {
   FaAndroid,
   FaApple,
@@ -20,27 +20,33 @@ import { Share, UploaderInfo } from "../../types/share.type";
 import { countryCodeToFlag, getCountryName } from "../../utils/country.util";
 import { HoverTip } from "../core/HoverTip";
 
-const iconProps = { size: 16 };
-const ICONS: Record<string, ReactNode> = {
-  Windows: <FaWindows {...iconProps} />,
-  macOS: <FaApple {...iconProps} />,
-  Linux: <FaLinux {...iconProps} />,
-  Android: <FaAndroid {...iconProps} />,
-  iOS: <SiIos {...iconProps} />,
-  ChromeOS: <FaChrome {...iconProps} />,
-  Chrome: <FaChrome {...iconProps} />,
-  Firefox: <FaFirefox {...iconProps} />,
-  Safari: <FaSafari {...iconProps} />,
-  Edge: <FaEdge {...iconProps} />,
-  Opera: <FaOpera {...iconProps} />,
-  Brave: <SiBrave {...iconProps} />,
+const ICON_SIZE = 16;
+const UNKNOWN_ICON_COLOR = "#868E96";
+const ICONS: Record<string, { Icon: IconType; color: string }> = {
+  Windows: { Icon: FaWindows, color: "#0078D4" },
+  macOS: { Icon: FaApple, color: "#8E8E93" },
+  Linux: { Icon: FaLinux, color: "#E5A50A" },
+  Android: { Icon: FaAndroid, color: "#3DDC84" },
+  iOS: { Icon: SiIos, color: "#8E8E93" },
+  ChromeOS: { Icon: FaChrome, color: "#4285F4" },
+  Chrome: { Icon: FaChrome, color: "#4285F4" },
+  Firefox: { Icon: FaFirefox, color: "#FF7139" },
+  Safari: { Icon: FaSafari, color: "#006CFF" },
+  Edge: { Icon: FaEdge, color: "#0078D4" },
+  Opera: { Icon: FaOpera, color: "#FF1B2D" },
+  Brave: { Icon: SiBrave, color: "#FB542B" },
 };
 
-export const getOsIcon = (os?: string) =>
-  ICONS[os ?? ""] ?? <TbDeviceLaptop {...iconProps} />;
+const renderIcon = (name: string | undefined, Fallback: IconType) => {
+  const entry = ICONS[name ?? ""];
+  const Icon = entry?.Icon ?? Fallback;
+  return <Icon size={ICON_SIZE} color={entry?.color ?? UNKNOWN_ICON_COLOR} />;
+};
+
+export const getOsIcon = (os?: string) => renderIcon(os, TbDeviceLaptop);
 
 export const getBrowserIcon = (browser?: string) =>
-  ICONS[browser ?? ""] ?? <TbBrowser {...iconProps} />;
+  renderIcon(browser, TbBrowser);
 
 export const iconStyle = {
   display: "inline-flex",
@@ -99,7 +105,7 @@ const UploaderInfoBadges = ({
       icon: info?.country ? (
         countryCodeToFlag(info.country)
       ) : (
-        <TbWorld {...iconProps} />
+        <TbWorld size={ICON_SIZE} color={UNKNOWN_ICON_COLOR} />
       ),
     },
     {

@@ -421,7 +421,12 @@ sign-in redirect for a protected page and loop between `/upload` and
   viewport height, hides its own overflow, and sizes images/videos with
   `max-width`/`max-height` and `object-fit: contain`, so portrait, landscape
   and video previews never add a scrollbar at desktop or phone widths (long
-  text previews keep an inner scroll area).
+  text previews keep an inner scroll area). Share file names and the visitor
+  referrer/direct text use the normal body weight instead of a semibold
+  weight, keeping the list and visitor cards visually quiet. OS and browser
+  glyphs use compact brand colors (Windows/Edge blue, Chrome blue, Firefox
+  orange, Safari blue, Opera red, Brave orange, Android green, Linux amber,
+  Apple gray) with a neutral gray fallback.
 - Raster share images get a resized 300px WebP preview on first request
   (`?download=false&webp=300`, quality 82) cached under
   `uploads/_previews/v300/<shareId>/<fileId>.webp`. The backend checks the MIME

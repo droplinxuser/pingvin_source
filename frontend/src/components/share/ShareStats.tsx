@@ -104,13 +104,7 @@ const ShareStats = ({ share }: { share: Share }) => {
                         {countryCodeToFlag(visitor.country)}
                       </Text>
                     </HoverTip>
-                    <Text
-                      size="xs"
-                      weight={600}
-                      truncate
-                      lh={1.3}
-                      sx={{ minWidth: 0 }}
-                    >
+                    <Text size="xs" truncate lh={1.3} sx={{ minWidth: 0 }}>
                       {visitor.referrer
                         ? t("share.custom.stats.via", {
                             domain: visitor.referrer,
