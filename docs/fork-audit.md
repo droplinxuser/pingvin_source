@@ -210,8 +210,8 @@ other languages show the upstream copy instead of the English fallback.
   entries that still lack `fileCount`/`size` or the current preview version are
   backfilled in one SQLite query (name, description, files and upload state),
   written back with `SET ... EX`, and then served from cache; deleted,
-  non-media and older-than-thirty-days shares are purged. This is the only
-  SQLite read in the trending path. The view badge
+  non-media and older-than-thirty-days shares are purged. This and the seed
+  below are the only SQLite reads in the trending path. The view badge
   still comes from the sorted-set score. One metadata entry per share replaces
   the old per-day copies. Shares older than thirty days and shares without an
   image/video are skipped before writing. `GET /api/shares/trending` unions the
@@ -219,6 +219,18 @@ other languages show the upstream copy instead of the English fallback.
   a single `MGET`, drops entries without current metadata or older than thirty
   days, and returns the top twelve ordered by total views from Valkey alone in
   the normal path (legacy entries may trigger the one-time backfill above).
+  Because daily buckets written under the old seven-day window expired before
+  the 30-day window shipped, shares whose last view was more than eight days
+  ago had no score left. The first ranking read for a given window size checks
+  `pingvin:trending:seed:<windowDays>`; when absent, one SQLite query selects
+  public, unexpired, media shares created inside the window with at least one
+  view, and one `MULTI` writes their total-view scores into the current day's
+  set plus one metadata key each (`SET ... NX`, 31-day TTL) before writing the
+  marker. This makes the 30-day ranking complete immediately instead of
+  waiting for old shares to be viewed again. The marker contains the window
+  size, so changing `WINDOW_DAYS` seeds again automatically; once seeded, reads
+  remain cache-only. If SQLite is unavailable the seed attempt is retried at
+  most every five minutes and the read still serves whatever Valkey has.
   Each item carries the share name, description, file count, total size,
   upload date and preview kind, so the cards can show those details without
   additional requests.
@@ -586,7 +598,20 @@ sign-in redirect for a protected page and loop between `/upload` and
   home/share/widget/`/trending`/404 views at 1440px and 390px: cards rendered
   with WebP thumbnails, the copy no longer mentioned seven days, and the only
   console entry was Chromium's expected 404 for the missing document itself.
-  All 94 backend unit tests and both production builds pass.
+  The live 30-day deploy was then checked the same way: `/trending` returned 48
+  cards, the share and 404 widgets returned 12, the "last 30 days" copy was
+  present for guests and signed-in users, click-through and back navigation
+  worked, mobile had no horizontal overflow, and the anonymous shell was an
+  edge-cache `HIT` while 404s stayed `no-store`.
+  The live API initially still omitted a public media share with 7,572 views
+  because its last view predated the retired eight-day buckets. A one-time
+  seed (`pingvin:trending:seed:<windowDays>`) now rebuilds the current day's
+  scores and metadata from one SQLite query, so the complete 30-day list is
+  available immediately instead of filling in as old shares are viewed again.
+  In the seeded local run the 7,572-view share ranked second, a 20.9-day-old
+  share was included, and Valkey held one views key, one seed marker and one
+  metadata key per eligible share. All 95 backend unit tests and both
+  production builds pass.
 - Navigating between share pages on the client now remounts the share view by
   share ID. Previously the page only fetched its files on mount, so clicking a
   trending thumbnail could leave the previous share's name, files and visitor

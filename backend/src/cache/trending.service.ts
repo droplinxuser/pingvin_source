@@ -1,6 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { PrismaService } from "src/prisma/prisma.service";
-import { sumFileSizes } from "src/share/share.util";
+import { sumFileSizes, isPublicShare } from "src/share/share.util";
 import {
   COUNTRY_FIELD_PREFIX,
   isCountryCode,
@@ -13,6 +13,7 @@ const VIEW_KEY_PREFIX = "pingvin:trending:views:";
 const META_KEY_PREFIX = "pingvin:trending:meta:";
 const RANK_KEY_PREFIX = "pingvin:trending:rank:";
 const GEO_KEY_PREFIX = "pingvin:trending:geo:hour:";
+const SEED_KEY_PREFIX = "pingvin:trending:seed:";
 const WINDOW_DAYS = 30;
 const DAY_MS = 24 * 60 * 60 * 1000;
 const HOUR_MS = 60 * 60 * 1000;
@@ -24,6 +25,10 @@ const CANDIDATE_LIMIT = 200;
 const DEFAULT_RESULT_LIMIT = 12;
 const MAX_RESULT_LIMIT = 48;
 const RESULT_CACHE_MS = 30 * 1000;
+// Shares viewed before the cache window expanded have no retained daily score.
+// They are seeded once from SQLite; retries are throttled if the database is
+// unavailable during the first read.
+const SEED_RETRY_MS = 5 * 60 * 1000;
 // The country ranking is read from hourly hashes. Twenty-four HGETALL replies
 // are aggregated in one round trip and the result is reused for five minutes,
 // matching the edge TTL on the API response.
@@ -83,6 +88,7 @@ export class TrendingService {
   private countriesCached?: { at: number; value: TrendingCountry[] };
   private pendingRanking?: Promise<TrendingShare[] | undefined>;
   private pendingCountries?: Promise<TrendingCountry[] | undefined>;
+  private seedCheckedAt = 0;
 
   constructor(
     private readonly valkey: ValkeyService,
@@ -100,17 +106,7 @@ export class TrendingService {
     if (!preview && !code) return;
 
     const meta: TrendingMeta | undefined = preview
-      ? {
-          id: share.id,
-          name: share.name || undefined,
-          description: normalizeDescription(share.description),
-          previewFileId: preview.id,
-          previewKind: preview.kind,
-          fileCount: share.files?.length ?? 0,
-          size: sumFileSizes(share.files),
-          createdAt: new Date(share.createdAt).toISOString(),
-          previewVersion: PREVIEW_VERSION,
-        }
+      ? buildMeta(share, preview)
       : undefined;
 
     // Keep the short result cache: a view only changes a score, and rebuilding
@@ -230,7 +226,91 @@ export class TrendingService {
     });
   }
 
+  /**
+   * Fills the current day's sorted set from SQLite once per window version.
+   * View buckets written before the ranking window grew have already expired,
+   * so without this seed a share created inside the window but not viewed for
+   * more than a week would be missing. The marker key contains the window size,
+   * so changing WINDOW_DAYS seeds again. Normal reads stay cache-only.
+   */
+  private async ensureSeed(client: ValkeyClient): Promise<void> {
+    if (Date.now() - this.seedCheckedAt < SEED_RETRY_MS) return;
+    this.seedCheckedAt = Date.now();
+    if (await client.exists(seedKey())) return;
+    await this.seed(client);
+  }
+
+  private async seed(client: ValkeyClient): Promise<void> {
+    const shares = await this.prisma.share
+      .findMany({
+        where: {
+          createdAt: { gte: new Date(Date.now() - MAX_SHARE_AGE_MS) },
+          uploadLocked: true,
+          removedReason: null,
+          views: { gt: 0 },
+        },
+        select: {
+          id: true,
+          name: true,
+          description: true,
+          createdAt: true,
+          views: true,
+          expiration: true,
+          security: {
+            select: {
+              password: true,
+              maxViews: true,
+              restrictToRecipients: true,
+            },
+          },
+          reverseShare: { select: { publicAccess: true } },
+          files: {
+            select: { id: true, name: true, size: true },
+            orderBy: { name: "asc" },
+          },
+        },
+        orderBy: { views: "desc" },
+      })
+      .catch(() => undefined);
+    if (!shares) return;
+
+    const now = Date.now();
+    const viewKey = viewKeyFor(currentDay());
+    const multi = client.multi();
+    let ranked = 0;
+
+    for (const share of shares) {
+      if (share.views <= 0) continue;
+      if (now - share.createdAt.getTime() > MAX_SHARE_AGE_MS) continue;
+      if (!isPublicShare(share)) continue;
+      if (share.expiration.getTime() !== 0 && share.expiration.getTime() <= now)
+        continue;
+
+      const preview = findPreview(share.files);
+      if (!preview) continue;
+
+      multi.zAdd(viewKey, { score: share.views, value: share.id });
+      multi.set(
+        metaKeyFor(share.id),
+        JSON.stringify(buildMeta(share, preview)),
+        {
+          EX: META_TTL_SECONDS,
+          NX: true,
+        },
+      );
+      ranked += 1;
+    }
+
+    if (ranked > 0) multi.expire(viewKey, VIEW_TTL_SECONDS);
+    // The marker is written in the same MULTI, so a failed connection retries
+    // instead of leaving an empty ranking marked as seeded.
+    multi.set(seedKey(), "1");
+    await multi.exec().catch(() => {});
+  }
+
   private async read(client: ValkeyClient): Promise<TrendingShare[]> {
+    await this.ensureSeed(client);
+
     const day = currentDay();
     const keys = Array.from({ length: WINDOW_DAYS }, (_, offset) =>
       viewKeyFor(day - offset),
@@ -428,17 +508,7 @@ export class TrendingService {
         continue;
       }
 
-      const meta: TrendingMeta = {
-        id: share.id,
-        name: share.name || undefined,
-        description: normalizeDescription(share.description),
-        previewFileId: preview.id,
-        previewKind: preview.kind,
-        fileCount: share.files.length,
-        size: sumFileSizes(share.files),
-        createdAt: share.createdAt.toISOString(),
-        previewVersion: PREVIEW_VERSION,
-      };
+      const meta: TrendingMeta = buildMeta(share, preview);
       metas.set(share.id, meta);
       multi.set(metaKeyFor(share.id), JSON.stringify(meta), {
         EX: META_TTL_SECONDS,
@@ -457,6 +527,29 @@ export class TrendingService {
       // Keep serving the enriched response even if the cache write fails.
     }
   }
+}
+
+function buildMeta(
+  share: {
+    id: string;
+    name?: string | null;
+    description?: string | null;
+    createdAt: Date | string;
+    files?: { id: string; name: string; size: string | number }[];
+  },
+  preview: { id: string; kind: MediaKind },
+): TrendingMeta {
+  return {
+    id: share.id,
+    name: share.name || undefined,
+    description: normalizeDescription(share.description),
+    previewFileId: preview.id,
+    previewKind: preview.kind,
+    fileCount: share.files?.length ?? 0,
+    size: sumFileSizes(share.files),
+    createdAt: new Date(share.createdAt).toISOString(),
+    previewVersion: PREVIEW_VERSION,
+  };
 }
 
 function normalizeDescription(description?: string | null) {
@@ -563,4 +656,8 @@ function geoTotalFieldFor(country: string) {
 
 function metaKeyFor(shareId: string) {
   return `${META_KEY_PREFIX}${shareId}`;
+}
+
+function seedKey() {
+  return `${SEED_KEY_PREFIX}${WINDOW_DAYS}`;
 }

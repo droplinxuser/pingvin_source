@@ -2,10 +2,16 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const { TrendingService } = require("../dist/src/cache/trending.service.js");
 
-function createMockValkey(execute, metaValues = [], runDelay = 0) {
+function createMockValkey(
+  execute,
+  metaValues = [],
+  runDelay = 0,
+  seedExists = true,
+) {
   const calls = [];
   const client = {
     mGet: async () => metaValues,
+    exists: async () => (seedExists ? 1 : 0),
     multi() {
       const queue = [];
       const chain = {};
@@ -110,7 +116,14 @@ test("ranks the last thirty days by total views and filters stale shares", async
 test("includes shares just inside the thirty-day window", async () => {
   const nearWindow = new Date(now - 29 * 24 * 60 * 60 * 1000).toISOString();
   const mock = createMockValkey(
-    () => [1, [{ value: "recent", score: 2 }, { value: "older", score: 1 }], 1],
+    () => [
+      1,
+      [
+        { value: "recent", score: 2 },
+        { value: "older", score: 1 },
+      ],
+      1,
+    ],
     [meta("recent", 2, recent), meta("older", 1, nearWindow)],
   );
   const service = createService(mock);
@@ -122,6 +135,114 @@ test("includes shares just inside the thirty-day window", async () => {
     ["recent", "older"],
   );
   assert.equal(items[1].createdAt, nearWindow);
+});
+
+test("seeds the current bucket from SQLite once for missed views", async () => {
+  const tenDays = new Date(now - 10 * 24 * 60 * 60 * 1000);
+  const ineligible = new Date(now - 31 * 24 * 60 * 60 * 1000);
+  const future = new Date(now + 30 * 24 * 60 * 60 * 1000);
+  const past = new Date(now - 60 * 1000);
+  const file = { id: "file-image", name: "photo.jpg", size: "1234" };
+  const row = (overrides) => ({
+    id: "share",
+    name: null,
+    description: null,
+    createdAt: tenDays,
+    views: 100,
+    expiration: future,
+    uploadLocked: true,
+    removedReason: null,
+    security: { password: null, maxViews: null, restrictToRecipients: false },
+    reverseShare: null,
+    files: [file],
+    ...overrides,
+  });
+  const rows = [
+    row({
+      id: "seeded",
+      name: "Seeded share",
+      description: "  seeded\nshare ",
+      views: 900,
+    }),
+    row({
+      id: "private",
+      views: 800,
+      security: {
+        password: "secret",
+        maxViews: null,
+        restrictToRecipients: false,
+      },
+    }),
+    row({ id: "expired", views: 700, expiration: past }),
+    row({ id: "zero", views: 0 }),
+    row({ id: "stale", views: 600, createdAt: ineligible }),
+  ];
+  let lookups = 0;
+  const prisma = {
+    share: {
+      findMany: async () => {
+        lookups += 1;
+        return rows;
+      },
+    },
+  };
+  const mock = createMockValkey(
+    (queue) =>
+      queue.some(([method]) => method === "zRangeWithScores")
+        ? [1, [{ value: "seeded", score: 900 }], 1]
+        : [1],
+    [meta("seeded", 900, tenDays.toISOString())],
+    0,
+    false,
+  );
+  const service = createService(mock, prisma);
+
+  const items = await service.getTrending();
+
+  assert.deepEqual(
+    items.map((item) => item.id),
+    ["seeded"],
+  );
+  assert.equal(items[0].views, 900);
+  assert.equal(items[0].description, "Description for seeded");
+  assert.equal(lookups, 1);
+
+  const seedQueue = mock.calls.find((queue) =>
+    queue.some(
+      ([method, args]) =>
+        method === "set" && args[0] === "pingvin:trending:seed:30",
+    ),
+  );
+  assert.ok(seedQueue);
+  const zAdds = seedQueue
+    .filter(([method]) => method === "zAdd")
+    .map(([, args]) => args);
+  assert.deepEqual(zAdds, [
+    [
+      `pingvin:trending:views:${Math.floor(Date.now() / (24 * 60 * 60 * 1000))}`,
+      { score: 900, value: "seeded" },
+    ],
+  ]);
+  const expireArg = seedQueue.find(([method]) => method === "expire");
+  assert.deepEqual(expireArg[1], [
+    `pingvin:trending:views:${Math.floor(Date.now() / (24 * 60 * 60 * 1000))}`,
+    31 * 24 * 60 * 60,
+  ]);
+  const seededMeta = seedQueue
+    .filter(
+      ([method, args]) =>
+        method === "set" && args[0] === "pingvin:trending:meta:seeded",
+    )
+    .map(([, args]) => JSON.parse(args[1]))[0];
+  assert.equal(seededMeta.description, "seeded share");
+  assert.equal(seededMeta.fileCount, 1);
+  assert.equal(seededMeta.size, 1234);
+  assert.equal(seededMeta.previewFileId, "file-image");
+
+  // The in-process guard stops a second seed lookup even if the marker is
+  // reported missing.
+  await service.getTrending();
+  assert.equal(lookups, 1);
 });
 
 test("coalesces concurrent ranking reads", async () => {
