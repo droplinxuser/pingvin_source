@@ -94,30 +94,36 @@ const ShareStats = ({ share }: { share: Share }) => {
               >
                 <Group position="apart" align="center" noWrap spacing="xs">
                   <Group spacing={6} noWrap sx={{ minWidth: 0, flex: 1 }}>
-                    <Text size="sm" aria-hidden>
-                      {countryCodeToFlag(visitor.country)}
-                    </Text>
-                    <Text size="xs" weight={600} truncate lh={1.3}>
-                      {location}
-                    </Text>
-                    <HoverTip
-                      label={
-                        visitor.referrer
-                          ? t("share.custom.stats.via", {
-                              domain: visitor.referrer,
-                            })
-                          : t("share.custom.stats.direct")
-                      }
-                    >
+                    <HoverTip label={location}>
                       <Text
-                        size="xs"
-                        color="dimmed"
-                        lh={1.3}
-                        sx={{ whiteSpace: "nowrap" }}
+                        size="sm"
+                        aria-label={location}
+                        sx={{ cursor: "help" }}
                       >
-                        {moment(visitor.createdAt).fromNow()}
+                        {countryCodeToFlag(visitor.country)}
                       </Text>
                     </HoverTip>
+                    <Text
+                      size="xs"
+                      weight={600}
+                      truncate
+                      lh={1.3}
+                      sx={{ minWidth: 0 }}
+                    >
+                      {visitor.referrer
+                        ? t("share.custom.stats.via", {
+                            domain: visitor.referrer,
+                          })
+                        : t("share.custom.stats.direct")}
+                    </Text>
+                    <Text
+                      size="xs"
+                      color="dimmed"
+                      lh={1.3}
+                      sx={{ whiteSpace: "nowrap" }}
+                    >
+                      {moment(visitor.createdAt).fromNow()}
+                    </Text>
                   </Group>
                   <Group spacing={2} noWrap>
                     <HoverTip
