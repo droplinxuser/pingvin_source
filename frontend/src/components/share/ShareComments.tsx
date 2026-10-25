@@ -361,7 +361,10 @@ const ShareComments = ({
         </Group>
       )}
 
-      <Box mt="sm" aria-busy={isLoading}>
+      <Box
+        mt={isLoading || loadFailed || comments.length > 0 ? "sm" : 0}
+        aria-busy={isLoading}
+      >
         {isLoading && comments.length === 0 ? (
           <Stack spacing="xs">
             {[0, 1, 2].map((index) => (
@@ -382,11 +385,7 @@ const ShareComments = ({
               {t("share.custom.comments.retry")}
             </Button>
           </Group>
-        ) : comments.length === 0 ? (
-          <Text size="sm" color="dimmed" align="center" py="md">
-            {t("share.custom.comments.empty")}
-          </Text>
-        ) : (
+        ) : comments.length > 0 ? (
           <Box
             sx={{
               opacity: isLoading ? 0.55 : 1,
@@ -536,7 +535,7 @@ const ShareComments = ({
               );
             })}
           </Box>
-        )}
+        ) : null}
       </Box>
 
       {total > COMMENTS_PAGE_SIZE && (

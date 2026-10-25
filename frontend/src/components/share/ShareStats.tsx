@@ -1,5 +1,4 @@
 import {
-  Badge,
   Box,
   Card,
   Divider,
@@ -17,8 +16,6 @@ import { Share } from "../../types/share.type";
 import { HoverTip } from "../core/HoverTip";
 import { countryCodeToFlag, getCountryName } from "../../utils/country.util";
 import { getBrowserIcon, getOsIcon, iconStyle } from "./UploaderInfoBadges";
-
-const MAX_VISITORS = 20;
 
 const ShareStats = ({ share }: { share: Share }) => {
   const t = useTranslate();
@@ -63,15 +60,6 @@ const ShareStats = ({ share }: { share: Share }) => {
       </Group>
 
       <Divider my={4} />
-
-      <Group position="apart" mb={2}>
-        <Text size="xs" weight={600}>
-          {t("share.custom.stats.recent")}
-        </Text>
-        <Badge size="xs" radius="sm" variant="light">
-          {visitors.length}/{MAX_VISITORS}
-        </Badge>
-      </Group>
 
       {visitors.length === 0 ? (
         <Box py={4}>
