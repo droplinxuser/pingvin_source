@@ -22,6 +22,7 @@ import MediaPreviewGallery, {
   MediaPreviewGallerySkeleton,
 } from "../../../components/share/MediaPreviewGallery";
 import ShareActions from "../../../components/share/ShareActions";
+import ShareComments from "../../../components/share/ShareComments";
 import ShareStats from "../../../components/share/ShareStats";
 import UploaderInfoBadges from "../../../components/share/UploaderInfoBadges";
 import Ads from "../../../components/Ads";
@@ -387,6 +388,8 @@ const SharePage = ({
         recipientId={recipientId}
         skeletonCount={displayFileCount || 5}
       />
+
+      {share && <ShareComments shareId={shareId} />}
 
       {share && <ShareStats share={share} />}
     </article>

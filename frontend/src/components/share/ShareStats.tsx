@@ -16,11 +16,7 @@ import useTranslate from "../../hooks/useTranslate.hook";
 import { Share } from "../../types/share.type";
 import { HoverTip } from "../core/HoverTip";
 import { countryCodeToFlag, getCountryName } from "../../utils/country.util";
-import {
-  getBrowserIcon,
-  getOsIcon,
-  iconStyle,
-} from "./UploaderInfoBadges";
+import { getBrowserIcon, getOsIcon, iconStyle } from "./UploaderInfoBadges";
 
 const MAX_VISITORS = 20;
 
@@ -31,30 +27,45 @@ const ShareStats = ({ share }: { share: Share }) => {
   const views = share.views ?? 0;
 
   return (
-    <Paper radius="md" p="sm" mt="lg" withBorder>
+    <Paper
+      component="section"
+      aria-labelledby="share-stats-title"
+      radius="md"
+      p={{ base: "xs", sm: "sm" }}
+      mt="md"
+      withBorder
+      data-testid="share-stats"
+    >
       <Group position="apart" align="center" spacing="md">
         <Group spacing="xs" align="center" noWrap>
-          <ThemeIcon size={34} radius="sm" variant="light">
-            <TbActivity size={18} />
+          <ThemeIcon size={30} radius="sm" variant="light">
+            <TbActivity size={16} />
           </ThemeIcon>
-          <Text size="md" weight={700} lh={1.2}>
+          <Text
+            component="h2"
+            id="share-stats-title"
+            size="sm"
+            weight={700}
+            lh={1.2}
+            m={0}
+          >
             {t("share.custom.stats.title")}
           </Text>
         </Group>
-        <Group spacing={8} align="baseline" noWrap>
+        <Group spacing={6} align="baseline" noWrap>
           <Text size="xs" color="dimmed" weight={600} tt="uppercase">
             {t("share.custom.stats.views")}
           </Text>
-          <Text size={22} weight={800} lh={1}>
+          <Text size={20} weight={800} lh={1}>
             {views.toLocaleString(intl.locale)}
           </Text>
         </Group>
       </Group>
 
-      <Divider my="sm" />
+      <Divider my="xs" />
 
-      <Group position="apart" mb={6}>
-        <Text size="sm" weight={600}>
+      <Group position="apart" mb={4}>
+        <Text size="xs" weight={600}>
           {t("share.custom.stats.recent")}
         </Text>
         <Badge size="xs" radius="sm" variant="light">
@@ -63,8 +74,8 @@ const ShareStats = ({ share }: { share: Share }) => {
       </Group>
 
       {visitors.length === 0 ? (
-        <Box py={6}>
-          <Text size="sm" color="dimmed" align="center">
+        <Box py={4}>
+          <Text size="xs" color="dimmed" align="center">
             {t("share.custom.stats.empty")}
           </Text>
         </Box>
@@ -87,7 +98,7 @@ const ShareStats = ({ share }: { share: Share }) => {
                 key={`${visitor.createdAt}-${index}`}
                 radius="sm"
                 px="xs"
-                py={7}
+                py={5}
                 withBorder
               >
                 <Group position="apart" align="center" noWrap spacing="xs">

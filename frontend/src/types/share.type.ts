@@ -16,6 +16,23 @@ export type Share = {
   uploaderInfo?: UploaderInfo;
 };
 
+export type ShareComment = {
+  id: string;
+  userId: string;
+  username: string;
+  content: string;
+  createdAt: string;
+};
+
+export type ShareCommentPage = {
+  comments: ShareComment[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+  version: number;
+};
+
 export type ShareVisitor = {
   country?: string;
   city?: string;

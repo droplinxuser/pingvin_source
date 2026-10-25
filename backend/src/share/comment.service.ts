@@ -1,0 +1,245 @@
+import { BadRequestException, Injectable, Logger } from "@nestjs/common";
+import { User } from "@prisma/client";
+import { randomUUID } from "crypto";
+import { promises as fs } from "fs";
+import { I18nService } from "nestjs-i18n";
+import { dirname, join } from "path";
+import { SHARE_DIRECTORY } from "../constants";
+import { parsePagination } from "../utils/pagination.util";
+
+const FILE_NAME = "comments.json";
+// Keep the file small: comments are a convenience, not an archive.
+const MAX_COMMENTS = 500;
+export const MAX_COMMENT_LENGTH = 1000;
+export const COMMENTS_PAGE_SIZE = 20;
+
+// Bare domains are only stripped when they use a known public suffix. This
+// avoids turning ordinary words such as "node.js" into empty comments.
+const PUBLIC_SUFFIXES =
+  "com|net|org|edu|gov|mil|int|info|biz|name|pro|app|dev|io|co|ai|me|tv|xyz|" +
+  "online|site|store|shop|blog|club|live|link|top|vip|icu|fun|space|website|" +
+  "tech|cloud|page|one|mobi|asia|travel|jobs|cat|tel|uk|de|fr|ru|cn|jp|br|in|" +
+  "it|nl|se|no|es|ca|au|ch|at|be|dk|fi|pl|pt|gr|cz|ro|hu|ie|nz|sg|hk|kr|tw|" +
+  "mx|ar|cl|za|tr|ua|id|my|ph|th|vn";
+
+const URL_PATTERN = new RegExp(
+  String.raw`\b[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}\b|` +
+    String.raw`\b(?:https?:\/\/|ftps?:\/\/|mailto:|tel:|www\.)[^\s<>"']+|` +
+    String.raw`\b(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+(?:${PUBLIC_SUFFIXES})\b(?:[\/?#][^\s<>"']*)?`,
+  "gi",
+);
+
+export type ShareComment = {
+  id: string;
+  userId: string;
+  username: string;
+  content: string;
+  createdAt: string;
+};
+
+type CommentFile = {
+  version: number;
+  comments: ShareComment[];
+};
+
+export type ShareCommentPage = {
+  comments: ShareComment[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+  version: number;
+};
+
+/**
+ * Comments are plaintext. Links, HTML tags and control characters are removed
+ * before a comment is stored and again before it is returned, so old or
+ * hand-edited files can never put markup or clickable URLs on the page.
+ */
+export function sanitizeCommentContent(input: unknown): string {
+  if (typeof input !== "string") return "";
+
+  const text = input
+    // Pasted text can contain binary control bytes; keep newlines and tabs.
+    // eslint-disable-next-line no-control-regex
+    .replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, "")
+    .replace(/<[^>]*>/g, " ")
+    .replace(URL_PATTERN, " ")
+    .replace(/[ \t]{2,}/g, " ")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+
+  return text.length > MAX_COMMENT_LENGTH
+    ? text.slice(0, MAX_COMMENT_LENGTH).trim()
+    : text;
+}
+
+function getCommentPath(shareId: string): string | null {
+  // Keep malformed IDs from escaping the shares directory.
+  return /^[\w-]+$/.test(shareId)
+    ? join(SHARE_DIRECTORY, shareId, FILE_NAME)
+    : null;
+}
+
+function toComment(value: unknown): ShareComment | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+
+  const source = value as Record<string, unknown>;
+  const content = sanitizeCommentContent(source.content);
+  if (!content) return null;
+
+  const pick = (field: string) =>
+    typeof source[field] === "string" ? (source[field] as string) : undefined;
+
+  return {
+    id: pick("id") ?? randomUUID(),
+    userId: pick("userId") ?? "",
+    username: pick("username") ?? "",
+    content,
+    createdAt: pick("createdAt") ?? new Date().toISOString(),
+  };
+}
+
+function parseCommentFile(value: unknown): CommentFile {
+  // Accept a bare array from an older/hand-written file.
+  const source = Array.isArray(value)
+    ? { comments: value }
+    : value && typeof value === "object"
+      ? (value as Record<string, unknown>)
+      : {};
+  const comments = Array.isArray(source.comments)
+    ? source.comments
+        .map(toComment)
+        .filter((comment): comment is ShareComment => !!comment)
+        .slice(-MAX_COMMENTS)
+    : [];
+  const version =
+    typeof source.version === "number" &&
+    Number.isSafeInteger(source.version) &&
+    source.version >= 0
+      ? source.version
+      : comments.length;
+
+  return { version, comments };
+}
+
+@Injectable()
+export class CommentService {
+  private readonly logger = new Logger(CommentService.name);
+  private readonly locks = new Map<string, Promise<unknown>>();
+
+  constructor(private readonly i18n: I18nService) {}
+
+  async list(shareId: string, page = "1"): Promise<ShareCommentPage> {
+    const file = await this.read(shareId);
+    const total = file.comments.length;
+    const totalPages = Math.ceil(total / COMMENTS_PAGE_SIZE);
+    const requested = parsePagination(page, String(COMMENTS_PAGE_SIZE));
+    const pageNum = totalPages === 0 ? 1 : Math.min(requested.page, totalPages);
+    const start = (pageNum - 1) * COMMENTS_PAGE_SIZE;
+
+    return {
+      // Newest first; the file itself stays append-only.
+      comments: [...file.comments]
+        .reverse()
+        .slice(start, start + COMMENTS_PAGE_SIZE),
+      total,
+      page: pageNum,
+      pageSize: COMMENTS_PAGE_SIZE,
+      totalPages,
+      version: file.version,
+    };
+  }
+
+  async create(
+    shareId: string,
+    user: User,
+    content: string,
+  ): Promise<{ comment: ShareComment; version: number; total: number }> {
+    const clean = sanitizeCommentContent(content);
+    if (!clean) {
+      throw new BadRequestException(
+        this.i18n.t(
+          content.trim() ? "share.commentsOnlyLinks" : "share.commentsEmpty",
+        ),
+      );
+    }
+
+    const path = getCommentPath(shareId);
+    if (!path)
+      throw new BadRequestException(this.i18n.t("file.invalidIdFormat"));
+
+    return this.withLock(shareId, async () => {
+      const file = await this.read(shareId);
+      const comment: ShareComment = {
+        id: randomUUID(),
+        userId: user.id,
+        username: user.displayName || user.username,
+        content: clean,
+        createdAt: new Date().toISOString(),
+      };
+
+      file.comments = [...file.comments, comment].slice(-MAX_COMMENTS);
+      file.version += 1;
+      await this.write(path, file);
+
+      return {
+        comment,
+        version: file.version,
+        total: file.comments.length,
+      };
+    });
+  }
+
+  private async read(shareId: string): Promise<CommentFile> {
+    const path = getCommentPath(shareId);
+    if (!path) return { version: 0, comments: [] };
+
+    try {
+      return parseCommentFile(JSON.parse(await fs.readFile(path, "utf8")));
+    } catch (error) {
+      const code = (error as NodeJS.ErrnoException)?.code;
+      if (code !== "ENOENT") {
+        this.logger.warn(
+          `Failed to read comments for share ${shareId}: ${error}`,
+        );
+      }
+      return { version: 0, comments: [] };
+    }
+  }
+
+  private async write(path: string, file: CommentFile) {
+    const tempPath = `${path}.${process.pid}.${Math.random()
+      .toString(36)
+      .slice(2)}.tmp`;
+
+    try {
+      // Never recreate a share directory removed by an expiry/cleanup task.
+      await fs.access(dirname(path));
+      await fs.writeFile(tempPath, JSON.stringify(file), {
+        encoding: "utf8",
+        mode: 0o600,
+      });
+      await fs.rename(tempPath, path);
+    } catch (error) {
+      await fs.rm(tempPath, { force: true }).catch(() => {});
+      throw error;
+    }
+  }
+
+  private withLock<T>(shareId: string, task: () => Promise<T>): Promise<T> {
+    const previous = this.locks.get(shareId) ?? Promise.resolve();
+    const result = previous.then(task);
+    const tail = result.then(
+      () => undefined,
+      () => undefined,
+    );
+
+    this.locks.set(shareId, tail);
+    void tail.then(() => {
+      if (this.locks.get(shareId) === tail) this.locks.delete(shareId);
+    });
+
+    return result;
+  }
+}

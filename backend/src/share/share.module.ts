@@ -8,6 +8,7 @@ import { SystemModule } from "src/system/system.module";
 import { VirusTotalAdminController } from "src/virustotal/virustotalAdmin.controller";
 import { VirusTotalAuditService } from "src/virustotal/virustotalAudit.service";
 import { VirusTotalService } from "src/virustotal/virustotal.service";
+import { CommentService } from "./comment.service";
 import { ShareController } from "./share.controller";
 import { ShareService } from "./share.service";
 import { ShareStateService } from "./shareState.service";
@@ -25,6 +26,7 @@ import { ShareStateService } from "./shareState.service";
   providers: [
     ShareService,
     ShareStateService,
+    CommentService,
     VirusTotalService,
     VirusTotalAuditService,
   ],

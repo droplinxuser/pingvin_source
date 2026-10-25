@@ -12,6 +12,7 @@ import {
   Query,
   Req,
   Res,
+  UnauthorizedException,
   UseGuards,
 } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
@@ -28,14 +29,16 @@ import {
   TrendingService,
   TrendingShare,
 } from "src/cache/trending.service";
-import { getEdgeCacheHeaders } from "src/utils/cache.util";
+import { NO_STORE_HEADERS, getEdgeCacheHeaders } from "src/utils/cache.util";
 import { parsePagination } from "src/utils/pagination.util";
 import {
   getRequestCountry,
   getUploaderInfo,
   writeUploaderInfo,
 } from "src/utils/uploaderInfo.util";
+import { CommentService } from "./comment.service";
 import { AdminShareDTO } from "./dto/adminShare.dto";
+import { CreateCommentDTO } from "./dto/createComment.dto";
 import { CreateShareDTO } from "./dto/createShare.dto";
 import { MyShareDTO } from "./dto/myShare.dto";
 import { ReceivedShareDTO } from "./dto/receivedShare.dto";
@@ -62,6 +65,7 @@ export class ShareController {
     private jwtService: JwtService,
     private config: ConfigService,
     private trending: TrendingService,
+    private commentService: CommentService,
   ) {}
 
   @Get("all")
@@ -176,6 +180,44 @@ export class ShareController {
   ) {
     response.set(getEdgeCacheHeaders(60));
     return this.shareService.getSeo(id);
+  }
+
+  /**
+   * Lazy-loaded comment listing. Public shares are cached at the edge; the
+   * `v` query string is a sequence counter that changes on every new comment,
+   * so the poster's next request bypasses any stale edge entry. Protected
+   * shares are never stored by Cloudflare.
+   */
+  @Get(":id/comments")
+  @SkipThrottle({ visitor: true })
+  @UseGuards(IdValidation, ShareSecurityGuard)
+  async getComments(
+    @Param("id") id: string,
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+    @Query("page") page = "1",
+  ) {
+    const isPublic = (request as Request & { shareIsPublic?: boolean })
+      .shareIsPublic;
+    response.set(isPublic ? getEdgeCacheHeaders(60) : NO_STORE_HEADERS);
+    return this.commentService.list(id, page);
+  }
+
+  @Throttle({
+    default: {
+      limit: 5,
+      ttl: 60 * 1000,
+    },
+  })
+  @UseGuards(IdValidation, ShareSecurityGuard)
+  @Post(":id/comments")
+  async createComment(
+    @Param("id") id: string,
+    @Body() body: CreateCommentDTO,
+    @GetUser() user: User,
+  ) {
+    if (!user) throw new UnauthorizedException();
+    return this.commentService.create(id, user, body.content);
   }
 
   @Get(":id/from-owner")
