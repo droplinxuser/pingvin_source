@@ -268,12 +268,14 @@ const TrendingToday = ({
       (entries) => {
         const entry = entries[0];
         if (!entry) return;
-        // Also load when the widget was scrolled past in a single jump.
+        // Also load when the widget was scrolled past in a single jump. The
+        // large top margin keeps an element that jumped above the viewport
+        // inside the observed root, so the observer still fires.
         if (!entry.isIntersecting && entry.boundingClientRect.top >= 0) return;
         setShouldLoad(true);
         observer.disconnect();
       },
-      { rootMargin: "400px" },
+      { rootMargin: "1000000px 400px 400px 400px" },
     );
     observer.observe(element);
     return () => observer.disconnect();

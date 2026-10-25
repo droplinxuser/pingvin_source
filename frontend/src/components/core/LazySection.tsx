@@ -41,14 +41,17 @@ const LazySection = ({
       (entries) => {
         const entry = entries[0];
         if (!entry) return;
-        // A fast jump (End key, anchor, restored scroll) can leave the element
-        // above the viewport without ever reporting an intersection. Mount it
-        // in that case too instead of leaving the placeholder behind.
+        // A fast jump (End key, anchor, restored scroll) can move the element
+        // from below the viewport to above it. Both positions are "not
+        // intersecting", so a plain observer would not fire. The very large
+        // top margin keeps skipped elements inside the observed root and makes
+        // the state change observable.
         if (!entry.isIntersecting && entry.boundingClientRect.top >= 0) return;
         setIsVisible(true);
         observer.disconnect();
       },
-      { rootMargin },
+      // rootMargin is a single length (for example "400px") at every call site.
+      { rootMargin: `1000000px ${rootMargin} ${rootMargin} ${rootMargin}` },
     );
     observer.observe(element);
     return () => observer.disconnect();
