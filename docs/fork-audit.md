@@ -998,7 +998,7 @@ sign-in redirect for a protected page and loop between `/upload` and
   ranking/cache behavior is covered by the unit tests.
 - Live verification of that maintenance pass (2026-10-25): the deployed manifest
   version matched the pushed commit. A temporary public share with an image and
-  a text file was created through the API, and Playwright covered 24 live routes
+  a text file was created through the API, and Playwright covered 21 live routes
   as a guest, the test account, a non-admin admin redirect, mobile and dark
   mode. All pages had one H1 (robots/sitemap documents excluded), no horizontal
   overflow, no application console errors or warnings, no page exceptions and
