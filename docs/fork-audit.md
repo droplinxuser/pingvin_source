@@ -996,6 +996,22 @@ sign-in redirect for a protected page and loop between `/upload` and
   stale-manifest chunk request did not rewrite the files. Trending remains
   hidden in this sandbox because no Valkey server is installed; its backend
   ranking/cache behavior is covered by the unit tests.
+- Live verification of that maintenance pass (2026-10-25): the deployed manifest
+  version matched the pushed commit. A temporary public share with an image and
+  a text file was created through the API, and Playwright covered 24 live routes
+  as a guest, the test account, a non-admin admin redirect, mobile and dark
+  mode. All pages had one H1 (robots/sitemap documents excluded), no horizontal
+  overflow, no application console errors or warnings, no page exceptions and
+  no failed application requests; lazy media loads canceled by scroll/close
+  were recorded separately. The live share rendered the gallery, both file
+  rows, the visitor list and 12 trending cards (`/trending` showed 48), a
+  comment was created, edited and deleted, and the temporary share was removed
+  (the subsequent API request returned 404). The home shell was a Cloudflare
+  HIT; comments used the 30-day edge TTL, trending/SEO 60 seconds, the sitemap
+  index one hour, chunks and robots one day, and the public file/preview kept
+  an ETag with `CDN-Cache-Control: public, max-age=86400, immutable`. The live
+  proxy rewrites browser `Cache-Control` for XML/TXT/file responses, so edge
+  policy must be checked on `CDN-Cache-Control`/`Cloudflare-CDN-Cache-Control`.
 
 ## Known non-issues
 
