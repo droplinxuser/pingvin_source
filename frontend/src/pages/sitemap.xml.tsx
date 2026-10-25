@@ -8,7 +8,11 @@ const buildFallbackSitemap = (
   baseUrl: string,
   config: Parameters<typeof getConfigValue>[0],
 ) => {
-  const urls = [absoluteUrl("/", baseUrl), absoluteUrl("/trending", baseUrl)];
+  const urls = [
+    absoluteUrl("/", baseUrl),
+    absoluteUrl("/trending", baseUrl),
+    absoluteUrl("/new", baseUrl),
+  ];
   const legalEnabled = getConfigValue(config, "legal.enabled") === "true";
   const imprintText = getConfigValue(config, "legal.imprintText");
   const imprintUrl = getConfigValue(config, "legal.imprintUrl");

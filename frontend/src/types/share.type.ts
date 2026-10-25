@@ -108,6 +108,7 @@ export type TrendingShare = {
   fileCount?: number;
   size?: number;
   createdAt: string;
+  hasVideo?: boolean;
 };
 
 export type TrendingCountry = {

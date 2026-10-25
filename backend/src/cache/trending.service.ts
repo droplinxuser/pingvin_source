@@ -25,6 +25,11 @@ const CANDIDATE_LIMIT = 200;
 const DEFAULT_RESULT_LIMIT = 12;
 const MAX_RESULT_LIMIT = 48;
 const RESULT_CACHE_MS = 30 * 1000;
+// The recent list scans a bounded number of the newest public shares so the
+// text-only/protected rows do not turn into an unbounded query.
+const RECENT_SCAN_LIMIT = 1000;
+const RECENT_MAX_RESULT = 100;
+const RECENT_CACHE_MS = 30 * 1000;
 // Shares viewed before the cache window expanded have no retained daily score.
 // They are seeded once from SQLite; retries are throttled if the database is
 // unavailable during the first read.
@@ -54,6 +59,9 @@ export type TrendingShare = {
   fileCount?: number;
   size?: number;
   createdAt: string;
+  // Set by the recent listing so the card can show a play icon even when the
+  // chosen thumbnail is an image.
+  hasVideo?: boolean;
 };
 
 export type TrendingCountry = {
@@ -86,6 +94,7 @@ type TrendingSource = {
 export class TrendingService {
   private cached?: { at: number; items: TrendingShare[] };
   private countriesCached?: { at: number; value: TrendingCountry[] };
+  private recentCached?: { at: number; items: TrendingShare[] };
   private pendingRanking?: Promise<TrendingShare[] | undefined>;
   private pendingCountries?: Promise<TrendingCountry[] | undefined>;
   private seedCheckedAt = 0;
@@ -104,6 +113,9 @@ export class TrendingService {
     // has no preview or has left the thirty-day window. The per-share ranking
     // remains limited to shares that can actually be rendered.
     if (!preview && !code) return;
+
+    // A share becomes eligible for the recent listing on its first view.
+    if (preview && share.views <= 1) this.recentCached = undefined;
 
     const meta: TrendingMeta | undefined = preview
       ? buildMeta(share, preview)
@@ -210,6 +222,106 @@ export class TrendingService {
   }
 
   /**
+   * Newest public shares that can render a thumbnail. The query is ordered by
+   * upload time and limited to the newest window; the exact visibility and
+   * media checks reuse the same helpers as the ranking. The result is cached
+   * for 30 seconds and served with a short edge TTL, so the page costs at most
+   * one indexed SQLite read per cache window.
+   */
+  async getRecent(limit = RECENT_MAX_RESULT): Promise<TrendingShare[]> {
+    const requested =
+      Number.isFinite(limit) && limit > 0
+        ? Math.floor(limit)
+        : RECENT_MAX_RESULT;
+    const resultLimit = Math.min(requested, RECENT_MAX_RESULT);
+
+    if (
+      this.recentCached &&
+      Date.now() - this.recentCached.at < RECENT_CACHE_MS
+    )
+      return this.recentCached.items.slice(0, resultLimit);
+
+    const shares = await this.prisma.share
+      .findMany({
+        where: {
+          uploadLocked: true,
+          removedReason: null,
+          views: { gt: 0 },
+          files: { some: {} },
+          AND: [
+            {
+              OR: [
+                { expiration: { gt: new Date() } },
+                { expiration: { equals: new Date(0) } },
+              ],
+            },
+            {
+              OR: [
+                { security: null },
+                {
+                  security: {
+                    is: {
+                      password: null,
+                      maxViews: null,
+                      restrictToRecipients: false,
+                    },
+                  },
+                },
+              ],
+            },
+            {
+              OR: [
+                { reverseShare: null },
+                { reverseShare: { is: { publicAccess: true } } },
+              ],
+            },
+          ],
+        },
+        select: {
+          id: true,
+          name: true,
+          description: true,
+          createdAt: true,
+          views: true,
+          security: {
+            select: {
+              password: true,
+              maxViews: true,
+              restrictToRecipients: true,
+            },
+          },
+          reverseShare: { select: { publicAccess: true } },
+          files: {
+            select: { id: true, name: true, size: true },
+            orderBy: { name: "asc" },
+          },
+        },
+        orderBy: { createdAt: "desc" },
+        take: RECENT_SCAN_LIMIT,
+      })
+      .catch(() => undefined);
+    if (!shares) return [];
+
+    const items: TrendingShare[] = [];
+    for (const share of shares) {
+      if (share.views <= 0 || !isPublicShare(share)) continue;
+      const preview = findPreview(share.files);
+      if (!preview) continue;
+
+      items.push({
+        ...toTrendingShare(buildMeta(share, preview), share.views),
+        hasVideo: share.files.some((file) =>
+          getFileMimeType(file.name, false).startsWith("video/"),
+        ),
+      });
+      if (items.length >= RECENT_MAX_RESULT) break;
+    }
+
+    this.recentCached = { at: Date.now(), items };
+    return items.slice(0, resultLimit);
+  }
+
+  /**
    * Removes a share from the ranking when it is edited, expires or is deleted.
    * Score buckets are short-lived, so only the share metadata has to be purged.
    */
@@ -218,6 +330,7 @@ export class TrendingService {
     if (ids.length === 0) return;
     this.cached = undefined;
     this.countriesCached = undefined;
+    this.recentCached = undefined;
 
     await this.valkey.run(async (client) => {
       const multi = client.multi();

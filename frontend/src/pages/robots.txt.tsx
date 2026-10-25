@@ -9,6 +9,7 @@ const buildFallbackRobots = (baseUrl: string) => {
     "Allow: /$",
     "Allow: /share/",
     "Allow: /trending",
+    "Allow: /new",
     "Allow: /sitemap.xml",
     "Allow: /api/system/sitemaps/",
     "Disallow: /admin",

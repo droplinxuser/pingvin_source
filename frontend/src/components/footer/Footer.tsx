@@ -315,6 +315,9 @@ const Footer = () => {
               >
                 {t("trending.custom.title")}
               </Anchor>
+              <Anchor className={classes.link} component={Link} href="/new">
+                {t("navbar.new")}
+              </Anchor>
               <Anchor className={classes.link} href={contactUrl}>
                 {t("footer.custom.contact")}
               </Anchor>

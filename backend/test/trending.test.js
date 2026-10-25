@@ -903,3 +903,118 @@ test("drops country shares whose metadata is gone", async () => {
     ["a"],
   );
 });
+
+function recentShare({
+  id,
+  files,
+  views = 1,
+  security = null,
+  reverseShare = null,
+}) {
+  return {
+    id,
+    name: `Share ${id}`,
+    description: `Description for ${id}`,
+    createdAt: new Date(recent),
+    views,
+    security,
+    reverseShare,
+    files: files.map((name, index) => ({
+      id: `${id}-file-${index}`,
+      name,
+      size: "100",
+    })),
+  };
+}
+
+function recentPrisma(shares) {
+  const calls = [];
+  return {
+    calls,
+    prisma: {
+      share: {
+        findMany: async (args) => {
+          calls.push(args);
+          return shares;
+        },
+      },
+    },
+  };
+}
+
+test("lists only recent public media shares with a video flag", async () => {
+  const { prisma, calls } = recentPrisma([
+    recentShare({ id: "image", files: ["photo.jpg"] }),
+    recentShare({ id: "video", files: ["clip.mp4", "photo.png"] }),
+    recentShare({ id: "text", files: ["notes.txt"] }),
+    recentShare({
+      id: "protected",
+      files: ["secret.jpg"],
+      security: {
+        password: "hash",
+        maxViews: null,
+        restrictToRecipients: false,
+      },
+    }),
+    recentShare({ id: "zero", files: ["zero.jpg"], views: 0 }),
+    recentShare({
+      id: "private-reverse",
+      files: ["private.jpg"],
+      reverseShare: { publicAccess: false },
+    }),
+  ]);
+  const service = createService(
+    createMockValkey(() => []),
+    prisma,
+  );
+
+  const items = await service.getRecent(100);
+
+  assert.deepEqual(
+    items.map((item) => item.id),
+    ["image", "video"],
+  );
+  assert.equal(items[0].previewKind, "image");
+  assert.equal(items[0].hasVideo, false);
+  assert.equal(items[1].hasVideo, true);
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].orderBy.createdAt, "desc");
+  assert.equal(calls[0].take, 1000);
+  assert.deepEqual(calls[0].where.views, { gt: 0 });
+
+  // The second read comes from the in-process cache.
+  await service.getRecent(100);
+  assert.equal(calls.length, 1);
+});
+
+test("caps the recent listing at one hundred shares", async () => {
+  const shares = Array.from({ length: 120 }, (_, index) =>
+    recentShare({ id: `share-${index}`, files: ["photo.jpg"] }),
+  );
+  const { prisma } = recentPrisma(shares);
+  const service = createService(
+    createMockValkey(() => []),
+    prisma,
+  );
+
+  const items = await service.getRecent(1000);
+
+  assert.equal(items.length, 100);
+  assert.equal(items[0].id, "share-0");
+  assert.equal(items[99].id, "share-99");
+});
+
+test("invalidating a share clears the recent listing cache", async () => {
+  const { prisma, calls } = recentPrisma([
+    recentShare({ id: "image", files: ["photo.jpg"] }),
+  ]);
+  const mock = createMockValkey(() => [1, [], 1]);
+  const service = createService(mock, prisma);
+
+  await service.getRecent(100);
+  assert.equal(calls.length, 1);
+
+  await service.invalidate("image");
+  await service.getRecent(100);
+  assert.equal(calls.length, 2);
+});

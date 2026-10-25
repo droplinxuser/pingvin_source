@@ -17,6 +17,7 @@ import {
   TbDatabase,
   TbEye,
   TbFiles,
+  TbPhoto,
   TbPlayerPlay,
 } from "react-icons/tb";
 import useTranslate from "../../hooks/useTranslate.hook";
@@ -226,16 +227,32 @@ const TrendingToday = ({
   limit = 12,
   previewBlur = 6,
   children,
+  title: titleOverride,
+  description: descriptionOverride,
+  loadingText: loadingOverride,
+  emptyText: emptyOverride,
+  loadItems = shareService.getTrending,
+  showMediaTypeBadge = false,
 }: {
   initialItems?: TrendingShare[];
   embedded?: boolean;
   limit?: number;
   previewBlur?: 4 | 6;
   children?: ReactNode;
+  title?: string;
+  description?: string;
+  loadingText?: string;
+  emptyText?: string;
+  loadItems?: (limit: number) => Promise<TrendingShare[]>;
+  showMediaTypeBadge?: boolean;
 }) => {
   const { classes } = useStyles();
   const t = useTranslate();
   const intl = useIntl();
+  const title = titleOverride ?? t("trending.custom.title");
+  const description = descriptionOverride ?? t("trending.custom.description");
+  const loadingText = loadingOverride ?? t("trending.custom.loading");
+  const emptyText = emptyOverride ?? t("trending.custom.empty");
   const mediaClassName = `${classes.media}${
     previewBlur === 4 ? ` ${classes.mediaSoft}` : ""
   }`;
@@ -289,8 +306,7 @@ const TrendingToday = ({
     // request has completed.
     let cancelled = false;
     setIsLoading(true);
-    shareService
-      .getTrending(limit)
+    loadItems(limit)
       .then((trending) => {
         if (!cancelled) setItems(trending);
       })
@@ -302,10 +318,9 @@ const TrendingToday = ({
     return () => {
       cancelled = true;
     };
-  }, [shouldLoad, limit]);
+  }, [shouldLoad, limit, loadItems]);
 
   const visibleItems = items;
-  const title = t("trending.custom.title");
   const showPlaceholder = isLoading || !shouldLoad;
 
   if (!showPlaceholder && visibleItems.length === 0 && !embedded) return null;
@@ -329,9 +344,7 @@ const TrendingToday = ({
           </Title>
         )}
         <Text className={classes.subheading}>
-          {showPlaceholder
-            ? t("trending.custom.loading")
-            : t("trending.custom.description")}
+          {showPlaceholder ? loadingText : description}
         </Text>
       </Group>
 
@@ -339,11 +352,11 @@ const TrendingToday = ({
 
       {!showPlaceholder && visibleItems.length === 0 ? (
         <Text className={classes.subheading} mt="xs">
-          {t("trending.custom.empty")}
+          {emptyText}
         </Text>
       ) : showPlaceholder ? (
         <div className={classes.grid} aria-hidden>
-          {Array.from({ length: Math.min(limit, 48) }, (_, index) => (
+          {Array.from({ length: Math.min(limit, 100) }, (_, index) => (
             <Box
               key={index}
               className={classes.card}
@@ -378,6 +391,9 @@ const TrendingToday = ({
                   })
                 : undefined;
             const description = item.description?.trim();
+            const hasVideo =
+              item.previewKind === "video" || item.hasVideo === true;
+            const showMediaBadge = hasVideo || showMediaTypeBadge;
 
             return (
               <UnstyledButton
@@ -415,13 +431,19 @@ const TrendingToday = ({
                 <Box component="span" className={classes.scrim} aria-hidden />
 
                 <Box component="span" className={classes.topRow}>
-                  {item.previewKind === "video" && (
+                  {showMediaBadge && (
                     <Box
                       component="span"
                       className={`${classes.badge} ${classes.mediaBadge}`}
                     >
-                      <TbPlayerPlay size={14} aria-hidden />
-                      {t("trending.custom.video")}
+                      {hasVideo ? (
+                        <TbPlayerPlay size={14} aria-hidden />
+                      ) : (
+                        <TbPhoto size={14} aria-hidden />
+                      )}
+                      {hasVideo
+                        ? t("trending.custom.video")
+                        : t("trending.custom.image")}
                     </Box>
                   )}
                   <Box

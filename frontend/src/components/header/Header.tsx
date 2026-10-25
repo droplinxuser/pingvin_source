@@ -171,6 +171,10 @@ const Header = () => {
         ]
       : []),
     {
+      link: "/new",
+      label: t("navbar.new"),
+    },
+    {
       component: <NavbarShareMenu />,
     },
     {
@@ -180,25 +184,30 @@ const Header = () => {
 
   let unauthenticatedLinks: NavLink[] = [];
 
+  if (config.get("general.showHomePage"))
+    unauthenticatedLinks.push({
+      link: "/",
+      label: t("navbar.home"),
+    });
+
+  if (config.get("security.allowUnauthenticatedShares")) {
+    unauthenticatedLinks.push({
+      link: "/upload",
+      label: t("navbar.upload"),
+    });
+  }
+
+  unauthenticatedLinks.push({
+    link: "/new",
+    label: t("navbar.new"),
+  });
+
   if (!shouldHideAuthButtons) {
     unauthenticatedLinks.push({
       link: "/auth/signIn",
       label: t("navbar.signin"),
     });
   }
-
-  if (config.get("security.allowUnauthenticatedShares")) {
-    unauthenticatedLinks.unshift({
-      link: "/upload",
-      label: t("navbar.upload"),
-    });
-  }
-
-  if (config.get("general.showHomePage"))
-    unauthenticatedLinks.unshift({
-      link: "/",
-      label: t("navbar.home"),
-    });
 
   if (config.get("security.allowRegistration") && !shouldHideAuthButtons) {
     unauthenticatedLinks.push({
@@ -217,6 +226,10 @@ const Header = () => {
               },
             ]
           : []),
+        {
+          link: "/new",
+          label: t("navbar.new"),
+        },
         {
           label: t("common.button.shares"),
         },

@@ -17,6 +17,7 @@ so `git merge upstream/main` stays small.
 | Individual downloads / legacy ZIP | `frontend/src/components/share/DownloadAllButton.tsx` (confirmation + sequential per-file downloads), `frontend/src/services/share.service.ts` (anchor-based downloads), `backend/src/share/share.service.ts` (no automatic archive creation); existing `archive.zip` files remain served by the legacy API. The share file count uses `share.custom.fileCount` without the old ZIP note. |
 | Share and file size limits | `backend/prisma/seed/config.seed.ts` (`share.maxSize` 5 GB, `share.maxFileSize` 512 MB), migration `20261025000000_raise_share_size_limit`, `backend/src/share/share.util.ts` (`resolveShareSizeLimit`), local/S3 upload guards, `frontend/src/components/upload/Dropzone.tsx` and upload pages |
 | Trending today | `backend/src/cache/trending.service.ts`, `GET /api/shares/trending?limit=48`, `frontend/src/components/share/TrendingToday.tsx` (client-side, viewport-triggered load with skeleton), `frontend/src/components/share/TrendingCountries.tsx`, `frontend/src/pages/trending.tsx`, `frontend/src/pages/_app.tsx` |
+| New shares | `backend/src/cache/trending.service.ts` (`getRecent`), `GET /api/shares/recent?limit=100`, `frontend/src/pages/new.tsx`, shared `TrendingToday` grid/card (`loadItems`, media badge), header/footer links, sitemap/robots |
 | Cache headers / hotlink protection | `backend/src/utils/cache.util.ts` (shared `Cache-Control`, `CDN-Cache-Control`, `Cloudflare-CDN-Cache-Control`, public-file `ETag`), `backend/src/utils/referrer.util.ts`, `frontend/src/middleware.ts` (query-free anonymous page shells), `frontend/next.config.js` |
 | Per-IP+User-Agent rate limiting | `backend/src/utils/visitorIdentity.util.ts`, `backend/src/cache/valkeyThrottler.storage.ts`, `backend/src/cache/throttler.config.ts`, `backend/src/main.ts` |
 | Valkey/Redis cache | `backend/src/utils/cache.util.ts`, `backend/src/share/shareState.service.ts`, `backend/src/cache/cache.module.ts`, `backend/src/cache/valkey.service.ts` |
@@ -59,7 +60,8 @@ hand-rolled lock or temp-file block.
    and 404 pages (no widget on home, upload or other pages), the clickable
    widget title and full `/trending` page with up to 48 cards showing name,
    description, file count, size, upload date and views over a lightly blurred
-   preview that clears on hover, file download headers, report modal, footer
+   preview that clears on hover, the new `/new` page (100 newest media shares,
+   image/play badges, header/footer links), file download headers, report modal, footer
    page-view/top-country
    metrics, the dynamic `/manifest.json`, and the disk-backed `/sitemap.xml`
    index plus a versioned `/api/system/sitemaps/sitemap-N.xml` chunk (one
@@ -259,6 +261,22 @@ hand-rolled lock or temp-file block.
   description, file count, size, upload date and view count stay readable. The
   grid is one column on phones, two on small tablets, three on laptops and four
   on wide screens.
+- "New shares" at `/new` is the recent counterpart of `/trending`. It reuses
+  `TrendingToday` (same card, grid, skeleton and responsive layout) with a
+  `loadItems` callback and a media-type badge; the header shows "New" after the
+  upload link and the footer links it after Trending. `GET /api/shares/recent`
+  returns up to 100 public, unexpired, non-removed shares created in the last
+  scan of the newest 1,000 rows, with at least one view, at least one
+  renderable image/video preview and no password/max views/recipient/private
+  reverse-share restriction, ordered by upload date descending. The same
+  preview helper as trending chooses the thumbnail; `hasVideo` marks any share
+  containing a video so the card shows a play icon even when the thumbnail is
+  an image, while image-only cards show an image icon. The list is cached
+  in-process for 30 seconds, invalidated by edits/deletes and the first view of
+  a share, and served with a 60-second edge TTL. `/new` is part of the public
+  anonymous shell cache, the crawler allow list and the sitemap. The missing
+  file guard in `LocalFileService.get` returns 404 instead of letting a missing
+  on-disk file emit an unhandled stream error.
 - The footer posts to `POST /api/system/pageview` on every rendered page. The
   endpoint increments a per-hour Valkey hash atomically (one total field plus
   one field per country), expires each hourly bucket after 25 hours and reads
@@ -1012,6 +1030,20 @@ sign-in redirect for a protected page and loop between `/upload` and
   an ETag with `CDN-Cache-Control: public, max-age=86400, immutable`. The live
   proxy rewrites browser `Cache-Control` for XML/TXT/file responses, so edge
   policy must be checked on `CDN-Cache-Control`/`Cloudflare-CDN-Cache-Control`.
+- "New shares" (2026-10-25): both production builds pass, all 111 backend unit
+  tests pass (recent listing filters/cap/cache and missing-file 404 included),
+  and lint is clean. The local database copy (16k shares) returned 100 cards in
+  ~31 ms cold; every item was public, unexpired, had at least one view and a
+  renderable preview, and the list was ordered by upload date descending. Guest
+  and signed-in headers show New after Upload (guest: Home/New/Sign in), the
+  footer link and mobile menu entry work, and 100 cards render at 1366px and
+  390px with no overflow. The card for an image-only share showed the Image
+  badge (no play icon); a share containing a video showed the play badge. The
+  page had one H1, canonical `/new`, indexable robots, CollectionPage JSON-LD,
+  the 60-second anonymous shell cache, and the 60-second endpoint edge cache.
+  `/new` is in robots and the sitemap chunk. Clicking a card opens its share
+  page. The local missing-media 404s are expected from the database-only copy;
+  the backend now returns 404 for them instead of crashing.
 
 ## Known non-issues
 

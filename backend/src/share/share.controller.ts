@@ -142,6 +142,21 @@ export class ShareController {
     return this.trending.getTrendingCountries();
   }
 
+  // Newest public shares with a renderable image/video preview. The card shape
+  // is shared with trending so both pages use the same UI and cache policy.
+  @Get("recent")
+  @SkipThrottle({ default: true, visitor: true })
+  async getRecent(
+    @Query("limit") limit: string,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<TrendingShare[]> {
+    response.set(getEdgeCacheHeaders(60));
+    const parsedLimit = Number.parseInt(limit ?? "", 10);
+    return this.trending.getRecent(
+      Number.isFinite(parsedLimit) ? parsedLimit : undefined,
+    );
+  }
+
   // Lightweight existence check used by external monitors and the share page
   // SSR so missing shares get a real 404 without recording a view.
   @Head(":id")

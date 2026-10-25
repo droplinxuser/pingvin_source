@@ -5,6 +5,8 @@ export default {
     "Download {count, plural, one {# file} other {# files}} ({size}) shared via {siteName}. Preview images, videos, audio and documents before downloading.",
   "seo.custom.trending.description":
     "Discover the most-viewed public shares from the last 30 days. Preview and download images, videos, audio and documents.",
+  "seo.custom.new.description":
+    "Browse the newest public shares with image and video previews. Open a share to preview and download its files.",
   "seo.custom.privacy.description":
     "Read how {siteName} handles data, cookies and uploaded files.",
   "seo.custom.imprint.description":
@@ -19,6 +21,7 @@ export default {
 
   // Navbar
   "navbar.upload": "Upload",
+  "navbar.new": "New",
   "navbar.signin": "Sign in",
   "navbar.home": "Home",
   "navbar.signup": "Sign up",
@@ -58,6 +61,7 @@ export default {
   "trending.custom.uploaded": "Uploaded {date}",
   "trending.custom.views": "{count, plural, one {# view} other {# views}}",
   "trending.custom.video": "Video",
+  "trending.custom.image": "Image",
   "trending.custom.empty":
     "No public shares have been viewed in the last 30 days yet.",
   "trending.custom.loading": "Loading trending shares…",
@@ -70,6 +74,14 @@ export default {
   "trending.custom.countries.list":
     "Most-viewed shares from {country} in the last 24 hours",
   // END trending
+
+  // New shares
+  "new.custom.title": "New shares",
+  "new.custom.description":
+    "The latest public shares with an image or video preview.",
+  "new.custom.loading": "Loading new shares…",
+  "new.custom.empty": "No public media shares have been uploaded yet.",
+  // END new shares
 
   // /
   "home.title": "A <h>self-hosted</h> file sharing platform.",

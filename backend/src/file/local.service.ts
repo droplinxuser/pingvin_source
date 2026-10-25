@@ -215,6 +215,15 @@ export class LocalFileService {
 
     const filePath = this.getSafeFilePath(shareId, fileId);
 
+    // A database row can outlive its bytes after a partial cleanup or disk
+    // repair. Return a normal 404 instead of letting createReadStream emit an
+    // unhandled error that takes the whole backend down.
+    try {
+      await fs.stat(filePath);
+    } catch {
+      throw new NotFoundException(this.i18n.t("file.notFound"));
+    }
+
     const file = isRangeNotSatisfiable
       ? undefined
       : createReadStream(
