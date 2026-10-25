@@ -9,13 +9,14 @@ import {
   Title,
 } from "@mantine/core";
 import Link from "next/link";
+import { useRouter } from "next/router";
 import { useEffect } from "react";
 import { TbCheck } from "react-icons/tb";
 import { FormattedMessage } from "react-intl";
 import Logo from "../components/Logo";
 import Meta from "../components/Meta";
-import useUser from "../hooks/user.hook";
 import useConfig from "../hooks/config.hook";
+import useHomeHref from "../hooks/homeHref.hook";
 import useTranslate from "../hooks/useTranslate.hook";
 import { absoluteUrl, normalizeBaseUrl } from "../utils/seo.util";
 
@@ -73,17 +74,20 @@ const useStyles = createStyles((theme) => ({
 
 export default function Home() {
   const { classes } = useStyles();
-  const { user } = useUser();
+  const router = useRouter();
   const config = useConfig();
+  const homeHref = useHomeHref();
   const t = useTranslate();
 
-  // Use a full navigation after login: a redirect page prefetched while
-  // logged out must not be reused (it can loop between /upload and sign-in).
+  // Never render the home page when a higher-priority destination exists
+  // (signed in or home page disabled): redirect straight to it. `_app` already
+  // restores the signed-in user from the access token, so no extra user
+  // request is needed here.
+  const redirectTarget = homeHref !== "/" ? homeHref : null;
+
   useEffect(() => {
-    if (user) {
-      window.location.replace("/upload");
-    }
-  }, [user]);
+    if (redirectTarget) router.replace(redirectTarget);
+  }, [redirectTarget, router]);
 
   const siteName = (config.get("general.appName") as string) || "Pingvin Share";
   const description = t("home.custom.metaDescription", { siteName });
@@ -109,6 +113,8 @@ export default function Home() {
       url: absoluteUrl("/", baseUrl),
     },
   };
+
+  if (redirectTarget) return null;
 
   return (
     <>

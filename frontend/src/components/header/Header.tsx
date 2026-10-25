@@ -21,6 +21,7 @@ import useUser from "../../hooks/user.hook";
 import useTranslate from "../../hooks/useTranslate.hook";
 import authService from "../../services/auth.service";
 import Logo from "../Logo";
+import useHomeHref from "../../hooks/homeHref.hook";
 import ActionAvatar from "./ActionAvatar";
 import NavbarShareMenu from "./NavbarShareMenu";
 
@@ -142,6 +143,7 @@ const Header = () => {
   const { user } = useUser();
   const router = useRouter();
   const config = useConfig();
+  const homeHref = useHomeHref();
   const t = useTranslate();
 
   const isShareOrUploadPage = [
@@ -372,7 +374,7 @@ const Header = () => {
       <MantineHeader height={HEADER_HEIGHT} mb={0} className={classes.root}>
         <Container className={classes.header}>
           <Link
-            href="/"
+            href={homeHref}
             passHref
             aria-label={`${config.get("general.appName")} home`}
           >

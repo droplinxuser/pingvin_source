@@ -24,7 +24,7 @@ so `git merge upstream/main` stays small.
 | VirusTotal background scanning | `backend/src/virustotal/*` (worker, file-backed audit, admin controller), `backend/src/share/share.service.ts` (completion hook), `backend/src/share/share.module.ts`, `backend/src/clamscan/clamscan.service.ts` (shared malicious-share removal), `frontend/src/pages/admin/virustotal.tsx`, `backend/.env.example` |
 | Site stats and footer | `backend/src/system/system.service.ts`, `backend/src/cache/metrics.service.ts`, `frontend/src/components/footer/Footer.tsx`; `POST /api/system/pageview` |
 | Valkey metrics and error logs | `backend/src/cache/valkeyMetrics.util.ts`, `backend/src/logs/*`, `backend/src/system/system.controller.ts` (`GET /api/system/valkey`), `frontend/src/components/admin/ValkeyMetricsCard.tsx`, `frontend/src/pages/admin/logs.tsx`, `frontend/src/services/log.service.ts`, `frontend/src/utils/errorReporter.util.ts` |
-| Home copy and ads | `frontend/src/pages/index.tsx` (upstream layout), `home.custom.*` keys in `en-US.ts`, `frontend/src/components/Ads.tsx` |
+| Home copy and ads | `frontend/src/pages/index.tsx` (upstream layout and redirect), `home.custom.*` keys in `en-US.ts`, `frontend/src/components/Ads.tsx`; upstream `hooks/homeHref.hook.ts` owns every "go home" target (honours `general.showHomePage`, `security.allowUnauthenticatedShares` and the signed-in state) |
 | Fork branding / deployment | `frontend/public/img/**`, `frontend/public/favicon.ico`, `frontend/src/pages/manifest.json.tsx`, `pingvin-*.service`, `update.sh` |
 | SEO / crawlers | `frontend/src/components/Meta.tsx`, `SiteStructuredData.tsx`, `frontend/src/pages/robots.txt.tsx`, `frontend/src/pages/sitemap.xml.tsx`, `frontend/src/utils/seo.util.ts`, `frontend/src/utils/seo.server.util.ts`, `backend/src/share/share.service.ts` (`getSeo`), `backend/src/system/system.service.ts` (disk-backed `getRobotsTxt`, 50k-entry sitemap index/chunks, `getSitemapFile`) |
 | WebP / image pipeline | `backend/src/file/file.service.ts` (private preview cache), `backend/src/file/file.controller.ts` (`webp=300`), `backend/src/config/logo.service.ts`, `frontend/src/utils/file.util.ts`, `frontend/src/components/Logo.tsx`, `frontend/public/img/*.webp`, `og-image.png` |
@@ -378,10 +378,11 @@ hand-rolled lock or temp-file block.
 
 ## Auth redirects
 
-Post-login, post-TOTP, post-signup and authenticated-home redirects use a
-full document navigation. A client-side navigation can reuse a prefetched
-sign-in redirect for a protected page and loop between `/upload` and
-`/auth/signIn`; the full navigation avoids that cache.
+Post-login, post-TOTP and post-signup redirects use a full document navigation.
+A client-side navigation can reuse a prefetched sign-in redirect for a protected
+page and loop between `/upload` and `/auth/signIn`; the full navigation avoids
+that cache. "Go home" links and the home-page redirect use the upstream
+`useHomeHref` helper instead of hardcoded `/` links.
 
 ## SEO, structured data and image delivery
 
@@ -1062,6 +1063,18 @@ sign-in redirect for a protected page and loop between `/upload` and
   CollectionPage JSON-LD, and was present in the sitemap chunk and robots allow
   list. The existing 21-route guest/user/mobile regression, comments and cleanup
   still passed (`2a71646b`).
+- Upstream merge `v2.1.0-beta.1` (`9fbf6155`, `aeec7688`, `8ccf8f15`) resolved
+  conflicts in `Header.tsx`, `404.tsx` and the custom home page by adopting
+  upstream's `useHomeHref` redirect and keeping the fork-only ad slot and home
+  content. Local `npm ci` plus both production builds pass. Playwright checked
+  37 guest/signed-in routes at 1366px and 12 routes at 390px in dark mode with
+  no application console errors, warnings, page exceptions, failed requests,
+  horizontal overflow or status mismatches (third-party ad tags blocked;
+  intentionally missing test-share media ignored). Home targets were also
+  verified with `general.showHomePage=false` for both unauthenticated-share
+  settings: guests land on `/auth/signIn` or `/upload` accordingly, signed-in
+  users always land on `/upload`, and logo/404 links match each destination
+  without a redirect loop.
 
 ## Known non-issues
 
