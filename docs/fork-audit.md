@@ -1114,6 +1114,36 @@ that cache. "Go home" links and the home-page redirect use the upstream
   console errors/warnings; the recent and trending APIs, sitemap index/chunk,
   config batch save, `metaData`, visitor/comment persistence, cache headers and
   the offline-share 503 `no-store` response were checked directly.
+- Live verification of that pass (2026-10-25): the deployed manifest version
+  matched the pushed commit. A temporary public share with a PNG and a text
+  file was created through the API and checked as a guest, the test account and
+  at 390px in dark mode: the page returned 200, rendered one H1, indexable
+  robots and CollectionPage JSON-LD, loaded a 300px WebP preview (3.1 kB) and
+  served the text file as an attachment with an ETag and the day-long
+  immutable CDN policy; the download-all and report dialogs opened, the
+  lazily-loaded edit form opened for the owner, a comment was posted and read
+  back with the bumped version, visitors and views were recorded, and the
+  missing-share go-home target became `/upload` after the client session
+  hydrated. The temporary share was deleted; its API and SEO routes returned
+  404 immediately, the cached page shell returned 404 after its 60-second TTL,
+  and it disappeared from recent, trending and the country lists. A 10-route
+  guest pass (home, trending, new, imprint, privacy, image/video shares,
+  sign-in, missing share, unknown route) and a signed-in pass (upload, account
+  pages, share page, missing share) had one H1 each, no horizontal overflow,
+  no images without alt, and no application console errors or warnings; the
+  non-admin `/admin` request redirected to `/upload`. `/new` rendered 100
+  cards (14 image / 89 video badges) and `/trending` 48 cards with five
+  country tabs; the share and 404 widgets showed 12 trending cards. The
+  footer showed the live overview and eight countries, and `/manifest.json`
+  named the site with 16 icons. Cache checks: anonymous home/new/share shells
+  were Cloudflare `HIT`/`REVALIDATED` with the 60-second policy and
+  `Vary: Accept-Encoding`; configs 30 seconds; trending/recent 60 seconds;
+  share SEO 60 seconds; the sitemap index one hour; the 15,660-URL chunk,
+  robots and manifest one day (`HIT`); public comments 30 days; public
+  file/preview responses kept their ETags and no `Set-Cookie`; `/api/system/stats`
+  was edge-cacheable and the page-view POST stayed `no-store`. The known stale
+  duplicate `no-store` header on `/api/configs` from the CDN copy remains and
+  does not affect the body.
 
 ## Known non-issues
 
