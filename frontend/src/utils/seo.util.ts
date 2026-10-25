@@ -1,5 +1,7 @@
 import Config from "../types/config.type";
 
+export const DEFAULT_SITE_NAME = "Pingvin Share";
+
 export const DEFAULT_SITE_DESCRIPTION =
   "Fast, private file sharing with short links, previews and download controls.";
 
@@ -10,6 +12,9 @@ export const getConfigValue = (config: Config[], key: string): string => {
   const variable = config.find((item) => item.key === key);
   return (variable?.value ?? variable?.defaultValue ?? "").trim();
 };
+
+export const getSiteName = (config: Config[]): string =>
+  getConfigValue(config, "general.appName") || DEFAULT_SITE_NAME;
 
 export const getConfiguredSiteUrl = (config: Config[]): string =>
   normalizeBaseUrl(getConfigValue(config, "general.appUrl"));
@@ -29,6 +34,47 @@ export const absoluteUrl = (path: string, baseUrl: string): string => {
     return path;
   }
 };
+
+/**
+ * The single WebSite entity every page graph points at. Keeping the `@id` in
+ * one helper makes the Organization/WebSite graph and the page-level
+ * `isPartOf` references agree.
+ */
+export const buildWebsiteRef = (siteName: string, baseUrl: string) => ({
+  "@type": "WebSite",
+  name: siteName,
+  url: absoluteUrl("/", baseUrl),
+});
+
+export const buildCollectionPage = ({
+  name,
+  description,
+  path,
+  siteName,
+  baseUrl,
+  datePublished,
+  dateModified,
+  mainEntity,
+}: {
+  name: string;
+  description: string;
+  path: string;
+  siteName: string;
+  baseUrl: string;
+  datePublished?: string;
+  dateModified?: string;
+  mainEntity?: Record<string, unknown>;
+}) => ({
+  "@context": "https://schema.org",
+  "@type": "CollectionPage",
+  name,
+  description,
+  url: absoluteUrl(path, baseUrl),
+  ...(datePublished ? { datePublished } : {}),
+  ...(dateModified ? { dateModified } : {}),
+  isPartOf: buildWebsiteRef(siteName, baseUrl),
+  ...(mainEntity ? { mainEntity } : {}),
+});
 
 export const escapeXml = (value: string): string =>
   value

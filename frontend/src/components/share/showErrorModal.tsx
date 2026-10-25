@@ -3,6 +3,7 @@ import { useModals } from "@mantine/modals";
 import { ModalsContextProps } from "@mantine/modals/lib/context";
 import { useRouter } from "next/router";
 import { FormattedMessage } from "react-intl";
+import useHomeHref from "../../hooks/homeHref.hook";
 
 const showErrorModal = (
   modals: ModalsContextProps,
@@ -29,6 +30,7 @@ const Body = ({
 }) => {
   const modals = useModals();
   const router = useRouter();
+  const homeHref = useHomeHref();
   return (
     <>
       <Stack align="stretch">
@@ -39,7 +41,7 @@ const Body = ({
             if (action === "go-back") {
               router.back();
             } else if (action === "go-home") {
-              router.push("/");
+              router.push(homeHref);
             }
           }}
         >

@@ -15,6 +15,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useIntl } from "react-intl";
 import { TbEye } from "react-icons/tb";
 import useConfig from "../../hooks/config.hook";
+import useSiteMeta from "../../hooks/siteMeta.hook";
 import useTranslate from "../../hooks/useTranslate.hook";
 import useUser from "../../hooks/user.hook";
 import systemService, { SystemStats } from "../../services/system.service";
@@ -145,6 +146,7 @@ const Footer = () => {
   const config = useConfig();
   const { user } = useUser();
   const { classes } = useStyles();
+  const { siteName } = useSiteMeta();
   const [stats, setStats] = useState<SystemStats | null>(null);
   const [isLoadingStats, setIsLoadingStats] = useState(true);
 
@@ -177,7 +179,6 @@ const Footer = () => {
     };
   }, [router.asPath]);
 
-  const siteName = (config.get("general.appName") as string) || "Pingvin Share";
   const hasImprint = !!(
     config.get("legal.imprintUrl") || config.get("legal.imprintText")
   );

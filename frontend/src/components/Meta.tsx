@@ -1,13 +1,12 @@
 import Head from "next/head";
 import { useRouter } from "next/router";
 import { useIntl } from "react-intl";
-import useConfig from "../hooks/config.hook";
+import useSiteMeta from "../hooks/siteMeta.hook";
 import { isPublicPageRoute } from "../utils/router.util";
 import {
   absoluteUrl,
   DEFAULT_SITE_DESCRIPTION,
   getCanonicalPath,
-  normalizeBaseUrl,
 } from "../utils/seo.util";
 import JsonLd from "./JsonLd";
 
@@ -19,7 +18,6 @@ const Meta = ({
   noindex,
   canonicalPath,
   jsonLd,
-  keywords,
   publishedTime,
   modifiedTime,
 }: {
@@ -30,16 +28,12 @@ const Meta = ({
   noindex?: boolean;
   canonicalPath?: string;
   jsonLd?: Record<string, unknown> | Record<string, unknown>[];
-  keywords?: string;
   publishedTime?: string;
   modifiedTime?: string;
 }) => {
-  const config = useConfig();
   const router = useRouter();
   const intl = useIntl();
-  const siteName =
-    (config.get("general.appName") as string)?.trim() || "Pingvin Share";
-  const baseUrl = normalizeBaseUrl(config.get("general.appUrl") as string);
+  const { siteName, baseUrl } = useSiteMeta();
   const metaTitle = title ? `${title} - ${siteName}` : siteName;
   const metaDescription =
     description?.trim() ||
@@ -67,7 +61,6 @@ const Meta = ({
         <title>{metaTitle}</title>
         <meta name="description" content={metaDescription} />
         <meta name="robots" content={robots} />
-        {keywords && <meta name="keywords" content={keywords} />}
         <link rel="canonical" href={canonical} />
 
         <meta property="og:type" content={type} />

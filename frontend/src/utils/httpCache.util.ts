@@ -15,3 +15,14 @@ export function setPublicCacheHeaders(
   response.setHeader("CDN-Cache-Control", value);
   response.setHeader("Cloudflare-CDN-Cache-Control", value);
 }
+
+/**
+ * Overrides the public page-shell headers when the server-rendered response is
+ * a transient error. Without this, the middleware's short public TTL could
+ * pin a backend hiccup at the edge.
+ */
+export function setNoStoreHeaders(response: ServerResponse) {
+  response.setHeader("Cache-Control", "no-store");
+  response.setHeader("CDN-Cache-Control", "no-store");
+  response.setHeader("Cloudflare-CDN-Cache-Control", "no-store");
+}

@@ -1,6 +1,10 @@
 import { Injectable } from "@nestjs/common";
 import { PrismaService } from "src/prisma/prisma.service";
-import { sumFileSizes, isPublicShare } from "src/share/share.util";
+import {
+  sumFileSizes,
+  isPublicShare,
+  publicShareWhere,
+} from "src/share/share.util";
 import {
   COUNTRY_FIELD_PREFIX,
   isCountryCode,
@@ -108,7 +112,8 @@ export class TrendingService {
     const code = normalizeCountryCode(country);
     const recent =
       Date.now() - new Date(share.createdAt).getTime() <= MAX_SHARE_AGE_MS;
-    const preview = recent ? findPreview(share.files) : undefined;
+    const media = recent ? findPreview(share.files) : undefined;
+    const preview = media?.preview;
     // A country-only view still updates the country total even when the share
     // has no preview or has left the thirty-day window. The per-share ranking
     // remains limited to shares that can actually be rendered.
@@ -240,39 +245,7 @@ export class TrendingService {
 
     const shares = await this.prisma.share
       .findMany({
-        where: {
-          uploadLocked: true,
-          removedReason: null,
-          files: { some: {} },
-          AND: [
-            {
-              OR: [
-                { expiration: { gt: new Date() } },
-                { expiration: { equals: new Date(0) } },
-              ],
-            },
-            {
-              OR: [
-                { security: null },
-                {
-                  security: {
-                    is: {
-                      password: null,
-                      maxViews: null,
-                      restrictToRecipients: false,
-                    },
-                  },
-                },
-              ],
-            },
-            {
-              OR: [
-                { reverseShare: null },
-                { reverseShare: { is: { publicAccess: true } } },
-              ],
-            },
-          ],
-        },
+        where: publicShareWhere(),
         select: {
           id: true,
           name: true,
@@ -301,14 +274,12 @@ export class TrendingService {
     const items: TrendingShare[] = [];
     for (const share of shares) {
       if (!isPublicShare(share)) continue;
-      const preview = findPreview(share.files);
-      if (!preview) continue;
+      const media = findPreview(share.files);
+      if (!media) continue;
 
       items.push({
-        ...toTrendingShare(buildMeta(share, preview), share.views),
-        hasVideo: share.files.some((file) =>
-          getFileMimeType(file.name, false).startsWith("video/"),
-        ),
+        ...toTrendingShare(buildMeta(share, media.preview), share.views),
+        hasVideo: media.hasVideo,
       });
       if (items.length >= RECENT_MAX_RESULT) break;
     }
@@ -395,7 +366,7 @@ export class TrendingService {
       if (share.expiration.getTime() !== 0 && share.expiration.getTime() <= now)
         continue;
 
-      const preview = findPreview(share.files);
+      const preview = findPreview(share.files)?.preview;
       if (!preview) continue;
 
       multi.zAdd(viewKey, { score: share.views, value: share.id });
@@ -610,7 +581,7 @@ export class TrendingService {
       found.add(share.id);
       const preview =
         share.uploadLocked && !share.removedReason
-          ? findPreview(share.files)
+          ? findPreview(share.files)?.preview
           : undefined;
       if (!preview || now - share.createdAt.getTime() > MAX_SHARE_AGE_MS) {
         remove(share.id);
@@ -715,6 +686,7 @@ function findPreview(files?: { id: string; name: string }[]) {
   let firstMedia: { id: string; kind: MediaKind } | undefined;
   let firstImage: { id: string; kind: MediaKind } | undefined;
   let playableVideo: { id: string; kind: MediaKind } | undefined;
+  let hasVideo = false;
 
   for (const file of files ?? []) {
     const mimeType = getFileMimeType(file.name, false);
@@ -722,6 +694,7 @@ function findPreview(files?: { id: string; name: string }[]) {
       if (!firstMedia) firstMedia = { id: file.id, kind: "image" };
       if (!firstImage) firstImage = { id: file.id, kind: "image" };
     } else if (mimeType.startsWith("video/")) {
+      hasVideo = true;
       if (!firstMedia) firstMedia = { id: file.id, kind: "video" };
       const extension = file.name.split(".").pop()?.toLowerCase() ?? "";
       if (!playableVideo && PLAYABLE_VIDEO_EXTENSIONS.has(extension))
@@ -729,14 +702,18 @@ function findPreview(files?: { id: string; name: string }[]) {
     }
   }
 
-  if (firstMedia?.kind === "video") {
+  if (!firstMedia) return undefined;
+  if (firstMedia.kind === "video") {
     // Browsers cannot decode every video container. Prefer a playable video
     // from the same share, then an image, so the compact country preview shows
     // a real frame instead of a black box. Shares with neither keep the first
     // video as a fallback for clients that do support it.
-    return playableVideo ?? firstImage ?? firstMedia;
+    return {
+      preview: playableVideo ?? firstImage ?? firstMedia,
+      hasVideo,
+    };
   }
-  return firstMedia;
+  return { preview: firstMedia, hasVideo };
 }
 
 function currentDay() {

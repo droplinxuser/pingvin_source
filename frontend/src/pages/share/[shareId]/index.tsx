@@ -14,7 +14,7 @@ import { useModals } from "@mantine/modals";
 import { GetServerSidePropsContext } from "next";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { useEffect, useState } from "react";
+import { ReactNode, useEffect, useState } from "react";
 import { FormattedMessage } from "react-intl";
 import Meta from "../../../components/Meta";
 import LazySection from "../../../components/core/LazySection";
@@ -33,17 +33,19 @@ import UploaderInfoBadges from "../../../components/share/UploaderInfoBadges";
 import Ads from "../../../components/Ads";
 import showEnterPasswordModal from "../../../components/share/showEnterPasswordModal";
 import showErrorModal from "../../../components/share/showErrorModal";
-import useConfig from "../../../hooks/config.hook";
+import useHomeHref from "../../../hooks/homeHref.hook";
+import useSiteMeta from "../../../hooks/siteMeta.hook";
 import useTranslate from "../../../hooks/useTranslate.hook";
 import shareService from "../../../services/share.service";
 import { Share as ShareType, ShareSeo } from "../../../types/share.type";
 import toast from "../../../utils/toast.util";
 import { getBaseName } from "../../../utils/file.util";
 import { byteToHumanSizeString } from "../../../utils/fileSize.util";
+import { setNoStoreHeaders } from "../../../utils/httpCache.util";
 import { isLikelyGalleryMedia } from "../../../utils/mime.util";
 import { getQueryString } from "../../../utils/router.util";
 import { fetchShareSeo } from "../../../utils/seo.server.util";
-import { absoluteUrl, normalizeBaseUrl } from "../../../utils/seo.util";
+import { buildCollectionPage } from "../../../utils/seo.util";
 
 export async function getServerSideProps(context: GetServerSidePropsContext) {
   const shareId = context.params!.shareId as string;
@@ -57,10 +59,41 @@ export async function getServerSideProps(context: GetServerSidePropsContext) {
   // transient metadata failure gets a 503 instead of a 200 noindex page, so a
   // short backend outage cannot deindex a valid public share.
   if (initialNotFound) context.res.statusCode = 404;
-  if (result.status === "error") context.res.statusCode = 503;
+  if (result.status === "error") {
+    context.res.statusCode = 503;
+    setNoStoreHeaders(context.res);
+  }
 
   return { props: { shareId, initialNotFound, seo } };
 }
+
+/**
+ * Full-page message used by the restricted and missing/removed share states.
+ * Both branches previously duplicated the same centered stack.
+ */
+const ShareMessage = ({
+  title,
+  description,
+  action,
+}: {
+  title: ReactNode;
+  description: ReactNode;
+  action: { href: string; label: ReactNode };
+}) => (
+  <Center style={{ height: "70vh" }}>
+    <Stack align="center" spacing="md">
+      <Title order={1} size="h3">
+        {title}
+      </Title>
+      <Text color="dimmed" align="center">
+        {description}
+      </Text>
+      <Button component={Link} href={action.href}>
+        {action.label}
+      </Button>
+    </Stack>
+  </Center>
+);
 
 const SharePage = ({
   shareId,
@@ -73,8 +106,9 @@ const SharePage = ({
 }) => {
   const modals = useModals();
   const router = useRouter();
-  const config = useConfig();
+  const homeHref = useHomeHref();
   const t = useTranslate();
+  const { siteName, baseUrl } = useSiteMeta();
 
   const [share, setShare] = useState<ShareType>();
   const [isRestricted, setIsRestricted] = useState(false);
@@ -92,10 +126,6 @@ const SharePage = ({
 
   const recipientId = getQueryString(router.query.recipient);
 
-  const siteName =
-    (config.get("general.appName") as string)?.trim() || "Pingvin Share";
-  const baseUrl = normalizeBaseUrl(config.get("general.appUrl") as string);
-  const shareUrl = absoluteUrl(`/share/${shareId}`, baseUrl);
   const indexable = seo?.indexable === true;
   const shareName = indexable ? share?.name || seo?.name : undefined;
   const displayName = share?.name || seo?.name || shareId;
@@ -123,26 +153,21 @@ const SharePage = ({
     : t("share.title", { shareId });
   const metaDescription = indexable
     ? t("seo.custom.share.description", {
-        count: share?.files?.length ?? seo?.fileCount ?? 0,
-        size: byteToHumanSizeString(share?.size ?? seo?.size ?? 0),
+        count: displayFileCount,
+        size: byteToHumanSizeString(displaySize),
         siteName,
       })
     : t("share.description");
   const shareJsonLd =
     indexable && seo
-      ? {
-          "@context": "https://schema.org",
-          "@type": "CollectionPage",
+      ? buildCollectionPage({
           name: shareName ? `${shareName} - ${siteName}` : metaTitle,
           description: metaDescription,
-          url: shareUrl,
+          path: `/share/${shareId}`,
+          siteName,
+          baseUrl,
           datePublished: seo.createdAt,
           dateModified: seo.updatedAt,
-          isPartOf: {
-            "@type": "WebSite",
-            name: siteName,
-            url: absoluteUrl("/", baseUrl),
-          },
           mainEntity: {
             "@type": "ItemList",
             numberOfItems: seo.files?.length ?? 0,
@@ -152,7 +177,7 @@ const SharePage = ({
               name: getBaseName(file.name),
             })),
           },
-        }
+        })
       : undefined;
   const shareMeta = (
     <Meta
@@ -164,7 +189,6 @@ const SharePage = ({
       publishedTime={indexable ? seo?.createdAt : undefined}
       modifiedTime={indexable ? seo?.updatedAt : undefined}
       jsonLd={shareJsonLd}
-      image="/img/og-image.png"
     />
   );
 
@@ -283,22 +307,16 @@ const SharePage = ({
     return (
       <>
         {shareMeta}
-        <Center style={{ height: "70vh" }}>
-          <Stack align="center" spacing="md">
-            <Title order={1} size="h3">
-              <FormattedMessage id="share.error.restricted.title" />
-            </Title>
-            <Text color="dimmed" align="center">
-              <FormattedMessage id="share.error.restricted.description" />
-            </Text>
-            <Button
-              component={Link}
-              href={`/auth/signIn?redirect=/share/${shareId}`}
-            >
-              <FormattedMessage id="share.error.restricted.button" />
-            </Button>
-          </Stack>
-        </Center>
+        <ShareMessage
+          title={<FormattedMessage id="share.error.restricted.title" />}
+          description={
+            <FormattedMessage id="share.error.restricted.description" />
+          }
+          action={{
+            href: `/auth/signIn?redirect=/share/${shareId}`,
+            label: <FormattedMessage id="share.error.restricted.button" />,
+          }}
+        />
       </>
     );
   }
@@ -307,19 +325,14 @@ const SharePage = ({
     return (
       <>
         {shareMeta}
-        <Center style={{ height: "70vh" }}>
-          <Stack align="center" spacing="md">
-            <Title order={1} size="h3">
-              {pageError.title}
-            </Title>
-            <Text color="dimmed" align="center">
-              {pageError.description}
-            </Text>
-            <Button component={Link} href="/">
-              <FormattedMessage id="common.button.go-home" />
-            </Button>
-          </Stack>
-        </Center>
+        <ShareMessage
+          title={pageError.title}
+          description={pageError.description}
+          action={{
+            href: homeHref,
+            label: <FormattedMessage id="common.button.go-home" />,
+          }}
+        />
         <Ads />
       </>
     );
@@ -330,7 +343,7 @@ const SharePage = ({
       {shareMeta}
 
       <Breadcrumbs mb="md" aria-label="Breadcrumb">
-        <Anchor component={Link} href="/">
+        <Anchor component={Link} href={homeHref}>
           {t("seo.custom.breadcrumb.home")}
         </Anchor>
         <Anchor component={Link} href="/trending">
@@ -366,9 +379,9 @@ const SharePage = ({
             </Text>
           )}
           {share ? (
-            <Group spacing="xs" mt={5}>
+            <Box mt={5}>
               <UploaderInfoBadges share={share} info={share.uploaderInfo} />
-            </Group>
+            </Box>
           ) : (
             indexable && <Skeleton height={16} width={210} mt={7} />
           )}
@@ -379,7 +392,7 @@ const SharePage = ({
           shareId={shareId}
           recipientId={recipientId}
           setShare={setShare}
-          onDeleted={() => router.replace("/")}
+          onDeleted={() => router.replace(homeHref)}
         />
       </Group>
 

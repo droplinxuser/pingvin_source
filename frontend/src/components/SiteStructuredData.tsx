@@ -1,23 +1,20 @@
 import { useRouter } from "next/router";
 import { useIntl } from "react-intl";
-import useConfig from "../hooks/config.hook";
+import useSiteMeta from "../hooks/siteMeta.hook";
 import { isPublicPageRoute } from "../utils/router.util";
 import {
   absoluteUrl,
+  buildWebsiteRef,
   DEFAULT_SITE_DESCRIPTION,
-  normalizeBaseUrl,
 } from "../utils/seo.util";
 import JsonLd from "./JsonLd";
 
 const SiteStructuredData = () => {
-  const config = useConfig();
   const router = useRouter();
   const intl = useIntl();
+  const { siteName, baseUrl } = useSiteMeta();
   if (!isPublicPageRoute(router.pathname)) return null;
 
-  const siteName =
-    (config.get("general.appName") as string)?.trim() || "Pingvin Share";
-  const baseUrl = normalizeBaseUrl(config.get("general.appUrl") as string);
   if (!baseUrl) return null;
 
   const websiteId = `${baseUrl}/#website`;
@@ -46,10 +43,8 @@ const SiteStructuredData = () => {
             },
           },
           {
-            "@type": "WebSite",
+            ...buildWebsiteRef(siteName, baseUrl),
             "@id": websiteId,
-            url: baseUrl,
-            name: siteName,
             description,
             inLanguage: intl.locale,
             publisher: { "@id": organizationId },

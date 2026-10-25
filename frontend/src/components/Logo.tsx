@@ -1,6 +1,6 @@
 import { useMantineColorScheme } from "@mantine/core";
 import { useEffect, useState } from "react";
-import useConfig from "../hooks/config.hook";
+import useSiteMeta from "../hooks/siteMeta.hook";
 
 const lightLogo = "/img/logo.webp";
 const lightLogoFallback = "/img/logo.png";
@@ -17,9 +17,7 @@ const Logo = ({
   alt?: string;
 }) => {
   const { colorScheme } = useMantineColorScheme();
-  const config = useConfig();
-  const siteName =
-    (config.get("general.appName") as string)?.trim() || "Pingvin Share";
+  const { siteName } = useSiteMeta();
   const [preferred, fallback] =
     colorScheme === "dark"
       ? [darkLogo, darkLogoFallback]

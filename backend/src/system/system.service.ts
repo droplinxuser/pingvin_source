@@ -1,8 +1,4 @@
-import {
-  Injectable,
-  Logger,
-  NotFoundException,
-} from "@nestjs/common";
+import { Injectable, Logger, NotFoundException } from "@nestjs/common";
 import checkDiskSpace from "check-disk-space";
 import { createHash } from "crypto";
 import { promises as fs } from "fs";
@@ -17,6 +13,7 @@ import {
 } from "src/cache/valkeyMetrics.util";
 import { ValkeyService } from "src/cache/valkey.service";
 import { PrismaService } from "src/prisma/prisma.service";
+import { publicShareWhere } from "src/share/share.util";
 import { SystemInfoDTO } from "./dto/systemInfo.dto";
 import { ConfigService } from "src/config/config.service";
 
@@ -137,7 +134,10 @@ export class SystemService {
     directory: string,
     manifest: SitemapManifest,
   ): Promise<boolean> {
-    if (Date.now() - new Date(manifest.generatedAt).getTime() > SITEMAP_REFRESH_MS)
+    if (
+      Date.now() - new Date(manifest.generatedAt).getTime() >
+      SITEMAP_REFRESH_MS
+    )
       return false;
 
     try {
@@ -338,39 +338,7 @@ export class SystemService {
     )
       entries.push(urlEntry(absoluteUrl("/privacy", baseUrl)));
 
-    const where = {
-      uploadLocked: true,
-      removedReason: null,
-      files: { some: {} },
-      AND: [
-        {
-          OR: [
-            { expiration: { gt: new Date() } },
-            { expiration: { equals: new Date(0) } },
-          ],
-        },
-        {
-          OR: [
-            { security: null },
-            {
-              security: {
-                is: {
-                  password: null,
-                  maxViews: null,
-                  restrictToRecipients: false,
-                },
-              },
-            },
-          ],
-        },
-        {
-          OR: [
-            { reverseShare: null },
-            { reverseShare: { is: { publicAccess: true } } },
-          ],
-        },
-      ],
-    };
+    const where = publicShareWhere();
     let cursor: string | undefined;
 
     try {
@@ -420,10 +388,7 @@ export class SystemService {
       const indexPath = path.join(directory, "sitemap.xml");
 
       if (
-        !(
-          previous?.version === version &&
-          (await this.fileExists(indexPath))
-        )
+        !(previous?.version === version && (await this.fileExists(indexPath)))
       ) {
         const tempPath = `${indexPath}.${process.pid}.${Date.now()}.tmp`;
         await fs.writeFile(tempPath, indexXml, {

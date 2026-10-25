@@ -171,6 +171,9 @@ export class VirusTotalAuditService
   private writeTimer?: NodeJS.Timeout;
   private writePromise: Promise<void> = Promise.resolve();
   private lastWriteErrorLog = 0;
+  // Pruning walks the 48-hour call list and the daily map; a burst of scan
+  // events does not need it on every single record.
+  private lastPruneAt = 0;
   private readonly maliciousHashes = new Set<string>();
   private hashesLoaded = false;
   private hashesLoadPromise?: Promise<void>;
@@ -213,7 +216,7 @@ export class VirusTotalAuditService
       counters.removed = (counters.removed ?? 0) + 1;
 
     this.state.updatedAt = at;
-    this.prune(now);
+    this.pruneIfDue(now);
     this.scheduleWrite();
   }
 
@@ -221,7 +224,7 @@ export class VirusTotalAuditService
     const now = Date.now();
     this.state.calls.push({ at: now, kind });
     this.state.updatedAt = new Date(now).toISOString();
-    this.prune(now);
+    this.pruneIfDue(now);
     this.scheduleWrite();
   }
 
@@ -422,7 +425,7 @@ export class VirusTotalAuditService
     if (!this.dirty) return this.writePromise;
 
     this.dirty = false;
-    const payload = JSON.stringify(this.state, null, 2);
+    const payload = JSON.stringify(this.state);
     this.writePromise = this.writePromise
       .then(async () => {
         await fs.mkdir(STATE_DIRECTORY, { recursive: true, mode: 0o700 });
@@ -490,7 +493,13 @@ export class VirusTotalAuditService
     }
   }
 
+  private pruneIfDue(now: number) {
+    if (now - this.lastPruneAt < 60 * 1000) return;
+    this.prune(now);
+  }
+
   private prune(now: number) {
+    this.lastPruneAt = now;
     const callsCutoff = now - CALL_RETENTION_MS;
     this.state.calls = this.state.calls.filter(
       (call) => call.at >= callsCutoff,

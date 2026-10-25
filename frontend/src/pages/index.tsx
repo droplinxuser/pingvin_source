@@ -16,9 +16,10 @@ import { FormattedMessage } from "react-intl";
 import Logo from "../components/Logo";
 import Meta from "../components/Meta";
 import useConfig from "../hooks/config.hook";
+import useSiteMeta from "../hooks/siteMeta.hook";
 import useHomeHref from "../hooks/homeHref.hook";
 import useTranslate from "../hooks/useTranslate.hook";
-import { absoluteUrl, normalizeBaseUrl } from "../utils/seo.util";
+import { absoluteUrl, buildWebsiteRef } from "../utils/seo.util";
 
 const useStyles = createStyles((theme) => ({
   inner: {
@@ -78,6 +79,7 @@ export default function Home() {
   const config = useConfig();
   const homeHref = useHomeHref();
   const t = useTranslate();
+  const { siteName, baseUrl } = useSiteMeta();
 
   // Never render the home page when a higher-priority destination exists
   // (signed in or home page disabled): redirect straight to it. `_app` already
@@ -89,9 +91,7 @@ export default function Home() {
     if (redirectTarget) router.replace(redirectTarget);
   }, [redirectTarget, router]);
 
-  const siteName = (config.get("general.appName") as string) || "Pingvin Share";
   const description = t("home.custom.metaDescription", { siteName });
-  const baseUrl = normalizeBaseUrl(config.get("general.appUrl") as string);
   const aboutHref = (config.get("legal.imprintUrl") as string) || "/imprint";
   const aboutIsExternal = /^https?:\/\//i.test(aboutHref);
   const jsonLd = {
@@ -107,11 +107,7 @@ export default function Home() {
       price: "0",
       priceCurrency: "USD",
     },
-    isPartOf: {
-      "@type": "WebSite",
-      name: siteName,
-      url: absoluteUrl("/", baseUrl),
-    },
+    isPartOf: buildWebsiteRef(siteName, baseUrl),
   };
 
   if (redirectTarget) return null;

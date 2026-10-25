@@ -1,4 +1,4 @@
-import { ShareSecurity } from "@prisma/client";
+import { Prisma, ShareSecurity } from "@prisma/client";
 
 // Every share gets a rolling expiration which is reset on each visit.
 export const SHARE_EXPIRATION = "100-days";
@@ -23,6 +23,63 @@ export function isPublicShare(share?: ShareVisibility | null): boolean {
     !share.security?.restrictToRecipients &&
     (!share.reverseShare || share.reverseShare.publicAccess)
   );
+}
+
+/**
+ * SQL predicate shared by the listings that expose public shares (recent,
+ * sitemap). Keeping it next to `isPublicShare` stops the SQL and in-memory
+ * visibility rules from drifting apart.
+ */
+export function publicShareWhere(now = new Date()): Prisma.ShareWhereInput {
+  return {
+    uploadLocked: true,
+    removedReason: null,
+    files: { some: {} },
+    AND: [
+      {
+        OR: [
+          { expiration: { gt: now } },
+          { expiration: { equals: new Date(0) } },
+        ],
+      },
+      {
+        OR: [
+          { security: null },
+          {
+            security: {
+              is: {
+                password: null,
+                maxViews: null,
+                restrictToRecipients: false,
+              },
+            },
+          },
+        ],
+      },
+      {
+        OR: [
+          { reverseShare: null },
+          { reverseShare: { is: { publicAccess: true } } },
+        ],
+      },
+    ],
+  };
+}
+
+/**
+ * Unremoved, uploaded and unexpired shares owned by a user. Used by the share
+ * limit checks and the account listing.
+ */
+export function activeShareWhere(
+  creatorId: string,
+  now = new Date(),
+): Prisma.ShareWhereInput {
+  return {
+    creatorId,
+    uploadLocked: true,
+    removedReason: null,
+    OR: [{ expiration: { gt: now } }, { expiration: { equals: new Date(0) } }],
+  };
 }
 
 /**

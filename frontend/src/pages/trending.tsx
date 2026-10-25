@@ -4,34 +4,27 @@ import TrendingCountries, {
   TrendingCountriesSkeleton,
 } from "../components/share/TrendingCountries";
 import TrendingToday from "../components/share/TrendingToday";
-import useConfig from "../hooks/config.hook";
+import useSiteMeta from "../hooks/siteMeta.hook";
 import useTranslate from "../hooks/useTranslate.hook";
-import { absoluteUrl, normalizeBaseUrl } from "../utils/seo.util";
+import { buildCollectionPage } from "../utils/seo.util";
 
 const Trending = () => {
   const t = useTranslate();
-  const config = useConfig();
-  const siteName =
-    (config.get("general.appName") as string)?.trim() || "Pingvin Share";
-  const baseUrl = normalizeBaseUrl(config.get("general.appUrl") as string);
-  const jsonLd = {
-    "@context": "https://schema.org",
-    "@type": "CollectionPage",
+  const { siteName, baseUrl } = useSiteMeta();
+  const description = t("seo.custom.trending.description");
+  const jsonLd = buildCollectionPage({
     name: t("trending.custom.title"),
-    description: t("seo.custom.trending.description"),
-    url: absoluteUrl("/trending", baseUrl),
-    isPartOf: {
-      "@type": "WebSite",
-      name: siteName,
-      url: absoluteUrl("/", baseUrl),
-    },
-  };
+    description,
+    path: "/trending",
+    siteName,
+    baseUrl,
+  });
 
   return (
     <>
       <Meta
         title={t("trending.custom.title")}
-        description={t("seo.custom.trending.description")}
+        description={description}
         canonicalPath="/trending"
         jsonLd={jsonLd}
       />

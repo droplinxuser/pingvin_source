@@ -31,6 +31,7 @@ import Config from "../types/config.type";
 import { CurrentUser } from "../types/user.type";
 import i18nUtil from "../utils/i18n.util";
 import { isPublicPageRoute } from "../utils/router.util";
+import { getConfigValue } from "../utils/seo.util";
 import userPreferences from "../utils/userPreferences.util";
 import Footer from "../components/footer/Footer";
 import { fetchConfig } from "../utils/config.server.util";
@@ -156,10 +157,8 @@ function App({ Component, pageProps }: AppProps) {
   const [configVariables, setConfigVariables] = useState<Config[]>(
     pageProps.configVariables,
   );
-  const getStringConfigValue = (key: string, fallback = ""): string => {
-    const config = configVariables?.find((item) => item.key === key);
-    return (config?.value ?? config?.defaultValue ?? fallback).trim();
-  };
+  const getStringConfigValue = (key: string, fallback = ""): string =>
+    getConfigValue(configVariables, key) || fallback;
 
   const customCss = getStringConfigValue("appearance.customCss");
   const themePrimaryColorRaw = getStringConfigValue(

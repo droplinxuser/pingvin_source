@@ -3,14 +3,14 @@ import Meta from "../../components/Meta";
 import useTranslate from "../../hooks/useTranslate.hook";
 import { FormattedMessage } from "react-intl";
 import useConfig from "../../hooks/config.hook";
+import useSiteMeta from "../../hooks/siteMeta.hook";
 import Markdown from "markdown-to-jsx";
 
 const PrivacyPolicy = () => {
   const t = useTranslate();
   const { colorScheme } = useMantineTheme();
   const config = useConfig();
-  const siteName =
-    (config.get("general.appName") as string)?.trim() || "Pingvin Share";
+  const { siteName } = useSiteMeta();
   return (
     <article aria-labelledby="privacy-title">
       <Meta

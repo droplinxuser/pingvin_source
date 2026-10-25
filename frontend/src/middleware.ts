@@ -139,11 +139,12 @@ export async function middleware(request: NextRequest) {
   }
 
   const response = NextResponse.next();
-  const defaultLanguage = getConfig("general.defaultLanguage") || "en-US";
+  const configuredDefaultLanguage = getConfig(
+    "general.defaultLanguage",
+  ) as string;
+  const defaultLanguage = configuredDefaultLanguage || "en-US";
   const language = request.cookies.get("language")?.value || defaultLanguage;
-  const colorSchemeCookie = request.cookies.get(
-    "mantine-color-scheme",
-  )?.value;
+  const colorSchemeCookie = request.cookies.get("mantine-color-scheme")?.value;
 
   if (
     isPublicPageRoute(route) &&
@@ -162,7 +163,14 @@ export async function middleware(request: NextRequest) {
     // anonymous shell is intentionally shared. Signed-in requests are excluded
     // at the origin, but an edge cache hit can still deliver this shell to a
     // signed-in visitor; the client restores their session after hydration.
-    response.headers.set("Vary", "Accept-Encoding, Accept-Language");
+    // The shell language comes from the default-language config, so the browser
+    // header only matters when that config value is missing.
+    response.headers.set(
+      "Vary",
+      configuredDefaultLanguage
+        ? "Accept-Encoding"
+        : "Accept-Encoding, Accept-Language",
+    );
   } else {
     setCacheHeaders(response, "no-store");
   }

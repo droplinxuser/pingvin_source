@@ -153,13 +153,14 @@ export class ShareStateService implements OnApplicationShutdown {
     // Refresh the rolling expiration on a cache miss, but persist it at most
     // once per six hours per share. The cached response still shows a fresh
     // 100-day date on every visit.
+    const commentsVersionRead = readCommentVersion(id);
     if (!moment(share.expiration).isSame(0)) {
       share.expiration = parseRelativeDateToAbsolute(SHARE_EXPIRATION);
       await this.persistExpiration(share.id, share.expiration);
     }
 
     const { security, ...shareData } = share;
-    const commentsVersion = await readCommentVersion(id);
+    const commentsVersion = await commentsVersionRead;
     const result = {
       ...shareData,
       size: sumFileSizes(share.files),

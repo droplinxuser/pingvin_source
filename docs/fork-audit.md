@@ -24,9 +24,9 @@ so `git merge upstream/main` stays small.
 | VirusTotal background scanning | `backend/src/virustotal/*` (worker, file-backed audit, admin controller), `backend/src/share/share.service.ts` (completion hook), `backend/src/share/share.module.ts`, `backend/src/clamscan/clamscan.service.ts` (shared malicious-share removal), `frontend/src/pages/admin/virustotal.tsx`, `backend/.env.example` |
 | Site stats and footer | `backend/src/system/system.service.ts`, `backend/src/cache/metrics.service.ts`, `frontend/src/components/footer/Footer.tsx`; `POST /api/system/pageview` |
 | Valkey metrics and error logs | `backend/src/cache/valkeyMetrics.util.ts`, `backend/src/logs/*`, `backend/src/system/system.controller.ts` (`GET /api/system/valkey`), `frontend/src/components/admin/ValkeyMetricsCard.tsx`, `frontend/src/pages/admin/logs.tsx`, `frontend/src/services/log.service.ts`, `frontend/src/utils/errorReporter.util.ts` |
-| Home copy and ads | `frontend/src/pages/index.tsx` (upstream layout and redirect), `home.custom.*` keys in `en-US.ts`, `frontend/src/components/Ads.tsx`; upstream `hooks/homeHref.hook.ts` owns every "go home" target (honours `general.showHomePage`, `security.allowUnauthenticatedShares` and the signed-in state) |
+| Home copy and ads | `frontend/src/pages/index.tsx` (upstream layout and redirect), `home.custom.*` keys in `en-US.ts`, `frontend/src/components/Ads.tsx`; upstream `hooks/homeHref.hook.ts` owns every "go home" target (honours `general.showHomePage`, `security.allowUnauthenticatedShares` and the signed-in state), including the share error screen, breadcrumb, error modals and post-delete redirect |
 | Fork branding / deployment | `frontend/public/img/**`, `frontend/public/favicon.ico`, `frontend/src/pages/manifest.json.tsx`, `pingvin-*.service`, `update.sh` |
-| SEO / crawlers | `frontend/src/components/Meta.tsx`, `SiteStructuredData.tsx`, `frontend/src/pages/robots.txt.tsx`, `frontend/src/pages/sitemap.xml.tsx`, `frontend/src/utils/seo.util.ts`, `frontend/src/utils/seo.server.util.ts`, `backend/src/share/share.service.ts` (`getSeo`), `backend/src/system/system.service.ts` (disk-backed `getRobotsTxt`, 50k-entry sitemap index/chunks, `getSitemapFile`) |
+| SEO / crawlers | `frontend/src/components/Meta.tsx`, `SiteStructuredData.tsx`, `frontend/src/hooks/siteMeta.hook.ts`, `frontend/src/pages/robots.txt.tsx`, `frontend/src/pages/sitemap.xml.tsx`, `frontend/src/utils/seo.util.ts` (`DEFAULT_SITE_NAME`, `buildWebsiteRef`, `buildCollectionPage`), `frontend/src/utils/seo.server.util.ts`, `backend/src/share/share.service.ts` (`getSeo`), `backend/src/system/system.service.ts` (disk-backed `getRobotsTxt`, 50k-entry sitemap index/chunks, `getSitemapFile`) |
 | WebP / image pipeline | `backend/src/file/file.service.ts` (private preview cache), `backend/src/file/file.controller.ts` (`webp=300`), `backend/src/config/logo.service.ts`, `frontend/src/utils/file.util.ts`, `frontend/src/components/Logo.tsx`, `frontend/public/img/*.webp`, `og-image.png` |
 
 Fork-only UI strings live in `frontend/src/i18n/translations/en-US.ts`; every
@@ -1088,6 +1088,32 @@ that cache. "Go home" links and the home-page redirect use the upstream
   and `config.example.yaml`, so a fresh install or a config-fetch fallback
   never shows the upstream product name; an existing database value still
   wins.
+- Upstream-alignment/optimization pass (2026-10-25): the public-share SQL
+  predicate moved to `publicShareWhere()` and the creator/active predicate to
+  `activeShareWhere()` in `backend/src/share/share.util.ts`, so the recent
+  listing, sitemap builder, share-limit checks and account listing share one
+  definition. `getRecent` now returns the preview and the `hasVideo` badge from
+  a single MIME pass, `GET /api/shares/:id/metaData` reuses the guard cache
+  instead of loading the share (and its comments file) a second time, the
+  comment-version read runs in parallel with the throttled expiration update,
+  and admin config batches validate from the in-memory config and reload the
+  table once instead of running a find/update/full reload per variable. The
+  VirusTotal audit prunes at most once per minute and writes compact JSON.
+  Frontend: `hooks/siteMeta.hook.ts`, `DEFAULT_SITE_NAME` and
+  `buildWebsiteRef` / `buildCollectionPage` in `utils/seo.util.ts` replace the
+  site-name and `isPartOf` copies on every page; the share edit/report modals
+  load through `import()` (share page first-load JS 367 kB -> 319 kB); the
+  restricted and missing-share screens share one `ShareMessage`, and every
+  "go home" target (breadcrumb, error screen, error modal, delete redirect)
+  uses `useHomeHref`. A transient share SEO failure now returns a `no-store`
+  503 instead of a CDN-cacheable error, the anonymous shell only varies on
+  `Accept-Language` when `general.defaultLanguage` is unset, and the dynamic
+  manifest reuses the shared config helpers. Verified locally with both
+  production builds, all 111 backend unit tests, clean frontend lint and 28
+  Playwright routes (guest, admin, 1366px and 390px dark) with zero application
+  console errors/warnings; the recent and trending APIs, sitemap index/chunk,
+  config batch save, `metaData`, visitor/comment persistence, cache headers and
+  the offline-share 503 `no-store` response were checked directly.
 
 ## Known non-issues
 

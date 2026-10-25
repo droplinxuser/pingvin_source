@@ -24,14 +24,43 @@ const isValidId = (id: string) => {
 };
 
 const TRENDING_CACHE_TTL_MS = 30_000;
-let trendingCache:
-  | { at: number; limit: number; items: TrendingShare[] }
-  | undefined;
-const RECENT_CACHE_TTL_MS = 30_000;
-let recentCache:
-  | { at: number; limit: number; items: TrendingShare[] }
-  | undefined;
 const TRENDING_COUNTRIES_CACHE_TTL_MS = 5 * 60 * 1000;
+
+type CachedShareList = {
+  at: number;
+  limit: number;
+  items: TrendingShare[];
+};
+
+/**
+ * Small browser cache for the public listing endpoints. The same shape and
+ * "keep an empty response out of the cache" rule is used by trending and the
+ * newest-shares list.
+ */
+const cachedShareList = (
+  endpoint: string,
+  defaultLimit: number,
+  ttlMs: number,
+) => {
+  let cache: CachedShareList | undefined;
+
+  return async (limit?: number): Promise<TrendingShare[]> => {
+    const requested = limit && limit > 0 ? limit : defaultLimit;
+    if (cache && Date.now() - cache.at < ttlMs && cache.limit >= requested)
+      return cache.items.slice(0, requested);
+
+    const items = (await api.get(endpoint, { params: { limit: requested } }))
+      .data as TrendingShare[];
+    // An empty response can be a transient backend/cache miss; retry next time
+    // instead of keeping the page empty for the rest of the browser session.
+    cache =
+      items.length > 0
+        ? { at: Date.now(), limit: requested, items }
+        : undefined;
+    return items.slice(0, requested);
+  };
+};
+
 let trendingCountriesCache:
   | { at: number; items: TrendingCountry[] }
   | undefined;
@@ -106,25 +135,11 @@ const getFromOwner = async (id: string): Promise<Share> => {
   return (await api.get(`shares/${id}/from-owner`)).data;
 };
 
-const getTrending = async (limit?: number): Promise<TrendingShare[]> => {
-  const requested = limit && limit > 0 ? limit : 12;
-  if (
-    trendingCache &&
-    Date.now() - trendingCache.at < TRENDING_CACHE_TTL_MS &&
-    trendingCache.limit >= requested
-  ) {
-    return trendingCache.items.slice(0, requested);
-  }
-
-  const items = (
-    await api.get("shares/trending", { params: { limit: requested } })
-  ).data as TrendingShare[];
-  // Do not cache an empty response; it may be a transient backend/cache miss
-  // and would keep the widget empty for the rest of the browser session.
-  trendingCache =
-    items.length > 0 ? { at: Date.now(), limit: requested, items } : undefined;
-  return items.slice(0, requested);
-};
+const getTrending = cachedShareList(
+  "shares/trending",
+  12,
+  TRENDING_CACHE_TTL_MS,
+);
 
 const getTrendingCountries = async (): Promise<TrendingCountry[]> => {
   if (
@@ -141,25 +156,7 @@ const getTrendingCountries = async (): Promise<TrendingCountry[]> => {
   return items;
 };
 
-const getRecent = async (limit = 100): Promise<TrendingShare[]> => {
-  const requested = limit && limit > 0 ? limit : 100;
-  if (
-    recentCache &&
-    Date.now() - recentCache.at < RECENT_CACHE_TTL_MS &&
-    recentCache.limit >= requested
-  ) {
-    return recentCache.items.slice(0, requested);
-  }
-
-  const items = (
-    await api.get("shares/recent", { params: { limit: requested } })
-  ).data as TrendingShare[];
-  // An empty response can be a transient backend/cache miss; retry next time
-  // instead of keeping the page empty for the rest of the browser session.
-  recentCache =
-    items.length > 0 ? { at: Date.now(), limit: requested, items } : undefined;
-  return items.slice(0, requested);
-};
+const getRecent = cachedShareList("shares/recent", 100, 30_000);
 
 const remove = async (id: string) => {
   if (!isValidId(id)) throw new Error("Invalid ID");

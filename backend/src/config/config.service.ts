@@ -183,9 +183,9 @@ export class ConfigService extends EventEmitter {
   }
 
   get(key: `${string}.${string}`): any {
-    const configVariable = this.configVariables.filter(
+    const configVariable = this.configVariables.find(
       (variable) => `${variable.category}.${variable.name}` == key,
-    )[0];
+    );
 
     if (!configVariable) throw new Error(`Config variable ${key} not found`);
 
@@ -238,13 +238,18 @@ export class ConfigService extends EventEmitter {
     const response: Config[] = [];
 
     for (const variable of data) {
-      response.push(await this.update(variable.key, variable.value));
+      response.push(await this.update(variable.key, variable.value, false));
     }
+
+    // Reload the in-memory config once for the whole batch instead of running
+    // a full table read after every single variable.
+    this.configVariables = await this.prisma.config.findMany();
+    this.applyEnvOverrides();
 
     return response;
   }
 
-  async update(key: string, value: string | number | boolean) {
+  async update(key: string, value: string | number | boolean, reload = true) {
     if (!this.isEditAllowed())
       throw new BadRequestException(
         this.t(
@@ -253,14 +258,12 @@ export class ConfigService extends EventEmitter {
         ),
       );
 
-    const configVariable = await this.prisma.config.findUnique({
-      where: {
-        name_category: {
-          category: key.split(".")[0],
-          name: key.split(".")[1],
-        },
-      },
-    });
+    const [category, name] = key.split(".");
+    // The config table is loaded into memory at startup and kept in sync by
+    // this service, so validating from memory avoids a query per variable.
+    const configVariable = this.configVariables.find(
+      (variable) => variable.category === category && variable.name === name,
+    );
 
     if (!configVariable || configVariable.locked)
       throw new NotFoundException(
@@ -286,16 +289,15 @@ export class ConfigService extends EventEmitter {
 
     const updatedVariable = await this.prisma.config.update({
       where: {
-        name_category: {
-          category: key.split(".")[0],
-          name: key.split(".")[1],
-        },
+        name_category: { category, name },
       },
       data: { value: value === null ? null : value.toString() },
     });
 
-    this.configVariables = await this.prisma.config.findMany();
-    this.applyEnvOverrides();
+    if (reload) {
+      this.configVariables = await this.prisma.config.findMany();
+      this.applyEnvOverrides();
+    }
 
     this.emit("update", key, value);
 

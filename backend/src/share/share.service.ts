@@ -31,6 +31,7 @@ import { UpdateShareDTO } from "./dto/updateShare.dto";
 import { GuardShare, ShareStateService } from "./shareState.service";
 import {
   SHARE_EXPIRATION,
+  activeShareWhere,
   isPublicShare,
   isViewLimitExceeded,
   sumFileSizes,
@@ -119,14 +120,7 @@ export class ShareService {
 
       if (user.maxShares != null && user.maxShares > 0) {
         const activeSharesCount = await this.prisma.share.count({
-          where: {
-            creatorId: user.id,
-            uploadLocked: true,
-            OR: [
-              { expiration: { gt: new Date() } },
-              { expiration: { equals: moment(0).toDate() } },
-            ],
-          },
+          where: activeShareWhere(user.id),
         });
         if (activeSharesCount >= user.maxShares) {
           throw new BadRequestException(
@@ -271,14 +265,7 @@ export class ShareService {
 
       if (share.creator.maxShares != null && share.creator.maxShares > 0) {
         const activeSharesCount = await this.prisma.share.count({
-          where: {
-            creatorId: share.creator.id,
-            uploadLocked: true,
-            OR: [
-              { expiration: { gt: new Date() } },
-              { expiration: { equals: moment(0).toDate() } },
-            ],
-          },
+          where: activeShareWhere(share.creator.id),
         });
         if (activeSharesCount >= share.creator.maxShares) {
           throw new BadRequestException(
@@ -485,15 +472,7 @@ export class ShareService {
 
   async getSharesByUser(userId: string) {
     const shares = await this.prisma.share.findMany({
-      where: {
-        creator: { id: userId },
-        uploadLocked: true,
-        // We want to grab any shares that are not expired or have their expiration date set to "never" (unix 0)
-        OR: [
-          { expiration: { gt: new Date() } },
-          { expiration: { equals: moment(0).toDate() } },
-        ],
-      },
+      where: activeShareWhere(userId),
       orderBy: {
         expiration: "desc",
       },
@@ -530,10 +509,10 @@ export class ShareService {
   async getMetaData(id: string) {
     // ZIP archives are not built automatically. Existing archives remain
     // downloadable through the API; the flag is kept for client compatibility.
-    const share = (await this.shareState.getShare(id)) as {
-      id: string;
-      isZipReady: boolean;
-    };
+    // The security guard already loaded this share into the guard cache, so do
+    // not run a second full share query just to read one flag.
+    const share = await this.shareState.getGuardShare(id);
+    if (!share) throw new NotFoundException(this.i18n.t("share.notFound"));
 
     return { id: share.id, isZipReady: share.isZipReady };
   }

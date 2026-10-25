@@ -12,8 +12,6 @@ import { MyShare, Share } from "../../types/share.type";
 import toast from "../../utils/toast.util";
 import { HoverTip } from "../core/HoverTip";
 import DownloadAllButton from "./DownloadAllButton";
-import showReportShareModal from "./showReportShareModal";
-import showShareInformationsModal from "./showShareInformationsModal";
 
 const ShareActions = ({
   share,
@@ -37,8 +35,14 @@ const ShareActions = ({
   const isOwnerOrAdmin =
     !!user && !!share && (share.creator?.id === user.id || user.isAdmin);
 
-  const handleEditClick = () => {
+  const handleEditClick = async () => {
     if (!share) return;
+
+    // Load the form (Mantine form, yup, QR code) only when an owner/admin
+    // opens it instead of shipping it with every share page.
+    const { default: showShareInformationsModal } = await import(
+      "./showShareInformationsModal"
+    );
 
     // The share page already contains everything the edit form needs, so a
     // second request for the user's whole share list is unnecessary. Using the
@@ -103,19 +107,24 @@ const ShareActions = ({
     });
   };
 
+  const handleReportClick = async () => {
+    const { default: showReportShareModal } = await import(
+      "./showReportShareModal"
+    );
+    showReportShareModal(modals, shareId);
+  };
+
   return (
     <Group spacing="xs">
-      <HoverTip label={t("share.custom.report.button")}>
-        <Button
-          variant="light"
-          color="red"
-          leftIcon={<TbFlag />}
-          aria-label={t("share.custom.report.button")}
-          onClick={() => showReportShareModal(modals, shareId)}
-        >
-          <FormattedMessage id="share.custom.report.button" />
-        </Button>
-      </HoverTip>
+      <Button
+        variant="light"
+        color="red"
+        leftIcon={<TbFlag />}
+        aria-label={t("share.custom.report.button")}
+        onClick={handleReportClick}
+      >
+        <FormattedMessage id="share.custom.report.button" />
+      </Button>
       {isOwner && (
         <HoverTip label={t("account.shares.button.edit")}>
           <Link href={`/share/${shareId}/edit`}>
