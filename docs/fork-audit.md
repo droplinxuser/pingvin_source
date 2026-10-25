@@ -128,11 +128,13 @@ other languages show the upstream copy instead of the English fallback.
   requests can start in any 24-hour window (the free-tier daily cap) while the
   shared Valkey lock is available, even across restarts or instances.
   Without Valkey the same spacing is enforced per process. Files are hashed
-  locally and looked up by SHA-256 first; they are uploaded only when unknown
-  and at most 32 MiB.
+  locally and looked up by SHA-256 first; they are uploaded only when unknown,
+  up to 512 MB (files above 32 MiB use VirusTotal's large-file upload URL,
+  which also requires the `x-apikey` header).
   Terminal verdicts are cached as one `pingvin:virustotal:verdict:<sha256>` key
-  for seven days. HTTP 429 sets a cooldown key, 401/403 pauses scanning until
-  the backend restarts, and 5xx/network failures retry up to three times. A
+  for seven days. HTTP 429 sets a cooldown key, 401 pauses scanning until the
+  backend restarts, 403 is treated as a per-operation ForbiddenError, and
+  5xx/network failures retry up to three times. A
   malicious VirusTotal verdict removes only the offending file and keeps clean
   files online. If no files remain, the share gets a `removedReason` and
   returns 404; otherwise its stale ZIP is deleted and `isZipReady` is reset.
@@ -145,7 +147,7 @@ other languages show the upstream copy instead of the English fallback.
   admin-only, auto-refreshes every 15s) shows scanner/queue/cooldown status,
   API calls for the last hour/today/24h, scan and detection counters, and
   recent events. Events record queued/uploaded/clean/suspicious/malicious
-  results, errors, 429 cooldowns and 401/403 pauses. A malicious event captures
+  results, errors, 429 cooldowns and 401 pauses. A malicious event captures
   the share creator, the reverse-share owner and the uploader metadata before
   the files are deleted. This file is included in the data-directory backup;
   no SQLite table or migration is used.
@@ -822,6 +824,19 @@ sign-in redirect for a protected page and loop between `/upload` and
   admin pages, 390px width and the 404 page with zero application console
   errors or warnings; an upload → share → WebP preview (300px) → file download
   → delete flow also passed with a clean console.
+- VirusTotal large-upload auth fix (2026-10-25): the scanner paused with
+  "API key rejected" because files above 32 MiB skipped the `x-apikey` header
+  on VirusTotal's pre-signed large-upload URL; VirusTotal answered HTTP 401
+  `AuthenticationRequiredError`, which the service treated as a bad key and
+  stopped the worker. The large-upload request now sends `x-apikey`, and only a
+  real HTTP 401 pauses scanning: a 403 `ForbiddenError` is recorded as a
+  per-file operation error so one unsupported request cannot disable every
+  later scan. A real 40 MiB upload against VirusTotal returned 200 and moved
+  the job to analysis with `authFailed=false`; all 86 backend unit tests pass
+  (new 401-pause, 403-continue and large-upload-header cases), both production
+  builds pass, and the local admin dashboard showed "API key accepted" and
+  "Worker running" at 1366px and 390px with zero console errors or warnings
+  across guest, signed-in and admin pages.
 
 ## Known non-issues
 

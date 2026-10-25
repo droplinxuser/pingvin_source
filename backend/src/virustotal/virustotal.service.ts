@@ -564,6 +564,7 @@ export class VirusTotalService implements OnModuleInit, OnApplicationShutdown {
 
     try {
       const headers = form.getHeaders();
+      headers["x-apikey"] = this.apiKey;
       if (form.hasKnownLength())
         headers["Content-Length"] = form.getLengthSync();
 
@@ -720,7 +721,10 @@ export class VirusTotalService implements OnModuleInit, OnApplicationShutdown {
       return job;
     }
 
-    if (response.status === 401 || response.status === 403) {
+    // 401 is a bad or inactive API key. A 403 (ForbiddenError) means the key
+    // is valid but lacks permission for this operation, so it must not pause
+    // scanning for every other file.
+    if (response.status === 401) {
       this.audit.recordEvent({
         type: "auth_error",
         stage,

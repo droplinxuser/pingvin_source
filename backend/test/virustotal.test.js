@@ -312,6 +312,41 @@ test("sets a cooldown and keeps the job after HTTP 429", async () => {
   }
 });
 
+test("pauses scanning when the API key is rejected with HTTP 401", async () => {
+  const { service, auditEvents } = createService();
+  const originalFetch = global.fetch;
+  global.fetch = async () =>
+    jsonResponse({ error: { code: "WrongCredentialsError" } }, 401);
+
+  try {
+    const next = await service.lookupJob(job());
+    assert.equal(next, undefined);
+    assert.equal(service.running, false);
+    assert.equal(service.authFailed, true);
+    assert.equal(auditEvents.at(-1).type, "auth_error");
+  } finally {
+    global.fetch = originalFetch;
+  }
+});
+
+test("keeps scanning after a per-operation HTTP 403", async () => {
+  const { service, auditEvents } = createService();
+  const originalFetch = global.fetch;
+  global.fetch = async () =>
+    jsonResponse({ error: { code: "ForbiddenError" } }, 403);
+
+  try {
+    const next = await service.lookupJob(job());
+    assert.equal(next, undefined);
+    assert.equal(service.running, true);
+    assert.equal(service.authFailed, false);
+    assert.equal(auditEvents.at(-1).type, "error");
+    assert.equal(auditEvents.at(-1).detail, "HTTP 403");
+  } finally {
+    global.fetch = originalFetch;
+  }
+});
+
 test("drops a queued job when the file or share was deleted", async () => {
   const { service, auditEvents, auditCalls } = createService({
     exists: async () => false,
@@ -336,12 +371,16 @@ test("drops a queued job when the file or share was deleted", async () => {
 });
 
 test("requests a large-file upload URL and streams files over 32 MB", async () => {
+  const previousKey = process.env.VIRUSTOTAL_API_KEY;
+  process.env.VIRUSTOTAL_API_KEY = "test-api-key";
   const { service, auditEvents } = createService();
   const originalFetch = global.fetch;
   const calls = [];
   let uploadedTo;
-  service.postLargeUpload = async (url) => {
+  let uploadedHeaders;
+  service.postLargeUpload = async (url, form, headers) => {
     uploadedTo = url;
+    uploadedHeaders = headers;
     return jsonResponse({ data: { id: "analysis-large" } });
   };
   global.fetch = async (url, init) => {
@@ -364,9 +403,12 @@ test("requests a large-file upload URL and streams files over 32 MB", async () =
       },
     ]);
     assert.equal(uploadedTo, "https://upload.example/large");
+    assert.equal(uploadedHeaders["x-apikey"], "test-api-key");
     assert.equal(auditEvents.at(-1).type, "uploaded");
   } finally {
     global.fetch = originalFetch;
+    if (previousKey === undefined) delete process.env.VIRUSTOTAL_API_KEY;
+    else process.env.VIRUSTOTAL_API_KEY = previousKey;
   }
 });
 
