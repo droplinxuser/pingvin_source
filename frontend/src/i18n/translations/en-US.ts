@@ -4,7 +4,7 @@ export default {
   "seo.custom.share.description":
     "Download {count, plural, one {# file} other {# files}} ({size}) shared via {siteName}. Preview images, videos, audio and documents before downloading.",
   "seo.custom.trending.description":
-    "Discover the most-viewed public shares from the last seven days. Preview and download images, videos, audio and documents.",
+    "Discover the most-viewed public shares from the last 30 days. Preview and download images, videos, audio and documents.",
   "seo.custom.privacy.description":
     "Read how {siteName} handles data, cookies and uploaded files.",
   "seo.custom.imprint.description":
@@ -53,13 +53,13 @@ export default {
   // Trending today
   "trending.custom.title": "Trending today",
   "trending.custom.description":
-    "Most-viewed public shares from the last 7 days.",
+    "Most-viewed public shares from the last 30 days.",
   "trending.custom.files": "{count, plural, one {# file} other {# files}}",
   "trending.custom.uploaded": "Uploaded {date}",
   "trending.custom.views": "{count, plural, one {# view} other {# views}}",
   "trending.custom.video": "Video",
   "trending.custom.empty":
-    "No public shares have been viewed in the last seven days yet.",
+    "No public shares have been viewed in the last 30 days yet.",
   "trending.custom.loading": "Loading trending shares…",
   "trending.custom.countries.title": "Top countries today",
   "trending.custom.countries.description":

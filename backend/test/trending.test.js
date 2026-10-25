@@ -52,7 +52,7 @@ function createService(mock, prisma = emptyPrisma) {
 
 const now = Date.now();
 const recent = new Date(now - 60 * 60 * 1000).toISOString();
-const old = new Date(now - 8 * 24 * 60 * 60 * 1000).toISOString();
+const old = new Date(now - 31 * 24 * 60 * 60 * 1000).toISOString();
 
 function meta(id, _views, createdAt, kind = "image") {
   return JSON.stringify({
@@ -68,7 +68,7 @@ function meta(id, _views, createdAt, kind = "image") {
   });
 }
 
-test("ranks the last seven days by total views and filters stale shares", async () => {
+test("ranks the last thirty days by total views and filters stale shares", async () => {
   const ranked = [
     { value: "a", score: 40 },
     { value: "old", score: 30 },
@@ -105,6 +105,23 @@ test("ranks the last seven days by total views and filters stale shares", async 
   const [unionMethod, unionArgs] = mock.calls[0][0];
   assert.equal(unionMethod, "zUnionStore");
   assert.match(unionArgs[0], /^pingvin:trending:rank:/);
+});
+
+test("includes shares just inside the thirty-day window", async () => {
+  const nearWindow = new Date(now - 29 * 24 * 60 * 60 * 1000).toISOString();
+  const mock = createMockValkey(
+    () => [1, [{ value: "recent", score: 2 }, { value: "older", score: 1 }], 1],
+    [meta("recent", 2, recent), meta("older", 1, nearWindow)],
+  );
+  const service = createService(mock);
+
+  const items = await service.getTrending();
+
+  assert.deepEqual(
+    items.map((item) => item.id),
+    ["recent", "older"],
+  );
+  assert.equal(items[1].createdAt, nearWindow);
 });
 
 test("coalesces concurrent ranking reads", async () => {
@@ -182,7 +199,7 @@ test("records only recent public shares with image or video media", async () => 
 
   await service.recordView({
     ...base,
-    createdAt: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000),
+    createdAt: new Date(Date.now() - 31 * 24 * 60 * 60 * 1000),
     files: [{ id: "image", name: "photo.jpg", size: 10 }],
   });
   assert.equal(mock.calls.length, 0);
@@ -199,7 +216,7 @@ test("records only recent public shares with image or video media", async () => 
   const methods = mock.calls[0].map(([method]) => method);
   assert.deepEqual(methods, ["zAdd", "expire", "set"]);
   assert.deepEqual(mock.calls[0][0][1][1], { score: 7, value: "share" });
-  assert.equal(mock.calls[0][2][1][2].EX, 8 * 24 * 60 * 60);
+  assert.equal(mock.calls[0][2][1][2].EX, 31 * 24 * 60 * 60);
   assert.equal(mock.calls[0][2][1][2].NX, true);
 
   const stored = JSON.parse(mock.calls[0][2][1][1]);
@@ -333,7 +350,7 @@ test("backfills legacy metadata from SQLite once", async () => {
     );
   assert.ok(setCall);
   assert.equal(JSON.parse(setCall[1][1]).fileCount, 2);
-  assert.equal(setCall[1][2].EX, 8 * 24 * 60 * 60);
+  assert.equal(setCall[1][2].EX, 31 * 24 * 60 * 60);
 
   // The enriched result is cached in-process, so a second read is cache-only.
   await service.getTrending();

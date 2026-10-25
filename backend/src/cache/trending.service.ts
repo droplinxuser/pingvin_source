@@ -13,7 +13,7 @@ const VIEW_KEY_PREFIX = "pingvin:trending:views:";
 const META_KEY_PREFIX = "pingvin:trending:meta:";
 const RANK_KEY_PREFIX = "pingvin:trending:rank:";
 const GEO_KEY_PREFIX = "pingvin:trending:geo:hour:";
-const WINDOW_DAYS = 7;
+const WINDOW_DAYS = 30;
 const DAY_MS = 24 * 60 * 60 * 1000;
 const HOUR_MS = 60 * 60 * 1000;
 const VIEW_TTL_SECONDS = (WINDOW_DAYS + 1) * 24 * 60 * 60;
@@ -73,7 +73,7 @@ type TrendingSource = {
 };
 
 /**
- * Ranks public shares from the last seven days by their total view count.
+ * Ranks public shares from the last thirty days by their total view count.
  * Both the counters and the ranking are kept in Valkey. SQLite is only read
  * once to backfill metadata written before a field was added.
  */
@@ -95,7 +95,7 @@ export class TrendingService {
       Date.now() - new Date(share.createdAt).getTime() <= MAX_SHARE_AGE_MS;
     const preview = recent ? findPreview(share.files) : undefined;
     // A country-only view still updates the country total even when the share
-    // has no preview or has left the seven-day window. The per-share ranking
+    // has no preview or has left the thirty-day window. The per-share ranking
     // remains limited to shares that can actually be rendered.
     if (!preview && !code) return;
 
@@ -126,7 +126,7 @@ export class TrendingService {
         // One metadata entry per share instead of one copy in every day
         // bucket. The card payload is immutable until the share is edited
         // (which deletes the key), so NX avoids rewriting it on every view.
-        // The eight-day TTL still covers the seven-day ranking window.
+        // The thirty-one-day TTL still covers the thirty-day ranking window.
         multi.set(metaKey, JSON.stringify(meta), {
           EX: META_TTL_SECONDS,
           NX: true,
@@ -256,7 +256,7 @@ export class TrendingService {
     if (!ranked?.length) return [];
 
     const ids = ranked.map((item) => item.value);
-    // One MGET for every candidate replaces seven per-day HGETs.
+    // One MGET for every candidate replaces thirty per-day HGETs.
     const values = await client.mGet(ids.map(metaKeyFor));
     const metas = parseMetaValues(values);
 

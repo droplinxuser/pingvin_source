@@ -195,14 +195,14 @@ other languages show the upstream copy instead of the English fallback.
     errors.
 - "Trending today" is stored entirely in Valkey. A public share `GET` records
   the share's total view count as its score in a per-day sorted set
-  (`pingvin:trending:views:<day>`, 8-day TTL) and writes
+  (`pingvin:trending:views:<day>`, 31-day TTL) and writes
   `{ id, name, description, previewFileId, previewKind, fileCount, size,
-  createdAt }` to one per-share key (`pingvin:trending:meta:<shareId>`, 8-day
+  createdAt }` to one per-share key (`pingvin:trending:meta:<shareId>`, 31-day
   TTL) in the same `MULTI` with `SET ... NX`. The metadata is immutable until
   the share is edited, so a view only writes it once instead of sending the
-  payload on every visit; the eight-day TTL still covers the seven-day ranking
-  window. Ranking reads use a unique temporary `ZUNIONSTORE` key with a
-  one-minute TTL and delete it in the same `MULTI`, so two concurrent reads
+  payload on every visit; the thirty-one-day TTL still covers the thirty-day
+  ranking window. Ranking reads use a unique temporary `ZUNIONSTORE` key with
+  a one-minute TTL and delete it in the same `MULTI`, so two concurrent reads
   cannot delete each other's union. Cold ranking/country reads are coalesced in
   process so one request rebuilds the result and the rest share it.
   Descriptions are whitespace-normalised and capped at 240 characters so one
@@ -210,12 +210,13 @@ other languages show the upstream copy instead of the English fallback.
   entries that still lack `fileCount`/`size` or the current preview version are
   backfilled in one SQLite query (name, description, files and upload state),
   written back with `SET ... EX`, and then served from cache; deleted,
-  non-media and older-than-seven-days shares are purged. This is the only SQLite read in the trending path. The view badge
+  non-media and older-than-thirty-days shares are purged. This is the only
+  SQLite read in the trending path. The view badge
   still comes from the sorted-set score. One metadata entry per share replaces
-  the old per-day copies. Shares older than seven days and shares without an
+  the old per-day copies. Shares older than thirty days and shares without an
   image/video are skipped before writing. `GET /api/shares/trending` unions the
-  seven daily sets with `AGGREGATE MAX`, reads every candidate's metadata with
-  a single `MGET`, drops entries without current metadata or older than seven
+  thirty daily sets with `AGGREGATE MAX`, reads every candidate's metadata with
+  a single `MGET`, drops entries without current metadata or older than thirty
   days, and returns the top twelve ordered by total views from Valkey alone in
   the normal path (legacy entries may trigger the one-time backfill above).
   Each item carries the share name, description, file count, total size,
@@ -570,6 +571,22 @@ sign-in redirect for a protected page and loop between `/upload` and
   correct, and there were no unexpected console errors or warnings. All
   backend unit tests and both production
   builds pass.
+- Trending window pass (2026-10-25): the ranking window grew from seven to
+  thirty days. `WINDOW_DAYS` now drives one thirty-day `ZUNIONSTORE` over the
+  same per-day sorted sets, while the per-share metadata and daily buckets keep
+  a thirty-one-day TTL so the newest day never falls out of the window. Shares
+  created up to thirty days ago are eligible; shares older than that are still
+  rejected before metadata is written and again when the ranking is read. The
+  widget, share page, 404 page and `/trending` all use the same endpoint and
+  now describe the window as "last 30 days" in the visible copy and SEO
+  description. Locally, a public share created ten days ago appeared in
+  `/api/shares/trending` while a thirty-five-day-old share did not, both cache
+  TTLs measured 2,678,395 seconds (31 days), and the API kept its
+  60-second edge cache headers. Playwright covered guest and signed-in
+  home/share/widget/`/trending`/404 views at 1440px and 390px: cards rendered
+  with WebP thumbnails, the copy no longer mentioned seven days, and the only
+  console entry was Chromium's expected 404 for the missing document itself.
+  All 94 backend unit tests and both production builds pass.
 - Navigating between share pages on the client now remounts the share view by
   share ID. Previously the page only fetched its files on mount, so clicking a
   trending thumbnail could leave the previous share's name, files and visitor
