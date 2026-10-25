@@ -1047,22 +1047,21 @@ sign-in redirect for a protected page and loop between `/upload` and
   `/new` is in robots and the sitemap chunk. Clicking a card opens its share
   page. The local missing-media 404s are expected from the database-only copy;
   the backend now returns 404 for them instead of crashing.
-- Live "New shares" verification (2026-10-25): the deployed manifest was
-  `2a71646b`. `/api/shares/recent?limit=100` returned exactly 100 shares, all
-  public/unexpired with a preview, correctly ordered by
-  upload date, with 13 image-only and 87 video-bearing cards; the endpoint was
-  a Cloudflare HIT with the 60-second edge TTL. The `/new` page rendered 100
-  cards as guest and mobile and as the test account, showed the Image badge
-  without a play icon and the Video badge with one, kept the header order
-  Upload→New (guest Home→New→Sign in), exposed the footer link and mobile menu
-  entry, had no application console errors/warnings, page exceptions, failed
-  requests or horizontal overflow, and clicked through to the share page. It
-  had one H1, the `/new` canonical, indexable robots, CollectionPage JSON-LD,
-  and was present in the sitemap chunk. The existing 21-route guest/user/mobile
-  regression, comments and cleanup still passed (`2a71646b`). The live
-  `/robots.txt` edge copy was still a pre-deploy HIT and did not yet show
-  `Allow: /new` although `/api/system/robots.txt` did; purging `/robots.txt`
-  (or waiting for its one-day TTL) resolves it.
+- Live "New shares" verification (2026-10-25): the initial listing shipped as
+  `2a71646b`, and the zero-view allowance as `eadea3ea`. On the final deploy
+  `/api/shares/recent?limit=100` returned exactly 100 shares, all
+  public/unexpired with a preview, correctly ordered by upload date, with 17
+  zero-view shares included (the first card had 0 views), 13 image-only and 87
+  video-bearing cards; the endpoint was a Cloudflare HIT with the 60-second edge
+  TTL. The `/new` page rendered 100 cards as guest and mobile and as the test
+  account, showed the Image badge without a play icon and the Video badge with
+  one, kept the header order Upload→New (guest Home→New→Sign in), exposed the
+  footer link and mobile menu entry, had no application console errors/warnings,
+  page exceptions, failed requests or horizontal overflow, and clicked through
+  to the share page. It had one H1, the `/new` canonical, indexable robots,
+  CollectionPage JSON-LD, and was present in the sitemap chunk and robots allow
+  list. The existing 21-route guest/user/mobile regression, comments and cleanup
+  still passed (`2a71646b`).
 
 ## Known non-issues
 
