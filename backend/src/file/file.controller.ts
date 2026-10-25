@@ -132,6 +132,7 @@ export class FileController {
     );
   }
 
+  @SkipThrottle({ visitor: true })
   @Get("zip")
   @UseGuards(FileSecurityGuard)
   async getZip(
@@ -172,6 +173,7 @@ export class FileController {
       ttl: 60 * 1000,
     },
   })
+  @SkipThrottle({ visitor: true })
   @Get(":fileId")
   @UseGuards(FileSecurityGuard)
   async getFile(

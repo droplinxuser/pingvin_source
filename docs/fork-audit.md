@@ -112,8 +112,11 @@ hand-rolled lock or temp-file block.
   if Valkey is unavailable they fall back to the in-memory store. `/api/configs`,
   `GET /api/system/stats`, `GET /api/users/me` (called by SSR), share `HEAD`
   checks and every upload request (init, chunk, complete, abort) skip the
-  visitor bucket so SSR and large uploads keep working. File GETs are
-  still cache-friendly because the response never needs a visitor cookie.
+  visitor bucket so SSR and large uploads keep working. File and ZIP reads also
+  skip it: they keep the dedicated 1200/min per-route file limit, while an
+  image-heavy share page can request dozens of previews without exhausting the
+  90/min navigation budget. File GETs stay cache-friendly because the response
+  never needs a visitor cookie.
 - Valkey/Redis is optional but recommended: set `CACHE_REDIS_ENABLED=true` and
   `CACHE_REDIS_URL=redis://127.0.0.1:6379` in `backend/.env` (`update.sh`
   enables both automatically when a local `valkey-server` is active). Share-page
@@ -1075,6 +1078,16 @@ that cache. "Go home" links and the home-page redirect use the upstream
   settings: guests land on `/auth/signIn` or `/upload` accordingly, signed-in
   users always land on `/upload`, and logo/404 links match each destination
   without a redirect loop.
+- Image-heavy share fix (2026-10-25): file and ZIP reads now skip the
+  visitor rate-limit bucket while keeping the dedicated 1200/min per-route
+  file limit. Previously a 41-image share made ~76 file requests on one page
+  load, consuming almost the whole 90/min visitor budget and making the next
+  request in that minute return 429. Locally, five file GETs with one UA left
+  the visitor bucket at 89 while a share GET still decremented it. The default
+  `general.appName` is now `DropMB` in the seed, the bundled frontend fallback
+  and `config.example.yaml`, so a fresh install or a config-fetch fallback
+  never shows the upstream product name; an existing database value still
+  wins.
 
 ## Known non-issues
 
