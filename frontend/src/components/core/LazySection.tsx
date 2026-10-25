@@ -39,7 +39,12 @@ const LazySection = ({
 
     const observer = new IntersectionObserver(
       (entries) => {
-        if (!entries[0]?.isIntersecting) return;
+        const entry = entries[0];
+        if (!entry) return;
+        // A fast jump (End key, anchor, restored scroll) can leave the element
+        // above the viewport without ever reporting an intersection. Mount it
+        // in that case too instead of leaving the placeholder behind.
+        if (!entry.isIntersecting && entry.boundingClientRect.top >= 0) return;
         setIsVisible(true);
         observer.disconnect();
       },

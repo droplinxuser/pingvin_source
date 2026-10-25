@@ -266,7 +266,10 @@ const TrendingToday = ({
 
     const observer = new IntersectionObserver(
       (entries) => {
-        if (!entries[0]?.isIntersecting) return;
+        const entry = entries[0];
+        if (!entry) return;
+        // Also load when the widget was scrolled past in a single jump.
+        if (!entry.isIntersecting && entry.boundingClientRect.top >= 0) return;
         setShouldLoad(true);
         observer.disconnect();
       },

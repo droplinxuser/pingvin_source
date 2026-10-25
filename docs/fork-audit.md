@@ -414,7 +414,9 @@ sign-in redirect for a protected page and loop between `/upload` and
   the space is reserved and the page does not shift when the content arrives.
   The comments request is therefore only sent when the section approaches the
   viewport; the gallery/file list data still comes from the single share
-  response. Native `loading="lazy"` and `LazyVideo` continue to defer the
+  response. A section that is already above the viewport is also mounted, so a
+  fast End-key or anchor jump cannot leave a placeholder stranded behind the
+  visitor. Native `loading="lazy"` and `LazyVideo` continue to defer the
   actual media bytes. The full-size file modal is centered, capped at the
   viewport height, hides its own overflow, and sizes images/videos with
   `max-width`/`max-height` and `object-fit: contain`, so portrait, landscape
@@ -951,7 +953,12 @@ sign-in redirect for a protected page and loop between `/upload` and
   mobile Playwright runs covered `/trending`, `/share/*`, `/404`, lazy
   placeholders and all modal types with no application console errors or
   warnings; the only console entry was the expected 404 document status for
-  the deliberately missing URL. Backend and frontend production builds pass.
+  the deliberately missing URL. A follow-up live mobile pass found that one
+  instantaneous jump to the bottom could skip the visitor-insights placeholder
+  on the way; `LazySection` and `TrendingToday` now also mount an element whose
+  top is already above the viewport, and a local 390px jump-to-bottom test
+  mounted visitor insights, comments and the file list correctly. Backend and
+  frontend production builds pass.
 
 ## Known non-issues
 
