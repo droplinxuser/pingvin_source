@@ -159,8 +159,8 @@ other languages show the upstream copy instead of the English fallback.
   recent events. Events record queued/uploaded/clean/suspicious/malicious
   results, errors, 429 cooldowns and 401 pauses. A malicious event captures
   the share creator, the reverse-share owner and the uploader metadata before
-  the files are deleted. This file is included in the data-directory backup;
-  no SQLite table or migration is used.
+  the files are deleted. This state file and the malicious-hash ledger are
+  included in the data-directory backup; no SQLite table or migration is used.
 - Admin observability is Valkey-first and adds no SQLite tables:
   - The `/admin` dashboard includes a Valkey metrics card. It reads one
     `INFO` response through the shared `ValkeyService` connection and shows
