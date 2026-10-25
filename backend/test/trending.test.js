@@ -972,15 +972,16 @@ test("lists only recent public media shares with a video flag", async () => {
 
   assert.deepEqual(
     items.map((item) => item.id),
-    ["image", "video"],
+    ["image", "video", "zero"],
   );
   assert.equal(items[0].previewKind, "image");
   assert.equal(items[0].hasVideo, false);
   assert.equal(items[1].hasVideo, true);
+  assert.equal(items[2].views, 0);
   assert.equal(calls.length, 1);
   assert.equal(calls[0].orderBy.createdAt, "desc");
   assert.equal(calls[0].take, 1000);
-  assert.deepEqual(calls[0].where.views, { gt: 0 });
+  assert.equal(calls[0].where.views, undefined);
 
   // The second read comes from the in-process cache.
   await service.getRecent(100);

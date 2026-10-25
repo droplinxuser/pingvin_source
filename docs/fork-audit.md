@@ -266,14 +266,14 @@ hand-rolled lock or temp-file block.
   `loadItems` callback and a media-type badge; the header shows "New" after the
   upload link and the footer links it after Trending. `GET /api/shares/recent`
   returns up to 100 public, unexpired, non-removed shares created in the last
-  scan of the newest 1,000 rows, with at least one view, at least one
-  renderable image/video preview and no password/max views/recipient/private
+  scan of the newest 1,000 rows, with at least one renderable image/video
+  preview and no password/max views/recipient/private
   reverse-share restriction, ordered by upload date descending. The same
   preview helper as trending chooses the thumbnail; `hasVideo` marks any share
   containing a video so the card shows a play icon even when the thumbnail is
-  an image, while image-only cards show an image icon. The list is cached
-  in-process for 30 seconds, invalidated by edits/deletes and the first view of
-  a share, and served with a 60-second edge TTL. `/new` is part of the public
+  an image, while image-only cards show an image icon. Zero-view shares are
+  included. The list is cached in-process for 30 seconds, invalidated by
+  edits/deletes, and served with a 60-second edge TTL. `/new` is part of the public
   anonymous shell cache, the crawler allow list and the sitemap. The missing
   file guard in `LocalFileService.get` returns 404 instead of letting a missing
   on-disk file emit an unhandled stream error.
@@ -1035,8 +1035,9 @@ sign-in redirect for a protected page and loop between `/upload` and
 - "New shares" (2026-10-25): both production builds pass, all 111 backend unit
   tests pass (recent listing filters/cap/cache and missing-file 404 included),
   and lint is clean. The local database copy (16k shares) returned 100 cards in
-  ~31 ms cold; every item was public, unexpired, had at least one view and a
-  renderable preview, and the list was ordered by upload date descending. Guest
+  ~31 ms cold; every item was public, unexpired and had a renderable preview,
+  the list was ordered by upload date descending, and zero-view shares were
+  included (14 of the 100). Guest
   and signed-in headers show New after Upload (guest: Home/New/Sign in), the
   footer link and mobile menu entry work, and 100 cards render at 1366px and
   390px with no overflow. The card for an image-only share showed the Image
@@ -1048,7 +1049,7 @@ sign-in redirect for a protected page and loop between `/upload` and
   the backend now returns 404 for them instead of crashing.
 - Live "New shares" verification (2026-10-25): the deployed manifest was
   `2a71646b`. `/api/shares/recent?limit=100` returned exactly 100 shares, all
-  public/unexpired with at least one view and a preview, correctly ordered by
+  public/unexpired with a preview, correctly ordered by
   upload date, with 13 image-only and 87 video-bearing cards; the endpoint was
   a Cloudflare HIT with the 60-second edge TTL. The `/new` page rendered 100
   cards as guest and mobile and as the test account, showed the Image badge

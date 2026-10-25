@@ -114,9 +114,6 @@ export class TrendingService {
     // remains limited to shares that can actually be rendered.
     if (!preview && !code) return;
 
-    // A share becomes eligible for the recent listing on its first view.
-    if (preview && share.views <= 1) this.recentCached = undefined;
-
     const meta: TrendingMeta | undefined = preview
       ? buildMeta(share, preview)
       : undefined;
@@ -246,7 +243,6 @@ export class TrendingService {
         where: {
           uploadLocked: true,
           removedReason: null,
-          views: { gt: 0 },
           files: { some: {} },
           AND: [
             {
@@ -304,7 +300,7 @@ export class TrendingService {
 
     const items: TrendingShare[] = [];
     for (const share of shares) {
-      if (share.views <= 0 || !isPublicShare(share)) continue;
+      if (!isPublicShare(share)) continue;
       const preview = findPreview(share.files);
       if (!preview) continue;
 
