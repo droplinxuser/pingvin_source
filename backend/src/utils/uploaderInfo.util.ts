@@ -7,7 +7,7 @@ import { SHARE_DIRECTORY } from "../constants";
 import { normalizeCountryCode } from "./country.util";
 
 const FILE_NAME = "uploader.json";
-export const MAX_VISITORS = 21;
+export const MAX_VISITORS = 18;
 const FIELDS = [
   "country",
   "city",
