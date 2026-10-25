@@ -8,6 +8,7 @@ import * as crypto from "crypto";
 import { promises as fs } from "fs";
 import { join } from "path";
 import { PrismaService } from "src/prisma/prisma.service";
+import { writeFileAtomic } from "src/utils/fileWrite.util";
 import { readUploaderInfo } from "src/utils/uploaderInfo.util";
 import { DATA_DIRECTORY } from "../constants";
 import { AnalysisStats, ScanVerdict } from "./virustotal.util";
@@ -425,19 +426,7 @@ export class VirusTotalAuditService
     this.writePromise = this.writePromise
       .then(async () => {
         await fs.mkdir(STATE_DIRECTORY, { recursive: true, mode: 0o700 });
-        const tempFile = `${STATE_FILE}.${process.pid}.${crypto
-          .randomUUID()
-          .slice(0, 8)}.tmp`;
-        try {
-          await fs.writeFile(tempFile, payload, {
-            encoding: "utf8",
-            mode: 0o600,
-          });
-          await fs.rename(tempFile, STATE_FILE);
-        } catch (error) {
-          await fs.rm(tempFile, { force: true }).catch(() => {});
-          throw error;
-        }
+        await writeFileAtomic(STATE_FILE, payload);
       })
       .catch((error) => {
         this.dirty = true;

@@ -9,8 +9,10 @@ import { User } from "@prisma/client";
 import { randomUUID } from "crypto";
 import { promises as fs } from "fs";
 import { I18nService } from "nestjs-i18n";
-import { dirname, join } from "path";
+import { join } from "path";
 import { SHARE_DIRECTORY } from "../constants";
+import { writeFileAtomic } from "../utils/fileWrite.util";
+import { KeyedLock } from "../utils/keyedLock.util";
 import { parsePagination } from "../utils/pagination.util";
 
 const FILE_NAME = "comments.json";
@@ -195,7 +197,7 @@ export async function readCommentVersion(shareId: string): Promise<number> {
 
 @Injectable()
 export class CommentService {
-  private readonly locks = new Map<string, Promise<unknown>>();
+  private readonly locks = new KeyedLock();
 
   constructor(private readonly i18n: I18nService) {}
 
@@ -325,37 +327,12 @@ export class CommentService {
   }
 
   private async write(path: string, file: CommentFile) {
-    const tempPath = `${path}.${process.pid}.${Math.random()
-      .toString(36)
-      .slice(2)}.tmp`;
-
-    try {
-      // Never recreate a share directory removed by an expiry/cleanup task.
-      await fs.access(dirname(path));
-      await fs.writeFile(tempPath, JSON.stringify(file), {
-        encoding: "utf8",
-        mode: 0o600,
-      });
-      await fs.rename(tempPath, path);
-    } catch (error) {
-      await fs.rm(tempPath, { force: true }).catch(() => {});
-      throw error;
-    }
+    // A missing share directory is expected after an expiry/cleanup task; the
+    // atomic write fails with ENOENT and never recreates the directory.
+    await writeFileAtomic(path, JSON.stringify(file));
   }
 
   private withLock<T>(shareId: string, task: () => Promise<T>): Promise<T> {
-    const previous = this.locks.get(shareId) ?? Promise.resolve();
-    const result = previous.then(task);
-    const tail = result.then(
-      () => undefined,
-      () => undefined,
-    );
-
-    this.locks.set(shareId, tail);
-    void tail.then(() => {
-      if (this.locks.get(shareId) === tail) this.locks.delete(shareId);
-    });
-
-    return result;
+    return this.locks.run(shareId, task);
   }
 }

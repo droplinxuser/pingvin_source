@@ -89,6 +89,30 @@ test("writes a versioned sitemap index and chunks to disk", async () => {
   );
 });
 
+test("serves an existing chunk without refreshing a stale manifest", async () => {
+  resetSitemapDirectory();
+  const built = createService([share("share-a")]);
+  await built.service.getSitemapXml(request);
+  assert.equal(built.queries(), 1);
+
+  const manifestPath = path.join(SITE_DIRECTORY, "manifest.json");
+  const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
+  manifest.generatedAt = new Date(0).toISOString();
+  fs.writeFileSync(manifestPath, JSON.stringify(manifest));
+
+  const reader = createService([share("share-a"), share("share-b")]);
+  const chunk = await reader.service.getSitemapFile(request, "sitemap-1.xml");
+  assert.match(chunk, /share-a/);
+  assert.equal(reader.queries(), 0);
+
+  // A missing chunk still triggers one rebuild before the 404.
+  await assert.rejects(
+    () => reader.service.getSitemapFile(request, "sitemap-2.xml"),
+    (error) => error.name === "NotFoundException",
+  );
+  assert.equal(reader.queries(), 1);
+});
+
 test("adds versioned sitemap and crawlable chunk rules to robots.txt", async () => {
   resetSitemapDirectory();
   const { service } = createService([share("share-a")]);

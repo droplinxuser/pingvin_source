@@ -2,9 +2,10 @@ import { Logger } from "@nestjs/common";
 import * as Bowser from "bowser";
 import { Request } from "express";
 import { promises as fs } from "fs";
-import { dirname, join } from "path";
+import { join } from "path";
 import { SHARE_DIRECTORY } from "../constants";
 import { normalizeCountryCode } from "./country.util";
+import { writeFileAtomic } from "./fileWrite.util";
 
 const FILE_NAME = "uploader.json";
 export const MAX_VISITORS = 18;
@@ -192,25 +193,12 @@ export async function writeUploaderInfo(shareId: string, info: UploaderInfo) {
   const filePath = getUploaderInfoPath(shareId);
   if (!filePath) return;
 
-  const tempPath = `${filePath}.${process.pid}.${Math.random()
-    .toString(36)
-    .slice(2)}.tmp`;
-
   try {
     // Do not recreate a share directory that was deleted by a removal/scan.
-    await fs.access(dirname(filePath));
-  } catch {
-    return;
-  }
-
-  try {
-    await fs.writeFile(tempPath, JSON.stringify(info), {
-      encoding: "utf8",
-      mode: 0o600,
+    await writeFileAtomic(filePath, JSON.stringify(info), {
+      requireDirectory: true,
     });
-    await fs.rename(tempPath, filePath);
   } catch (error) {
-    await fs.rm(tempPath, { force: true }).catch(() => {});
     logger.warn(
       `Failed to write uploader information for share ${shareId}: ${error}`,
     );

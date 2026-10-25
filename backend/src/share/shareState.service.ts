@@ -14,6 +14,7 @@ import { I18nService } from "nestjs-i18n";
 import { PrismaService } from "src/prisma/prisma.service";
 import { TrendingService } from "src/cache/trending.service";
 import { parseRelativeDateToAbsolute } from "src/utils/date.util";
+import { KeyedLock } from "src/utils/keyedLock.util";
 import {
   MAX_VISITORS,
   getVisitorInfo,
@@ -35,6 +36,10 @@ import { SHARE_EXPIRATION, sumFileSizes } from "./share.util";
 // Collapse bursts of share views into one metadata write per share. The
 // returned visitor list is updated immediately; only the disk write is delayed.
 const VISITOR_WRITE_DELAY_MS = 1000;
+// Keep the last persisted visitor list for recently viewed shares. A share
+// link can be opened many times per minute; without this snapshot every view
+// would read and parse uploader.json again after the previous batch flushed.
+const VISITOR_SNAPSHOT_LIMIT = 256;
 // A rolling expiration only needs to be persisted occasionally. The response
 // still shows the fresh 100-day date on every visit; the database write is
 // throttled per process so a popular share cannot cause an UPDATE per view.
@@ -60,8 +65,9 @@ export type GuardShare = Prisma.ShareGetPayload<{
 
 @Injectable()
 export class ShareStateService implements OnApplicationShutdown {
-  private readonly visitorLocks = new Map<string, Promise<void>>();
+  private readonly visitorLock = new KeyedLock();
   private readonly pendingVisitors = new Map<string, UploaderInfo>();
+  private readonly visitorSnapshots = new Map<string, UploaderInfo>();
   private readonly visitorTimers = new Map<string, NodeJS.Timeout>();
   private readonly visitorWrites = new Map<string, Promise<void>>();
   private readonly dirtyVisitors = new Set<string>();
@@ -189,6 +195,7 @@ export class ShareStateService implements OnApplicationShutdown {
   }
 
   async invalidateData(shareId: string) {
+    this.visitorSnapshots.delete(shareId);
     await Promise.all([
       this.invalidateDataCache(shareId),
       this.trending.invalidate(shareId),
@@ -306,45 +313,36 @@ export class ShareStateService implements OnApplicationShutdown {
     );
   }
 
-  private withVisitorLock<T>(
-    shareId: string,
-    task: () => Promise<T>,
-  ): Promise<T> {
-    const previous = this.visitorLocks.get(shareId) ?? Promise.resolve();
-    const result = previous.then(task);
-    const tail = result.then(
-      () => undefined,
-      () => undefined,
-    );
-
-    this.visitorLocks.set(shareId, tail);
-    void tail.then(() => {
-      if (this.visitorLocks.get(shareId) === tail)
-        this.visitorLocks.delete(shareId);
-    });
-
-    return result;
-  }
-
   private async recordVisitor(
     shareId: string,
     request: Request,
   ): Promise<UploaderInfo> {
-    return this.withVisitorLock(shareId, async () => {
-      let info = this.pendingVisitors.get(shareId);
+    return this.visitorLock.run(shareId, async () => {
+      let info =
+        this.pendingVisitors.get(shareId) ?? this.visitorSnapshots.get(shareId);
       if (!info) {
         info = (await readUploaderInfo(shareId)) ?? {
           createdAt: new Date().toISOString(),
         };
-        this.pendingVisitors.set(shareId, info);
       }
 
       info.visitors = [...(info.visitors ?? []), getVisitorInfo(request)].slice(
         -MAX_VISITORS,
       );
+      this.pendingVisitors.set(shareId, info);
       this.queueVisitorWrite(shareId);
       return info;
     });
+  }
+
+  private rememberVisitorSnapshot(shareId: string, info: UploaderInfo) {
+    // Refresh the insertion order so the oldest clean snapshot is evicted.
+    this.visitorSnapshots.delete(shareId);
+    this.visitorSnapshots.set(shareId, info);
+    if (this.visitorSnapshots.size <= VISITOR_SNAPSHOT_LIMIT) return;
+
+    const oldest = this.visitorSnapshots.keys().next().value;
+    if (oldest) this.visitorSnapshots.delete(oldest);
   }
 
   private queueVisitorWrite(shareId: string) {
@@ -378,6 +376,7 @@ export class ShareStateService implements OnApplicationShutdown {
       this.queueVisitorWrite(shareId);
     } else if (this.pendingVisitors.get(shareId) === info) {
       this.pendingVisitors.delete(shareId);
+      this.rememberVisitorSnapshot(shareId, info);
     }
   }
 
@@ -390,8 +389,12 @@ export class ShareStateService implements OnApplicationShutdown {
     // final write below after this hook resolves.
     await Promise.all([...this.visitorWrites.values()]);
 
-    const pending = [...this.pendingVisitors];
+    // Clean snapshots are already on disk; only unflushed views need a write.
+    const pending = [...this.pendingVisitors].filter(([shareId]) =>
+      this.dirtyVisitors.has(shareId),
+    );
     this.pendingVisitors.clear();
+    this.visitorSnapshots.clear();
     this.visitorWrites.clear();
     this.dirtyVisitors.clear();
     await Promise.all(

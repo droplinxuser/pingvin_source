@@ -1,4 +1,4 @@
-import { LoadingOverlay } from "@mantine/core";
+import { LoadingOverlay, Title } from "@mantine/core";
 import { useModals } from "@mantine/modals";
 import { GetServerSidePropsContext } from "next";
 import { useEffect, useState } from "react";
@@ -85,6 +85,9 @@ const Share = ({ shareId }: { shareId: string }) => {
   return (
     <>
       <Meta title={t("share.edit.title", { shareId })} />
+      <Title order={1} size="h3" mb="md">
+        {t("share.edit.title", { shareId })}
+      </Title>
       <EditableUpload
         shareId={shareId}
         files={share?.files || []}

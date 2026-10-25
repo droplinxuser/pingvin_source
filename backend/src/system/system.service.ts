@@ -248,13 +248,17 @@ export class SystemService {
     if (!/^sitemap-\d+\.xml$/.test(name)) throw new NotFoundException();
 
     const baseUrl = this.getSeoBaseUrl(request);
-    await this.ensureSitemapFiles(baseUrl);
+    const directory = this.sitemapDirectory(baseUrl);
 
     // A CDN-cached index may still reference a chunk from the previous
     // manifest. Those files are retained for a day, so serve any existing
-    // chunk with a safe name rather than only the current manifest entries.
-    const filePath = path.join(this.sitemapDirectory(baseUrl), name);
-    if (!(await this.fileExists(filePath))) throw new NotFoundException();
+    // chunk with a safe name without refreshing the whole sitemap first.
+    let filePath = path.join(directory, name);
+    if (!(await this.fileExists(filePath))) {
+      await this.ensureSitemapFiles(baseUrl);
+      filePath = path.join(this.sitemapDirectory(baseUrl), name);
+      if (!(await this.fileExists(filePath))) throw new NotFoundException();
+    }
 
     return await fs.readFile(filePath, "utf8");
   }

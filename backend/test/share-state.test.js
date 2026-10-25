@@ -56,6 +56,29 @@ test("flushes a pending visitor during shutdown", async () => {
   assert.equal(writes[0].visitors.length, 1);
 });
 
+test("reuses a flushed visitor snapshot instead of reading the file again", async () => {
+  const writes = captureVisitorWrites();
+  let reads = 0;
+  uploaderInfo.readUploaderInfo = async () => {
+    reads += 1;
+    return null;
+  };
+  const service = createService();
+
+  await service.recordVisitor("share", request);
+  await new Promise((resolve) => setTimeout(resolve, 1200));
+  assert.equal(writes.length, 1);
+
+  await service.recordVisitor("share", request);
+  assert.equal(reads, 1);
+
+  // Shutdown only writes entries with unflushed views, but keeps the full
+  // visitor history from the snapshot.
+  await service.onApplicationShutdown();
+  assert.equal(writes.length, 2);
+  assert.equal(writes[1].visitors.length, 2);
+});
+
 test("persists a rolling expiration at most once per interval", async () => {
   const cacheUtil = require("../dist/src/utils/cache.util.js");
   const originalGet = cacheUtil.getCachedValue;

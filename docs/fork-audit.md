@@ -34,6 +34,12 @@ so translations do not need a fork-specific edit on each upstream merge. New
 fork strings must use new `*.custom.*` keys: reusing an upstream key would make
 other languages show the upstream copy instead of the English fallback.
 
+Shared fork-only backend helpers live in `backend/src/utils/`:
+`keyedLock.util.ts` serializes per-share read-modify-write tasks (visitors,
+comments), and `fileWrite.util.ts` writes JSON/state files through a unique
+temporary file plus atomic rename. Reuse them instead of adding another
+hand-rolled lock or temp-file block.
+
 ## Merge checklist
 
 1. `git fetch upstream && git merge upstream/main` on a branch.
@@ -88,7 +94,10 @@ other languages show the upstream copy instead of the English fallback.
   counts live in `Share.views` and are updated directly in SQLite. Visitor
   writes are batched for one second per share: the response still includes the
   new visitor immediately, while a burst of views produces a single atomic
-  file write (pending entries are flushed on shutdown).
+  file write (pending entries are flushed on shutdown). The last persisted
+  visitor list is kept in a bounded in-process snapshot (256 shares), so views
+  after a flush do not read and parse `uploader.json` again; edits/deletes drop
+  the snapshot, and shutdown only writes entries with unflushed views.
 - Global rate limiting is 90 requests per 60 seconds per client, identified by
   client IP + browser `User-Agent`, blocking for 60 seconds after the limit.
   Configure it with `VISITOR_RATE_LIMIT`, `VISITOR_RATE_TTL_MS` and
@@ -384,7 +393,9 @@ sign-in redirect for a protected page and loop between `/upload` and
   the file from disk and is edge-cacheable for one day; the index is
   edge-cacheable for one hour. Files refresh after ten minutes; old chunks are
   retained for a day so a cached index never points at a deleted file, then
-  removed. **Nothing is stored in SQLite, Valkey or process memory.** The
+  removed. A request for an existing chunk is served directly from disk without
+  refreshing a stale manifest; only a missing chunk triggers the rebuild.
+  **Nothing is stored in SQLite, Valkey or process memory.** The
   public `/sitemap.xml` and `/robots.txt` routes proxy those artifacts and fall
   back to static route rules if the backend is unavailable. Robots allows
   `/sitemap.xml` and `/api/system/sitemaps/` because the index/chunks carry
@@ -967,6 +978,24 @@ sign-in redirect for a protected page and loop between `/upload` and
   jump-to-bottom test with a 120000px spacer mounted visitor insights and
   comments correctly, while a no-scroll check left them unmounted. Backend and
   frontend production builds pass.
+- Maintenance pass (2026-10-25, later): the duplicate per-share lock and
+  temp-file write blocks moved into `keyedLock.util.ts` and
+  `fileWrite.util.ts` (comments, visitor metadata, VirusTotal state), the last
+  visitor snapshot is reused between views instead of re-reading
+  `uploader.json`, an existing sitemap chunk is served without refreshing a
+  stale manifest, and the share edit page now has a visible H1. Both
+  production builds pass, all 107 backend unit tests pass (including new
+  snapshot-reuse and sitemap-fast-path tests), and lint is clean apart from
+  the known upstream `any` warnings. Playwright covered 24 guest, signed-in,
+  admin, mobile and dark-mode pages with no application console errors or
+  warnings, no page exceptions, no failed requests, no horizontal overflow and
+  one H1 per page (robots/sitemap documents excluded). The share flow rendered
+  the gallery and both file rows, created/edited/deleted a comment, showed the
+  visitor list, and a burst of share views followed by `SIGTERM` persisted the
+  unflushed visitors. The sitemap index/chunk retained its edge headers and a
+  stale-manifest chunk request did not rewrite the files. Trending remains
+  hidden in this sandbox because no Valkey server is installed; its backend
+  ranking/cache behavior is covered by the unit tests.
 
 ## Known non-issues
 
@@ -982,7 +1011,7 @@ sign-in redirect for a protected page and loop between `/upload` and
 - Backend lint reports upstream warnings only.
 - A fresh data directory logs one `ENOENT` from the temporary-file cron.
 - The recent-visitor list is intentionally visible to every site visitor,
-  matching the original fork behavior. It contains the last 20 visitors'
+  matching the original fork behavior. It contains the last 18 visitors'
   country/city/browser/OS/referrer values.
 - The live CDN currently stores `/api/configs` with a stale duplicate
   `Cache-Control: no-store` beside the current public header. A cache-busting
