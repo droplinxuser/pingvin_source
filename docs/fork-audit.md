@@ -867,6 +867,16 @@ sign-in redirect for a protected page and loop between `/upload` and
   errors or warnings. `/admin` redirected the non-admin account to `/upload`.
   The admin dashboard itself was not opened live because the test account is
   non-admin.
+- Live post-feature audit (2026-10-25): after the removal-notification and
+  permanent-hash deployment, the guest/non-admin/mobile Playwright pass was
+  repeated with zero console errors or warnings. A temporary public text share
+  was created through the live API, rendered its file name, downloaded
+  byte-identical content when requested with the app referrer, had no
+  horizontal overflow at 390px, and was deleted; the share API then returned
+  404. Text files are skipped by VirusTotal, so this smoke test consumed no
+  scan quota. The admin dashboard and removal email were not exercised live
+  because the test account is non-admin and no malicious file was uploaded to
+  production.
 
 ## Known non-issues
 
