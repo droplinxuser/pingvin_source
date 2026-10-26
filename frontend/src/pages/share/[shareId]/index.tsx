@@ -501,6 +501,7 @@ const SharePage = ({
           share={share}
           shareId={shareId}
           recipientId={recipientId}
+          fileCount={displayFileCount}
           setShare={setShare}
           onDeleted={() => router.replace(homeHref)}
         />

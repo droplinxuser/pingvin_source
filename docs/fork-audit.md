@@ -488,6 +488,11 @@ that cache. "Go home" links and the home-page redirect use the upstream
   thumbnail fetch before hydration actually mounts the gallery. GIF gallery
   cards now use the backend's first-frame WebP preview (the full-size modal
   still serves the original animated file).
+- `ShareActions` reserves the Download all button from the SEO file count
+  before the share payload arrives. On phones the action row used to grow from
+  one Report button to a wrapped row after the API response, moving the whole
+  page; the reserved slot removes that shift (live mobile `/share/tUGS` CLS
+  measured ~0.003 locally with a 1.8s delayed share response, down from 0.214).
 - The share page defers its heavy sections with `components/core/LazySection`:
   the media gallery, file list, comments and visitor insights mount when they
   are within 400-600px of the viewport. Each section renders its matching
@@ -652,6 +657,23 @@ that cache. "Go home" links and the home-page redirect use the upstream
   config helper, and keeps the client fetch fallback. A Playwright run that
   intercepted those data responses and returned `{}` still navigated to both
   pages with no error and loaded the listing from the client fallback.
+- The live audit after the fix covered `/`, `/trending`, `/new`, three public
+  shares, privacy, imprint, sign-in, 404, a missing URL, and signed-in
+  upload/account/shared/received/reverse-share/admin pages at 1366px and
+  390px. Every page had one H1, no missing image `alt`, valid canonical/robots
+  metadata, parseable JSON-LD, no horizontal overflow, and no application
+  console errors/warnings; only the intentional 404 network entry appeared.
+  Guest and signed-in client transitions (home → New, home → Trending, New →
+  share) completed without an error boundary. The lazy preview modal opened
+  the full-size image from the gallery with no console errors. Cached HTML TTFB
+  was ~0.04-0.6s; first uncached SSR responses were ~0.6-1.1s due to
+  Cloudflare-to-origin latency. Desktop LCP was ~0.1-1.5s and mobile
+  ~0.1-1.5s depending on cache state. `/share/tUGS` mobile CLS was 0.214
+  before the action-slot fix and 0.003 in the delayed-API local rerun.
+  Cloudflare still had stale empty `_next/data` entries at the edge, but the
+  fallback rendered the listing with no error; a one-time purge of
+  `_next/data/*` (or a cache rule that honors origin headers) removes the
+  extra fallback request.
 - Playwright against that database (11 smoke checks plus a 5-check upload
   flow): home page, footer stats, dynamic manifest, sign-in, account shares,
   share page with visitor badges and text preview, report modal, admin shares

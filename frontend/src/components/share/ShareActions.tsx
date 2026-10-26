@@ -3,7 +3,13 @@ import { useModals } from "@mantine/modals";
 import Link from "next/link";
 import { Dispatch, SetStateAction } from "react";
 import { FormattedMessage } from "react-intl";
-import { TbEdit, TbFlag, TbPlusMinus, TbTrash } from "react-icons/tb";
+import {
+  TbDownload,
+  TbEdit,
+  TbFlag,
+  TbPlusMinus,
+  TbTrash,
+} from "react-icons/tb";
 import useConfig from "../../hooks/config.hook";
 import useTranslate from "../../hooks/useTranslate.hook";
 import useUser from "../../hooks/user.hook";
@@ -17,12 +23,14 @@ const ShareActions = ({
   share,
   shareId,
   recipientId,
+  fileCount,
   setShare,
   onDeleted,
 }: {
   share?: Share;
   shareId: string;
   recipientId?: string;
+  fileCount?: number;
   setShare: Dispatch<SetStateAction<Share | undefined>>;
   onDeleted: () => void;
 }) => {
@@ -40,9 +48,8 @@ const ShareActions = ({
 
     // Load the form (Mantine form, yup, QR code) only when an owner/admin
     // opens it instead of shipping it with every share page.
-    const { default: showShareInformationsModal } = await import(
-      "./showShareInformationsModal"
-    );
+    const { default: showShareInformationsModal } =
+      await import("./showShareInformationsModal");
 
     // The share page already contains everything the edit form needs, so a
     // second request for the user's whole share list is unnecessary. Using the
@@ -108,9 +115,8 @@ const ShareActions = ({
   };
 
   const handleReportClick = async () => {
-    const { default: showReportShareModal } = await import(
-      "./showReportShareModal"
-    );
+    const { default: showReportShareModal } =
+      await import("./showReportShareModal");
     showReportShareModal(modals, shareId);
   };
 
@@ -165,13 +171,27 @@ const ShareActions = ({
           </ActionIcon>
         </HoverTip>
       )}
-      {share && share.files.length > 1 && (
-        <DownloadAllButton
-          shareId={shareId}
-          recipientId={recipientId}
-          files={share.files}
-        />
-      )}
+      {share
+        ? share.files.length > 1 && (
+            <DownloadAllButton
+              shareId={shareId}
+              recipientId={recipientId}
+              files={share.files}
+            />
+          )
+        : (fileCount ?? 0) > 1 && (
+            // Reserve the button before the share payload arrives. Without it
+            // the action row wraps on phones and shifts the whole page (CLS).
+            <Button
+              variant="light"
+              color="cyan"
+              leftIcon={<TbDownload />}
+              disabled
+              aria-hidden
+            >
+              <FormattedMessage id="share.button.download-all" />
+            </Button>
+          )}
     </Group>
   );
 };
