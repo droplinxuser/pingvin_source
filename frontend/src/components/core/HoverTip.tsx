@@ -15,6 +15,9 @@ export const HoverTip = ({ label, children, disabled }: HoverTipProps) => {
       label={label}
       disabled={disabled}
       withinPortal
+      // Adjacent icon tooltips must not cross-fade over each other while the
+      // pointer moves from one target to the next.
+      transitionProps={{ duration: 0 }}
     >
       {children}
     </Tooltip>

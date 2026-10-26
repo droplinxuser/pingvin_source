@@ -1163,6 +1163,10 @@ that cache. "Go home" links and the home-page redirect use the upstream
   widgets, 2px on `/trending` and `/new`. Top-country thumbnails are 2px and
   clear on row hover/focus. The blur is applied in CSS and reversed on hover
   with the existing brightness/scale treatment.
+- The shared `HoverTip` uses an instant transition so adjacent tooltips (for
+  example the uploader country, OS and browser badges) cannot cross-fade over
+  each other while the pointer moves between targets. The country tooltip still
+  shows the location, timezone and relative/full upload time.
 - `TrendingToday` now requests up to 100 trending shares and up to 200 recent
   shares. Only 24 cards are mounted initially; an `IntersectionObserver` with a
   200px margin reveals the next 24-card batch and shows four skeleton
