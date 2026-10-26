@@ -1,4 +1,5 @@
 import { Group, Stack, Text } from "@mantine/core";
+import { useMediaQuery } from "@mantine/hooks";
 import moment from "moment";
 import { useIntl } from "react-intl";
 import type { IconType } from "react-icons";
@@ -63,6 +64,7 @@ const UploaderInfoBadges = ({
 }) => {
   const t = useTranslate();
   const intl = useIntl();
+  const compactTooltip = useMediaQuery("(max-width: 767px)");
   const creator = share.creator?.displayName || share.creator?.username;
   const country = info?.country
     ? getCountryName(info.country, intl.locale)
@@ -94,12 +96,12 @@ const UploaderInfoBadges = ({
     {
       label: t("share.custom.uploader.country"),
       tooltip: (
-        <Stack spacing={2} sx={{ maxWidth: 280 }}>
+        <Stack spacing={0} sx={{ maxWidth: 280 }}>
           {(details.length > 0
             ? details
             : [t("share.custom.uploader.unknown")]
           ).map((line) => (
-            <Text key={line} size="xs">
+            <Text key={line} size="xs" lh={1.2}>
               {line}
             </Text>
           ))}
@@ -110,16 +112,21 @@ const UploaderInfoBadges = ({
       ) : (
         <TbWorld size={ICON_SIZE} color={UNKNOWN_ICON_COLOR} />
       ),
+      // Place the wide country card to the right of the badge row; the small
+      // OS/browser cards only need to clear the icons that follow them.
+      offset: 44,
     },
     {
       label: t("share.custom.uploader.os"),
       tooltip: osLabel,
       icon: getOsIcon(info?.os),
+      offset: 22,
     },
     {
       label: t("share.custom.uploader.browser"),
       tooltip: browserLabel,
       icon: getBrowserIcon(info?.browser),
+      offset: 10,
     },
   ];
 
@@ -130,8 +137,13 @@ const UploaderInfoBadges = ({
           ? t("share.custom.uploader.by", { name: creator })
           : t("share.custom.uploader.anonymous")}
       </Text>
-      {badges.map(({ label, tooltip, icon }) => (
-        <HoverTip key={label} label={tooltip}>
+      {badges.map(({ label, tooltip, icon, offset }) => (
+        <HoverTip
+          key={label}
+          label={tooltip}
+          position={compactTooltip ? "top" : "right"}
+          offset={compactTooltip ? 8 : offset}
+        >
           <span style={iconStyle} aria-label={label}>
             {icon}
           </span>

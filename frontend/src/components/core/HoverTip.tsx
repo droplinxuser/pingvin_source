@@ -1,16 +1,26 @@
 import { Tooltip } from "@mantine/core";
+import type { TooltipProps } from "@mantine/core";
 import type { ReactNode } from "react";
 
 type HoverTipProps = {
   label: ReactNode;
   children: ReactNode;
   disabled?: boolean;
+  position?: TooltipProps["position"];
+  offset?: number;
 };
 
-export const HoverTip = ({ label, children, disabled }: HoverTipProps) => {
+export const HoverTip = ({
+  label,
+  children,
+  disabled,
+  position = "bottom",
+  offset = 8,
+}: HoverTipProps) => {
   return (
     <Tooltip
-      position="bottom"
+      position={position}
+      offset={offset}
       events={{ hover: true, focus: false, touch: true }}
       label={label}
       disabled={disabled}

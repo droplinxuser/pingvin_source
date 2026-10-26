@@ -54,6 +54,8 @@ const THUMBNAIL_TIMEOUT_MS = 20_000;
 const WEBP_IMAGE_TYPES = new Set([
   "image/jpeg",
   "image/png",
+  "image/webp",
+  "image/gif",
   "image/bmp",
   "image/tiff",
   "image/avif",
@@ -89,6 +91,7 @@ export class FileService implements OnModuleInit {
   private readonly thumbnailMisses = new Map<string, number>();
   private readonly thumbnailQueue: Array<() => void> = [];
   private thumbnailActive = 0;
+  private thumbnailPlaceholder?: Promise<Buffer>;
 
   async onModuleInit() {
     await this.removeOldPreviewVersions(PREVIEW_ROOT, PREVIEW_VERSION);
@@ -381,6 +384,28 @@ export class FileService implements OnModuleInit {
     return join(THUMBNAIL_DIRECTORY, `${shareId}.webp`);
   }
 
+  /**
+   * A transparent 1x1 WebP used only when a share media source cannot produce
+   * a thumbnail. It keeps the card's dark background/text intact without a
+   * browser 404, and is served with no-store so a later successful build is
+   * picked up immediately.
+   */
+  async getThumbnailPlaceholder(): Promise<Buffer> {
+    if (!this.thumbnailPlaceholder) {
+      this.thumbnailPlaceholder = sharp({
+        create: {
+          width: 1,
+          height: 1,
+          channels: 4,
+          background: { r: 0, g: 0, b: 0, alpha: 0 },
+        },
+      })
+        .webp()
+        .toBuffer();
+    }
+    return this.thumbnailPlaceholder;
+  }
+
   async hasShareThumbnail(shareId: string): Promise<boolean> {
     const path = this.getShareThumbnailPath(shareId);
     if (!path) return false;
@@ -660,10 +685,34 @@ export class FileService implements OnModuleInit {
   ): Promise<void> {
     let lastError: unknown;
 
-    // Try one second into the video first; a frame at exactly 0:00 is often
-    // black. Very short videos fall back to the first frame.
+    // MPEG-TS and some fragmented containers do not always honour an input
+    // seek, and a decoder can emit warnings/errors while still writing a
+    // perfectly good first frame. Try input seeks, an accurate output seek and
+    // a plain first-frame decode, and trust a non-empty output even if ffmpeg
+    // exited non-zero.
+    const seekVariants = [
+      ["-ss", "1", "-i", input],
+      ["-ss", "0", "-i", input],
+      ["-i", input, "-ss", "1"],
+      ["-i", input],
+    ];
+    const outputArgs = [
+      "-map",
+      "0:v:0",
+      "-frames:v",
+      "1",
+      "-an",
+      "-f",
+      "image2",
+      "-vcodec",
+      "png",
+      "-y",
+      output,
+    ];
+
     for (const binary of getFfmpegCandidates()) {
-      for (const seek of ["1", "0"]) {
+      for (const inputArgs of seekVariants) {
+        await fs.rm(output, { force: true }).catch(() => {});
         try {
           await runProcess(
             binary,
@@ -671,26 +720,24 @@ export class FileService implements OnModuleInit {
               "-hide_banner",
               "-loglevel",
               "error",
-              "-ss",
-              seek,
-              "-i",
-              input,
-              "-frames:v",
-              "1",
-              "-f",
-              "image2",
-              "-vcodec",
-              "png",
-              "-y",
-              output,
+              "-probesize",
+              "10M",
+              "-analyzeduration",
+              "10M",
+              ...inputArgs,
+              ...outputArgs,
             ],
             THUMBNAIL_TIMEOUT_MS,
           );
-          const stat = await fs.stat(output);
-          if (stat.size > 0) return;
         } catch (error) {
           lastError = error;
-          await fs.rm(output, { force: true }).catch(() => {});
+        }
+
+        try {
+          const stat = await fs.stat(output);
+          if (stat.size > 0) return;
+        } catch {
+          // Try the next seek/candidate.
         }
       }
     }

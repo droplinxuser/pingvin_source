@@ -217,7 +217,16 @@ export class ShareController {
     @Res({ passthrough: true }) response: Response,
   ) {
     const thumbnail = await this.fileService.getShareThumbnail(id);
-    if (!thumbnail) throw new NotFoundException();
+    if (!thumbnail) {
+      const placeholder = await this.fileService.getThumbnailPlaceholder();
+      response.set({
+        "Content-Type": "image/webp",
+        "Content-Length": placeholder.length,
+        "X-Content-Type-Options": "nosniff",
+        ...NO_STORE_HEADERS,
+      });
+      return new StreamableFile(placeholder);
+    }
 
     const isPublic =
       (request as Request & { shareIsPublic?: boolean }).shareIsPublic === true;
