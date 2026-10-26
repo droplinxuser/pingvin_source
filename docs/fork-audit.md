@@ -13,7 +13,7 @@ so `git merge upstream/main` stays small.
 | Admin pagination, search and sorting | `backend/src/share/share.service.ts`, `backend/src/user/user.service.ts` (quota columns sorted and paged in SQL), `frontend/src/pages/admin/*`, `frontend/src/components/core/SortIcon.tsx` |
 | Share reports | `backend/src/share/dto/reportShare.dto.ts`, `backend/src/email/email.service.ts`, `frontend/src/components/share/showReportShareModal.tsx` |
 | Uploader metadata / visitors | `backend/src/utils/uploaderInfo.util.ts`, `ShareDTO.uploaderInfo`, `frontend/src/components/share/UploaderInfoBadges.tsx`, `ShareStats.tsx`; view counts stay in `Share.views`. The recent-visitor list is shown to every visitor (guest, owner, administrator) |
-| Inline media gallery | `frontend/src/components/share/MediaPreviewGallery.tsx` (up to 30 supported image/video thumbnails at 250px for any file size, opening `FilePreview.tsx` in a viewport-fit full-size modal); `frontend/src/components/core/LazySection.tsx` reserves space for the gallery, file list, comments and visitor insights |
+| Inline media gallery | `frontend/src/components/share/MediaPreviewGallery.tsx` (up to 100 supported image/video cards at 250px, revealed in 12-card lazy batches with a skeleton card; videos show a skeleton until their lazy first frame loads; every image/video in the share is available from the popup through previous/next buttons and ArrowLeft/ArrowRight); `frontend/src/components/core/LazySection.tsx` reserves space for the gallery, file list, comments and visitor insights |
 | Individual downloads / legacy ZIP | `frontend/src/components/share/DownloadAllButton.tsx` (confirmation + sequential per-file downloads), `frontend/src/services/share.service.ts` (anchor-based downloads), `backend/src/share/share.service.ts` (no automatic archive creation); existing `archive.zip` files remain served by the legacy API. The share file count uses `share.custom.fileCount` without the old ZIP note. |
 | Share and file size limits | `backend/prisma/seed/config.seed.ts` (`share.maxSize` 5 GB, `share.maxFileSize` 512 MB), migration `20261025000000_raise_share_size_limit`, `backend/src/share/share.util.ts` (`resolveShareSizeLimit`), local/S3 upload guards, `frontend/src/components/upload/Dropzone.tsx` and upload pages |
 | Trending today | `backend/src/cache/trending.service.ts`, `GET /api/shares/trending?limit=100`, `frontend/src/components/share/TrendingToday.tsx` (client-side, viewport-triggered load with batched rendering and skeletons), `frontend/src/components/share/TrendingCountries.tsx` (up to ten countries, ten shares each), `frontend/src/pages/trending.tsx`, `frontend/src/pages/_app.tsx` |
@@ -1273,6 +1273,41 @@ that cache. "Go home" links and the home-page redirect use the upstream
   (config 30s, stats/recent/SEO 60s, sitemap index one hour, robots and share
   thumbnails one day, public files immutable for a day, page shells 60s only
   without a query string).
+
+## Media gallery scale and preview navigation (2026-10-26)
+
+- The share gallery now renders at most 100 images/videos (up from 30). Only
+  the first 12 cards mount initially; an `IntersectionObserver` reveals the next
+  12 when the sentinel approaches the viewport, and the sentinel shows a
+  skeleton card so the next row is reserved. Images keep native lazy loading and
+  the shimmer placeholder; videos keep `LazyVideo` and add a skeleton behind the
+  frame until `loadeddata`. A 105-image + 3-video local share measured 12 cards
+  initially and stopped at exactly 100, with the remaining media still available
+  in the popup.
+- `getShareMediaFiles` in `frontend/src/utils/media.util.ts` is the single media
+  filter/sort used by the gallery: images first, then videos, each alphabetical
+  with numeric filename ordering. The share page still reserves the first
+  gallery batch only, so the initial skeleton is not heavier than the content.
+- The file preview modal (`showFilePreviewModal` + `FilePreview.tsx`) accepts an
+  optional media sequence and renders the active file name, a `current of total`
+  counter, and previous/next buttons over the media. The buttons wrap around at
+  the ends, and ArrowLeft/ArrowRight do the same unless focus is inside an input,
+  textarea, contenteditable, video or audio element (preserving native media
+  controls). Gallery previews pass all share media, including items beyond the
+  100-card gallery cap; file-list previews pass the current table order. Text,
+  PDF and audio previews opened from the file list keep the single-file modal.
+  The modal title is the translated "Preview"; the active file name and counter
+  are inside the body and the counter is `aria-live`.
+- New fork-only translation keys:
+  `share.modal.file-preview.custom.previous`, `.next` and `.position`.
+- Verified locally with Node `26.12.1`: both production builds pass, frontend
+  lint is clean, and Playwright on a 108-media share confirmed the 12-card start,
+  100-card cap, skeleton sentinel, first/next/previous names and counters
+  (`1 of 108` -> `2 of 108`), ArrowLeft/ArrowRight navigation, wrap-around from
+  the last media to the first, a video share with animated skeleton cards that
+  disappear after `loadeddata`, and no console errors or horizontal overflow at
+  1366px or 390px. The video preview loaded lazily with
+  `preload="metadata"` only after entering the viewport.
 
 ## Known non-issues
 

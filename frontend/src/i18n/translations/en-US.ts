@@ -789,6 +789,9 @@ export default {
   "share.table.size": "Size",
 
   "share.modal.file-preview.original_file": "View original file",
+  "share.modal.file-preview.custom.previous": "Previous file",
+  "share.modal.file-preview.custom.next": "Next file",
+  "share.modal.file-preview.custom.position": "{current} of {total}",
   "share.modal.file-preview.error.not-supported.title": "Preview not supported",
   "share.modal.file-preview.error.not-supported.description":
     "Previews are not supported for this file type. Download the file to view it.",

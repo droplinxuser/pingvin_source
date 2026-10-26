@@ -178,6 +178,13 @@ const FileList = ({
     });
   }, [files, sort]);
 
+  // The preview arrows follow the current table order, so opening a file from
+  // the list navigates the same way the rows are presented.
+  const mediaFiles = useMemo(
+    () => sortedFiles.filter((file) => !!getGalleryMediaKind(file.name)),
+    [sortedFiles],
+  );
+
   return (
     <Paper
       data-testid="share-file-list"
@@ -281,7 +288,12 @@ const FileList = ({
                           size={28}
                           aria-label={t("common.button.preview")}
                           onClick={() =>
-                            showFilePreviewModal(share.id, file, modals)
+                            showFilePreviewModal(
+                              share.id,
+                              file,
+                              modals,
+                              mediaFiles,
+                            )
                           }
                         >
                           <TbEye size={16} />
