@@ -1540,6 +1540,18 @@ that cache. "Go home" links and the home-page redirect use the upstream
   h5bp include already sets both and the two sources produced duplicate
   identical headers. `X-Content-Type-Options` remains app-level; the edge keeps
   sending the other two exactly once.
+- Verified live on commit `3d24f326`: `X-Frame-Options`,
+  `Referrer-Policy` and `X-Content-Type-Options` each appear exactly once on
+  HTML pages and `X-Powered-By` is absent. A share page shows "Recent
+  visitors" (not "Visitor insights"), has no visible "ADVERTISEMENT" text, and
+  still renders the guest ad slot with its `aria-label`. The 32-route
+  guest/owner/mobile pass, upload, download, reverse-share and console checks
+  all passed with zero application console errors, page exceptions or failed
+  requests.
+- The only duplicate left is the pre-existing stale Cloudflare copy of
+  `Cache-Control: no-store` on `/api/configs` and `/api/oauth/available`.
+  Cache-busting requests to those endpoints return a single correct public
+  header from the origin; purging the two cached URLs clears the stale copy.
 
 ## Known non-issues
 
@@ -1559,11 +1571,11 @@ that cache. "Go home" links and the home-page redirect use the upstream
 - The recent-visitor list is intentionally visible to every site visitor,
   matching the original fork behavior. It contains the last 18 visitors'
   country/city/browser/OS/referrer values.
-- The live CDN currently stores `/api/configs` with a stale duplicate
-  `Cache-Control: no-store` beside the current public header. A cache-busting
-  query returns the origin's single correct header and Cloudflare still reports
-  a HIT; the response body is unaffected. Purging that URL removes the stale
-  stored copy.
+- The live CDN currently stores `/api/configs` and `/api/oauth/available` with
+  a stale duplicate `Cache-Control: no-store` beside the current public header.
+  A cache-busting query returns the origin's single correct header and
+  Cloudflare still reports a cache result; the response bodies are unaffected.
+  Purging those two URLs removes the stale stored copies.
 - Chrome may log the expected `403` while a protected share page fetches its
   share token, and `404`s for intentionally missing shares. These are network
   status logs, not JavaScript exceptions; the page recovers and renders
