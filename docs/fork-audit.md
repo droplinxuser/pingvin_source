@@ -26,7 +26,7 @@ so `git merge upstream/main` stays small.
 | VirusTotal background scanning | `backend/src/virustotal/*` (worker, file-backed audit, admin controller), `backend/src/share/share.service.ts` (completion hook), `backend/src/share/share.module.ts`, `backend/src/clamscan/clamscan.service.ts` (shared malicious-share removal), `frontend/src/pages/admin/virustotal.tsx`, `backend/.env.example` |
 | Site stats and footer | `backend/src/system/system.service.ts`, `backend/src/cache/metrics.service.ts`, `frontend/src/components/footer/Footer.tsx`; `POST /api/system/pageview` |
 | Valkey metrics and error logs | `backend/src/cache/valkeyMetrics.util.ts`, `backend/src/logs/*`, `backend/src/system/system.controller.ts` (`GET /api/system/valkey`), `frontend/src/components/admin/ValkeyMetricsCard.tsx`, `frontend/src/pages/admin/logs.tsx`, `frontend/src/services/log.service.ts`, `frontend/src/utils/errorReporter.util.ts` |
-| Home copy and ads | `frontend/src/pages/index.tsx` (upstream layout and redirect), `home.custom.*` keys in `en-US.ts`, `frontend/src/components/Ads.tsx`; upstream `hooks/homeHref.hook.ts` owns every "go home" target (honours `general.showHomePage`, `security.allowUnauthenticatedShares` and the signed-in state), including the share error screen, breadcrumb, error modals and post-delete redirect |
+| Home copy and ads | `frontend/src/pages/index.tsx` (upstream layout and redirect), `home.custom.*` keys in `en-US.ts`, `frontend/src/components/Ads.tsx` (guest-only: resolves `useUser` plus the `access_token` cookie before mounting the ad slot, so signed-in visitors load none of the three publisher scripts); upstream `hooks/homeHref.hook.ts` owns every "go home" target (honours `general.showHomePage`, `security.allowUnauthenticatedShares` and the signed-in state), including the share error screen, breadcrumb, error modals and post-delete redirect |
 | Fork branding / deployment | `frontend/public/img/**`, `frontend/public/favicon.ico`, `frontend/src/pages/manifest.json.tsx`, `pingvin-*.service`, `update.sh` |
 | SEO / crawlers | `frontend/src/components/Meta.tsx`, `SiteStructuredData.tsx`, `frontend/src/hooks/siteMeta.hook.ts`, `frontend/src/pages/robots.txt.tsx`, `frontend/src/pages/sitemap.xml.tsx`, `frontend/src/utils/seo.util.ts` (`DEFAULT_SITE_NAME`, `buildWebsiteRef`, `buildBreadcrumbList`, `buildItemList`, `buildCollectionPage`, `getShareSubject`, auto share descriptions), `frontend/src/utils/seo.server.util.ts` (`fetchShareSeo`, `fetchShareList`), `backend/src/share/share.service.ts` (`getSeo`), `backend/src/system/system.service.ts` (disk-backed `getRobotsTxt`, 50k-entry sitemap index/chunks, `getSitemapFile`) |
 | WebP / image pipeline | `backend/src/file/file.service.ts` (per-file preview cache + share-level listing/OG thumbnail), `backend/src/file/file.controller.ts` (`webp=300`), `backend/src/config/logo.service.ts`, `frontend/src/utils/file.util.ts`, `frontend/src/components/Logo.tsx`, `frontend/public/img/*.webp`, `og-image.png` |
@@ -657,6 +657,11 @@ that cache. "Go home" links and the home-page redirect use the upstream
   config helper, and keeps the client fetch fallback. A Playwright run that
   intercepted those data responses and returned `{}` still navigated to both
   pages with no error and loaded the listing from the client fallback.
+- Ads are guest-only. `Ads` waits for the client session check and returns
+  `null` when either `useUser()` has a user or the `access_token` cookie is
+  present; the three publisher scripts are only appended for guests. Playwright
+  verified the guest share page created all three ad requests, while the same
+  page in a signed-in session made zero ad requests and rendered zero ad slots.
 - The live audit after the fix covered `/`, `/trending`, `/new`, three public
   shares, privacy, imprint, sign-in, 404, a missing URL, and signed-in
   upload/account/shared/received/reverse-share/admin pages at 1366px and

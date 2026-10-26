@@ -1,6 +1,8 @@
 import { Box, Card, Text } from "@mantine/core";
+import { getCookie } from "cookies-next";
 import { useEffect, useRef, useState } from "react";
 import useTranslate from "../hooks/useTranslate.hook";
+import useUser from "../hooks/user.hook";
 
 // Ad units from the publishers' original snippets. Banner scripts are inserted
 // into the placeholder below, page-level scripts into <body>.
@@ -13,9 +15,20 @@ const SCRIPTS = [
 const Ads = ({ gallery = false }: { gallery?: boolean }) => {
   const bannerRef = useRef<HTMLDivElement>(null);
   const [collapsed, setCollapsed] = useState(false);
+  const [isGuest, setIsGuest] = useState(false);
+  const { user } = useUser();
   const t = useTranslate();
 
+  // Public pages are served as anonymous shells even for signed-in visitors.
+  // Resolve the session in the browser before mounting the ad slot so account
+  // holders never execute or see the publisher scripts.
   useEffect(() => {
+    setIsGuest(!user && !getCookie("access_token"));
+  }, [user]);
+
+  useEffect(() => {
+    if (!isGuest) return;
+
     let cancelled = false;
     let idleHandle: number | undefined;
     let timeout: ReturnType<typeof setTimeout> | undefined;
@@ -83,7 +96,9 @@ const Ads = ({ gallery = false }: { gallery?: boolean }) => {
       observer?.disconnect();
       scripts.forEach((script) => script.remove());
     };
-  }, [gallery]);
+  }, [gallery, isGuest]);
+
+  if (!isGuest) return null;
 
   if (gallery) {
     return (
