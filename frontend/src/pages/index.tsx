@@ -9,7 +9,6 @@ import {
   Title,
 } from "@mantine/core";
 import Link from "next/link";
-import { useRouter } from "next/router";
 import { useEffect } from "react";
 import { TbCheck } from "react-icons/tb";
 import { FormattedMessage } from "react-intl";
@@ -75,7 +74,6 @@ const useStyles = createStyles((theme) => ({
 
 export default function Home() {
   const { classes } = useStyles();
-  const router = useRouter();
   const config = useConfig();
   const homeHref = useHomeHref();
   const t = useTranslate();
@@ -88,8 +86,12 @@ export default function Home() {
   const redirectTarget = homeHref !== "/" ? homeHref : null;
 
   useEffect(() => {
-    if (redirectTarget) router.replace(redirectTarget);
-  }, [redirectTarget, router]);
+    // A client-side replace here can stall when the access token was expired
+    // on first open and the client has just refreshed it. The home page has
+    // already rendered by then, so use a full navigation to the protected
+    // destination instead of a router transition.
+    if (redirectTarget) window.location.replace(redirectTarget);
+  }, [redirectTarget]);
 
   const description = t("home.custom.metaDescription", { siteName });
   const aboutHref = (config.get("legal.imprintUrl") as string) || "/imprint";

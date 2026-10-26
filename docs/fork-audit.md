@@ -1262,3 +1262,9 @@ that cache. "Go home" links and the home-page redirect use the upstream
   normally. Public shares no longer make the token request.
 - Node 24+ prints an upstream `util._extend` deprecation warning at frontend
   startup.
+- The home page's logged-in redirect uses a full `window.location.replace`
+  instead of `router.replace`. When the access token expired while the browser
+  was closed, the client refreshes it after hydration; a client-side router
+  transition at that point could stall with the URL stuck on `/` and the main
+  content blank. A full navigation lets the middleware see the refreshed cookie
+  and load `/upload` immediately.
