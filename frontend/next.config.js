@@ -56,14 +56,9 @@ module.exports = withPWA({
     return [
       {
         source: "/:path*",
-        headers: [
-          { key: "X-Content-Type-Options", value: "nosniff" },
-          { key: "X-Frame-Options", value: "SAMEORIGIN" },
-          {
-            key: "Referrer-Policy",
-            value: "strict-origin-when-cross-origin",
-          },
-        ],
+        // X-Frame-Options and Referrer-Policy are owned by the Angie h5bp
+        // include; setting them here as well sends duplicate response headers.
+        headers: [{ key: "X-Content-Type-Options", value: "nosniff" }],
       },
       ...CACHE_RULES.map(([source, value]) => ({
         source,

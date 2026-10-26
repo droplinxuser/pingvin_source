@@ -1,7 +1,6 @@
-import { Box, Card, Text } from "@mantine/core";
+import { Box, Card } from "@mantine/core";
 import { getCookie } from "cookies-next";
 import { useEffect, useRef, useState } from "react";
-import useTranslate from "../hooks/useTranslate.hook";
 import useUser from "../hooks/user.hook";
 
 // Ad units from the publishers' original snippets. Banner scripts are inserted
@@ -17,7 +16,6 @@ const Ads = ({ gallery = false }: { gallery?: boolean }) => {
   const [collapsed, setCollapsed] = useState(false);
   const [isGuest, setIsGuest] = useState(false);
   const { user } = useUser();
-  const t = useTranslate();
 
   // Public pages are served as anonymous shells even for signed-in visitors.
   // Resolve the session in the browser before mounting the ad slot so account
@@ -110,16 +108,6 @@ const Ads = ({ gallery = false }: { gallery?: boolean }) => {
         mb="xl"
         sx={{ display: collapsed ? "none" : "block" }}
       >
-        <Text
-          size="xs"
-          color="dimmed"
-          weight={600}
-          tt="uppercase"
-          mb={6}
-          sx={{ letterSpacing: 0.5 }}
-        >
-          {t("share.custom.advertisement")}
-        </Text>
         <Box
           ref={bannerRef}
           aria-label="Advertisement"

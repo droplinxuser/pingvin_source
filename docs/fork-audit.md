@@ -1464,11 +1464,10 @@ that cache. "Go home" links and the home-page redirect use the upstream
   directory at most once per 30-second listing window. The thumbnail failure
   reason cache is capped at 1000 entries like the miss cache.
 - Security hardening: both Next.js and Express no longer send `X-Powered-By`.
-  Next also sends `X-Content-Type-Options: nosniff`,
-  `X-Frame-Options: SAMEORIGIN` and
-  `Referrer-Policy: strict-origin-when-cross-origin` for every route as
-  defense in depth alongside the Angie h5bp defaults. The bundled site-name
-  fallback now matches the `DropMB` seed value.
+  Next sends `X-Content-Type-Options: nosniff` for every route; the Angie h5bp
+  include owns `X-Frame-Options` and `Referrer-Policy`, so the app does not send
+  duplicate copies. The bundled site-name fallback now matches the `DropMB` seed
+  value.
 - Verified locally with Node `26.12.1`, the local 16k-share database and no
   Valkey: both production builds pass, all 119 backend unit tests pass, frontend
   lint is clean and backend lint reports only the upstream `any` warnings. A
@@ -1530,15 +1529,22 @@ that cache. "Go home" links and the home-page redirect use the upstream
   current public shares; the robots file allowed `/new` and the versioned
   thumbnail path.
 
+### Label/header cleanup (2026-10-27)
+
+- The share stats heading now reads "Recent visitors" instead of "Visitor
+  insights".
+- The visible "ADVERTISEMENT" label above the gallery ad slot was removed; the
+  slot keeps its `aria-label` for assistive technology and the empty-slot
+  collapse/observer logic is unchanged.
+- Next no longer sends `X-Frame-Options` or `Referrer-Policy`, because the Angie
+  h5bp include already sets both and the two sources produced duplicate
+  identical headers. `X-Content-Type-Options` remains app-level; the edge keeps
+  sending the other two exactly once.
+
 ## Known non-issues
 
-- The live page responses carry duplicate but identical `X-Frame-Options` and
-  `Referrer-Policy` values because Next and the Angie h5bp include both add
-  them. Browsers use the first value and both copies are `SAMEORIGIN` /
-  `strict-origin-when-cross-origin`; API responses carry one
-  `X-Content-Type-Options` and HSTS. Cloudflare does not echo
-  `Cloudflare-CDN-Cache-Control`, but it honors `CDN-Cache-Control` (observed
-  `HIT`).
+- Cloudflare does not echo `Cloudflare-CDN-Cache-Control`, but it honors
+  `CDN-Cache-Control` (observed `HIT`).
 - The ad container reserves about 90px plus 24px margins while third-party
   tags load, then collapses after 5s if no ad content is present. A
   `MutationObserver` reopens it if an ad arrives later. The media gallery is

@@ -722,8 +722,7 @@ export default {
     "{count, plural, =1 {# file} other {# files}} · {size} (zip file may be smaller due to compression)",
   "share.custom.fileCount":
     "{count, plural, =1 {# file} other {# files}} · {size}",
-  "share.custom.advertisement": "Advertisement",
-  "share.custom.stats.title": "Visitor insights",
+  "share.custom.stats.title": "Recent visitors",
   "share.custom.stats.views": "Total views",
   "share.custom.stats.empty": "No visits recorded yet.",
   "share.custom.stats.unknown-location": "Unknown location",
