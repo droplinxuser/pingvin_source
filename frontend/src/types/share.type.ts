@@ -96,6 +96,7 @@ export type ShareSeo = {
   fileCount?: number;
   size?: number;
   files?: { name: string }[];
+  thumbnailUrl?: string;
 };
 
 export type TrendingShare = {
@@ -108,6 +109,7 @@ export type TrendingShare = {
   fileCount?: number;
   size?: number;
   createdAt: string;
+  updatedAt?: string;
   hasVideo?: boolean;
 };
 

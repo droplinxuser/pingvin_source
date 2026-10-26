@@ -5,12 +5,12 @@ import {
   isPublicShare,
   publicShareWhere,
 } from "src/share/share.util";
+import { findPreview, PreviewKind } from "src/share/preview.util";
 import {
   COUNTRY_FIELD_PREFIX,
   isCountryCode,
   normalizeCountryCode,
 } from "src/utils/country.util";
-import { getFileMimeType } from "src/utils/mime.util";
 import { ValkeyClient, ValkeyService } from "./valkey.service";
 
 const VIEW_KEY_PREFIX = "pingvin:trending:views:";
@@ -46,12 +46,10 @@ const GEO_TTL_SECONDS = (GEO_WINDOW_HOURS + 1) * 60 * 60;
 const GEO_COUNTRY_LIMIT = 10;
 const GEO_SHARE_LIMIT = 10;
 const GEO_CACHE_MS = 5 * 60 * 1000;
-// Cached metadata from before preview selection preferred a playable video is
-// refreshed once. The field is internal to the cache payload.
-const PREVIEW_VERSION = 1;
-const PLAYABLE_VIDEO_EXTENSIONS = new Set(["mp4", "m4v", "mov", "f4v", "webm"]);
-
-type MediaKind = "image" | "video";
+// Cached metadata from before preview selection preferred a playable video or
+// carried the share's update time is refreshed once. The field is internal to
+// the cache payload.
+const PREVIEW_VERSION = 2;
 
 export type TrendingShare = {
   id: string;
@@ -59,10 +57,11 @@ export type TrendingShare = {
   description?: string;
   views: number;
   previewFileId: string;
-  previewKind: MediaKind;
+  previewKind: PreviewKind;
   fileCount?: number;
   size?: number;
   createdAt: string;
+  updatedAt?: string;
   // Set by the recent listing so the card can show a play icon even when the
   // chosen thumbnail is an image.
   hasVideo?: boolean;
@@ -85,6 +84,7 @@ type TrendingSource = {
   name?: string | null;
   description?: string | null;
   createdAt: Date | string;
+  updatedAt?: Date | string;
   views: number;
   files?: { id: string; name: string; size: string | number }[];
 };
@@ -120,7 +120,7 @@ export class TrendingService {
     if (!preview && !code) return;
 
     const meta: TrendingMeta | undefined = preview
-      ? buildMeta(share, preview)
+      ? buildMeta(share, preview, media?.hasVideo === true)
       : undefined;
 
     // Keep the short result cache: a view only changes a score, and rebuilding
@@ -251,6 +251,7 @@ export class TrendingService {
           name: true,
           description: true,
           createdAt: true,
+          updatedAt: true,
           views: true,
           security: {
             select: {
@@ -277,10 +278,12 @@ export class TrendingService {
       const media = findPreview(share.files);
       if (!media) continue;
 
-      items.push({
-        ...toTrendingShare(buildMeta(share, media.preview), share.views),
-        hasVideo: media.hasVideo,
-      });
+      items.push(
+        toTrendingShare(
+          buildMeta(share, media.preview, media.hasVideo),
+          share.views,
+        ),
+      );
       if (items.length >= RECENT_MAX_RESULT) break;
     }
 
@@ -334,6 +337,7 @@ export class TrendingService {
           name: true,
           description: true,
           createdAt: true,
+          updatedAt: true,
           views: true,
           expiration: true,
           security: {
@@ -366,13 +370,13 @@ export class TrendingService {
       if (share.expiration.getTime() !== 0 && share.expiration.getTime() <= now)
         continue;
 
-      const preview = findPreview(share.files)?.preview;
-      if (!preview) continue;
+      const media = findPreview(share.files);
+      if (!media) continue;
 
       multi.zAdd(viewKey, { score: share.views, value: share.id });
       multi.set(
         metaKeyFor(share.id),
-        JSON.stringify(buildMeta(share, preview)),
+        JSON.stringify(buildMeta(share, media.preview, media.hasVideo)),
         {
           EX: META_TTL_SECONDS,
           NX: true,
@@ -555,6 +559,7 @@ export class TrendingService {
           name: true,
           description: true,
           createdAt: true,
+          updatedAt: true,
           uploadLocked: true,
           removedReason: true,
           files: {
@@ -579,16 +584,20 @@ export class TrendingService {
 
     for (const share of shares) {
       found.add(share.id);
-      const preview =
+      const media =
         share.uploadLocked && !share.removedReason
-          ? findPreview(share.files)?.preview
+          ? findPreview(share.files)
           : undefined;
-      if (!preview || now - share.createdAt.getTime() > MAX_SHARE_AGE_MS) {
+      if (!media || now - share.createdAt.getTime() > MAX_SHARE_AGE_MS) {
         remove(share.id);
         continue;
       }
 
-      const meta: TrendingMeta = buildMeta(share, preview);
+      const meta: TrendingMeta = buildMeta(
+        share,
+        media.preview,
+        media.hasVideo,
+      );
       metas.set(share.id, meta);
       multi.set(metaKeyFor(share.id), JSON.stringify(meta), {
         EX: META_TTL_SECONDS,
@@ -615,9 +624,11 @@ function buildMeta(
     name?: string | null;
     description?: string | null;
     createdAt: Date | string;
+    updatedAt?: Date | string | null;
     files?: { id: string; name: string; size: string | number }[];
   },
-  preview: { id: string; kind: MediaKind },
+  preview: { id: string; kind: PreviewKind },
+  hasVideo: boolean,
 ): TrendingMeta {
   return {
     id: share.id,
@@ -625,9 +636,11 @@ function buildMeta(
     description: normalizeDescription(share.description),
     previewFileId: preview.id,
     previewKind: preview.kind,
+    hasVideo,
     fileCount: share.files?.length ?? 0,
     size: sumFileSizes(share.files),
     createdAt: new Date(share.createdAt).toISOString(),
+    updatedAt: new Date(share.updatedAt ?? share.createdAt).toISOString(),
     previewVersion: PREVIEW_VERSION,
   };
 }
@@ -650,6 +663,8 @@ function toTrendingShare(meta: TrendingMeta, views: number): TrendingShare {
     fileCount: Number(meta.fileCount) || 0,
     size: Number(meta.size) || 0,
     createdAt: meta.createdAt,
+    updatedAt: meta.updatedAt,
+    hasVideo: meta.hasVideo === true,
   };
 }
 
@@ -677,43 +692,11 @@ function legacyMetaIds(ids: string[], metas: Map<string, TrendingMeta>) {
       !!meta &&
       (meta.fileCount === undefined ||
         meta.size === undefined ||
+        meta.updatedAt === undefined ||
+        meta.hasVideo === undefined ||
         meta.previewVersion !== PREVIEW_VERSION)
     );
   });
-}
-
-function findPreview(files?: { id: string; name: string }[]) {
-  let firstMedia: { id: string; kind: MediaKind } | undefined;
-  let firstImage: { id: string; kind: MediaKind } | undefined;
-  let playableVideo: { id: string; kind: MediaKind } | undefined;
-  let hasVideo = false;
-
-  for (const file of files ?? []) {
-    const mimeType = getFileMimeType(file.name, false);
-    if (mimeType.startsWith("image/")) {
-      if (!firstMedia) firstMedia = { id: file.id, kind: "image" };
-      if (!firstImage) firstImage = { id: file.id, kind: "image" };
-    } else if (mimeType.startsWith("video/")) {
-      hasVideo = true;
-      if (!firstMedia) firstMedia = { id: file.id, kind: "video" };
-      const extension = file.name.split(".").pop()?.toLowerCase() ?? "";
-      if (!playableVideo && PLAYABLE_VIDEO_EXTENSIONS.has(extension))
-        playableVideo = { id: file.id, kind: "video" };
-    }
-  }
-
-  if (!firstMedia) return undefined;
-  if (firstMedia.kind === "video") {
-    // Browsers cannot decode every video container. Prefer a playable video
-    // from the same share, then an image, so the compact country preview shows
-    // a real frame instead of a black box. Shares with neither keep the first
-    // video as a fallback for clients that do support it.
-    return {
-      preview: playableVideo ?? firstImage ?? firstMedia,
-      hasVideo,
-    };
-  }
-  return { preview: firstMedia, hasVideo };
 }
 
 function currentDay() {

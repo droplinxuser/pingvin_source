@@ -21,6 +21,14 @@ export const splitFileName = (pathName: string) => {
 export const getBaseName = (pathName: string): string =>
   splitFileName(pathName).baseName;
 
+export const getShareThumbnailUrl = (
+  shareId: string,
+  version?: string | number,
+): string => {
+  const query = version ? `?v=${encodeURIComponent(String(version))}` : "";
+  return `/api/shares/${shareId}/thumbnail${query}`;
+};
+
 export const getShareFileUrl = (
   shareId: string,
   fileId: string,

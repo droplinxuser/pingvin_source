@@ -25,6 +25,7 @@ import { parseRelativeDateToAbsolute } from "src/utils/date.util";
 import { byteToHumanSizeString } from "src/utils/fileSize.util";
 import { getUserActiveStorageUsage } from "src/utils/storageQuota.util";
 import { SHARE_DIRECTORY } from "../constants";
+import { findPreview } from "./preview.util";
 import { CreateShareDTO } from "./dto/createShare.dto";
 import { ReportShareDTO } from "./dto/reportShare.dto";
 import { UpdateShareDTO } from "./dto/updateShare.dto";
@@ -82,6 +83,7 @@ export type ShareSeo = {
   fileCount?: number;
   size?: number;
   files?: { name: string }[];
+  thumbnailUrl?: string;
 };
 
 @Injectable()
@@ -354,6 +356,10 @@ export class ShareService {
 
     await this.shareState.invalidateData(id);
 
+    // Build the listing/OG thumbnail in the background. The browser may
+    // request it immediately, in which case the endpoint joins this build.
+    this.fileService.scheduleShareThumbnail(id);
+
     // Queue non-media files for the rate-limited VirusTotal background scan
     // only after the share is complete and visible.
     this.virusTotalService.scanShare(share);
@@ -384,6 +390,7 @@ export class ShareService {
       data: { uploadLocked: false, isZipReady: false },
     });
     await this.shareState.invalidateData(id);
+    await this.fileService.removeShareThumbnail(id);
     return updatedShare;
   }
 
@@ -543,7 +550,7 @@ export class ShareService {
         },
         reverseShare: { select: { publicAccess: true } },
         files: {
-          select: { name: true },
+          select: { id: true, name: true },
           orderBy: { name: "asc" },
           take: 20,
         },
@@ -571,6 +578,18 @@ export class ShareService {
       WHERE "shareId" = ${share.id}
     `;
 
+    // Start the background build, then expose the versioned URL once the
+    // thumbnail exists. New shares are built at completion; this covers legacy
+    // shares and lets the share page SSR stay fast when ffmpeg is needed.
+    if (findPreview(share.files))
+      this.fileService.scheduleShareThumbnail(share.id);
+    const hasThumbnail = await this.fileService.hasShareThumbnail(share.id);
+    const thumbnailUrl = hasThumbnail
+      ? `/api/shares/${share.id}/thumbnail?v=${(
+          share.updatedAt ?? share.createdAt
+        ).getTime()}`
+      : undefined;
+
     return {
       indexable: true,
       id: share.id,
@@ -581,6 +600,7 @@ export class ShareService {
       fileCount: share._count.files,
       size: Number(sizeRows[0]?.size ?? 0),
       files: share.files,
+      thumbnailUrl,
     };
   }
 
@@ -652,7 +672,10 @@ export class ShareService {
       data: { expiration: moment().toDate() },
     });
     await this.shareState.invalidateData(shareId);
-    await this.virusTotalService.removeJobsForShare(shareId);
+    await Promise.all([
+      this.virusTotalService.removeJobsForShare(shareId),
+      this.fileService.removeShareThumbnail(shareId),
+    ]);
   }
 
   async update(

@@ -14,6 +14,10 @@ const Meta = ({
   title,
   description,
   image,
+  imageType,
+  imageWidth,
+  imageHeight,
+  imageAlt,
   type = "website",
   noindex,
   canonicalPath,
@@ -24,6 +28,10 @@ const Meta = ({
   title?: string;
   description?: string;
   image?: string;
+  imageType?: string;
+  imageWidth?: number;
+  imageHeight?: number;
+  imageAlt?: string;
   type?: "website" | "article";
   noindex?: boolean;
   canonicalPath?: string;
@@ -44,6 +52,10 @@ const Meta = ({
   const path = canonicalPath ?? getCanonicalPath(router.asPath);
   const canonical = absoluteUrl(path, baseUrl);
   const imageUrl = absoluteUrl(image ?? "/img/og-image.png", baseUrl);
+  const resolvedImageType = image ? (imageType ?? "image/png") : "image/png";
+  const resolvedImageWidth = image ? imageWidth : 1200;
+  const resolvedImageHeight = image ? imageHeight : 630;
+  const resolvedImageAlt = imageAlt ?? `${siteName} logo`;
   const indexable =
     noindex === true
       ? false
@@ -70,10 +82,20 @@ const Meta = ({
         <meta property="og:url" content={canonical} />
         <meta property="og:locale" content={locale} />
         <meta property="og:image" content={imageUrl} />
-        <meta property="og:image:type" content="image/png" />
-        <meta property="og:image:width" content="1200" />
-        <meta property="og:image:height" content="630" />
-        <meta property="og:image:alt" content={`${siteName} logo`} />
+        <meta property="og:image:type" content={resolvedImageType} />
+        {!!resolvedImageWidth && (
+          <meta
+            property="og:image:width"
+            content={String(resolvedImageWidth)}
+          />
+        )}
+        {!!resolvedImageHeight && (
+          <meta
+            property="og:image:height"
+            content={String(resolvedImageHeight)}
+          />
+        )}
+        <meta property="og:image:alt" content={resolvedImageAlt} />
         {publishedTime && (
           <meta property="article:published_time" content={publishedTime} />
         )}
@@ -85,7 +107,7 @@ const Meta = ({
         <meta name="twitter:title" content={metaTitle} />
         <meta name="twitter:description" content={metaDescription} />
         <meta name="twitter:image" content={imageUrl} />
-        <meta name="twitter:image:alt" content={`${siteName} logo`} />
+        <meta name="twitter:image:alt" content={resolvedImageAlt} />
       </Head>
       {jsonLd && <JsonLd data={jsonLd} />}
     </>

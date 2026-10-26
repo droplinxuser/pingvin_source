@@ -18,9 +18,8 @@ import useTranslate from "../../hooks/useTranslate.hook";
 import shareService from "../../services/share.service";
 import { TrendingCountry } from "../../types/share.type";
 import { countryCodeToFlag, getCountryName } from "../../utils/country.util";
-import { getShareFileUrl } from "../../utils/file.util";
+import { getShareThumbnailUrl } from "../../utils/file.util";
 import LazyImage from "../core/LazyImage";
-import LazyVideo from "../core/LazyVideo";
 
 const useStyles = createStyles((theme) => {
   const border =
@@ -190,6 +189,7 @@ const useStyles = createStyles((theme) => {
     },
 
     thumb: {
+      position: "relative",
       display: "flex",
       alignItems: "center",
       justifyContent: "center",
@@ -211,16 +211,6 @@ const useStyles = createStyles((theme) => {
       filter: "blur(2px)",
       transform: "scale(1.08)",
       transition: "filter 120ms ease, transform 120ms ease",
-    },
-
-    videoThumb: {
-      position: "relative",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      width: "100%",
-      height: "100%",
-      backgroundColor: "#000",
     },
 
     playOverlay: {
@@ -411,40 +401,23 @@ const TrendingCountries = ({
                         {formatCount(index + 1)}
                       </Box>
                       <Box component="span" className={classes.thumb}>
-                        {item.previewKind === "image" ? (
-                          <LazyImage
-                            className={classes.thumbImage}
-                            src={getShareFileUrl(item.id, item.previewFileId, {
-                              download: false,
-                              webp: true,
-                            })}
-                            alt=""
-                            onError={(event) => {
-                              event.currentTarget.style.display = "none";
-                            }}
-                          />
-                        ) : (
-                          <Box component="span" className={classes.videoThumb}>
-                            <LazyVideo
-                              className={classes.thumbImage}
-                              src={`${getShareFileUrl(
-                                item.id,
-                                item.previewFileId,
-                                { download: false },
-                              )}#t=0.1`}
-                              muted
-                              playsInline
-                              aria-hidden="true"
-                              onError={(event) => {
-                                event.currentTarget.style.display = "none";
-                              }}
-                            />
-                            <Box
-                              component="span"
-                              className={classes.playOverlay}
-                            >
-                              <TbPlayerPlay size={14} aria-hidden />
-                            </Box>
+                        <LazyImage
+                          className={classes.thumbImage}
+                          src={getShareThumbnailUrl(item.id, item.updatedAt)}
+                          alt=""
+                          onError={(event) => {
+                            const image = event.currentTarget;
+                            if (image.dataset.fallback === "1") {
+                              image.style.display = "none";
+                              return;
+                            }
+                            image.dataset.fallback = "1";
+                            image.src = "/img/logo.webp";
+                          }}
+                        />
+                        {item.previewKind === "video" && (
+                          <Box component="span" className={classes.playOverlay}>
+                            <TbPlayerPlay size={14} aria-hidden />
                           </Box>
                         )}
                       </Box>

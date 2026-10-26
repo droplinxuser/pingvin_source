@@ -168,6 +168,7 @@ const SharePage = ({
           baseUrl,
           datePublished: seo.createdAt,
           dateModified: seo.updatedAt,
+          image: seo.thumbnailUrl,
           mainEntity: {
             "@type": "ItemList",
             numberOfItems: seo.files?.length ?? 0,
@@ -186,6 +187,9 @@ const SharePage = ({
       type="article"
       noindex={!indexable}
       canonicalPath={`/share/${shareId}`}
+      image={indexable ? seo?.thumbnailUrl : undefined}
+      imageType={indexable && seo?.thumbnailUrl ? "image/webp" : undefined}
+      imageAlt={indexable ? shareName || seo?.name || siteName : undefined}
       publishedTime={indexable ? seo?.createdAt : undefined}
       modifiedTime={indexable ? seo?.updatedAt : undefined}
       jsonLd={shareJsonLd}

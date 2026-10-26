@@ -23,10 +23,9 @@ import {
 import useTranslate from "../../hooks/useTranslate.hook";
 import shareService from "../../services/share.service";
 import { TrendingShare } from "../../types/share.type";
-import { getShareFileUrl } from "../../utils/file.util";
+import { getShareThumbnailUrl } from "../../utils/file.util";
 import { byteToHumanSizeString } from "../../utils/fileSize.util";
 import LazyImage from "../core/LazyImage";
-import LazyVideo from "../core/LazyVideo";
 import RelativeTime from "../core/RelativeTime";
 
 // Long listings (the newest 200 shares) are revealed in viewport-sized
@@ -422,13 +421,7 @@ const TrendingToday = ({
           {visibleItems.map((item) => {
             const name = item.name || item.id;
             const views = item.views.toLocaleString(intl.locale);
-            const url = getShareFileUrl(item.id, item.previewFileId, {
-              download: false,
-            });
-            const imageUrl = getShareFileUrl(item.id, item.previewFileId, {
-              download: false,
-              webp: true,
-            });
+            const thumbnailUrl = getShareThumbnailUrl(item.id, item.updatedAt);
             const description = item.description?.trim();
             const hasVideo =
               item.previewKind === "video" || item.hasVideo === true;
@@ -442,27 +435,20 @@ const TrendingToday = ({
                 className={classes.card}
                 title={name}
               >
-                {item.previewKind === "image" ? (
-                  <LazyImage
-                    className={mediaClassName}
-                    src={imageUrl}
-                    alt=""
-                    onError={(event) => {
-                      event.currentTarget.style.display = "none";
-                    }}
-                  />
-                ) : (
-                  <LazyVideo
-                    className={mediaClassName}
-                    src={`${url}#t=0.1`}
-                    muted
-                    playsInline
-                    aria-hidden="true"
-                    onError={(event) => {
-                      event.currentTarget.style.display = "none";
-                    }}
-                  />
-                )}
+                <LazyImage
+                  className={mediaClassName}
+                  src={thumbnailUrl}
+                  alt=""
+                  onError={(event) => {
+                    const image = event.currentTarget;
+                    if (image.dataset.fallback === "1") {
+                      image.style.display = "none";
+                      return;
+                    }
+                    image.dataset.fallback = "1";
+                    image.src = "/img/logo.webp";
+                  }}
+                />
 
                 <Box component="span" className={classes.scrim} aria-hidden />
 

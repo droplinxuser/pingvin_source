@@ -19,6 +19,7 @@ so `git merge upstream/main` stays small.
 | Trending today | `backend/src/cache/trending.service.ts`, `GET /api/shares/trending?limit=100`, `frontend/src/components/share/TrendingToday.tsx` (client-side, viewport-triggered load with batched rendering and skeletons), `frontend/src/components/share/TrendingCountries.tsx` (up to ten countries, ten shares each), `frontend/src/pages/trending.tsx`, `frontend/src/pages/_app.tsx` |
 | New shares | `backend/src/cache/trending.service.ts` (`getRecent`), `GET /api/shares/recent?limit=200`, `frontend/src/pages/new.tsx`, shared `TrendingToday` grid/card (`loadItems`, media badge, 24-card batches), header/footer links, sitemap/robots |
 | Shared UI polish | `frontend/src/components/core/RelativeTime.tsx` (relative timestamps + full-date tooltip), `RouteProgress.tsx` (global navigation bar), `LazyImage.tsx` (lazy images with shimmer placeholder), `LazySection.tsx` / `LazyVideo.tsx` |
+| Share thumbnails / OG | `backend/src/file/file.service.ts` (share-level 300px WebP, background queue, 32-day cleanup), `backend/src/share/preview.util.ts` (shared source selection), `GET /api/shares/:id/thumbnail`, `frontend/src/components/share/TrendingToday.tsx`, `TrendingCountries.tsx`, `Meta.tsx` |
 | Cache headers / hotlink protection | `backend/src/utils/cache.util.ts` (shared `Cache-Control`, `CDN-Cache-Control`, `Cloudflare-CDN-Cache-Control`, public-file `ETag`), `backend/src/utils/referrer.util.ts`, `frontend/src/middleware.ts` (query-free anonymous page shells), `frontend/next.config.js` |
 | Per-IP+User-Agent rate limiting | `backend/src/utils/visitorIdentity.util.ts`, `backend/src/cache/valkeyThrottler.storage.ts`, `backend/src/cache/throttler.config.ts`, `backend/src/main.ts` |
 | Valkey/Redis cache | `backend/src/utils/cache.util.ts`, `backend/src/share/shareState.service.ts`, `backend/src/cache/cache.module.ts`, `backend/src/cache/valkey.service.ts` |
@@ -28,7 +29,7 @@ so `git merge upstream/main` stays small.
 | Home copy and ads | `frontend/src/pages/index.tsx` (upstream layout and redirect), `home.custom.*` keys in `en-US.ts`, `frontend/src/components/Ads.tsx`; upstream `hooks/homeHref.hook.ts` owns every "go home" target (honours `general.showHomePage`, `security.allowUnauthenticatedShares` and the signed-in state), including the share error screen, breadcrumb, error modals and post-delete redirect |
 | Fork branding / deployment | `frontend/public/img/**`, `frontend/public/favicon.ico`, `frontend/src/pages/manifest.json.tsx`, `pingvin-*.service`, `update.sh` |
 | SEO / crawlers | `frontend/src/components/Meta.tsx`, `SiteStructuredData.tsx`, `frontend/src/hooks/siteMeta.hook.ts`, `frontend/src/pages/robots.txt.tsx`, `frontend/src/pages/sitemap.xml.tsx`, `frontend/src/utils/seo.util.ts` (`DEFAULT_SITE_NAME`, `buildWebsiteRef`, `buildCollectionPage`), `frontend/src/utils/seo.server.util.ts`, `backend/src/share/share.service.ts` (`getSeo`), `backend/src/system/system.service.ts` (disk-backed `getRobotsTxt`, 50k-entry sitemap index/chunks, `getSitemapFile`) |
-| WebP / image pipeline | `backend/src/file/file.service.ts` (private preview cache), `backend/src/file/file.controller.ts` (`webp=300`), `backend/src/config/logo.service.ts`, `frontend/src/utils/file.util.ts`, `frontend/src/components/Logo.tsx`, `frontend/public/img/*.webp`, `og-image.png` |
+| WebP / image pipeline | `backend/src/file/file.service.ts` (per-file preview cache + share-level listing/OG thumbnail), `backend/src/file/file.controller.ts` (`webp=300`), `backend/src/config/logo.service.ts`, `frontend/src/utils/file.util.ts`, `frontend/src/components/Logo.tsx`, `frontend/public/img/*.webp`, `og-image.png` |
 
 Fork-only UI strings live in `frontend/src/i18n/translations/en-US.ts`; every
 other locale falls back to English through `frontend/src/utils/i18n.util.ts`,
@@ -364,7 +365,8 @@ hand-rolled lock or temp-file block.
   default, so the origin headers only apply where a Cache Rule makes those
   paths eligible; scope that rule to the public HTML routes (including
   `/trending` and `/new`), the public config, stats, `/api/shares/trending`,
-  `/api/shares/recent`, `/api/shares/:id/seo`, `/api/system/sitemap.xml`,
+  `/api/shares/recent`, `/api/shares/:id/seo`, `/api/shares/:id/thumbnail`,
+  `/api/system/sitemap.xml`,
   `/api/system/sitemaps/*` (the versioned chunks), `/api/system/robots.txt`,
   `/robots.txt` and `/sitemap.xml` rather than the
   whole site, and bypass requests carrying an
@@ -1184,6 +1186,44 @@ that cache. "Go home" links and the home-page redirect use the upstream
   requests, relative dates in the admin share table, and zero unexpected
   console errors or warnings. Chromium's expected document-status log for a
   direct `/404` visit is the only filtered entry.
+
+## Share-level listing and OG thumbnails (2026-10-26)
+
+- Every completed share with at least one image or video gets one 300px WebP
+  at `DATA_DIRECTORY/uploads/_thumbnails/v300/<shareId>.webp`. This single
+  asset is used by all four listing surfaces (share widget, 404 widget,
+  `/trending` and `/new`) and by the share page's Open Graph/Twitter image.
+- Generation is queued in the background from `share.complete`. The listing
+  controllers (`/api/shares/trending`, `/api/shares/trending/countries` and
+  `/api/shares/recent`) also warm the first 48 missing thumbnails after reading
+  the list, so the first two lazy card batches usually find the file already
+  present. The rest are generated on demand as the visitor scrolls; a
+  three-worker queue plus per-share in-flight promises coalesce card bursts
+  into one job per share without starting hundreds of ffmpeg jobs at once.
+- Image shares reuse the existing per-file 300px WebP: the share thumbnail is
+  a hardlink when possible (copy fallback), so a share with an image does not
+  pay for a second image decode. Video-only shares extract a frame with
+  `ffmpeg` (the optional `ffmpeg-static` binary, or `FFMPEG_PATH`/system
+  `ffmpeg`), then resize it with sharp. The frame is taken one second in, with
+  a first-frame fallback for very short videos.
+- Listings now always render an `<img>` from the share thumbnail endpoint.
+  They no longer create `<video>` elements, so a 200-card `/new` page does not
+  download video metadata/first frames. The media badge/play overlay still
+  comes from `previewKind`/`hasVideo`; gallery and file-preview modals keep
+  using `LazyVideo` for actual playback.
+- Thumbnail URLs carry `?v=<share.updatedAt>` and are served with a one-day
+  public immutable cache plus an ETag for public shares; protected shares are
+  `private`. File removal bumps `updatedAt`, deletes the thumbnail, and forces
+  regeneration. Delete/revert-complete/expire paths also remove it.
+- A daily 03:00 cron calls `cleanupShareThumbnails`, deleting `.webp` files
+  older than 32 days; the same cleanup runs once at boot. Cleanup is
+  self-healing because the next listing/OG request regenerates a missing
+  thumbnail.
+- `GET /api/shares/:id/seo` now returns a versioned `thumbnailUrl` whenever
+  the share has a usable media source. The share page passes it to `Meta` as
+  `og:image`/`twitter:image` with `image/webp`; if there is no media the
+  default 1200x630 site image remains. The endpoint schedules the build in the
+  background so SSR never waits on ffmpeg.
 
 ## Known non-issues
 

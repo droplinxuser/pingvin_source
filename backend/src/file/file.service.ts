@@ -11,6 +11,7 @@ import { Cache } from "cache-manager";
 import { LocalFileService } from "./local.service";
 import { S3FileService } from "./s3.service";
 import { ConfigService } from "src/config/config.service";
+import { spawn } from "child_process";
 import { createWriteStream } from "fs";
 import { promises as fs } from "fs";
 import { join } from "path";
@@ -23,7 +24,8 @@ import { TrendingService } from "src/cache/trending.service";
 import { VirusTotalQueueService } from "src/virustotal/virustotalQueue.service";
 import { invalidateShareDataCache } from "src/utils/cache.util";
 import { getFileMimeType } from "src/utils/mime.util";
-import { DATA_DIRECTORY } from "src/constants";
+import { findPreview } from "src/share/preview.util";
+import { DATA_DIRECTORY, SHARE_DIRECTORY } from "src/constants";
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const sharp = require("sharp");
 
@@ -38,6 +40,17 @@ const PREVIEW_MAX_FILE_SIZE = 100 * 1024 * 1024;
 const PREVIEW_MAX_DIMENSION = 300;
 const WEBP_QUALITY = 82;
 const PREVIEW_MISS_TTL_MS = 10 * 60 * 1000;
+// One share-level thumbnail is used by every listing (trending, new, share
+// page/widget and 404 widget) and by the share's OG metadata. Keeping it
+// separate from the per-file gallery preview means a video share never has to
+// load the video itself into a listing card.
+const THUMBNAIL_ROOT = `${DATA_DIRECTORY}/uploads/_thumbnails`;
+const THUMBNAIL_VERSION = "v300";
+const THUMBNAIL_DIRECTORY = `${THUMBNAIL_ROOT}/${THUMBNAIL_VERSION}`;
+const THUMBNAIL_MAX_AGE_MS = 32 * 24 * 60 * 60 * 1000;
+const THUMBNAIL_CONCURRENCY = 3;
+const THUMBNAIL_WARM_LIMIT = 48;
+const THUMBNAIL_TIMEOUT_MS = 20_000;
 const WEBP_IMAGE_TYPES = new Set([
   "image/jpeg",
   "image/png",
@@ -46,6 +59,8 @@ const WEBP_IMAGE_TYPES = new Set([
   "image/avif",
 ]);
 const SAFE_ID = /^[\w=-]+$/;
+
+type ShareThumbnail = { path: string; size: number };
 
 @Injectable()
 export class FileService implements OnModuleInit {
@@ -67,19 +82,31 @@ export class FileService implements OnModuleInit {
   >();
   private readonly previewMisses = new Map<string, number>();
   private readonly lastShareTouch = new Map<string, number>();
+  private readonly thumbnailBuilds = new Map<
+    string,
+    Promise<ShareThumbnail | undefined>
+  >();
+  private readonly thumbnailMisses = new Map<string, number>();
+  private readonly thumbnailQueue: Array<() => void> = [];
+  private thumbnailActive = 0;
 
   async onModuleInit() {
-    // Preview files are a derived cache. Drop caches from older dimensions so
-    // the 300px rollout does not leave large WebP files behind.
+    await this.removeOldPreviewVersions(PREVIEW_ROOT, PREVIEW_VERSION);
+    await this.removeOldPreviewVersions(THUMBNAIL_ROOT, THUMBNAIL_VERSION);
+    // Clear stale derivatives on boot as well as in the daily cron.
+    void this.cleanupShareThumbnails().catch(() => {});
+  }
+
+  private async removeOldPreviewVersions(root: string, current: string) {
+    // These directories are derived caches. Drop versions from older
+    // dimensions so the current rollout does not leave large files behind.
     try {
-      const entries = await fs.readdir(PREVIEW_ROOT, { withFileTypes: true });
+      const entries = await fs.readdir(root, { withFileTypes: true });
       await Promise.all(
         entries
-          .filter(
-            (entry) => entry.isDirectory() && entry.name !== PREVIEW_VERSION,
-          )
+          .filter((entry) => entry.isDirectory() && entry.name !== current)
           .map((entry) =>
-            fs.rm(join(PREVIEW_ROOT, entry.name), {
+            fs.rm(join(root, entry.name), {
               recursive: true,
               force: true,
             }),
@@ -349,6 +376,330 @@ export class FileService implements OnModuleInit {
     }
   }
 
+  private getShareThumbnailPath(shareId: string): string | undefined {
+    if (!SAFE_ID.test(shareId)) return undefined;
+    return join(THUMBNAIL_DIRECTORY, `${shareId}.webp`);
+  }
+
+  async hasShareThumbnail(shareId: string): Promise<boolean> {
+    const path = this.getShareThumbnailPath(shareId);
+    if (!path) return false;
+    try {
+      await fs.stat(path);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Returns the single share-level thumbnail. If it is missing (a legacy
+   * share, a warmed listing item, or a thumbnail deleted by cleanup), the
+   * caller waits for one build. Listings and OG requests share the same
+   * in-flight promise, so a burst of card requests runs one ffmpeg/sharp job
+   * per share instead of one per card.
+   */
+  async getShareThumbnail(
+    shareId: string,
+  ): Promise<ShareThumbnail | undefined> {
+    const path = this.getShareThumbnailPath(shareId);
+    if (!path) return undefined;
+
+    try {
+      const stat = await fs.stat(path);
+      return { path, size: stat.size };
+    } catch {
+      // Not generated yet.
+    }
+
+    return this.ensureShareThumbnail(shareId);
+  }
+
+  /**
+   * Fire-and-forget warmup used after a listing API read. The frontend will
+   * request the thumbnails immediately afterwards; this just starts the work
+   * before those requests arrive.
+   */
+  async warmShareThumbnails(shareIds: string[]): Promise<void> {
+    if (shareIds.length === 0) return;
+    let existing = new Set<string>();
+    try {
+      existing = new Set(await fs.readdir(THUMBNAIL_DIRECTORY));
+    } catch {
+      // The directory is created on the first build.
+    }
+
+    // Only the first two listing batches are warmed. The rest are generated
+    // on demand as the visitor scrolls, keeping a 200-card page from starting
+    // hundreds of ffmpeg jobs at once.
+    for (const shareId of shareIds.slice(0, THUMBNAIL_WARM_LIMIT)) {
+      if (!existing.has(`${shareId}.webp`))
+        void this.ensureShareThumbnail(shareId).catch(() => {});
+    }
+  }
+
+  /** Queues a thumbnail after upload completion or as a backfill. */
+  scheduleShareThumbnail(shareId: string): void {
+    void this.ensureShareThumbnail(shareId).catch(() => {});
+  }
+
+  async removeShareThumbnail(shareId: string): Promise<void> {
+    const path = this.getShareThumbnailPath(shareId);
+    if (!path) return;
+
+    // Let an in-flight build finish so it cannot recreate the file after the
+    // delete. This is rare (edits/deletes while the card is loading).
+    const running = this.thumbnailBuilds.get(shareId);
+    if (running) await running.catch(() => {});
+    this.thumbnailBuilds.delete(shareId);
+    this.thumbnailMisses.delete(shareId);
+    await fs.rm(path, { force: true }).catch(() => {});
+  }
+
+  /** Deletes thumbnails that have not been generated/refreshed in 32 days. */
+  async cleanupShareThumbnails(): Promise<number> {
+    const cutoff = Date.now() - THUMBNAIL_MAX_AGE_MS;
+    let deleted = 0;
+    let entries: Awaited<ReturnType<typeof fs.readdir>> | undefined;
+
+    try {
+      entries = await fs.readdir(THUMBNAIL_DIRECTORY, { withFileTypes: true });
+    } catch {
+      return 0;
+    }
+
+    for (const entry of entries) {
+      if (!entry.isFile() || !entry.name.endsWith(".webp")) continue;
+      const path = join(THUMBNAIL_DIRECTORY, entry.name);
+      try {
+        const stat = await fs.stat(path);
+        if (stat.mtimeMs < cutoff) {
+          await fs.rm(path, { force: true });
+          deleted += 1;
+        }
+      } catch {
+        // Another cleanup/process may already have removed it.
+      }
+    }
+
+    if (deleted > 0)
+      this.logger.log(`Deleted ${deleted} expired share thumbnails`);
+    return deleted;
+  }
+
+  private async ensureShareThumbnail(
+    shareId: string,
+  ): Promise<ShareThumbnail | undefined> {
+    const path = this.getShareThumbnailPath(shareId);
+    if (!path) return undefined;
+
+    try {
+      const stat = await fs.stat(path);
+      return { path, size: stat.size };
+    } catch {
+      // Not generated yet.
+    }
+
+    const missedAt = this.thumbnailMisses.get(shareId);
+    if (missedAt) {
+      if (Date.now() - missedAt < PREVIEW_MISS_TTL_MS) return undefined;
+      this.thumbnailMisses.delete(shareId);
+    }
+
+    const running = this.thumbnailBuilds.get(shareId);
+    if (running) return running;
+
+    const build = this.enqueueThumbnail(() =>
+      this.buildShareThumbnail(shareId, path),
+    )
+      .then((result) => {
+        if (result) {
+          this.thumbnailMisses.delete(shareId);
+        } else {
+          this.thumbnailMisses.set(shareId, Date.now());
+          if (this.thumbnailMisses.size > 1000) {
+            const oldest = this.thumbnailMisses.keys().next().value;
+            if (oldest) this.thumbnailMisses.delete(oldest);
+          }
+        }
+        return result;
+      })
+      .finally(() => {
+        if (this.thumbnailBuilds.get(shareId) === build)
+          this.thumbnailBuilds.delete(shareId);
+      });
+
+    this.thumbnailBuilds.set(shareId, build);
+    return build;
+  }
+
+  private enqueueThumbnail<T>(task: () => Promise<T>): Promise<T> {
+    return new Promise<T>((resolve, reject) => {
+      this.thumbnailQueue.push(() => {
+        this.thumbnailActive += 1;
+        task()
+          .then(resolve, reject)
+          .finally(() => {
+            this.thumbnailActive -= 1;
+            this.processThumbnailQueue();
+          });
+      });
+      this.processThumbnailQueue();
+    });
+  }
+
+  private processThumbnailQueue(): void {
+    while (
+      this.thumbnailActive < THUMBNAIL_CONCURRENCY &&
+      this.thumbnailQueue.length > 0
+    ) {
+      this.thumbnailQueue.shift()?.();
+    }
+  }
+
+  private async buildShareThumbnail(
+    shareId: string,
+    thumbnailPath: string,
+  ): Promise<ShareThumbnail | undefined> {
+    const share = await this.prisma.share.findUnique({
+      where: { id: shareId },
+      select: {
+        id: true,
+        uploadLocked: true,
+        removedReason: true,
+        expiration: true,
+        storageProvider: true,
+        files: {
+          select: { id: true, name: true, size: true },
+          orderBy: { name: "asc" },
+        },
+      },
+    });
+
+    if (!share || !share.uploadLocked || share.removedReason) return undefined;
+    if (
+      share.expiration.getTime() !== 0 &&
+      share.expiration.getTime() <= Date.now()
+    )
+      return undefined;
+
+    const selection = findPreview(share.files);
+    if (!selection) return undefined;
+
+    const preview = selection.preview;
+    const tempPath = `${thumbnailPath}.${process.pid}.${Math.random()
+      .toString(36)
+      .slice(2)}.tmp`;
+
+    try {
+      await fs.mkdir(THUMBNAIL_DIRECTORY, { recursive: true });
+
+      if (preview.kind === "image") {
+        const filePreview = await this.getWebpPreview(
+          shareId,
+          preview.id,
+          share.storageProvider,
+        );
+        if (!filePreview) return undefined;
+
+        // Hardlink the per-file WebP when possible. The gallery and listing
+        // then share the same inode instead of storing two copies.
+        try {
+          await fs.link(filePreview.path, tempPath);
+        } catch {
+          await fs.copyFile(filePreview.path, tempPath);
+        }
+      } else {
+        const framePath = `${tempPath}.png`;
+        try {
+          const source =
+            share.storageProvider === "S3"
+              ? await this.s3FileService.getPreSignedDownloadUrl(
+                  shareId,
+                  preview.id,
+                  false,
+                )
+              : join(SHARE_DIRECTORY, shareId, preview.id);
+
+          await this.extractVideoFrame(source, framePath);
+          await sharp(framePath)
+            .rotate()
+            .resize({
+              width: PREVIEW_MAX_DIMENSION,
+              height: PREVIEW_MAX_DIMENSION,
+              fit: "inside",
+              withoutEnlargement: true,
+            })
+            .webp({ quality: WEBP_QUALITY, effort: 4 })
+            .toFile(tempPath);
+        } finally {
+          await fs.rm(framePath, { force: true }).catch(() => {});
+        }
+      }
+
+      await fs.rename(tempPath, thumbnailPath);
+      // Hardlinks inherit the source inode's mtime. Refresh it so the 32-day
+      // cleanup measures when this share thumbnail was built, not when the
+      // per-file gallery preview happened to be created.
+      const builtAt = new Date();
+      await fs.utimes(thumbnailPath, builtAt, builtAt);
+      const stat = await fs.stat(thumbnailPath);
+      return { path: thumbnailPath, size: stat.size };
+    } catch (error) {
+      await fs.rm(tempPath, { force: true }).catch(() => {});
+      this.logger.debug(
+        `Could not build share thumbnail for ${shareId}: ${error}`,
+      );
+      return undefined;
+    }
+  }
+
+  private async extractVideoFrame(
+    input: string,
+    output: string,
+  ): Promise<void> {
+    let lastError: unknown;
+
+    // Try one second into the video first; a frame at exactly 0:00 is often
+    // black. Very short videos fall back to the first frame.
+    for (const binary of getFfmpegCandidates()) {
+      for (const seek of ["1", "0"]) {
+        try {
+          await runProcess(
+            binary,
+            [
+              "-hide_banner",
+              "-loglevel",
+              "error",
+              "-ss",
+              seek,
+              "-i",
+              input,
+              "-frames:v",
+              "1",
+              "-f",
+              "image2",
+              "-vcodec",
+              "png",
+              "-y",
+              output,
+            ],
+            THUMBNAIL_TIMEOUT_MS,
+          );
+          const stat = await fs.stat(output);
+          if (stat.size > 0) return;
+        } catch (error) {
+          lastError = error;
+          await fs.rm(output, { force: true }).catch(() => {});
+        }
+      }
+    }
+
+    throw lastError instanceof Error
+      ? lastError
+      : new Error("No video frame could be extracted");
+  }
+
   private async removePreviewCache(shareId: string, fileId?: string) {
     if (!SAFE_ID.test(shareId)) return;
     const target = fileId
@@ -383,8 +734,15 @@ export class FileService implements OnModuleInit {
     });
     const storageService = this.getStorageService(share?.storageProvider);
     await storageService.remove(shareId, fileId);
+    // Bump the share's update time first: it is the version in thumbnail
+    // URLs, so a listing that repopulates after the invalidation below must
+    // already use the new thumbnail URL.
+    await this.prisma.share
+      .update({ where: { id: shareId }, data: { updatedAt: new Date() } })
+      .catch(() => {});
     await Promise.all([
       this.removePreviewCache(shareId, fileId),
+      this.removeShareThumbnail(shareId),
       invalidateShareDataCache(this.cache, shareId),
       this.trending.invalidate(shareId),
     ]);
@@ -400,11 +758,15 @@ export class FileService implements OnModuleInit {
     const storageService = this.getStorageService(share?.storageProvider);
     await storageService.deleteAllFiles(shareId);
     if (!invalidateCaches) {
-      await this.removePreviewCache(shareId);
+      await Promise.all([
+        this.removePreviewCache(shareId),
+        this.removeShareThumbnail(shareId),
+      ]);
       return;
     }
     await Promise.all([
       this.removePreviewCache(shareId),
+      this.removeShareThumbnail(shareId),
       invalidateShareDataCache(this.cache, shareId),
       this.trending.invalidate(shareId),
     ]);
@@ -514,4 +876,56 @@ export interface File {
   file?: Readable;
   range?: { start: number; end: number };
   isRangeNotSatisfiable?: boolean;
+}
+
+let ffmpegCandidates: string[] | undefined;
+
+function getFfmpegCandidates(): string[] {
+  if (ffmpegCandidates) return ffmpegCandidates;
+
+  const candidates: string[] = [];
+  if (process.env.FFMPEG_PATH) candidates.push(process.env.FFMPEG_PATH);
+
+  try {
+    // The static binary is optional so a minimal install can still run; in
+    // that case the system `ffmpeg` on PATH is used instead.
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const staticBinary = require("ffmpeg-static") as string | undefined;
+    if (staticBinary) candidates.push(staticBinary);
+  } catch {
+    // Optional dependency not installed.
+  }
+
+  candidates.push("ffmpeg");
+  ffmpegCandidates = candidates;
+  return candidates;
+}
+
+function runProcess(
+  command: string,
+  args: string[],
+  timeoutMs: number,
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const child = spawn(command, args, { stdio: ["ignore", "ignore", "pipe"] });
+    let stderr = "";
+
+    const timer = setTimeout(() => {
+      child.kill("SIGKILL");
+      reject(new Error(`${command} timed out`));
+    }, timeoutMs);
+
+    child.stderr?.on("data", (chunk: Buffer) => {
+      if (stderr.length < 2000) stderr += chunk.toString();
+    });
+    child.on("error", (error) => {
+      clearTimeout(timer);
+      reject(error);
+    });
+    child.on("close", (code) => {
+      clearTimeout(timer);
+      if (code === 0) resolve();
+      else reject(new Error(`${command} exited with ${code}: ${stderr}`));
+    });
+  });
 }

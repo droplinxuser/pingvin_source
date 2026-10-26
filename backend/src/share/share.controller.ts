@@ -12,24 +12,31 @@ import {
   Query,
   Req,
   Res,
+  StreamableFile,
   UnauthorizedException,
   UseGuards,
 } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import { Throttle, SkipThrottle } from "@nestjs/throttler";
 import { Share, ShareSecurity, User } from "@prisma/client";
+import { createReadStream } from "fs";
 import { Request, Response } from "express";
 import * as moment from "moment";
 import { GetUser } from "src/auth/decorator/getUser.decorator";
 import { AdministratorGuard } from "src/auth/guard/isAdmin.guard";
 import { JwtGuard } from "src/auth/guard/jwt.guard";
 import { ConfigService } from "src/config/config.service";
+import { FileService } from "src/file/file.service";
 import {
   TrendingCountry,
   TrendingService,
   TrendingShare,
 } from "src/cache/trending.service";
-import { NO_STORE_HEADERS, getEdgeCacheHeaders } from "src/utils/cache.util";
+import {
+  NO_STORE_HEADERS,
+  getDownloadCacheHeaders,
+  getEdgeCacheHeaders,
+} from "src/utils/cache.util";
 import { parsePagination } from "src/utils/pagination.util";
 import {
   getRequestCountry,
@@ -66,6 +73,7 @@ export class ShareController {
     private config: ConfigService,
     private trending: TrendingService,
     private commentService: CommentService,
+    private fileService: FileService,
   ) {}
 
   @Get("all")
@@ -126,9 +134,11 @@ export class ShareController {
   ): Promise<TrendingShare[]> {
     response.set(getEdgeCacheHeaders(60));
     const parsedLimit = Number.parseInt(limit ?? "", 10);
-    return this.trending.getTrending(
+    const items = await this.trending.getTrending(
       Number.isFinite(parsedLimit) ? parsedLimit : undefined,
     );
+    void this.fileService.warmShareThumbnails(items.map((item) => item.id));
+    return items;
   }
 
   // Country aggregates only change as views arrive; five minutes matches the
@@ -139,7 +149,11 @@ export class ShareController {
     @Res({ passthrough: true }) response: Response,
   ): Promise<TrendingCountry[]> {
     response.set(getEdgeCacheHeaders(300));
-    return this.trending.getTrendingCountries();
+    const countries = await this.trending.getTrendingCountries();
+    void this.fileService.warmShareThumbnails(
+      countries.flatMap((country) => country.shares.map((item) => item.id)),
+    );
+    return countries;
   }
 
   // Newest public shares with a renderable image/video preview. The card shape
@@ -152,9 +166,11 @@ export class ShareController {
   ): Promise<TrendingShare[]> {
     response.set(getEdgeCacheHeaders(60));
     const parsedLimit = Number.parseInt(limit ?? "", 10);
-    return this.trending.getRecent(
+    const items = await this.trending.getRecent(
       Number.isFinite(parsedLimit) ? parsedLimit : undefined,
     );
+    void this.fileService.warmShareThumbnails(items.map((item) => item.id));
+    return items;
   }
 
   // Lightweight existence check used by external monitors and the share page
@@ -184,6 +200,34 @@ export class ShareController {
       views,
       uploaderInfo,
     });
+  }
+
+  @Throttle({
+    default: {
+      limit: 1200,
+      ttl: 60 * 1000,
+    },
+  })
+  @SkipThrottle({ visitor: true })
+  @Get(":id/thumbnail")
+  @UseGuards(IdValidation, ShareSecurityGuard)
+  async getThumbnail(
+    @Param("id") id: string,
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    const thumbnail = await this.fileService.getShareThumbnail(id);
+    if (!thumbnail) throw new NotFoundException();
+
+    const isPublic =
+      (request as Request & { shareIsPublic?: boolean }).shareIsPublic === true;
+    response.set({
+      "Content-Type": "image/webp",
+      "Content-Length": thumbnail.size,
+      "X-Content-Type-Options": "nosniff",
+      ...getDownloadCacheHeaders(isPublic, `"${id}-thumbnail"`),
+    });
+    return new StreamableFile(createReadStream(thumbnail.path));
   }
 
   @Get(":id/seo")

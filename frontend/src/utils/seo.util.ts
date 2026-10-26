@@ -54,6 +54,7 @@ export const buildCollectionPage = ({
   baseUrl,
   datePublished,
   dateModified,
+  image,
   mainEntity,
 }: {
   name: string;
@@ -63,6 +64,7 @@ export const buildCollectionPage = ({
   baseUrl: string;
   datePublished?: string;
   dateModified?: string;
+  image?: string;
   mainEntity?: Record<string, unknown>;
 }) => ({
   "@context": "https://schema.org",
@@ -72,6 +74,7 @@ export const buildCollectionPage = ({
   url: absoluteUrl(path, baseUrl),
   ...(datePublished ? { datePublished } : {}),
   ...(dateModified ? { dateModified } : {}),
+  ...(image ? { image: absoluteUrl(image, baseUrl) } : {}),
   isPartOf: buildWebsiteRef(siteName, baseUrl),
   ...(mainEntity ? { mainEntity } : {}),
 });

@@ -131,6 +131,11 @@ export class JobsService {
     this.logger.log(`Deleted ${filesDeleted} temporary files`);
   }
 
+  @Cron("0 3 * * *")
+  async deleteExpiredShareThumbnails() {
+    await this.fileService.cleanupShareThumbnails();
+  }
+
   @Cron("1 * * * *")
   async deleteExpiredTokens() {
     const { count: refreshTokenCount } =

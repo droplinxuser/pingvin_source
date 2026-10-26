@@ -70,7 +70,9 @@ function meta(id, _views, createdAt, kind = "image") {
     fileCount: 3,
     size: 1234,
     createdAt,
-    previewVersion: 1,
+    updatedAt: createdAt,
+    hasVideo: kind === "video",
+    previewVersion: 2,
   });
 }
 
@@ -371,7 +373,7 @@ test("stores compact metadata and truncates long descriptions", async () => {
   assert.equal(stored.description.startsWith("First line xxx"), true);
   assert.equal(stored.fileCount, 2);
   assert.equal(stored.size, 4634);
-  assert.equal(stored.previewVersion, 1);
+  assert.equal(stored.previewVersion, 2);
 });
 
 test("prefers a browser-playable video preview", async () => {
