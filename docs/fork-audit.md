@@ -1204,9 +1204,10 @@ that cache. "Go home" links and the home-page redirect use the upstream
   a hardlink when possible (copy fallback), so a share with an image does not
   pay for a second image decode. JPEG, PNG, WebP, GIF, BMP, TIFF and AVIF
   sources are supported. Video-only shares extract a frame with `ffmpeg`
-  (`ffmpeg-static`, installed as a regular backend dependency;
-  `FFMPEG_PATH`/system `ffmpeg` remain available as overrides), then resize it
-  with sharp. MPEG-TS/M2TS and other extensionless stored files get an explicit
+  (`FFMPEG_PATH` first, then `ffmpeg` on PATH; a manually installed
+  `ffmpeg-static` is also supported). A full build with H.264/MPEG-TS support
+  is required for video thumbnails; `ffprobe` is not used. The frame is then
+  resized with sharp. MPEG-TS/M2TS and other extensionless stored files get an explicit
   demuxer hint; the extractor tries input seeks, an accurate output seek and a
   plain first frame, and accepts a non-empty frame even when ffmpeg exits
   non-zero. If the local origin file is missing or cannot be decoded, ffmpeg
