@@ -223,6 +223,7 @@ export class ShareController {
         "Content-Type": "image/webp",
         "Content-Length": placeholder.length,
         "X-Content-Type-Options": "nosniff",
+        "X-Thumbnail-Reason": this.fileService.getThumbnailFailureReason(id),
         ...NO_STORE_HEADERS,
       });
       return new StreamableFile(placeholder);

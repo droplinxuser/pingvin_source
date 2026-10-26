@@ -1203,15 +1203,18 @@ that cache. "Go home" links and the home-page redirect use the upstream
 - Image shares reuse the existing per-file 300px WebP: the share thumbnail is
   a hardlink when possible (copy fallback), so a share with an image does not
   pay for a second image decode. JPEG, PNG, WebP, GIF, BMP, TIFF and AVIF
-  sources are supported. Video-only shares extract a frame with `ffmpeg` (the
-  optional `ffmpeg-static` binary, or `FFMPEG_PATH`/system `ffmpeg`), then
-  resize it with sharp. MPEG-TS/M2TS and other extensionless stored files get
-  an explicit demuxer hint; the extractor tries input seeks, an accurate
-  output seek and a plain first frame, and accepts a non-empty frame even when
-  ffmpeg exits non-zero. If the origin file was lost but the public edge cache
-  still has it, ffmpeg falls back to the public file URL with the matching
-  referer. A genuinely unsupported/corrupt source gets a no-store transparent
-  1x1 WebP placeholder instead of a browser 404.
+  sources are supported. Video-only shares extract a frame with `ffmpeg`
+  (`ffmpeg-static`, installed as a regular backend dependency;
+  `FFMPEG_PATH`/system `ffmpeg` remain available as overrides), then resize it
+  with sharp. MPEG-TS/M2TS and other extensionless stored files get an explicit
+  demuxer hint; the extractor tries input seeks, an accurate output seek and a
+  plain first frame, and accepts a non-empty frame even when ffmpeg exits
+  non-zero. If the local origin file is missing or cannot be decoded, ffmpeg
+  retries the public edge copy with a browser user agent and matching referer.
+  A genuinely unsupported/corrupt source gets a no-store transparent 1x1 WebP
+  placeholder instead of a browser 404; the placeholder carries a safe
+  `X-Thumbnail-Reason` diagnostic header (`no-media`, `video-local-failed`,
+  `video-http-failed`, `video-timeout`, etc.).
 - Listings now always render an `<img>` from the share thumbnail endpoint.
   They no longer create `<video>` elements, so a 200-card `/new` page does not
   download video metadata/first frames. The media badge/play overlay still

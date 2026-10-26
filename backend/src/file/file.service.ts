@@ -89,6 +89,7 @@ export class FileService implements OnModuleInit {
     Promise<ShareThumbnail | undefined>
   >();
   private readonly thumbnailMisses = new Map<string, number>();
+  private readonly thumbnailFailures = new Map<string, string>();
   private readonly thumbnailQueue: Array<() => void> = [];
   private thumbnailActive = 0;
   private thumbnailPlaceholder?: Promise<Buffer>;
@@ -390,6 +391,10 @@ export class FileService implements OnModuleInit {
    * browser 404, and is served with no-store so a later successful build is
    * picked up immediately.
    */
+  getThumbnailFailureReason(shareId: string): string {
+    return this.thumbnailFailures.get(shareId) ?? "unavailable";
+  }
+
   async getThumbnailPlaceholder(): Promise<Buffer> {
     if (!this.thumbnailPlaceholder) {
       this.thumbnailPlaceholder = sharp({
@@ -586,6 +591,7 @@ export class FileService implements OnModuleInit {
     shareId: string,
     thumbnailPath: string,
   ): Promise<ShareThumbnail | undefined> {
+    this.thumbnailFailures.delete(shareId);
     const share = await this.prisma.share.findUnique({
       where: { id: shareId },
       select: {
@@ -601,15 +607,23 @@ export class FileService implements OnModuleInit {
       },
     });
 
-    if (!share || !share.uploadLocked || share.removedReason) return undefined;
+    if (!share || !share.uploadLocked || share.removedReason) {
+      this.thumbnailFailures.set(shareId, "unavailable");
+      return undefined;
+    }
     if (
       share.expiration.getTime() !== 0 &&
       share.expiration.getTime() <= Date.now()
-    )
+    ) {
+      this.thumbnailFailures.set(shareId, "expired");
       return undefined;
+    }
 
     const selection = findPreview(share.files);
-    if (!selection) return undefined;
+    if (!selection) {
+      this.thumbnailFailures.set(shareId, "no-media");
+      return undefined;
+    }
 
     const preview = selection.preview;
     const tempPath = `${thumbnailPath}.${process.pid}.${Math.random()
@@ -625,7 +639,10 @@ export class FileService implements OnModuleInit {
           preview.id,
           share.storageProvider,
         );
-        if (!filePreview) return undefined;
+        if (!filePreview) {
+          this.thumbnailFailures.set(shareId, "image-failed");
+          return undefined;
+        }
 
         // Hardlink the per-file WebP when possible. The gallery and listing
         // then share the same inode instead of storing two copies.
@@ -638,38 +655,63 @@ export class FileService implements OnModuleInit {
         const framePath = `${tempPath}.png`;
         try {
           const sourceFile = share.files.find((file) => file.id === preview.id);
-          let source: string;
-          let httpHeaders: string | undefined;
+          const formatHint = getVideoFormatHint(sourceFile?.name);
 
           if (share.storageProvider === "S3") {
-            source = await this.s3FileService.getPreSignedDownloadUrl(
+            const source = await this.s3FileService.getPreSignedDownloadUrl(
               shareId,
               preview.id,
               false,
             );
+            await this.extractVideoFrame(source, framePath, formatHint);
           } else {
-            source = join(SHARE_DIRECTORY, shareId, preview.id);
+            const localSource = join(SHARE_DIRECTORY, shareId, preview.id);
+            const appUrl = this.configService.get("general.appUrl");
+            const base = appUrl?.replace(/\/+$/, "");
+            const publicSource = base
+              ? `${base}/api/shares/${shareId}/files/${preview.id}?download=false`
+              : undefined;
+            const publicHeaders = base
+              ? `Referer: ${base}/\r\nUser-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36\r\n`
+              : undefined;
+
+            let localError: unknown;
             try {
-              await fs.stat(source);
-            } catch {
+              await fs.stat(localSource);
+              await this.extractVideoFrame(localSource, framePath, formatHint);
+            } catch (error) {
+              localError = error;
+            }
+
+            if (localError !== undefined) {
               // A disk restore can leave the DB row and edge cache intact
-              // while the origin bytes are gone. Fall back to the public file
-              // URL; the referer satisfies the same-origin guard.
-              const appUrl = this.configService.get("general.appUrl");
-              if (appUrl) {
-                const base = appUrl.replace(/\/+$/, "");
-                source = `${base}/api/shares/${shareId}/files/${preview.id}?download=false`;
-                httpHeaders = `Referer: ${base}/\r\n`;
+              // while the origin bytes are missing or damaged. Retry the
+              // extraction against the public edge copy.
+              if (!publicSource) {
+                this.thumbnailFailures.set(shareId, "video-local-failed");
+                throw localError;
+              }
+              try {
+                await this.extractVideoFrame(
+                  publicSource,
+                  framePath,
+                  formatHint,
+                  publicHeaders,
+                );
+              } catch (publicError) {
+                const message = String(publicError);
+                this.thumbnailFailures.set(
+                  shareId,
+                  /timed out/i.test(message)
+                    ? "video-timeout"
+                    : /\b(?:401|403|404)\b|HTTP/i.test(message)
+                      ? "video-http-failed"
+                      : "video-edge-failed",
+                );
+                throw publicError;
               }
             }
           }
-
-          await this.extractVideoFrame(
-            source,
-            framePath,
-            getVideoFormatHint(sourceFile?.name),
-            httpHeaders,
-          );
           await sharp(framePath)
             .rotate()
             .resize({
@@ -695,6 +737,12 @@ export class FileService implements OnModuleInit {
       return { path: thumbnailPath, size: stat.size };
     } catch (error) {
       await fs.rm(tempPath, { force: true }).catch(() => {});
+      if (!this.thumbnailFailures.has(shareId)) {
+        this.thumbnailFailures.set(
+          shareId,
+          preview.kind === "video" ? "video-failed" : "image-failed",
+        );
+      }
       this.logger.debug(
         `Could not build share thumbnail for ${shareId}: ${error}`,
       );
