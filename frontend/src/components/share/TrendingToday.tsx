@@ -23,7 +23,10 @@ import {
 import useTranslate from "../../hooks/useTranslate.hook";
 import shareService from "../../services/share.service";
 import { TrendingShare } from "../../types/share.type";
-import { getShareThumbnailUrl } from "../../utils/file.util";
+import {
+  getShareThumbnailUrl,
+  handleShareThumbnailError,
+} from "../../utils/file.util";
 import { byteToHumanSizeString } from "../../utils/fileSize.util";
 import LazyImage from "../core/LazyImage";
 import RelativeTime from "../core/RelativeTime";
@@ -439,15 +442,7 @@ const TrendingToday = ({
                   className={mediaClassName}
                   src={thumbnailUrl}
                   alt=""
-                  onError={(event) => {
-                    const image = event.currentTarget;
-                    if (image.dataset.fallback === "1") {
-                      image.style.display = "none";
-                      return;
-                    }
-                    image.dataset.fallback = "1";
-                    image.src = "/img/logo.webp";
-                  }}
+                  onError={handleShareThumbnailError}
                 />
 
                 <Box component="span" className={classes.scrim} aria-hidden />

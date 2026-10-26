@@ -50,8 +50,7 @@ const MediaPreviewGallery = ({
         { numeric: true },
       );
     })
-    .slice(0, MAX_GALLERY_ITEMS)
-    .map((entry) => entry.file);
+    .slice(0, MAX_GALLERY_ITEMS);
 
   if (mediaFiles.length === 0) return null;
 
@@ -66,8 +65,7 @@ const MediaPreviewGallery = ({
         { minWidth: "lg", cols: Math.min(3, mediaFiles.length) },
       ]}
     >
-      {mediaFiles.map((file) => {
-        const kind = getGalleryMediaKind(file.name);
+      {mediaFiles.map(({ file, kind }) => {
         const name = getBaseName(file.name);
         const url = getShareFileUrl(shareId, file.id, { download: false });
         const imageUrl = supportsWebpPreview(file.name)

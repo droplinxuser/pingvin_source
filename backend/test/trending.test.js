@@ -857,6 +857,36 @@ test("skips countries without shares", async () => {
   assert.equal(countries.length, 5);
 });
 
+test("keeps country panels filled when cached shares disappear", async () => {
+  const buckets = Array.from({ length: 24 }, () => null);
+  const gone = Array.from({ length: 10 }, (_, index) => `gone-${index}`);
+  const live = Array.from({ length: 12 }, (_, index) => `live-${index}`);
+  buckets[0] = {
+    "c:PH": "100",
+    ...Object.fromEntries(
+      gone.map((id, index) => [`PH:${id}`, String(90 - index)]),
+    ),
+    ...Object.fromEntries(
+      live.map((id, index) => [`PH:${id}`, String(12 - index)]),
+    ),
+  };
+  // Only the live shares still have metadata; the deleted ones leave their
+  // higher scores behind until the daily buckets expire.
+  const mock = createMockValkey(
+    () => buckets,
+    live.map((id, index) => meta(id, index, recent)),
+  );
+  const service = createService(mock);
+
+  const countries = await service.getTrendingCountries();
+
+  assert.equal(countries.length, 1);
+  assert.deepEqual(
+    countries[0].shares.map((share) => share.id),
+    live.slice(0, 10),
+  );
+});
+
 test("caps the country list at ten", async () => {
   const codes = [
     "PH",

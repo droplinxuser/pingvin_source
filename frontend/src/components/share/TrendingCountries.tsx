@@ -11,14 +11,18 @@ import {
   UnstyledButton,
 } from "@mantine/core";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useIntl } from "react-intl";
 import { TbClockHour4, TbEye, TbPlayerPlay, TbWorld } from "react-icons/tb";
 import useTranslate from "../../hooks/useTranslate.hook";
 import shareService from "../../services/share.service";
 import { TrendingCountry } from "../../types/share.type";
 import { countryCodeToFlag, getCountryName } from "../../utils/country.util";
-import { getShareThumbnailUrl } from "../../utils/file.util";
+import {
+  getShareThumbnailUrl,
+  handleShareThumbnailError,
+} from "../../utils/file.util";
+import { getCompactNumberFormat } from "../../utils/number.util";
 import { HoverTip } from "../core/HoverTip";
 import LazyImage from "../core/LazyImage";
 
@@ -285,22 +289,14 @@ const TrendingCountries = ({
     };
   }, [countries]);
 
-  const compactNumber = useMemo(
-    () =>
-      new Intl.NumberFormat(intl.locale, {
-        notation: "compact",
-        maximumFractionDigits: 1,
-      }),
-    [intl.locale],
-  );
-
   if (isLoading) return <TrendingCountriesSkeleton />;
   if (!items.length) return null;
 
   const visibleCountries = items.filter((country) => country.shares.length > 0);
   if (visibleCountries.length === 0) return null;
 
-  const formatCount = (value: number) => compactNumber.format(value);
+  const formatCount = (value: number) =>
+    getCompactNumberFormat(intl.locale).format(value);
   const formatViews = (views: number) =>
     views < 1000
       ? t("trending.custom.countries.views", { count: views })
@@ -421,15 +417,7 @@ const TrendingCountries = ({
                           className={classes.thumbImage}
                           src={getShareThumbnailUrl(item.id, item.updatedAt)}
                           alt=""
-                          onError={(event) => {
-                            const image = event.currentTarget;
-                            if (image.dataset.fallback === "1") {
-                              image.style.display = "none";
-                              return;
-                            }
-                            image.dataset.fallback = "1";
-                            image.src = "/img/logo.webp";
-                          }}
+                          onError={handleShareThumbnailError}
                         />
                         {item.previewKind === "video" && (
                           <Box component="span" className={classes.playOverlay}>

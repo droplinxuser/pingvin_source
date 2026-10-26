@@ -11,7 +11,7 @@ import {
 } from "@mantine/core";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useIntl } from "react-intl";
 import { TbEye } from "react-icons/tb";
 import useConfig from "../../hooks/config.hook";
@@ -21,6 +21,7 @@ import useUser from "../../hooks/user.hook";
 import systemService, { SystemStats } from "../../services/system.service";
 import { countryCodeToFlag, getCountryName } from "../../utils/country.util";
 import { byteToHumanSizeString } from "../../utils/fileSize.util";
+import { getCompactNumberFormat } from "../../utils/number.util";
 import { HoverTip } from "../core/HoverTip";
 
 const useStyles = createStyles((theme) => {
@@ -195,16 +196,8 @@ const Footer = () => {
     "/privacy";
   const contactUrl = "mailto:contactwebph@gmail.com";
 
-  const numberFormat = useMemo(
-    () =>
-      new Intl.NumberFormat(intl.locale, {
-        notation: "compact",
-        maximumFractionDigits: 1,
-      }),
-    [intl.locale],
-  );
   const compact = (value?: number) =>
-    value == null ? "—" : numberFormat.format(value);
+    value == null ? "—" : getCompactNumberFormat(intl.locale).format(value);
 
   const overview = [
     { value: compact(stats?.userCount), label: t("footer.custom.users") },

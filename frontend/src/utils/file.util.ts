@@ -29,6 +29,23 @@ export const getShareThumbnailUrl = (
   return `/api/shares/${shareId}/thumbnail${query}`;
 };
 
+/**
+ * Listing cards fall back to the site logo once, then hide a preview that is
+ * still unavailable. Shared by every listing surface so a missing thumbnail
+ * never shows the browser's broken-image icon or retries in a loop.
+ */
+export const handleShareThumbnailError = (event: {
+  currentTarget: HTMLImageElement;
+}) => {
+  const image = event.currentTarget;
+  if (image.dataset.fallback === "1") {
+    image.style.display = "none";
+    return;
+  }
+  image.dataset.fallback = "1";
+  image.src = "/img/logo.webp";
+};
+
 export const getShareFileUrl = (
   shareId: string,
   fileId: string,

@@ -45,6 +45,11 @@ const GEO_WINDOW_HOURS = 24;
 const GEO_TTL_SECONDS = (GEO_WINDOW_HOURS + 1) * 60 * 60;
 const GEO_COUNTRY_LIMIT = 10;
 const GEO_SHARE_LIMIT = 10;
+// Deleted/expired shares can leave high-scoring entries without metadata.
+// Inspect extra candidates before trimming, so a country panel still fills up
+// after churn. Only the normal metadata keys are read; nothing extra is stored.
+const GEO_COUNTRY_CANDIDATES = GEO_COUNTRY_LIMIT * 2;
+const GEO_SHARE_CANDIDATES = GEO_SHARE_LIMIT * 3;
 const GEO_CACHE_MS = 5 * 60 * 1000;
 // Cached metadata from before preview selection preferred a playable video or
 // carried the share's update time is refreshed once. The field is internal to
@@ -508,7 +513,7 @@ export class TrendingService {
           ([aId, aViews], [bId, bViews]) =>
             bViews - aViews || aId.localeCompare(bId),
         )
-        .slice(0, GEO_SHARE_LIMIT)
+        .slice(0, GEO_SHARE_CANDIDATES)
         .map(([id, count]) => ({ id, views: count }));
       if (candidates.length === 0) continue;
 
@@ -517,7 +522,7 @@ export class TrendingService {
         views: countryViews,
         shares: candidates,
       });
-      if (rankedCountries.length >= GEO_COUNTRY_LIMIT) break;
+      if (rankedCountries.length >= GEO_COUNTRY_CANDIDATES) break;
     }
     if (rankedCountries.length === 0) return [];
 
@@ -535,15 +540,18 @@ export class TrendingService {
       .map(({ country, views: countryViews, shares: candidates }) => ({
         country,
         views: countryViews,
-        shares: candidates.flatMap(({ id, views: shareViews }) => {
-          const meta = metas.get(id);
-          if (!meta) return [];
-          if (now - new Date(meta.createdAt).getTime() > MAX_SHARE_AGE_MS)
-            return [];
-          return [toTrendingShare(meta, shareViews)];
-        }),
+        shares: candidates
+          .flatMap(({ id, views: shareViews }) => {
+            const meta = metas.get(id);
+            if (!meta) return [];
+            if (now - new Date(meta.createdAt).getTime() > MAX_SHARE_AGE_MS)
+              return [];
+            return [toTrendingShare(meta, shareViews)];
+          })
+          .slice(0, GEO_SHARE_LIMIT),
       }))
-      .filter((country) => country.shares.length > 0);
+      .filter((country) => country.shares.length > 0)
+      .slice(0, GEO_COUNTRY_LIMIT);
   }
 
   private async backfill(

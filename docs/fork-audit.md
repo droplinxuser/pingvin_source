@@ -1238,6 +1238,42 @@ that cache. "Go home" links and the home-page redirect use the upstream
   default 1200x630 site image remains. The endpoint schedules the build in the
   background so SSR never waits on ffmpeg.
 
+## Listing deduplication and cache-churn hardening (2026-10-26)
+
+- The compact counter formatter is shared through
+  `frontend/src/utils/number.util.ts` (`getCompactNumberFormat`), so the footer
+  and the trending country tabs reuse one cached `Intl.NumberFormat` per locale
+  instead of allocating one in each component. Both surfaces show the same
+  `10.4K` / `980` values.
+- The listing thumbnail fallback is one helper
+  (`handleShareThumbnailError` in `frontend/src/utils/file.util.ts`). Trending,
+  new and country cards fall back to the WebP logo once and hide the image if it
+  is still unavailable, instead of repeating the same error handler in every
+  card component.
+- `MediaPreviewGallery` keeps the media kind it already resolved when sorting
+  and reuses it for rendering, so each file is MIME/codec checked once per page
+  render.
+- Country panels inspect up to 30 ranked shares per country and up to 20
+  countries before trimming to the public ten shares/ten countries. Deleted or
+  expired high-view shares can leave scores without metadata until their daily
+  buckets expire; the extra candidates keep the panel full without writing any
+  extra Valkey keys. The normal path still uses one `MGET` for metadata.
+- Verified locally with Node `26.12.1`: both production builds pass, all 117
+  backend unit tests pass (including a new country-candidate regression test),
+  frontend lint is clean and backend lint reports only the upstream `any`
+  warnings. Playwright covered home, `/new`, `/trending`, a public share,
+  privacy/imprint, sign-in, the 404 page, robots/sitemap/manifest, the signed-in
+  upload/account/share/new/trending pages and a 390px pass with zero unexpected
+  console errors, warnings, page exceptions or failed application requests.
+  A fixture-backed country test rendered the compact `🇵🇭10.4K` / `🇺🇸980`
+  tabs with the full name in the tooltip and the expected panel rows; a missing
+  thumbnail fell back to `/img/logo.webp`. The signed-in share page opened the
+  owner edit page, opened the report dialog, downloaded the file, and created
+  and deleted a comment. Cache headers still matched the documented policies
+  (config 30s, stats/recent/SEO 60s, sitemap index one hour, robots and share
+  thumbnails one day, public files immutable for a day, page shells 60s only
+  without a query string).
+
 ## Known non-issues
 
 - The ad container reserves about 90px plus 24px margins while third-party
