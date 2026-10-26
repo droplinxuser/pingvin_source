@@ -2,7 +2,6 @@ import { Button, Stack, Text, Collapse } from "@mantine/core";
 import { useModals } from "@mantine/modals";
 import { ModalsContextProps } from "@mantine/modals/lib/context";
 import { useState } from "react";
-import moment from "moment";
 import { useRouter } from "next/router";
 import { FormattedMessage } from "react-intl";
 import useTranslate, {
@@ -10,6 +9,7 @@ import useTranslate, {
 } from "../../../hooks/useTranslate.hook";
 import { CompletedShare } from "../../../types/share.type";
 import CopyTextField from "../CopyTextField";
+import RelativeTime from "../../core/RelativeTime";
 import QRCode from "../../share/QRCode";
 
 const showCompletedUploadModal = (
@@ -79,11 +79,14 @@ const Body = ({
         })}
       >
         {/* If our share.expiration is timestamp 0, show a different message */}
-        {moment(share.expiration).unix() === 0
-          ? t("upload.modal.completed.never-expires")
-          : t("upload.modal.completed.expires-on", {
-              expiration: moment(share.expiration).format("LLL"),
-            })}
+        {new Date(share.expiration).getTime() === 0 ? (
+          t("upload.modal.completed.never-expires")
+        ) : (
+          <FormattedMessage
+            id="upload.modal.completed.expires-on"
+            values={{ expiration: <RelativeTime date={share.expiration} /> }}
+          />
+        )}
       </Text>
 
       <Button

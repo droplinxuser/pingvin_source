@@ -13,7 +13,6 @@ import {
 } from "@mantine/core";
 import { useClipboard } from "@mantine/hooks";
 import { useModals } from "@mantine/modals";
-import moment from "moment";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import {
@@ -31,6 +30,7 @@ import showShareInformationsModal from "../../components/share/showShareInformat
 import showShareLinkModal from "../../components/account/showShareLinkModal";
 import { HoverTip } from "../../components/core/HoverTip";
 import CenterLoader from "../../components/core/CenterLoader";
+import RelativeTime from "../../components/core/RelativeTime";
 import useConfig from "../../hooks/config.hook";
 import useUser from "../../hooks/user.hook";
 import useTranslate from "../../hooks/useTranslate.hook";
@@ -160,10 +160,10 @@ const MyShares = () => {
                       )}
                     </td>
                     <td>
-                      {moment(share.expiration).unix() === 0 ? (
+                      {new Date(share.expiration).getTime() === 0 ? (
                         <FormattedMessage id="account.shares.table.expiry-never" />
                       ) : (
-                        moment(share.expiration).format("LLL")
+                        <RelativeTime date={share.expiration} />
                       )}
                     </td>
                     <td>

@@ -27,8 +27,8 @@ const NewShares = () => {
       />
       <TrendingToday
         embedded
-        limit={100}
-        previewBlur={4}
+        limit={200}
+        previewBlur={2}
         loadItems={shareService.getRecent}
         showMediaTypeBadge
         title={t("new.custom.title")}

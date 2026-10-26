@@ -16,7 +16,6 @@ import {
   ThemeIcon,
 } from "@mantine/core";
 import { useModals } from "@mantine/modals";
-import moment from "moment";
 import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import {
@@ -34,6 +33,7 @@ import commentService, {
 import { ShareComment } from "../../types/share.type";
 import toast from "../../utils/toast.util";
 import { HoverTip } from "../core/HoverTip";
+import RelativeTime from "../core/RelativeTime";
 
 const avatarLabel = (name: string) =>
   name.trim().charAt(0).toUpperCase() || "?";
@@ -439,15 +439,11 @@ const ShareComments = ({
                               <span itemProp="name">{name}</span>
                             </span>
                           </Text>
-                          <Text
-                            component="time"
-                            dateTime={comment.createdAt}
-                            itemProp="dateCreated"
-                            size="xs"
-                            color="dimmed"
-                            lh={1.3}
-                          >
-                            {moment(comment.createdAt).fromNow()}
+                          <Text size="xs" color="dimmed" lh={1.3}>
+                            <RelativeTime
+                              date={comment.createdAt}
+                              itemProp="dateCreated"
+                            />
                           </Text>
                         </Group>
                         {canManage && !isEditing && (

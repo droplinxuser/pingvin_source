@@ -15,6 +15,7 @@ export default {
     "Fast, private file sharing with short links, previews and download controls.",
   "seo.custom.breadcrumb.home": "Home",
   "common.custom.skip-to-content": "Skip to content",
+  "common.custom.loading": "Loading",
   "navbar.custom.primary": "Primary navigation",
   "navbar.custom.open-menu": "Open navigation menu",
   "footer.custom.navigation": "Footer navigation",

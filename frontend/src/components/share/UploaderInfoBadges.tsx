@@ -70,10 +70,13 @@ const UploaderInfoBadges = ({
   const location = [info?.city, info?.region, country]
     .filter(Boolean)
     .join(", ");
-  const uploadedAt =
+  const uploadedAtValue =
     info?.createdAt && moment(info.createdAt).isValid()
-      ? moment(info.createdAt).format("LL")
+      ? moment(info.createdAt)
       : undefined;
+  const uploadedAt = uploadedAtValue
+    ? `${uploadedAtValue.fromNow()} · ${uploadedAtValue.format("LL · LTS")}`
+    : undefined;
   const details = [
     location,
     info?.timezone &&

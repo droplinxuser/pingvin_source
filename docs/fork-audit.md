@@ -16,8 +16,9 @@ so `git merge upstream/main` stays small.
 | Inline media gallery | `frontend/src/components/share/MediaPreviewGallery.tsx` (up to 30 supported image/video thumbnails at 250px for any file size, opening `FilePreview.tsx` in a viewport-fit full-size modal); `frontend/src/components/core/LazySection.tsx` reserves space for the gallery, file list, comments and visitor insights |
 | Individual downloads / legacy ZIP | `frontend/src/components/share/DownloadAllButton.tsx` (confirmation + sequential per-file downloads), `frontend/src/services/share.service.ts` (anchor-based downloads), `backend/src/share/share.service.ts` (no automatic archive creation); existing `archive.zip` files remain served by the legacy API. The share file count uses `share.custom.fileCount` without the old ZIP note. |
 | Share and file size limits | `backend/prisma/seed/config.seed.ts` (`share.maxSize` 5 GB, `share.maxFileSize` 512 MB), migration `20261025000000_raise_share_size_limit`, `backend/src/share/share.util.ts` (`resolveShareSizeLimit`), local/S3 upload guards, `frontend/src/components/upload/Dropzone.tsx` and upload pages |
-| Trending today | `backend/src/cache/trending.service.ts`, `GET /api/shares/trending?limit=48`, `frontend/src/components/share/TrendingToday.tsx` (client-side, viewport-triggered load with skeleton), `frontend/src/components/share/TrendingCountries.tsx`, `frontend/src/pages/trending.tsx`, `frontend/src/pages/_app.tsx` |
-| New shares | `backend/src/cache/trending.service.ts` (`getRecent`), `GET /api/shares/recent?limit=100`, `frontend/src/pages/new.tsx`, shared `TrendingToday` grid/card (`loadItems`, media badge), header/footer links, sitemap/robots |
+| Trending today | `backend/src/cache/trending.service.ts`, `GET /api/shares/trending?limit=100`, `frontend/src/components/share/TrendingToday.tsx` (client-side, viewport-triggered load with batched rendering and skeletons), `frontend/src/components/share/TrendingCountries.tsx` (up to ten countries, ten shares each), `frontend/src/pages/trending.tsx`, `frontend/src/pages/_app.tsx` |
+| New shares | `backend/src/cache/trending.service.ts` (`getRecent`), `GET /api/shares/recent?limit=200`, `frontend/src/pages/new.tsx`, shared `TrendingToday` grid/card (`loadItems`, media badge, 24-card batches), header/footer links, sitemap/robots |
+| Shared UI polish | `frontend/src/components/core/RelativeTime.tsx` (relative timestamps + full-date tooltip), `RouteProgress.tsx` (global navigation bar), `LazyImage.tsx` (lazy images with shimmer placeholder), `LazySection.tsx` / `LazyVideo.tsx` |
 | Cache headers / hotlink protection | `backend/src/utils/cache.util.ts` (shared `Cache-Control`, `CDN-Cache-Control`, `Cloudflare-CDN-Cache-Control`, public-file `ETag`), `backend/src/utils/referrer.util.ts`, `frontend/src/middleware.ts` (query-free anonymous page shells), `frontend/next.config.js` |
 | Per-IP+User-Agent rate limiting | `backend/src/utils/visitorIdentity.util.ts`, `backend/src/cache/valkeyThrottler.storage.ts`, `backend/src/cache/throttler.config.ts`, `backend/src/main.ts` |
 | Valkey/Redis cache | `backend/src/utils/cache.util.ts`, `backend/src/share/shareState.service.ts`, `backend/src/cache/cache.module.ts`, `backend/src/cache/valkey.service.ts` |
@@ -58,9 +59,9 @@ hand-rolled lock or temp-file block.
    (copy, pagination, browser error reporting), missing share (404), trending
    widget on `/share/*`
    and 404 pages (no widget on home, upload or other pages), the clickable
-   widget title and full `/trending` page with up to 48 cards showing name,
-   description, file count, size, upload date and views over a lightly blurred
-   preview that clears on hover, the new `/new` page (100 newest media shares,
+   widget title and full `/trending` page with up to 100 cards showing name,
+   description, file count, size, relative upload date and views over a lightly
+   blurred preview that clears on hover, the new `/new` page (200 newest media shares,
    image/play badges, header/footer links), file download headers, report modal, footer
    page-view/top-country
    metrics, the dynamic `/manifest.json`, and the disk-backed `/sitemap.xml`
@@ -248,8 +249,8 @@ hand-rolled lock or temp-file block.
   Each item carries the share name, description, file count, total size,
   upload date and preview kind, so the cards can show those details without
   additional requests.
-  `?limit=48` returns the full list for the public `/trending` page; other
-  values are clamped to 48. The result is cached in-process for 30 seconds and
+  `?limit=100` returns the full list for the public `/trending` page; other
+  values are clamped to 100. The result is cached in-process for 30 seconds and
   is edge-cacheable for 60 seconds. The browser service caches the public list
   for 30 seconds and the country list for five minutes. Pages no longer fetch
   trending during SSR: `TrendingToday` waits until the section is near the
@@ -268,7 +269,7 @@ hand-rolled lock or temp-file block.
   `TrendingToday` (same card, grid, skeleton and responsive layout) with a
   `loadItems` callback and a media-type badge; the header shows "New" after the
   upload link and the footer links it after Trending. `GET /api/shares/recent`
-  returns up to 100 public, unexpired, non-removed shares created in the last
+  returns up to 200 public, unexpired, non-removed shares created in the last
   scan of the newest 1,000 rows, with at least one renderable image/video
   preview and no password/max views/recipient/private
   reverse-share restriction, ordered by upload date descending. The same
@@ -618,10 +619,9 @@ that cache. "Go home" links and the home-page redirect use the upstream
   and description, file count, total size, upload date and view count with a
   play badge for videos. Dark mode was checked and click-through to
   `/share/<id>` was verified. The widget title links to the public `/trending`
-  page, which renders the identical grid with up to 48 entries from
-  `?limit=48`; full-page cards use the same 6px preview treatment, the page
-  fetches its data in `getServerSideProps`, has one listing (no duplicate
-  footer widget), and is edge-cacheable as an anonymous shell.
+  page, which renders the identical grid with up to 100 entries from
+  `?limit=100`; full-page cards use a 2px preview blur, render in 24-card
+  viewport batches, and the page is edge-cacheable as an anonymous shell.
 - Trending card pass (2026-10-25): the Valkey metadata now also carries the
   whitespace-normalised, 240-character-capped description, file count and total
   size, and the API returns the upload date as well. The metadata is written
@@ -1144,6 +1144,42 @@ that cache. "Go home" links and the home-page redirect use the upstream
   was edge-cacheable and the page-view POST stayed `no-store`. The known stale
   duplicate `no-store` header on `/api/configs` from the CDN copy remains and
   does not affect the body.
+
+## UI loading, dates, lazy media and listing limits (2026-10-26)
+
+- A global `RouteProgress` bar is mounted in `_app` and listens to Next router
+  and hash events. It appears for every client-side navigation, keeps a
+  200 ms minimum visible time so prefetched routes do not flash, and then
+  completes and fades. It is a fixed 3 px Mantine `Progress` bar and does not
+  change page layout or request data.
+- `RelativeTime` renders every user-facing timestamp as a localized relative
+  value ("a few minutes ago", "in 6 days") with the full localized date and
+  time (`LL · LTS`) in a tooltip. One module-level 30-second ticker updates all
+  instances on a page. It is used by trending/new cards, comments, visitor
+  rows, uploader metadata, share information/expiry, account tables, admin
+  share tables, the VirusTotal event/status panel and the log refresh label.
+  Raw copied log lines keep their exact millisecond timestamp for debugging.
+- Listing thumbnails use the requested blur levels: 4px on the share and 404
+  widgets, 2px on `/trending` and `/new`. Top-country thumbnails are 2px and
+  clear on row hover/focus. The blur is applied in CSS and reversed on hover
+  with the existing brightness/scale treatment.
+- `TrendingToday` now requests up to 100 trending shares and up to 200 recent
+  shares. Only 24 cards are mounted initially; an `IntersectionObserver` with a
+  200px margin reveals the next 24-card batch and shows four skeleton
+  placeholders below the current grid. Images use `LazyImage` (native lazy
+  loading plus a shimmer placeholder), videos still use `LazyVideo`, and the
+  existing `LazySection` continues to defer share galleries, file lists,
+  comments and visitor insights. `getRecent` returns at most 200 items and each
+  country panel still holds at most ten shares; the country list is capped at
+  ten countries.
+- Verified locally with both production builds, all 112 backend unit tests,
+  clean frontend lint and a Playwright pass over guest and signed-in routes.
+  The pass confirmed the navigation bar, relative timestamps and full-date
+  tooltips, 2px/4px preview blur, 2px country blur with hover clearing,
+  24-card lazy batches on `/new`, the requested `limit=200`/`limit=100`
+  requests, relative dates in the admin share table, and zero unexpected
+  console errors or warnings. Chromium's expected document-status log for a
+  direct `/404` visit is the only filtered entry.
 
 ## Known non-issues
 

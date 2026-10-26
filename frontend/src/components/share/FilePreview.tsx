@@ -16,6 +16,7 @@ import useTranslate from "../../hooks/useTranslate.hook";
 import api from "../../services/api.service";
 import { getShareFileUrl } from "../../utils/file.util";
 import { HoverTip } from "../core/HoverTip";
+import LazyImage from "../core/LazyImage";
 import LazyVideo from "../core/LazyVideo";
 
 // The modal itself is capped at 90dvh. Leave room for its header, body padding
@@ -176,8 +177,7 @@ const ImagePreview = () => {
         maxWidth: "100%",
       }}
     >
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
+      <LazyImage
         // The full-size modal uses the original image; 300px WebP thumbnails
         // are only for the gallery and trending grids.
         src={getShareFileUrl(shareId, fileId, { download: false })}
@@ -189,8 +189,6 @@ const ImagePreview = () => {
           height: "auto",
           objectFit: "contain",
         }}
-        loading="lazy"
-        decoding="async"
         onError={() => setIsNotSupported(true)}
       />
     </Box>

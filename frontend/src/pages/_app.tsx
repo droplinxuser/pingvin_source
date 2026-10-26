@@ -41,6 +41,7 @@ import AdminNoticeModal, {
 } from "../components/admin/AdminNoticeModal";
 import adminNoticeService from "../services/adminNotice.service";
 import SiteStructuredData from "../components/SiteStructuredData";
+import RouteProgress from "../components/core/RouteProgress";
 
 const TrendingToday = dynamic(
   () => import("../components/share/TrendingToday"),
@@ -382,6 +383,7 @@ function App({ Component, pageProps }: AppProps) {
             toggleColorScheme={toggleColorScheme}
           >
             <GlobalStyle />
+            <RouteProgress />
             <Notifications />
             <ModalsProvider>
               <ConfigContext.Provider

@@ -274,13 +274,13 @@ test("coalesces concurrent ranking reads", async () => {
   );
 });
 
-test("returns twelve by default and caps the full list at forty-eight", async () => {
-  const ranked = Array.from({ length: 50 }, (_, index) => ({
+test("returns twelve by default and caps the full list at one hundred", async () => {
+  const ranked = Array.from({ length: 120 }, (_, index) => ({
     value: `s${index}`,
-    score: 100 - index,
+    score: 200 - index,
   }));
-  const metas = Array.from({ length: 50 }, (_, index) =>
-    meta(`s${index}`, 100 - index, recent),
+  const metas = Array.from({ length: 120 }, (_, index) =>
+    meta(`s${index}`, 200 - index, recent),
   );
 
   const mock = createMockValkey(() => [1, ranked, 1], metas);
@@ -297,8 +297,9 @@ test("returns twelve by default and caps the full list at forty-eight", async ()
   assert.equal(expanded.length, 48);
   assert.equal(expanded.at(-1).id, "s47");
 
-  const capped = await service.getTrending(100);
-  assert.equal(capped.length, 48);
+  const capped = await service.getTrending(1000);
+  assert.equal(capped.length, 100);
+  assert.equal(capped.at(-1).id, "s99");
 });
 
 test("records only recent public shares with image or video media", async () => {
@@ -702,7 +703,7 @@ test("counts country views even when the share cannot be ranked", async () => {
   ]);
 });
 
-test("returns the top five countries and their top shares", async () => {
+test("returns the ranked countries and their top shares", async () => {
   const buckets = Array.from({ length: 24 }, () => null);
   buckets[0] = {
     "c:PH": "10",
@@ -818,7 +819,7 @@ test("uses the country code to break equal per-share view counts", async () => {
   assert.equal(countries[1].shares[0].id, "shared");
 });
 
-test("skips countries without shares and backfills to five", async () => {
+test("skips countries without shares", async () => {
   const buckets = Array.from({ length: 24 }, () => null);
   buckets[0] = {
     "c:PH": "100",
@@ -852,6 +853,43 @@ test("skips countries without shares and backfills to five", async () => {
     ["US", "CA", "DE", "FR", "IT"],
   );
   assert.equal(countries.length, 5);
+});
+
+test("caps the country list at ten", async () => {
+  const codes = [
+    "PH",
+    "US",
+    "CA",
+    "DE",
+    "FR",
+    "IT",
+    "ES",
+    "NL",
+    "SE",
+    "NO",
+    "FI",
+    "DK",
+  ];
+  const buckets = Array.from({ length: 24 }, () => null);
+  buckets[0] = Object.fromEntries(
+    codes.flatMap((code, index) => [
+      [`c:${code}`, String(100 - index)],
+      [`${code}:s${index}`, "1"],
+    ]),
+  );
+  const mock = createMockValkey(
+    () => buckets,
+    codes.map((_, index) => meta(`s${index}`, 1, recent)),
+  );
+  const service = createService(mock);
+
+  const countries = await service.getTrendingCountries();
+
+  assert.equal(countries.length, 10);
+  assert.deepEqual(
+    countries.map((country) => country.country),
+    codes.slice(0, 10),
+  );
 });
 
 test("limits each country to ten shares", async () => {
@@ -988,8 +1026,8 @@ test("lists only recent public media shares with a video flag", async () => {
   assert.equal(calls.length, 1);
 });
 
-test("caps the recent listing at one hundred shares", async () => {
-  const shares = Array.from({ length: 120 }, (_, index) =>
+test("caps the recent listing at two hundred shares", async () => {
+  const shares = Array.from({ length: 240 }, (_, index) =>
     recentShare({ id: `share-${index}`, files: ["photo.jpg"] }),
   );
   const { prisma } = recentPrisma(shares);
@@ -1000,9 +1038,9 @@ test("caps the recent listing at one hundred shares", async () => {
 
   const items = await service.getRecent(1000);
 
-  assert.equal(items.length, 100);
+  assert.equal(items.length, 200);
   assert.equal(items[0].id, "share-0");
-  assert.equal(items[99].id, "share-99");
+  assert.equal(items[199].id, "share-199");
 });
 
 test("invalidating a share clears the recent listing cache", async () => {

@@ -19,6 +19,7 @@ import shareService from "../../services/share.service";
 import { TrendingCountry } from "../../types/share.type";
 import { countryCodeToFlag, getCountryName } from "../../utils/country.util";
 import { getShareFileUrl } from "../../utils/file.util";
+import LazyImage from "../core/LazyImage";
 import LazyVideo from "../core/LazyVideo";
 
 const useStyles = createStyles((theme) => {
@@ -150,6 +151,14 @@ const useStyles = createStyles((theme) => {
         backgroundColor: theme.fn.rgba(primary, 0.05),
       },
 
+      // The small country thumbnails stay deliberately soft so the list reads
+      // as a ranking. Hovering or focusing a row reveals the exact frame.
+      "&:hover img, &:hover video, &:focus-visible img, &:focus-visible video":
+        {
+          filter: "blur(0px)",
+          transform: "scale(1.04)",
+        },
+
       "&:focus-visible": {
         outline: `2px solid ${primary}`,
         outlineOffset: 2,
@@ -199,6 +208,9 @@ const useStyles = createStyles((theme) => {
       width: "100%",
       height: "100%",
       objectFit: "cover",
+      filter: "blur(2px)",
+      transform: "scale(1.08)",
+      transition: "filter 120ms ease, transform 120ms ease",
     },
 
     videoThumb: {
@@ -400,16 +412,13 @@ const TrendingCountries = ({
                       </Box>
                       <Box component="span" className={classes.thumb}>
                         {item.previewKind === "image" ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
+                          <LazyImage
                             className={classes.thumbImage}
                             src={getShareFileUrl(item.id, item.previewFileId, {
                               download: false,
                               webp: true,
                             })}
                             alt=""
-                            loading="lazy"
-                            decoding="async"
                             onError={(event) => {
                               event.currentTarget.style.display = "none";
                             }}
@@ -495,7 +504,7 @@ export const TrendingCountriesSkeleton = () => {
       </Group>
 
       <Group spacing={6}>
-        {[110, 96, 104, 90, 100].map((width, index) => (
+        {[110, 96, 104, 90, 100, 108, 94, 102, 98, 106].map((width, index) => (
           <Skeleton key={index} height={36} width={width} radius="sm" />
         ))}
       </Group>

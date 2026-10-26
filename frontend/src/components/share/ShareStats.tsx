@@ -9,12 +9,12 @@ import {
   Text,
   ThemeIcon,
 } from "@mantine/core";
-import moment from "moment";
 import { useIntl } from "react-intl";
 import { TbActivity } from "react-icons/tb";
 import useTranslate from "../../hooks/useTranslate.hook";
 import { Share } from "../../types/share.type";
 import { HoverTip } from "../core/HoverTip";
+import RelativeTime from "../core/RelativeTime";
 import { countryCodeToFlag, getCountryName } from "../../utils/country.util";
 import { getBrowserIcon, getOsIcon, iconStyle } from "./UploaderInfoBadges";
 
@@ -117,7 +117,7 @@ const ShareStats = ({ share }: { share: Share }) => {
                       lh={1.3}
                       sx={{ whiteSpace: "nowrap" }}
                     >
-                      {moment(visitor.createdAt).fromNow()}
+                      <RelativeTime date={visitor.createdAt} />
                     </Text>
                   </Group>
                   <Group spacing={2} noWrap>

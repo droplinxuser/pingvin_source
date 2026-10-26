@@ -18,6 +18,7 @@ import {
   supportsWebpPreview,
 } from "../../utils/mime.util";
 import useTranslate from "../../hooks/useTranslate.hook";
+import LazyImage from "../core/LazyImage";
 import LazyVideo from "../core/LazyVideo";
 import showFilePreviewModal from "./modals/showFilePreviewModal";
 
@@ -119,12 +120,9 @@ const MediaPreviewGallery = ({
                 })}
               >
                 {kind === "image" ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
+                  <LazyImage
                     src={imageUrl}
                     alt={name}
-                    loading="lazy"
-                    decoding="async"
                     onError={(event) => {
                       event.currentTarget.style.display = "none";
                     }}

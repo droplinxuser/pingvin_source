@@ -9,13 +9,13 @@ import {
   Text,
   Title,
 } from "@mantine/core";
-import moment from "moment";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 import { FormattedMessage } from "react-intl";
 import Meta from "../../components/Meta";
 import CenterLoader from "../../components/core/CenterLoader";
+import RelativeTime from "../../components/core/RelativeTime";
 import useConfig from "../../hooks/config.hook";
 import useHomeHref from "../../hooks/homeHref.hook";
 import useTranslate from "../../hooks/useTranslate.hook";
@@ -83,10 +83,10 @@ const ReceivedShares = () => {
                   <td>{share.name}</td>
                   <td>{share.creator?.username ?? "—"}</td>
                   <td>
-                    {moment(share.expiration).unix() === 0 ? (
+                    {new Date(share.expiration).getTime() === 0 ? (
                       <FormattedMessage id="account.shares.table.expiry-never" />
                     ) : (
-                      moment(share.expiration).format("LLL")
+                      <RelativeTime date={share.expiration} />
                     )}
                   </td>
                   <td>

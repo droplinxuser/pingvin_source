@@ -26,6 +26,7 @@ import {
 } from "react-icons/tb";
 import { FormattedMessage } from "react-intl";
 import Meta from "../../components/Meta";
+import RelativeTime from "../../components/core/RelativeTime";
 import useTranslate from "../../hooks/useTranslate.hook";
 import logService, {
   ErrorLogEntry,
@@ -166,9 +167,10 @@ const Logs = () => {
           </Text>
           {pageData && loadedAt && (
             <Text size="xs" color="dimmed">
-              {t("admin.logs.custom.updated", {
-                time: loadedAt.format("LTS"),
-              })}
+              <FormattedMessage
+                id="admin.logs.custom.updated"
+                values={{ time: <RelativeTime date={loadedAt.toDate()} /> }}
+              />
             </Text>
           )}
         </Group>

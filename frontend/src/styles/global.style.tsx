@@ -48,6 +48,28 @@ const GlobalStyle = () => {
         "img, video": {
           maxWidth: "100%",
         },
+        "@keyframes lazy-image-shimmer": {
+          "0%": { backgroundPosition: "200% 0" },
+          "100%": { backgroundPosition: "-200% 0" },
+        },
+        ".lazy-image": {
+          backgroundColor:
+            theme.colorScheme === "dark"
+              ? theme.colors.dark[6]
+              : theme.colors.gray[2],
+          backgroundImage: `linear-gradient(90deg, transparent 0%, ${
+            theme.colorScheme === "dark"
+              ? "rgba(255, 255, 255, 0.08)"
+              : "rgba(255, 255, 255, 0.55)"
+          } 50%, transparent 100%)`,
+          backgroundSize: "200% 100%",
+          animation: "lazy-image-shimmer 1.4s linear infinite",
+        },
+        ".lazy-image-loaded": {
+          backgroundColor: "transparent",
+          backgroundImage: "none",
+          animation: "none",
+        },
         "a:focus-visible, button:focus-visible": {
           outline: `2px solid ${theme.colors[theme.primaryColor][6]}`,
           outlineOffset: 2,

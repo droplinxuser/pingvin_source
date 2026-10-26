@@ -27,12 +27,12 @@ const MAX_SHARE_AGE_MS = WINDOW_DAYS * DAY_MS;
 const MAX_DESCRIPTION_LENGTH = 240;
 const CANDIDATE_LIMIT = 200;
 const DEFAULT_RESULT_LIMIT = 12;
-const MAX_RESULT_LIMIT = 48;
+const MAX_RESULT_LIMIT = 100;
 const RESULT_CACHE_MS = 30 * 1000;
 // The recent list scans a bounded number of the newest public shares so the
 // text-only/protected rows do not turn into an unbounded query.
 const RECENT_SCAN_LIMIT = 1000;
-const RECENT_MAX_RESULT = 100;
+const RECENT_MAX_RESULT = 200;
 const RECENT_CACHE_MS = 30 * 1000;
 // Shares viewed before the cache window expanded have no retained daily score.
 // They are seeded once from SQLite; retries are throttled if the database is
@@ -43,7 +43,7 @@ const SEED_RETRY_MS = 5 * 60 * 1000;
 // matching the edge TTL on the API response.
 const GEO_WINDOW_HOURS = 24;
 const GEO_TTL_SECONDS = (GEO_WINDOW_HOURS + 1) * 60 * 60;
-const GEO_COUNTRY_LIMIT = 5;
+const GEO_COUNTRY_LIMIT = 10;
 const GEO_SHARE_LIMIT = 10;
 const GEO_CACHE_MS = 5 * 60 * 1000;
 // Cached metadata from before preview selection preferred a playable video is
@@ -190,7 +190,7 @@ export class TrendingService {
   }
 
   /**
-   * Returns the five countries with the most public share views in the last
+   * Returns the ten countries with the most public share views in the last
    * 24 hours and, for each country, its ten most-viewed shares. A share may
    * appear in more than one country. Everything is derived from the hourly
    * Valkey hashes written by recordView; SQLite is only touched by the existing
@@ -485,7 +485,7 @@ export class TrendingService {
       }
     }
 
-    // Select the five highest-view countries that have at least one listed
+    // Select the ten highest-view countries that have at least one listed
     // share. A share may appear under multiple countries; each country's list
     // reflects that country's own view counts.
     const rankedCountries: {

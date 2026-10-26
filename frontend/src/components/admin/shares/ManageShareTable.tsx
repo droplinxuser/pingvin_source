@@ -1,11 +1,4 @@
-import {
-  ActionIcon,
-  Box,
-  Group,
-  Skeleton,
-  Table,
-  Text,
-} from "@mantine/core";
+import { ActionIcon, Box, Group, Skeleton, Table, Text } from "@mantine/core";
 import { useClipboard } from "@mantine/hooks";
 import { useModals } from "@mantine/modals";
 import moment from "moment";
@@ -17,6 +10,7 @@ import useTranslate from "../../../hooks/useTranslate.hook";
 import { MyShare } from "../../../types/share.type";
 import { byteToHumanSizeString } from "../../../utils/fileSize.util";
 import toast from "../../../utils/toast.util";
+import RelativeTime from "../../core/RelativeTime";
 import { SortableTh, TableSort } from "../../core/SortIcon";
 import showShareInformationsModal from "../../share/showShareInformationsModal";
 import showShareLinkModal from "../../account/showShareLinkModal";
@@ -92,25 +86,33 @@ const ManageShareTable = ({
                       <Text color="dimmed">Anonymous</Text>
                     )}
                   </td>
-                  <td>{moment(share.createdAt).format("LLL")}</td>
+                  <td>
+                    <RelativeTime date={share.createdAt} />
+                  </td>
                   <td>{share.views}</td>
                   <td>{byteToHumanSizeString(share.size)}</td>
                   <td>
-                    {moment(share.expiration).unix() === 0
-                      ? "Never"
-                      : moment(share.expiration).format("LLL")}
+                    {moment(share.expiration).unix() === 0 ? (
+                      t("account.shares.table.expiry-never")
+                    ) : (
+                      <RelativeTime date={share.expiration} />
+                    )}
                   </td>
                   {fileRetentionEnabled ? (
                     <td>
                       {moment(share.expiration).unix() === 0 ||
-                      fileRetentionPeriod.value === -1
-                        ? "Never"
-                        : moment(share.expiration)
+                      fileRetentionPeriod.value === -1 ? (
+                        t("account.shares.table.expiry-never")
+                      ) : (
+                        <RelativeTime
+                          date={moment(share.expiration)
                             .add(
                               fileRetentionPeriod.value,
                               fileRetentionPeriod.unit,
                             )
-                            .format("LLL")}
+                            .toDate()}
+                        />
+                      )}
                     </td>
                   ) : (
                     <></>

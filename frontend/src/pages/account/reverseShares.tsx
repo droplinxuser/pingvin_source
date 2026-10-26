@@ -13,7 +13,6 @@ import {
 } from "@mantine/core";
 import { useClipboard } from "@mantine/hooks";
 import { useModals } from "@mantine/modals";
-import moment from "moment";
 import { useEffect, useState } from "react";
 import { TbInfoCircle, TbLink, TbPlus, TbTrash } from "react-icons/tb";
 import { FormattedMessage } from "react-intl";
@@ -21,6 +20,7 @@ import Meta from "../../components/Meta";
 import showReverseShareLinkModal from "../../components/account/showReverseShareLinkModal";
 import showShareLinkModal from "../../components/account/showShareLinkModal";
 import { HoverTip } from "../../components/core/HoverTip";
+import RelativeTime from "../../components/core/RelativeTime";
 import CenterLoader from "../../components/core/CenterLoader";
 import showCreateReverseShareModal from "../../components/share/modals/showCreateReverseShareModal";
 import useConfig from "../../hooks/config.hook";
@@ -208,9 +208,11 @@ const MyShares = () => {
                     {byteToHumanSizeString(parseInt(reverseShare.maxShareSize))}
                   </td>
                   <td>
-                    {moment(reverseShare.shareExpiration).unix() === 0
-                      ? "Never"
-                      : moment(reverseShare.shareExpiration).format("LLL")}
+                    {new Date(reverseShare.shareExpiration).getTime() === 0 ? (
+                      <FormattedMessage id="account.shares.table.expiry-never" />
+                    ) : (
+                      <RelativeTime date={reverseShare.shareExpiration} />
+                    )}
                   </td>
                   <td>
                     <Group position="right">

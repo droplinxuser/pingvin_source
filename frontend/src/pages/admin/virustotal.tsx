@@ -15,7 +15,6 @@ import {
   Text,
   Title,
 } from "@mantine/core";
-import moment from "moment";
 import { ReactNode, useCallback, useEffect, useState } from "react";
 import {
   TbAlertTriangle,
@@ -25,6 +24,7 @@ import {
 } from "react-icons/tb";
 import { FormattedMessage } from "react-intl";
 import Meta from "../../components/Meta";
+import RelativeTime from "../../components/core/RelativeTime";
 import useTranslate from "../../hooks/useTranslate.hook";
 import virustotalService from "../../services/virustotal.service";
 import {
@@ -303,8 +303,8 @@ const VirusTotal = () => {
         <Badge color={EVENT_COLORS[event.type]} variant="light">
           {eventLabel(event.type)}
         </Badge>
-        <Text size="xs" color="dimmed" title={moment(event.at).format("LLLL")}>
-          {moment(event.at).format("L LTS")}
+        <Text size="xs" color="dimmed">
+          <RelativeTime date={event.at} />
         </Text>
       </Group>
       <Text
@@ -363,9 +363,10 @@ const VirusTotal = () => {
         </Box>
         <Group spacing="xs">
           <Text size="xs" color="dimmed">
-            {t("admin.virustotal.custom.updated-at", {
-              time: moment(generatedAt).format("LTS"),
-            })}
+            <FormattedMessage
+              id="admin.virustotal.custom.updated-at"
+              values={{ time: <RelativeTime date={generatedAt} /> }}
+            />
           </Text>
           <ActionIcon
             variant="light"
@@ -583,12 +584,17 @@ const VirusTotal = () => {
             }
           >
             <Text size="sm" sx={{ overflowWrap: "anywhere" }}>
-              {status.lastRequestAt
-                ? t("admin.virustotal.custom.status.last-request-value", {
+              {status.lastRequestAt ? (
+                <FormattedMessage
+                  id="admin.virustotal.custom.status.last-request-value"
+                  values={{
                     kind: status.lastRequestKind ?? "—",
-                    time: moment(status.lastRequestAt).format("LTS"),
-                  })
-                : t("admin.virustotal.custom.status.never")}
+                    time: <RelativeTime date={status.lastRequestAt} />,
+                  }}
+                />
+              ) : (
+                t("admin.virustotal.custom.status.never")
+              )}
             </Text>
           </StatusItem>
           <StatusItem

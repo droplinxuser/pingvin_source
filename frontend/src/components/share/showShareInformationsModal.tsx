@@ -15,7 +15,6 @@ import {
 } from "@mantine/core";
 import { useForm, yupResolver } from "@mantine/form";
 import { ModalsContextProps } from "@mantine/modals/lib/context";
-import moment from "moment";
 import { FormattedMessage } from "react-intl";
 import * as yup from "yup";
 import { translateOutsideContext } from "../../hooks/useTranslate.hook";
@@ -24,6 +23,7 @@ import { MyShare, UpdateShare } from "../../types/share.type";
 import { byteToHumanSizeString } from "../../utils/fileSize.util";
 import toast from "../../utils/toast.util";
 import CopyTextField from "../upload/CopyTextField";
+import RelativeTime from "../core/RelativeTime";
 import QRCode from "./QRCode";
 import { useState } from "react";
 
@@ -90,12 +90,6 @@ const Body = ({
   const formattedMaxShareSize = byteToHumanSizeString(resolvedMaxShareSize);
   const shareSizeProgress = shareSizeRatio * 100;
 
-  const formattedCreatedAt = moment(currentShare.createdAt).format("LLL");
-  const formattedExpiration =
-    moment(currentShare.expiration).unix() === 0
-      ? "Never"
-      : moment(currentShare.expiration).format("LLL");
-
   if (isEditing) {
     return (
       <EditShareBody
@@ -145,14 +139,18 @@ const Body = ({
         <b>
           <FormattedMessage id="account.shares.table.createdAt" />:{" "}
         </b>
-        {formattedCreatedAt}
+        <RelativeTime date={currentShare.createdAt} />
       </Text>
 
       <Text size="sm">
         <b>
           <FormattedMessage id="account.shares.table.expiresAt" />:{" "}
         </b>
-        {formattedExpiration}
+        {new Date(currentShare.expiration).getTime() === 0 ? (
+          <FormattedMessage id="account.shares.table.expiry-never" />
+        ) : (
+          <RelativeTime date={currentShare.expiration} />
+        )}
       </Text>
       <Divider />
       <CopyTextField link={link} toggleQR={handleToggleQR} />

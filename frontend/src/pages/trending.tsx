@@ -28,7 +28,7 @@ const Trending = () => {
         canonicalPath="/trending"
         jsonLd={jsonLd}
       />
-      <TrendingToday embedded limit={48} previewBlur={4}>
+      <TrendingToday embedded limit={100} previewBlur={2}>
         <LazySection
           placeholder={<TrendingCountriesSkeleton />}
           rootMargin="400px"

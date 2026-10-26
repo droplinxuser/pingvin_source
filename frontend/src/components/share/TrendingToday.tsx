@@ -11,7 +11,7 @@ import {
 } from "@mantine/core";
 import Link from "next/link";
 import { ReactNode, useEffect, useRef, useState } from "react";
-import { useIntl } from "react-intl";
+import { FormattedMessage, useIntl } from "react-intl";
 import {
   TbCalendar,
   TbDatabase,
@@ -25,7 +25,14 @@ import shareService from "../../services/share.service";
 import { TrendingShare } from "../../types/share.type";
 import { getShareFileUrl } from "../../utils/file.util";
 import { byteToHumanSizeString } from "../../utils/fileSize.util";
+import LazyImage from "../core/LazyImage";
 import LazyVideo from "../core/LazyVideo";
+import RelativeTime from "../core/RelativeTime";
+
+// Long listings (the newest 200 shares) are revealed in viewport-sized
+// batches. Only the first batch is rendered up front, so the browser never
+// creates hundreds of cards, observers and media elements at once.
+const CARD_BATCH_SIZE = 24;
 
 const useStyles = createStyles((theme) => {
   const border =
@@ -138,6 +145,10 @@ const useStyles = createStyles((theme) => {
       filter: "blur(4px) brightness(0.5)",
     },
 
+    mediaSoftest: {
+      filter: "blur(2px) brightness(0.5)",
+    },
+
     scrim: {
       position: "absolute",
       inset: 0,
@@ -225,7 +236,7 @@ const TrendingToday = ({
   initialItems,
   embedded = false,
   limit = 12,
-  previewBlur = 6,
+  previewBlur = 4,
   children,
   title: titleOverride,
   description: descriptionOverride,
@@ -237,7 +248,7 @@ const TrendingToday = ({
   initialItems?: TrendingShare[];
   embedded?: boolean;
   limit?: number;
-  previewBlur?: 4 | 6;
+  previewBlur?: 2 | 4 | 6;
   children?: ReactNode;
   title?: string;
   description?: string;
@@ -254,12 +265,18 @@ const TrendingToday = ({
   const loadingText = loadingOverride ?? t("trending.custom.loading");
   const emptyText = emptyOverride ?? t("trending.custom.empty");
   const mediaClassName = `${classes.media}${
-    previewBlur === 4 ? ` ${classes.mediaSoft}` : ""
+    previewBlur === 4
+      ? ` ${classes.mediaSoft}`
+      : previewBlur === 2
+        ? ` ${classes.mediaSoftest}`
+        : ""
   }`;
   const [items, setItems] = useState<TrendingShare[]>(initialItems ?? []);
   const [isLoading, setIsLoading] = useState(!initialItems?.length);
   const [shouldLoad, setShouldLoad] = useState(!!initialItems?.length);
+  const [visibleCount, setVisibleCount] = useState(CARD_BATCH_SIZE);
   const sectionRef = useRef<HTMLElement>(null);
+  const moreRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!initialItems?.length) return;
@@ -320,10 +337,41 @@ const TrendingToday = ({
     };
   }, [shouldLoad, limit, loadItems]);
 
-  const visibleItems = items;
   const showPlaceholder = isLoading || !shouldLoad;
 
-  if (!showPlaceholder && visibleItems.length === 0 && !embedded) return null;
+  // A new result set always starts with one batch; changing the page/listing
+  // must not inherit the number of cards revealed on the previous list.
+  useEffect(() => {
+    setVisibleCount(CARD_BATCH_SIZE);
+  }, [items, limit]);
+
+  useEffect(() => {
+    if (showPlaceholder || visibleCount >= items.length) return;
+
+    const element = moreRef.current;
+    if (!element) return;
+
+    if (typeof IntersectionObserver === "undefined") {
+      setVisibleCount(items.length);
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (!entries[0]?.isIntersecting) return;
+        setVisibleCount((count) =>
+          Math.min(count + CARD_BATCH_SIZE, items.length),
+        );
+      },
+      { rootMargin: "200px" },
+    );
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [items.length, showPlaceholder, visibleCount]);
+
+  const visibleItems = items.slice(0, visibleCount);
+
+  if (!showPlaceholder && items.length === 0 && !embedded) return null;
 
   const content = (
     <>
@@ -350,21 +398,24 @@ const TrendingToday = ({
 
       {children}
 
-      {!showPlaceholder && visibleItems.length === 0 ? (
+      {!showPlaceholder && items.length === 0 ? (
         <Text className={classes.subheading} mt="xs">
           {emptyText}
         </Text>
       ) : showPlaceholder ? (
         <div className={classes.grid} aria-hidden>
-          {Array.from({ length: Math.min(limit, 100) }, (_, index) => (
-            <Box
-              key={index}
-              className={classes.card}
-              sx={{ pointerEvents: "none" }}
-            >
-              <Skeleton height={210} radius={0} />
-            </Box>
-          ))}
+          {Array.from(
+            { length: Math.min(limit, CARD_BATCH_SIZE) },
+            (_, index) => (
+              <Box
+                key={index}
+                className={classes.card}
+                sx={{ pointerEvents: "none" }}
+              >
+                <Skeleton height={210} radius={0} />
+              </Box>
+            ),
+          )}
         </div>
       ) : (
         <div className={classes.grid} data-testid="trending-grid">
@@ -378,18 +429,6 @@ const TrendingToday = ({
               download: false,
               webp: true,
             });
-            const createdAt = item.createdAt
-              ? new Date(item.createdAt)
-              : undefined;
-            const uploadedAt =
-              createdAt && !Number.isNaN(createdAt.getTime())
-                ? intl.formatDate(createdAt, {
-                    year: "numeric",
-                    month: "short",
-                    day: "numeric",
-                    timeZone: "UTC",
-                  })
-                : undefined;
             const description = item.description?.trim();
             const hasVideo =
               item.previewKind === "video" || item.hasVideo === true;
@@ -404,13 +443,10 @@ const TrendingToday = ({
                 title={name}
               >
                 {item.previewKind === "image" ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
+                  <LazyImage
                     className={mediaClassName}
                     src={imageUrl}
                     alt=""
-                    loading="lazy"
-                    decoding="async"
                     onError={(event) => {
                       event.currentTarget.style.display = "none";
                     }}
@@ -486,12 +522,15 @@ const TrendingToday = ({
                         {byteToHumanSizeString(item.size)}
                       </Box>
                     )}
-                    {uploadedAt && (
+                    {!!item.createdAt && (
                       <Box component="span" className={classes.metaItem}>
                         <TbCalendar size={14} aria-hidden />
-                        <time dateTime={item.createdAt}>
-                          {t("trending.custom.uploaded", { date: uploadedAt })}
-                        </time>
+                        <FormattedMessage
+                          id="trending.custom.uploaded"
+                          values={{
+                            date: <RelativeTime date={item.createdAt} />,
+                          }}
+                        />
                       </Box>
                     )}
                   </Box>
@@ -499,6 +538,29 @@ const TrendingToday = ({
               </UnstyledButton>
             );
           })}
+        </div>
+      )}
+
+      {!showPlaceholder && visibleCount < items.length && (
+        <div
+          ref={moreRef}
+          className={classes.grid}
+          data-testid="trending-grid-more"
+          aria-hidden
+          style={{ marginTop: "var(--mantine-spacing-md)" }}
+        >
+          {Array.from(
+            { length: Math.min(items.length - visibleCount, 4) },
+            (_, index) => (
+              <Box
+                key={index}
+                className={classes.card}
+                sx={{ pointerEvents: "none" }}
+              >
+                <Skeleton height={210} radius={0} />
+              </Box>
+            ),
+          )}
         </div>
       )}
     </>
