@@ -662,6 +662,22 @@ that cache. "Go home" links and the home-page redirect use the upstream
   present; the three publisher scripts are only appended for guests. Playwright
   verified the guest share page created all three ad requests, while the same
   page in a signed-in session made zero ad requests and rendered zero ad slots.
+- Final live verification after the guest-only-ad and thumbnail-fallback
+  deployment: the `/new` API returned 200 items and all 200 thumbnail requests
+  were real WebP files (784 B–22.4 kB, median ~6.2 kB). Share C6ZZ now returns
+  a 6.9 kB 169×300 video-frame WebP instead of the 72-byte placeholder. Guest
+  `/share/tUGS` and `/404` each loaded all three ad scripts and rendered one
+  ad slot; the same pages in the signed-in test session made zero ad requests
+  and rendered zero ad slots. Desktop and mobile guest/signed audits covered
+  the public, account, upload and admin pages with no application console
+  errors/warnings (only the intentional 404 network entry), no missing image
+  alt text, no overflow, valid JSON-LD and canonical/robots tags. Client
+  navigation home → New → Trending → share, the lazy preview modal and the
+  no-store `_next/data` responses were all verified. Cached HTML TTFB was
+  ~0.04–0.6 s and cold SSR ~0.55–1.1 s; desktop LCP ~0.65–1.6 s, mobile
+  ~0.12–1.03 s. Remaining CLS is limited to guest ad insertion/collapse on
+  non-gallery share pages (~0.09–0.11) and the footer stats area on mobile
+  sign-in (~0.10); the media share dropped to ~0.003.
 - The live audit after the fix covered `/`, `/trending`, `/new`, three public
   shares, privacy, imprint, sign-in, 404, a missing URL, and signed-in
   upload/account/shared/received/reverse-share/admin pages at 1366px and
