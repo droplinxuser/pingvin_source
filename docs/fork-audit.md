@@ -19,6 +19,8 @@ so `git merge upstream/main` stays small.
 | Trending today | `backend/src/cache/trending.service.ts`, `GET /api/shares/trending?limit=100`, `frontend/src/components/share/TrendingToday.tsx` (client-side, viewport-triggered load with batched rendering and skeletons), `frontend/src/components/share/TrendingCountries.tsx` (up to ten countries, ten shares each), `frontend/src/pages/trending.tsx`, `frontend/src/pages/_app.tsx` |
 | New shares | `backend/src/cache/trending.service.ts` (`getRecent`), `GET /api/shares/recent?limit=200`, `frontend/src/pages/new.tsx`, shared `TrendingToday` grid/card (`loadItems`, media badge, 24-card batches), header/footer links, sitemap/robots |
 | Shared UI polish | `frontend/src/components/core/RelativeTime.tsx` (relative timestamps + full-date tooltip), `RouteProgress.tsx` (global navigation bar), `LazyImage.tsx` (lazy images with shimmer placeholder), `LazySection.tsx` / `LazyVideo.tsx`, `frontend/src/utils/filePreview.util.ts` (lazy file-preview modal chunk) |
+| Legal pages | `frontend/src/components/legal/LegalDocument.tsx` (shared imprint/privacy markdown layout, one H1 and canonical JSON-LD) |
+| Upload paste and folder picks | Upstream `frontend/src/hooks/useClipboardPaste.hook.ts`, `utils/file.util.ts` and `utils/folder.util.ts`; the fork only adds `share.maxFileSize` validation in `components/upload/Dropzone.tsx` and keeps the folder button |
 | Share thumbnails / OG | `backend/src/file/file.service.ts` (share-level 300px WebP, ordered preview fallbacks, background queue, 32-day cleanup), `backend/src/share/preview.util.ts` (shared source selection and `getPreviewCandidates`), `GET /api/shares/:id/thumbnail`, `frontend/src/components/share/TrendingToday.tsx`, `TrendingCountries.tsx`, `Meta.tsx` |
 | Cache headers / hotlink protection | `backend/src/utils/cache.util.ts` (shared `Cache-Control`, `CDN-Cache-Control`, `Cloudflare-CDN-Cache-Control`, public-file `ETag`), `backend/src/utils/referrer.util.ts`, `frontend/src/middleware.ts` (query-free anonymous page shells), `frontend/next.config.js` |
 | Per-IP+User-Agent rate limiting | `backend/src/utils/visitorIdentity.util.ts`, `backend/src/cache/valkeyThrottler.storage.ts`, `backend/src/cache/throttler.config.ts`, `backend/src/main.ts` |
@@ -46,8 +48,11 @@ hand-rolled lock or temp-file block.
 ## Merge checklist
 
 1. `git fetch upstream && git merge upstream/main` on a branch.
-2. Resolve conflicts mainly in `share.service.ts`, the share create/edit modals
-   and `createShare.dto.ts` / `createReverseShare.dto.ts`.
+2. Resolve conflicts mainly in `share.service.ts`, the share create/edit modals,
+   `createShare.dto.ts` / `createReverseShare.dto.ts`, and the upload files
+   (`Dropzone.tsx`, `pages/upload/index.tsx`, `utils/file.util.ts`). Keep the
+   upstream clipboard/folder helpers and re-apply only the fork per-file cap,
+   folder button and dropzone copy.
 3. Re-check the production settings below after any config seed changes.
 4. Run:
    - backend: `npm ci && npm run build && npm run test:unit`
@@ -1433,6 +1438,53 @@ that cache. "Go home" links and the home-page redirect use the upstream
   disappear after `loadeddata`, and no console errors or horizontal overflow at
   1366px or 390px. The video preview loaded lazily with
   `preload="metadata"` only after entering the viewport.
+
+## Upstream sync and maintenance pass (2026-10-27)
+
+- Merged `upstream/main` (`098aeae2`, `4a44bd35`, `3e853971`) and adopted the
+  upstream clipboard-paste hook plus the shared `getFilesFromEvent`,
+  `traverseDirectory` and `validateAndFilterFiles` helpers. The fork's old
+  paste listener and its copies of the folder traversal/drop helpers were
+  removed; only the per-file `share.maxFileSize` guard, the folder button and
+  the fork dropzone copy remain. The upstream mobile description helper was
+  corrected to use the mobile translation keys instead of the desktop ones.
+- The imprint and privacy pages now share
+  `frontend/src/components/legal/LegalDocument.tsx` for the title, metadata and
+  markdown styling. Their route bundles dropped from about 8.6 kB to 1.6 kB
+  each, and both pages keep one H1 and the canonical/JSON-LD metadata.
+- Edge/query pass: `GET /api/oauth/available` now carries a 30-second edge TTL
+  and skips the visitor bucket, so the sign-in and account pages no longer hit
+  the backend for provider availability. The public reverse-share payload is
+  read in one query and selects only DTO fields (no creator/account columns),
+  and reverse-share creation validates and loads the token in one query with
+  only the owner id/quota. `isValid` now selects just the expiration and
+  remaining-uses columns; it runs on every reverse-share upload chunk.
+  `GET /api/shares/:id/seo` samples up to 50 file names to find a preview
+  instead of 20, while the background thumbnail warmup scans the thumbnail
+  directory at most once per 30-second listing window. The thumbnail failure
+  reason cache is capped at 1000 entries like the miss cache.
+- Security hardening: both Next.js and Express no longer send `X-Powered-By`.
+  Next also sends `X-Content-Type-Options: nosniff`,
+  `X-Frame-Options: SAMEORIGIN` and
+  `Referrer-Policy: strict-origin-when-cross-origin` for every route as
+  defense in depth alongside the Angie h5bp defaults. The bundled site-name
+  fallback now matches the `DropMB` seed value.
+- Verified locally with Node `26.12.1`, the local 16k-share database and no
+  Valkey: both production builds pass, all 119 backend unit tests pass, frontend
+  lint is clean and backend lint reports only the upstream `any` warnings. A
+  Playwright pass covered the home, new, trending, legal, sign-in, public share,
+  missing page, robots, sitemap and manifest pages as a guest; the upload,
+  account, share, new and trending pages as the non-admin test account; and
+  home/new/trending/privacy/share/upload at 390px in dark mode. Every page had
+  one H1 and no horizontal overflow, with zero application console errors,
+  warnings, page exceptions or failed application requests. A synthetic text
+  paste on `/upload` produced one file row and the per-file size hint. A real
+  text upload completed, rendered its share page and was deleted; a reverse
+  share created through the API loaded as a guest, accepted an upload, and was
+  deleted together with its share. Cache headers were checked on the HTML
+  shells (60 seconds), legal pages, `oauth/available` (30 seconds),
+  robots/sitemap/manifest and the backend `no-store` default. The new
+  `X-Powered-By` removal and security headers were confirmed with `curl`.
 
 ## Known non-issues
 

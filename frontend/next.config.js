@@ -51,11 +51,25 @@ const CACHE_RULES = [
 ];
 
 module.exports = withPWA({
+  poweredByHeader: false,
   async headers() {
-    return CACHE_RULES.map(([source, value]) => ({
-      source,
-      headers: cacheHeaders(value),
-    }));
+    return [
+      {
+        source: "/:path*",
+        headers: [
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "X-Frame-Options", value: "SAMEORIGIN" },
+          {
+            key: "Referrer-Policy",
+            value: "strict-origin-when-cross-origin",
+          },
+        ],
+      },
+      ...CACHE_RULES.map(([source, value]) => ({
+        source,
+        headers: cacheHeaders(value),
+      })),
+    ];
   },
   transpilePackages: ["@uiw/react-md-editor", "@uiw/react-markdown-preview"],
   output: "standalone",

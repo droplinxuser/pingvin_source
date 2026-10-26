@@ -11,6 +11,7 @@ import {
   UseGuards,
 } from "@nestjs/common";
 import { User } from "@prisma/client";
+import { SkipThrottle } from "@nestjs/throttler";
 import { Request, Response } from "express";
 import { nanoid } from "nanoid";
 import { AuthService } from "../auth/auth.service";
@@ -24,6 +25,7 @@ import { ProviderGuard } from "./guard/provider.guard";
 import { OAuthService } from "./oauth.service";
 import { OAuthProvider } from "./provider/oauthProvider.interface";
 import { OAuthExceptionFilter } from "./filter/oauthException.filter";
+import { getEdgeCacheHeaders } from "src/utils/cache.util";
 
 @Controller("oauth")
 export class OAuthController {
@@ -36,7 +38,11 @@ export class OAuthController {
   ) {}
 
   @Get("available")
-  available() {
+  @SkipThrottle({ visitor: true })
+  available(@Res({ passthrough: true }) response: Response) {
+    // Provider availability only changes when an admin edits the config, so
+    // the edge can answer the sign-in and account pages without the backend.
+    response.set(getEdgeCacheHeaders(30));
     return this.oauthService.available();
   }
 

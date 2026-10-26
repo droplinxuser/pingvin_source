@@ -105,12 +105,8 @@ export class ShareService {
   ) {}
 
   async create(share: CreateShareDTO, user?: User, reverseShareToken?: string) {
-    const isReverseValid = reverseShareToken
-      ? await this.reverseShareService.isValid(reverseShareToken)
-      : false;
-
-    const reverseShare = isReverseValid
-      ? await this.reverseShareService.getByToken(reverseShareToken)
+    const reverseShare = reverseShareToken
+      ? await this.reverseShareService.getValidByToken(reverseShareToken)
       : null;
 
     const quotaOwner = reverseShare ? reverseShare.creator : user;
@@ -552,7 +548,9 @@ export class ShareService {
         files: {
           select: { id: true, name: true },
           orderBy: { name: "asc" },
-          take: 20,
+          // Enough file names to find a preview and still keep the query
+          // small for shares with thousands of files.
+          take: 50,
         },
         _count: { select: { files: true } },
       },

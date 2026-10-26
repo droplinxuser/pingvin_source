@@ -105,6 +105,7 @@ export class ReverseShareService {
   async isReverseShareTokenAvailable(token: string) {
     const reverseShare = await this.prisma.reverseShare.findUnique({
       where: { token },
+      select: { id: true },
     });
     return { isAvailable: !reverseShare };
   }
@@ -114,10 +115,51 @@ export class ReverseShareService {
 
     const reverseShare = await this.prisma.reverseShare.findUnique({
       where: { token: reverseShareToken },
-      include: { creator: true },
+      include: { creator: { select: { id: true, storageQuotaLimit: true } } },
     });
 
     return reverseShare;
+  }
+
+  private isUsable(reverseShare: {
+    shareExpiration: Date;
+    remainingUses: number;
+  }): boolean {
+    return (
+      new Date() <= reverseShare.shareExpiration &&
+      reverseShare.remainingUses > 0
+    );
+  }
+
+  /**
+   * Validates and loads a reverse share in one query. Used by creation flows
+   * that need the owner's storage quota.
+   */
+  async getValidByToken(reverseShareToken?: string) {
+    const reverseShare = await this.getByToken(reverseShareToken);
+    return reverseShare && this.isUsable(reverseShare) ? reverseShare : null;
+  }
+
+  /**
+   * Public reverse-share payload. It deliberately loads no creator fields so
+   * the upload page never reads account data it does not render.
+   */
+  async getPublicByToken(reverseShareToken?: string) {
+    if (!reverseShareToken) return null;
+
+    const reverseShare = await this.prisma.reverseShare.findUnique({
+      where: { token: reverseShareToken },
+      select: {
+        id: true,
+        token: true,
+        shareExpiration: true,
+        remainingUses: true,
+        maxShareSize: true,
+        simplified: true,
+      },
+    });
+
+    return reverseShare && this.isUsable(reverseShare) ? reverseShare : null;
   }
 
   async getAllByUser(userId: string) {
@@ -138,14 +180,10 @@ export class ReverseShareService {
   async isValid(reverseShareToken: string) {
     const reverseShare = await this.prisma.reverseShare.findUnique({
       where: { token: reverseShareToken },
+      select: { shareExpiration: true, remainingUses: true },
     });
 
-    if (!reverseShare) return false;
-
-    const isExpired = new Date() > reverseShare.shareExpiration;
-    const remainingUsesExceeded = reverseShare.remainingUses <= 0;
-
-    return !(isExpired || remainingUsesExceeded);
+    return !!reverseShare && this.isUsable(reverseShare);
   }
 
   async remove(id: string) {

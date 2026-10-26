@@ -74,6 +74,7 @@ async function bootstrap() {
   });
 
   app.use(cookieParser());
+  app.disable("x-powered-by");
   app.set("trust proxy", process.env.TRUST_PROXY === "true");
   app.use(createVisitorIdentityMiddleware());
 

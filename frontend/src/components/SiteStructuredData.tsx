@@ -38,8 +38,6 @@ const SiteStructuredData = () => {
             logo: {
               "@type": "ImageObject",
               url: logo,
-              width: 400,
-              height: 400,
             },
           },
           {

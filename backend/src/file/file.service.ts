@@ -92,6 +92,7 @@ export class FileService implements OnModuleInit {
   private readonly thumbnailFailures = new Map<string, string>();
   private readonly thumbnailQueue: Array<() => void> = [];
   private thumbnailActive = 0;
+  private lastThumbnailWarmAt = 0;
   private thumbnailPlaceholder?: Promise<Buffer>;
 
   async onModuleInit() {
@@ -452,6 +453,14 @@ export class FileService implements OnModuleInit {
    */
   async warmShareThumbnails(shareIds: string[]): Promise<void> {
     if (shareIds.length === 0) return;
+
+    // The listing controllers call this on every response, but listings are
+    // cached for 30 seconds. One directory scan per window is enough; a card
+    // that misses later is still built on demand.
+    const now = Date.now();
+    if (now - this.lastThumbnailWarmAt < 30_000) return;
+    this.lastThumbnailWarmAt = now;
+
     let existing = new Set<string>();
     try {
       existing = new Set(await fs.readdir(THUMBNAIL_DIRECTORY));
@@ -608,27 +617,27 @@ export class FileService implements OnModuleInit {
     });
 
     if (!share || !share.uploadLocked || share.removedReason) {
-      this.thumbnailFailures.set(shareId, "unavailable");
+      this.rememberThumbnailFailure(shareId, "unavailable");
       return undefined;
     }
     if (
       share.expiration.getTime() !== 0 &&
       share.expiration.getTime() <= Date.now()
     ) {
-      this.thumbnailFailures.set(shareId, "expired");
+      this.rememberThumbnailFailure(shareId, "expired");
       return undefined;
     }
 
     const candidates = getPreviewCandidates(share.files);
     if (candidates.length === 0) {
-      this.thumbnailFailures.set(shareId, "no-media");
+      this.rememberThumbnailFailure(shareId, "no-media");
       return undefined;
     }
 
     try {
       await fs.mkdir(THUMBNAIL_DIRECTORY, { recursive: true });
     } catch {
-      this.thumbnailFailures.set(shareId, "unavailable");
+      this.rememberThumbnailFailure(shareId, "unavailable");
       return undefined;
     }
 
@@ -661,8 +670,21 @@ export class FileService implements OnModuleInit {
       }
     }
 
-    this.thumbnailFailures.set(shareId, failureReason);
+    this.rememberThumbnailFailure(shareId, failureReason);
     return undefined;
+  }
+
+  /**
+   * Keeps the diagnostic reason for the placeholder header without letting a
+   * long-lived process accumulate one entry per share that has no thumbnail.
+   */
+  private rememberThumbnailFailure(shareId: string, reason: string) {
+    this.thumbnailFailures.delete(shareId);
+    this.thumbnailFailures.set(shareId, reason);
+    if (this.thumbnailFailures.size > 1000) {
+      const oldest = this.thumbnailFailures.keys().next().value;
+      if (oldest) this.thumbnailFailures.delete(oldest);
+    }
   }
 
   /**

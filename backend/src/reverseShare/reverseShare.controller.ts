@@ -58,14 +58,13 @@ export class ReverseShareController {
   })
   @Get(":reverseShareToken")
   async getByToken(@Param("reverseShareToken") reverseShareToken: string) {
-    const isValid = await this.reverseShareService.isValid(reverseShareToken);
+    const reverseShare =
+      await this.reverseShareService.getPublicByToken(reverseShareToken);
 
-    if (!isValid)
+    if (!reverseShare)
       throw new NotFoundException(this.i18n.t("reverseShare.notFound"));
 
-    return new ReverseShareDTO().from(
-      await this.reverseShareService.getByToken(reverseShareToken),
-    );
+    return new ReverseShareDTO().from(reverseShare);
   }
 
   @Get()
