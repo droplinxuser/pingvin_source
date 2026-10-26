@@ -14,8 +14,8 @@ import { useModals } from "@mantine/modals";
 import { GetServerSidePropsContext } from "next";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { ReactNode, useEffect, useState } from "react";
-import { FormattedMessage } from "react-intl";
+import { ReactNode, useEffect, useMemo, useState } from "react";
+import { FormattedMessage, useIntl } from "react-intl";
 import Meta from "../../../components/Meta";
 import LazySection from "../../../components/core/LazySection";
 import FileList, { FileListSkeleton } from "../../../components/share/FileList";
@@ -39,13 +39,26 @@ import useTranslate from "../../../hooks/useTranslate.hook";
 import shareService from "../../../services/share.service";
 import { Share as ShareType, ShareSeo } from "../../../types/share.type";
 import toast from "../../../utils/toast.util";
-import { getBaseName } from "../../../utils/file.util";
+import { getBaseName, getShareFileUrl } from "../../../utils/file.util";
 import { byteToHumanSizeString } from "../../../utils/fileSize.util";
-import { setNoStoreHeaders } from "../../../utils/httpCache.util";
-import { isLikelyGalleryMedia } from "../../../utils/mime.util";
+import {
+  setNoStoreHeaders,
+  setPublicCacheHeaders,
+} from "../../../utils/httpCache.util";
+import {
+  isLikelyGalleryMedia,
+  supportsWebpPreview,
+} from "../../../utils/mime.util";
 import { getQueryString } from "../../../utils/router.util";
 import { fetchShareSeo } from "../../../utils/seo.server.util";
-import { buildCollectionPage } from "../../../utils/seo.util";
+import {
+  buildBreadcrumbList,
+  buildCollectionPage,
+  getShareContentKinds,
+  getShareFileNames,
+  getShareSubject,
+  truncateMetaText,
+} from "../../../utils/seo.util";
 
 export async function getServerSideProps(context: GetServerSidePropsContext) {
   const shareId = context.params!.shareId as string;
@@ -59,6 +72,7 @@ export async function getServerSideProps(context: GetServerSidePropsContext) {
   // transient metadata failure gets a 503 instead of a 200 noindex page, so a
   // short backend outage cannot deindex a valid public share.
   if (initialNotFound) context.res.statusCode = 404;
+  if (result.status === "ok") setPublicCacheHeaders(context.res, 60, 30);
   if (result.status === "error") {
     context.res.statusCode = 503;
     setNoStoreHeaders(context.res);
@@ -108,6 +122,7 @@ const SharePage = ({
   const router = useRouter();
   const homeHref = useHomeHref();
   const t = useTranslate();
+  const intl = useIntl();
   const { siteName, baseUrl } = useSiteMeta();
 
   const [share, setShare] = useState<ShareType>();
@@ -127,11 +142,27 @@ const SharePage = ({
   const recipientId = getQueryString(router.query.recipient);
 
   const indexable = seo?.indexable === true;
-  const shareName = indexable ? share?.name || seo?.name : undefined;
-  const displayName = share?.name || seo?.name || shareId;
-  const displayDescription = share?.description || seo?.description;
+  const shareName = share?.name || seo?.name;
   const displayFileCount = share?.files?.length ?? seo?.fileCount ?? 0;
   const displaySize = share?.size ?? seo?.size ?? 0;
+  const subject = useMemo(
+    () => (indexable ? getShareSubject(share ?? seo) : undefined),
+    [indexable, seo, share],
+  );
+  const preloadImage = useMemo(() => {
+    if (!indexable) return undefined;
+    const firstImage = seo?.files?.find(
+      (file) => file.id && supportsWebpPreview(file.name),
+    );
+    return firstImage?.id
+      ? getShareFileUrl(shareId, firstImage.id, {
+          download: false,
+          webp: true,
+        })
+      : undefined;
+  }, [indexable, seo, shareId]);
+  const displayName = subject || shareName || shareId;
+  const displayDescription = share?.description || seo?.description;
   const skeletonMediaCount = indexable
     ? (seo?.files ?? []).filter((file) => isLikelyGalleryMedia(file.name))
         .length
@@ -147,52 +178,123 @@ const SharePage = ({
   const hasGalleryMedia = galleryPlaceholderCount > 0;
   const fileSkeletonCount = displayFileCount || 5;
   const metaTitle = indexable
-    ? shareName
-      ? t("seo.custom.share.title", { name: shareName })
-      : t("share.title", { shareId })
+    ? subject
+      ? displayFileCount === 1
+        ? t("seo.custom.share.title.single", { name: subject })
+        : t("seo.custom.share.title", {
+            name: subject,
+            count: displayFileCount,
+          })
+      : displayFileCount > 0
+        ? t("seo.custom.share.title.count", { count: displayFileCount })
+        : t("share.title", { shareId })
     : t("share.title", { shareId });
+  const customDescription = truncateMetaText(
+    (share?.description || seo?.description || "").trim(),
+    90,
+  );
+  const excerptNames = getShareFileNames(seo?.files, 2).map((name) =>
+    truncateMetaText(name, 30),
+  );
+  const singleFileName = getShareFileNames(seo?.files, 1)[0];
+  const remainingNames = Math.max(displayFileCount - excerptNames.length, 0);
+  const filesExcerpt = excerptNames.length
+    ? `${excerptNames.join(", ")}${
+        remainingNames > 0
+          ? ` ${t("seo.custom.share.moreFiles", { count: remainingNames })}`
+          : ""
+      }`
+    : "";
+  const contentKinds = getShareContentKinds(seo?.files);
+  const contentSummary = contentKinds.length
+    ? new Intl.ListFormat(intl.locale, {
+        style: "long",
+        type: "conjunction",
+      }).format(
+        contentKinds.map((kind) => t(`seo.custom.share.content.${kind}`)),
+      )
+    : "";
   const metaDescription = indexable
-    ? t("seo.custom.share.description", {
-        count: displayFileCount,
-        size: byteToHumanSizeString(displaySize),
-        siteName,
-      })
+    ? customDescription
+      ? t("seo.custom.share.description.named", {
+          description: customDescription,
+          count: displayFileCount,
+          size: byteToHumanSizeString(displaySize),
+          siteName,
+        })
+      : displayFileCount === 1 && singleFileName
+        ? t("seo.custom.share.description.single", {
+            name: truncateMetaText(singleFileName, 60),
+            size: byteToHumanSizeString(displaySize),
+            siteName,
+          })
+        : filesExcerpt && contentSummary
+          ? t("seo.custom.share.description.content", {
+              count: displayFileCount,
+              size: byteToHumanSizeString(displaySize),
+              siteName,
+              content: contentSummary,
+              files: filesExcerpt,
+            })
+          : filesExcerpt
+            ? t("seo.custom.share.description.files", {
+                count: displayFileCount,
+                size: byteToHumanSizeString(displaySize),
+                siteName,
+                files: filesExcerpt,
+              })
+            : t("seo.custom.share.description", {
+                count: displayFileCount,
+                size: byteToHumanSizeString(displaySize),
+                siteName,
+              })
     : t("share.description");
   const shareJsonLd =
     indexable && seo
-      ? buildCollectionPage({
-          name: shareName ? `${shareName} - ${siteName}` : metaTitle,
-          description: metaDescription,
-          path: `/share/${shareId}`,
-          siteName,
-          baseUrl,
-          datePublished: seo.createdAt,
-          dateModified: seo.updatedAt,
-          image: seo.thumbnailUrl,
-          mainEntity: {
-            "@type": "ItemList",
-            numberOfItems: seo.files?.length ?? 0,
-            itemListElement: (seo.files ?? []).map((file, position) => ({
-              "@type": "ListItem",
-              position: position + 1,
-              name: getBaseName(file.name),
-            })),
-          },
-        })
+      ? [
+          buildBreadcrumbList(
+            [
+              { name: t("seo.custom.breadcrumb.home"), path: "/" },
+              { name: t("trending.custom.title"), path: "/trending" },
+              { name: displayName, path: `/share/${shareId}` },
+            ],
+            baseUrl,
+          ),
+          buildCollectionPage({
+            name: metaTitle,
+            description: metaDescription,
+            path: `/share/${shareId}`,
+            siteName,
+            baseUrl,
+            datePublished: seo.createdAt,
+            dateModified: seo.updatedAt,
+            image: seo.thumbnailUrl,
+            mainEntity: {
+              "@type": "ItemList",
+              numberOfItems: displayFileCount,
+              itemListElement: (seo.files ?? []).map((file, position) => ({
+                "@type": "ListItem",
+                position: position + 1,
+                name: getBaseName(file.name),
+              })),
+            },
+          }),
+        ]
       : undefined;
   const shareMeta = (
     <Meta
-      title={metaTitle}
+      title={truncateMetaText(metaTitle, 70)}
       description={metaDescription}
       type="article"
       noindex={!indexable}
       canonicalPath={`/share/${shareId}`}
       image={indexable ? seo?.thumbnailUrl : undefined}
       imageType={indexable && seo?.thumbnailUrl ? "image/webp" : undefined}
-      imageAlt={indexable ? shareName || seo?.name || siteName : undefined}
+      imageAlt={indexable ? displayName : undefined}
       publishedTime={indexable ? seo?.createdAt : undefined}
       modifiedTime={indexable ? seo?.updatedAt : undefined}
       jsonLd={shareJsonLd}
+      preloadImage={preloadImage}
     />
   );
 

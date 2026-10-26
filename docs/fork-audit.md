@@ -18,7 +18,7 @@ so `git merge upstream/main` stays small.
 | Share and file size limits | `backend/prisma/seed/config.seed.ts` (`share.maxSize` 5 GB, `share.maxFileSize` 512 MB), migration `20261025000000_raise_share_size_limit`, `backend/src/share/share.util.ts` (`resolveShareSizeLimit`), local/S3 upload guards, `frontend/src/components/upload/Dropzone.tsx` and upload pages |
 | Trending today | `backend/src/cache/trending.service.ts`, `GET /api/shares/trending?limit=100`, `frontend/src/components/share/TrendingToday.tsx` (client-side, viewport-triggered load with batched rendering and skeletons), `frontend/src/components/share/TrendingCountries.tsx` (up to ten countries, ten shares each), `frontend/src/pages/trending.tsx`, `frontend/src/pages/_app.tsx` |
 | New shares | `backend/src/cache/trending.service.ts` (`getRecent`), `GET /api/shares/recent?limit=200`, `frontend/src/pages/new.tsx`, shared `TrendingToday` grid/card (`loadItems`, media badge, 24-card batches), header/footer links, sitemap/robots |
-| Shared UI polish | `frontend/src/components/core/RelativeTime.tsx` (relative timestamps + full-date tooltip), `RouteProgress.tsx` (global navigation bar), `LazyImage.tsx` (lazy images with shimmer placeholder), `LazySection.tsx` / `LazyVideo.tsx` |
+| Shared UI polish | `frontend/src/components/core/RelativeTime.tsx` (relative timestamps + full-date tooltip), `RouteProgress.tsx` (global navigation bar), `LazyImage.tsx` (lazy images with shimmer placeholder), `LazySection.tsx` / `LazyVideo.tsx`, `frontend/src/utils/filePreview.util.ts` (lazy file-preview modal chunk) |
 | Share thumbnails / OG | `backend/src/file/file.service.ts` (share-level 300px WebP, background queue, 32-day cleanup), `backend/src/share/preview.util.ts` (shared source selection), `GET /api/shares/:id/thumbnail`, `frontend/src/components/share/TrendingToday.tsx`, `TrendingCountries.tsx`, `Meta.tsx` |
 | Cache headers / hotlink protection | `backend/src/utils/cache.util.ts` (shared `Cache-Control`, `CDN-Cache-Control`, `Cloudflare-CDN-Cache-Control`, public-file `ETag`), `backend/src/utils/referrer.util.ts`, `frontend/src/middleware.ts` (query-free anonymous page shells), `frontend/next.config.js` |
 | Per-IP+User-Agent rate limiting | `backend/src/utils/visitorIdentity.util.ts`, `backend/src/cache/valkeyThrottler.storage.ts`, `backend/src/cache/throttler.config.ts`, `backend/src/main.ts` |
@@ -28,7 +28,7 @@ so `git merge upstream/main` stays small.
 | Valkey metrics and error logs | `backend/src/cache/valkeyMetrics.util.ts`, `backend/src/logs/*`, `backend/src/system/system.controller.ts` (`GET /api/system/valkey`), `frontend/src/components/admin/ValkeyMetricsCard.tsx`, `frontend/src/pages/admin/logs.tsx`, `frontend/src/services/log.service.ts`, `frontend/src/utils/errorReporter.util.ts` |
 | Home copy and ads | `frontend/src/pages/index.tsx` (upstream layout and redirect), `home.custom.*` keys in `en-US.ts`, `frontend/src/components/Ads.tsx`; upstream `hooks/homeHref.hook.ts` owns every "go home" target (honours `general.showHomePage`, `security.allowUnauthenticatedShares` and the signed-in state), including the share error screen, breadcrumb, error modals and post-delete redirect |
 | Fork branding / deployment | `frontend/public/img/**`, `frontend/public/favicon.ico`, `frontend/src/pages/manifest.json.tsx`, `pingvin-*.service`, `update.sh` |
-| SEO / crawlers | `frontend/src/components/Meta.tsx`, `SiteStructuredData.tsx`, `frontend/src/hooks/siteMeta.hook.ts`, `frontend/src/pages/robots.txt.tsx`, `frontend/src/pages/sitemap.xml.tsx`, `frontend/src/utils/seo.util.ts` (`DEFAULT_SITE_NAME`, `buildWebsiteRef`, `buildCollectionPage`), `frontend/src/utils/seo.server.util.ts`, `backend/src/share/share.service.ts` (`getSeo`), `backend/src/system/system.service.ts` (disk-backed `getRobotsTxt`, 50k-entry sitemap index/chunks, `getSitemapFile`) |
+| SEO / crawlers | `frontend/src/components/Meta.tsx`, `SiteStructuredData.tsx`, `frontend/src/hooks/siteMeta.hook.ts`, `frontend/src/pages/robots.txt.tsx`, `frontend/src/pages/sitemap.xml.tsx`, `frontend/src/utils/seo.util.ts` (`DEFAULT_SITE_NAME`, `buildWebsiteRef`, `buildBreadcrumbList`, `buildItemList`, `buildCollectionPage`, `getShareSubject`, auto share descriptions), `frontend/src/utils/seo.server.util.ts` (`fetchShareSeo`, `fetchShareList`), `backend/src/share/share.service.ts` (`getSeo`), `backend/src/system/system.service.ts` (disk-backed `getRobotsTxt`, 50k-entry sitemap index/chunks, `getSitemapFile`) |
 | WebP / image pipeline | `backend/src/file/file.service.ts` (per-file preview cache + share-level listing/OG thumbnail), `backend/src/file/file.controller.ts` (`webp=300`), `backend/src/config/logo.service.ts`, `frontend/src/utils/file.util.ts`, `frontend/src/components/Logo.tsx`, `frontend/public/img/*.webp`, `og-image.png` |
 
 Fork-only UI strings live in `frontend/src/i18n/translations/en-US.ts`; every
@@ -394,16 +394,32 @@ that cache. "Go home" links and the home-page redirect use the upstream
 
 - `Meta` now emits one title, description, canonical URL and robots directive per
   page, plus Open Graph/Twitter tags, a 1200x630 OG image and JSON-LD. Query
-  strings (including `?lang=` and `?recipient=`) are stripped from canonicals;
-  `/s/:id` permanently redirects (308) to the canonical `/share/:id` page.
+  strings (including `?lang=` and `?recipient=`) and trailing slashes are
+  stripped from canonicals; `/s/:id` permanently redirects (308) to the
+  canonical `/share/:id` page. Open Graph also emits `og:image:secure_url` on
+  HTTPS and Twitter carries `twitter:url` plus image dimensions when known.
   Auth, account, admin, upload, edit, error and missing-share pages are
   `noindex, nofollow`; public routes are indexable with
   `max-image-preview:large`.
+- Share metadata is generated automatically when the owner leaves the title or
+  description empty. `seo.util.ts` derives a label from the owner's name, the
+  common folder, or the first file name (stripping extensions and bulk-upload
+  `(1)` suffixes), then builds a localized title such as
+  `photos — 23 files to download` and a 160-character description containing
+  the file count, total size, content mix (photos/videos/audio/documents/
+  archives) and the first file names. Owner-written descriptions take priority
+  and are followed by a short count/size summary. The same derived label is
+  used for the visible H1, breadcrumb and JSON-LD, so the page and search
+  result match. Protected shares never derive or expose a label.
 - `_app` emits an Organization + WebSite graph on public routes. The home page
-  adds `SoftwareApplication`, `/trending` and public share pages add
-  `CollectionPage` + `ItemList` data. Protected shares return only
-  `{ indexable: false, id }` from `GET /api/shares/:id/seo`, so names, file
-  names and descriptions never leak into crawler metadata.
+  adds `SoftwareApplication`; `/trending` and `/new` add `CollectionPage` +
+  `ItemList` (the first fifty rendered shares, with thumbnail URLs); public
+  share pages add `CollectionPage` + `ItemList` and a `BreadcrumbList` that
+  matches the visible breadcrumbs; privacy/imprint add home breadcrumbs. The
+  WebSite `@id` is shared by the site graph and page `isPartOf` references.
+  Protected shares return only `{ indexable: false, id }` from
+  `GET /api/shares/:id/seo`, so names, file names and descriptions never leak
+  into crawler metadata.
 - `GET /api/shares/:id/seo` replaces the SSR share `HEAD` probe. It is
   edge-cacheable for 60s and has a short in-process cache. The share page passes
   SEO metadata into `getServerSideProps`, so titles/descriptions are available
@@ -426,7 +442,9 @@ that cache. "Go home" links and the home-page redirect use the upstream
   public `/sitemap.xml` and `/robots.txt` routes proxy those artifacts and fall
   back to static route rules if the backend is unavailable. Robots allows
   `/sitemap.xml` and `/api/system/sitemaps/` because the index/chunks carry
-  query strings and live under the otherwise disallowed `/api` tree. The
+  query strings and live under the otherwise disallowed `/api` tree; it also
+  allows `/api/shares/*/thumbnail*` so the images used by `og:image`, social
+  cards and rich results stay crawlable. The
   sitemap adds the static routes and optional legal pages; SQLite is read once
   per refresh to discover indexable public shares (complete, unexpired, no
   password/max views/recipient restriction, public reverse share, at least one
@@ -445,6 +463,26 @@ that cache. "Go home" links and the home-page redirect use the upstream
   dropped from ~744 kB to ~250 kB in the local production build; `/upload`
   dropped from ~707 kB to ~356 kB after removing the static MDEditor command
   import.
+- `/trending` and `/new` now server-render their first listing batch (100 and
+  200 items respectively, with the first 24 cards painted in the HTML) inside
+  `getServerSideProps`, so the first cards and crawlable links no longer wait
+  for a post-hydration API round trip. The response is edge-cacheable for 60s;
+  if the backend is unavailable the component falls back to its existing
+  client fetch. The JSON-LD ItemList uses the first fifty rendered shares.
+- The file-preview modal is split into a lazy chunk
+  (`utils/filePreview.util.ts` + `showFilePreviewModal`), so markdown rendering
+  and all preview types are downloaded only when a visitor opens a file. This
+  reduced the share route from ~24.4 kB to ~16.3 kB page JS (323 kB to 316 kB
+  first load) while keeping the same modal behaviour.
+- The footer page-view/stats request starts in `requestIdleCallback` (or after
+  800ms) instead of immediately after hydration. Its country grid reserves
+  eight skeleton slots while loading, so the footer no longer grows when the
+  counters arrive and shifts every section above it.
+- The first WebP-eligible image in a public share is emitted as
+  `<link rel="preload" as="image">` from the SEO payload, starting the gallery
+  thumbnail fetch before hydration actually mounts the gallery. GIF gallery
+  cards now use the backend's first-frame WebP preview (the full-size modal
+  still serves the original animated file).
 - The share page defers its heavy sections with `components/core/LazySection`:
   the media gallery, file list, comments and visitor insights mount when they
   are within 400-600px of the viewport. Each section renders its matching
@@ -470,8 +508,10 @@ that cache. "Go home" links and the home-page redirect use the upstream
   (`?download=false&webp=300`, quality 82) cached under
   `uploads/_previews/v300/<shareId>/<fileId>.webp`. The backend checks the MIME
   type and size before opening a storage stream, keeps a short negative cache
-  for unsupported formats (GIF/APNG/SVG/ICO and oversized files) and the
-  gallery only requests WebP for convertible extensions. Preview caches from
+  for unsupported formats (APNG/SVG/ICO and oversized files) and the gallery
+  only requests WebP for convertible extensions. GIF is converted to a
+  first-frame WebP for the gallery card; the full-size modal still serves the
+  original animation. Preview caches from
   older dimensions are removed on backend startup. Original files remain
   untouched for downloads and the full-size image modal; protected shares keep
   `private` previews and public shares use the same day-long immutable CDN
@@ -583,6 +623,22 @@ that cache. "Go home" links and the home-page redirect use the upstream
   the hour-24 bucket is excluded while hour-23 is included, each bucket gets a
   25-hour TTL, and the endpoint falls back to the in-memory window when Valkey
   stops.
+- The SEO/performance pass was rechecked locally on Node `26.12.1` against a
+  copy of `/home/rt/Documents/pingvin-share.db` (API on `:8080`, production
+  `next start` on `:3000`). Guest and signed-in (`thuoct222026`) Playwright
+  traversals of `/`, `/trending`, `/new`, `/share/:id`, `/privacy`, `/imprint`,
+  `/auth/signIn`, `/404` and a missing route found one H1 per page, no missing
+  image `alt`, valid canonical/robots/OG/Twitter tags, parseable JSON-LD, no
+  horizontal overflow and no console warnings/errors (only the intentional 404
+  network entry). Generated metadata examples: a folder upload titled
+  `shortened — 6 files to download` with a description naming the first two
+  videos, and a single PDF titled from its file name with size. `/new` painted
+  24 cards from SSR HTML and exposed 50 crawlable share links; `/share/000`
+  SSR metadata, breadcrumb JSON-LD and the preload link for the first WebP
+  image were verified. Local LCP stayed below 300ms and the share-page CLS fell
+  from ~0.177 to ~0.095 after reserving the footer country grid; the remaining
+  shift is the intentional 5s empty-ad collapse. The share route first-load JS
+  is ~316 kB (page JS ~16.3 kB) after lazy-loading the preview modal.
 - Playwright against that database (11 smoke checks plus a 5-check upload
   flow): home page, footer stats, dynamic manifest, sign-in, account shares,
   share page with visitor badges and text preview, report modal, admin shares

@@ -12,6 +12,8 @@ const buildFallbackRobots = (baseUrl: string) => {
     "Allow: /new",
     "Allow: /sitemap.xml",
     "Allow: /api/system/sitemaps/",
+    // Share thumbnails are used by og:image; allow their versioned query too.
+    "Allow: /api/shares/*/thumbnail*",
     "Disallow: /admin",
     "Disallow: /account",
     "Disallow: /auth",

@@ -31,7 +31,7 @@ const ErrorNotFound = () => {
 
   return (
     <>
-      <Meta title="Not found" />
+      <Meta title="Not found" canonicalPath="/404" noindex />
       <Container className={classes.root}>
         <div className={classes.label}>404</div>
         <Title align="center" order={1} size="h3">

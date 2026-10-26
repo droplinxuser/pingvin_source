@@ -13,12 +13,12 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { TbPlayerPlay } from "react-icons/tb";
 import { FileMetaData } from "../../types/File.type";
 import { getBaseName, getShareFileUrl } from "../../utils/file.util";
+import { openFilePreview } from "../../utils/filePreview.util";
 import { getShareMediaFiles, ShareMediaFile } from "../../utils/media.util";
 import { supportsWebpPreview } from "../../utils/mime.util";
 import useTranslate from "../../hooks/useTranslate.hook";
 import LazyImage from "../core/LazyImage";
 import LazyVideo from "../core/LazyVideo";
-import showFilePreviewModal from "./modals/showFilePreviewModal";
 
 const MAX_GALLERY_ITEMS = 100;
 // Long media shares are revealed in small batches. Only the first batch mounts
@@ -220,7 +220,7 @@ const MediaPreviewGallery = ({
           shareId={shareId}
           entry={entry}
           onOpen={(file) =>
-            showFilePreviewModal(shareId, file, modals, previewFiles)
+            openFilePreview(shareId, file, modals, previewFiles)
           }
         />
       ))}

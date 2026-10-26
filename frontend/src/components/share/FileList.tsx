@@ -32,6 +32,7 @@ import { FileMetaData } from "../../types/File.type";
 import { Share } from "../../types/share.type";
 import { byteToHumanSizeString } from "../../utils/fileSize.util";
 import { getBaseName } from "../../utils/file.util";
+import { openFilePreview } from "../../utils/filePreview.util";
 import {
   doesFileSupportPreview,
   getFileMimeType,
@@ -42,7 +43,6 @@ import toast from "../../utils/toast.util";
 import TableSortIcon, { TableSort } from "../core/SortIcon";
 import { HoverTip } from "../core/HoverTip";
 import FileName from "../core/FileName";
-import showFilePreviewModal from "./modals/showFilePreviewModal";
 
 const ARCHIVE_EXTENSION = /\.(zip|rar|7z|tar|gz|bz2|xz)$/i;
 
@@ -288,12 +288,7 @@ const FileList = ({
                           size={28}
                           aria-label={t("common.button.preview")}
                           onClick={() =>
-                            showFilePreviewModal(
-                              share.id,
-                              file,
-                              modals,
-                              mediaFiles,
-                            )
+                            openFilePreview(share.id, file, modals, mediaFiles)
                           }
                         >
                           <TbEye size={16} />

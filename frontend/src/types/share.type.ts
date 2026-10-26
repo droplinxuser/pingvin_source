@@ -95,7 +95,7 @@ export type ShareSeo = {
   updatedAt?: string;
   fileCount?: number;
   size?: number;
-  files?: { name: string }[];
+  files?: { id?: string; name: string }[];
   thumbnailUrl?: string;
 };
 

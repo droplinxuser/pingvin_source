@@ -1,8 +1,26 @@
 export default {
   // SEO metadata (fork-only; other locales fall back to English)
-  "seo.custom.share.title": "{name} — files to download",
+  "seo.custom.share.title":
+    "{name} — {count, plural, one {# file} other {# files}} to download",
+  "seo.custom.share.title.single": "{name} to download",
+  "seo.custom.share.title.count":
+    "{count, plural, one {# file} other {# files}} to download",
   "seo.custom.share.description":
-    "Download {count, plural, one {# file} other {# files}} ({size}) shared via {siteName}. Preview images, videos, audio and documents before downloading.",
+    "Download {count, plural, one {# file} other {# files}} ({size}) shared via {siteName}. Preview before downloading.",
+  "seo.custom.share.description.files":
+    "Download {count, plural, one {# file} other {# files}} ({size}) via {siteName}: {files}.",
+  "seo.custom.share.description.content":
+    "Download {count, plural, one {# file} other {# files}} ({size}) via {siteName}, including {content}: {files}.",
+  "seo.custom.share.description.single":
+    "Download {name} ({size}) shared via {siteName}. Preview before downloading.",
+  "seo.custom.share.description.named":
+    "{description} Download {count, plural, one {# file} other {# files}} ({size}) shared via {siteName}.",
+  "seo.custom.share.moreFiles": "and {count} more",
+  "seo.custom.share.content.photos": "photos",
+  "seo.custom.share.content.videos": "videos",
+  "seo.custom.share.content.audio": "audio files",
+  "seo.custom.share.content.documents": "documents",
+  "seo.custom.share.content.archives": "archives",
   "seo.custom.trending.description":
     "Discover the most-viewed public shares from the last 30 days. Preview and download images, videos, audio and documents.",
   "seo.custom.new.description":
@@ -109,7 +127,7 @@ export default {
     "A free file-sharing platform for sending shares up to 5 GB with one link. Each file can be up to 512 MB. Sign in with Google, GitHub or Discord; recipients just open the link — no app, and no account needed for standard downloads.",
   "home.custom.metaTitle": "Big files, short links",
   "home.custom.metaDescription":
-    "{siteName} is a free file-sharing platform. Share up to 5 GB per link, with 512 MB per file, using short links, previews, passwords, QR codes and email delivery. No app needed.",
+    "{siteName} is a free file-sharing platform. Share up to 5 GB per link (512 MB per file) with short links, previews, passwords, QR codes and email. No app needed.",
   "home.custom.bullet.a.name": "5 GB per share, 512 MB per file",
   "home.custom.bullet.a.description":
     "Upload files or whole folders, preview photos, videos, audio, PDFs and text, and download every file individually at full speed.",

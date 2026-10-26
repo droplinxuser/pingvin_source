@@ -58,9 +58,10 @@ const GALLERY_IMAGE_EXTENSIONS = new Set([
   "svg",
 ]);
 
-// Formats the backend can convert to a resized WebP. GIF, APNG, SVG and ICO
-// are displayed as-is so the gallery does not request a preview that can
-// never be generated.
+// Formats the backend can convert to a resized WebP. GIF uses the first frame
+// for the gallery card (the full-size modal still shows the original animated
+// file). APNG, SVG and ICO are displayed as-is so the gallery does not request
+// a preview that can never be generated.
 const WEBP_PREVIEW_EXTENSIONS = new Set([
   "jpg",
   "jpeg",
@@ -71,6 +72,7 @@ const WEBP_PREVIEW_EXTENSIONS = new Set([
   "pjpeg",
   "pjp",
   "png",
+  "gif",
   "bmp",
   "dib",
   "tif",

@@ -6,6 +6,7 @@ import {
   Footer as MFooter,
   Group,
   SimpleGrid,
+  Skeleton,
   Stack,
   Text,
 } from "@mantine/core";
@@ -152,11 +153,15 @@ const Footer = () => {
   const [isLoadingStats, setIsLoadingStats] = useState(true);
 
   // This is also the page-view beacon: one POST per rendered page, with the
-  // counters kept in Valkey instead of SQLite.
+  // counters kept in Valkey instead of SQLite. Start it after the first paint
+  // or idle period so it never competes with the page's own data requests.
   useEffect(() => {
     let cancelled = false;
+    let idleHandle: number | undefined;
+    let timeout: ReturnType<typeof setTimeout> | undefined;
 
     const loadStats = async () => {
+      if (cancelled) return;
       setIsLoadingStats(true);
       let result: SystemStats | null = null;
       try {
@@ -174,9 +179,18 @@ const Footer = () => {
       }
     };
 
-    void loadStats();
+    if ("requestIdleCallback" in window) {
+      idleHandle = window.requestIdleCallback(() => void loadStats(), {
+        timeout: 2500,
+      });
+    } else {
+      timeout = setTimeout(() => void loadStats(), 800);
+    }
+
     return () => {
       cancelled = true;
+      if (idleHandle !== undefined) window.cancelIdleCallback(idleHandle);
+      if (timeout) clearTimeout(timeout);
     };
   }, [router.asPath]);
 
@@ -262,29 +276,47 @@ const Footer = () => {
                     : "—"}
               </Text>
             </Group>
-            {countries.length > 0 && (
+            {isLoadingStats && !stats ? (
+              // Reserve the country grid before the deferred stats request
+              // finishes. Without it the footer grows after load and shifts the
+              // whole page (a large CLS contribution on long share pages).
               <SimpleGrid
-                data-testid="footer-countries"
                 cols={2}
                 spacing={8}
                 verticalSpacing={5}
                 mt={7}
                 breakpoints={[{ minWidth: "xs", cols: 4 }]}
+                aria-hidden
               >
-                {countries.map(({ country, count }) => {
-                  const name = getCountryName(country, intl.locale);
-                  return (
-                    <HoverTip key={country} label={name}>
-                      <Group spacing={3} noWrap aria-label={name}>
-                        <span aria-hidden>{countryCodeToFlag(country)}</span>
-                        <Text className={classes.country}>
-                          {compact(count)}
-                        </Text>
-                      </Group>
-                    </HoverTip>
-                  );
-                })}
+                {Array.from({ length: 8 }, (_, index) => (
+                  <Skeleton key={index} height={13} radius="sm" />
+                ))}
               </SimpleGrid>
+            ) : (
+              countries.length > 0 && (
+                <SimpleGrid
+                  data-testid="footer-countries"
+                  cols={2}
+                  spacing={8}
+                  verticalSpacing={5}
+                  mt={7}
+                  breakpoints={[{ minWidth: "xs", cols: 4 }]}
+                >
+                  {countries.map(({ country, count }) => {
+                    const name = getCountryName(country, intl.locale);
+                    return (
+                      <HoverTip key={country} label={name}>
+                        <Group spacing={3} noWrap aria-label={name}>
+                          <span aria-hidden>{countryCodeToFlag(country)}</span>
+                          <Text className={classes.country}>
+                            {compact(count)}
+                          </Text>
+                        </Group>
+                      </HoverTip>
+                    );
+                  })}
+                </SimpleGrid>
+              )
             )}
           </Box>
 

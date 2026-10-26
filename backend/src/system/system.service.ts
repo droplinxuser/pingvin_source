@@ -212,6 +212,11 @@ export class SystemService {
       // even though the generic /api tree and query strings are disallowed.
       "Allow: /sitemap.xml",
       "Allow: /api/system/sitemaps/",
+      // Share thumbnails are the images referenced by og:image and rich
+      // results. The version query is part of the cache key, so allow the
+      // whole thumbnail path even though generic API and query URLs are
+      // disallowed below.
+      "Allow: /api/shares/*/thumbnail*",
       "Disallow: /admin",
       "Disallow: /account",
       "Disallow: /auth",

@@ -1,6 +1,6 @@
 import type { IncomingMessage } from "http";
 import Config from "../types/config.type";
-import { ShareSeo } from "../types/share.type";
+import { ShareSeo, TrendingShare } from "../types/share.type";
 import { getConfiguredSiteUrl, normalizeBaseUrl } from "./seo.util";
 
 const SEO_CACHE_MS = 30_000;
@@ -63,6 +63,34 @@ export function resolveSiteUrl(
         : "http");
 
   return normalizeBaseUrl(`${proto}://${host}`);
+}
+
+/**
+ * Server-renders the first listing batch so /trending and /new contain links
+ * and cards in the first HTML response. The client component still falls back
+ * to its own request when the backend is unavailable or returns nothing.
+ */
+export async function fetchShareList(
+  apiUrl: string,
+  path: "trending" | "recent",
+  limit: number,
+): Promise<TrendingShare[]> {
+  try {
+    const response = await fetch(
+      `${apiUrl}/api/shares/${path}?limit=${limit}`,
+      {
+        // The API response is already public and edge-cacheable; reuse it in
+        // Next's data cache too when the HTML cache is bypassed.
+        next: { revalidate: 60 },
+        signal: AbortSignal.timeout(2000),
+      },
+    );
+    if (!response.ok) return [];
+    const data = (await response.json()) as unknown;
+    return Array.isArray(data) ? (data as TrendingShare[]) : [];
+  } catch {
+    return [];
+  }
 }
 
 export async function fetchShareSeo(
