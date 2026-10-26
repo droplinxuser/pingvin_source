@@ -637,16 +637,39 @@ export class FileService implements OnModuleInit {
       } else {
         const framePath = `${tempPath}.png`;
         try {
-          const source =
-            share.storageProvider === "S3"
-              ? await this.s3FileService.getPreSignedDownloadUrl(
-                  shareId,
-                  preview.id,
-                  false,
-                )
-              : join(SHARE_DIRECTORY, shareId, preview.id);
+          const sourceFile = share.files.find((file) => file.id === preview.id);
+          let source: string;
+          let httpHeaders: string | undefined;
 
-          await this.extractVideoFrame(source, framePath);
+          if (share.storageProvider === "S3") {
+            source = await this.s3FileService.getPreSignedDownloadUrl(
+              shareId,
+              preview.id,
+              false,
+            );
+          } else {
+            source = join(SHARE_DIRECTORY, shareId, preview.id);
+            try {
+              await fs.stat(source);
+            } catch {
+              // A disk restore can leave the DB row and edge cache intact
+              // while the origin bytes are gone. Fall back to the public file
+              // URL; the referer satisfies the same-origin guard.
+              const appUrl = this.configService.get("general.appUrl");
+              if (appUrl) {
+                const base = appUrl.replace(/\/+$/, "");
+                source = `${base}/api/shares/${shareId}/files/${preview.id}?download=false`;
+                httpHeaders = `Referer: ${base}/\r\n`;
+              }
+            }
+          }
+
+          await this.extractVideoFrame(
+            source,
+            framePath,
+            getVideoFormatHint(sourceFile?.name),
+            httpHeaders,
+          );
           await sharp(framePath)
             .rotate()
             .resize({
@@ -682,19 +705,24 @@ export class FileService implements OnModuleInit {
   private async extractVideoFrame(
     input: string,
     output: string,
+    formatHint?: string,
+    httpHeaders?: string,
   ): Promise<void> {
     let lastError: unknown;
+    const formatArgs = formatHint ? ["-f", formatHint] : [];
+    const headerArgs = httpHeaders ? ["-headers", httpHeaders] : [];
 
     // MPEG-TS and some fragmented containers do not always honour an input
     // seek, and a decoder can emit warnings/errors while still writing a
     // perfectly good first frame. Try input seeks, an accurate output seek and
     // a plain first-frame decode, and trust a non-empty output even if ffmpeg
-    // exited non-zero.
+    // exited non-zero. Some builds also need the container format forced
+    // because the stored file has no extension.
     const seekVariants = [
-      ["-ss", "1", "-i", input],
-      ["-ss", "0", "-i", input],
-      ["-i", input, "-ss", "1"],
-      ["-i", input],
+      ["-ss", "1", ...formatArgs, ...headerArgs, "-i", input],
+      ["-ss", "0", ...formatArgs, ...headerArgs, "-i", input],
+      [...formatArgs, ...headerArgs, "-i", input, "-ss", "1"],
+      [...formatArgs, ...headerArgs, "-i", input],
     ];
     const outputArgs = [
       "-map",
@@ -923,6 +951,22 @@ export interface File {
   file?: Readable;
   range?: { start: number; end: number };
   isRangeNotSatisfiable?: boolean;
+}
+
+function getVideoFormatHint(fileName?: string): string | undefined {
+  const extension = fileName?.split(".").pop()?.toLowerCase();
+  if (!extension) return undefined;
+
+  if (extension === "ts" || extension === "mts" || extension === "m2ts")
+    return "mpegts";
+  if (["mp4", "m4v", "mov", "f4v"].includes(extension)) return "mov";
+  if (extension === "webm") return "webm";
+  if (extension === "mkv") return "matroska";
+  if (extension === "avi") return "avi";
+  if (extension === "flv") return "flv";
+  if (extension === "wmv") return "asf";
+  if (extension === "3gp") return "3gp";
+  return undefined;
 }
 
 let ffmpegCandidates: string[] | undefined;

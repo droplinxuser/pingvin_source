@@ -1202,10 +1202,16 @@ that cache. "Go home" links and the home-page redirect use the upstream
   into one job per share without starting hundreds of ffmpeg jobs at once.
 - Image shares reuse the existing per-file 300px WebP: the share thumbnail is
   a hardlink when possible (copy fallback), so a share with an image does not
-  pay for a second image decode. Video-only shares extract a frame with
-  `ffmpeg` (the optional `ffmpeg-static` binary, or `FFMPEG_PATH`/system
-  `ffmpeg`), then resize it with sharp. The frame is taken one second in, with
-  a first-frame fallback for very short videos.
+  pay for a second image decode. JPEG, PNG, WebP, GIF, BMP, TIFF and AVIF
+  sources are supported. Video-only shares extract a frame with `ffmpeg` (the
+  optional `ffmpeg-static` binary, or `FFMPEG_PATH`/system `ffmpeg`), then
+  resize it with sharp. MPEG-TS/M2TS and other extensionless stored files get
+  an explicit demuxer hint; the extractor tries input seeks, an accurate
+  output seek and a plain first frame, and accepts a non-empty frame even when
+  ffmpeg exits non-zero. If the origin file was lost but the public edge cache
+  still has it, ffmpeg falls back to the public file URL with the matching
+  referer. A genuinely unsupported/corrupt source gets a no-store transparent
+  1x1 WebP placeholder instead of a browser 404.
 - Listings now always render an `<img>` from the share thumbnail endpoint.
   They no longer create `<video>` elements, so a 200-card `/new` page does not
   download video metadata/first frames. The media badge/play overlay still
