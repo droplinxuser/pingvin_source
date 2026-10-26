@@ -72,7 +72,11 @@ export async function getServerSideProps(context: GetServerSidePropsContext) {
   // transient metadata failure gets a 503 instead of a 200 noindex page, so a
   // short backend outage cannot deindex a valid public share.
   if (initialNotFound) context.res.statusCode = 404;
-  if (result.status === "ok") setPublicCacheHeaders(context.res, 60, 30);
+  if (result.status === "ok") {
+    if (context.req.url?.startsWith("/_next/data/"))
+      setNoStoreHeaders(context.res);
+    else setPublicCacheHeaders(context.res, 60, 30);
+  }
   if (result.status === "error") {
     context.res.statusCode = 503;
     setNoStoreHeaders(context.res);

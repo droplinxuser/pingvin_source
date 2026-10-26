@@ -14,7 +14,7 @@ export default {
   "seo.custom.share.description.single":
     "Download {name} ({size}) shared via {siteName}. Preview before downloading.",
   "seo.custom.share.description.named":
-    "{description} Download {count, plural, one {# file} other {# files}} ({size}) shared via {siteName}.",
+    "{description} — Download {count, plural, one {# file} other {# files}} ({size}) shared via {siteName}.",
   "seo.custom.share.moreFiles": "and {count} more",
   "seo.custom.share.content.photos": "photos",
   "seo.custom.share.content.videos": "videos",

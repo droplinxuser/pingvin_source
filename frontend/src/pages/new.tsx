@@ -6,18 +6,32 @@ import useTranslate from "../hooks/useTranslate.hook";
 import shareService from "../services/share.service";
 import { TrendingShare } from "../types/share.type";
 import { getShareThumbnailUrl } from "../utils/file.util";
-import { setPublicCacheHeaders } from "../utils/httpCache.util";
+import {
+  setNoStoreHeaders,
+  setPublicCacheHeaders,
+} from "../utils/httpCache.util";
 import { fetchShareList } from "../utils/seo.server.util";
 import { buildCollectionPage, buildItemList } from "../utils/seo.util";
 
-export async function getServerSideProps({ res }: GetServerSidePropsContext) {
+export async function getServerSideProps({
+  req,
+  res,
+}: GetServerSidePropsContext) {
   const apiURL = process.env.API_URL || "http://localhost:8080";
   const initialItems = await fetchShareList(apiURL, "recent", 200);
-  setPublicCacheHeaders(res, 60, 30);
+  // The HTML shell is safe to cache, but the client-navigation data response
+  // must not be stored by the CDN. A single empty response cached during a
+  // deployment would otherwise make every client transition render an error.
+  if (req.url?.startsWith("/_next/data/")) setNoStoreHeaders(res);
+  else setPublicCacheHeaders(res, 60, 30);
   return { props: { initialItems } };
 }
 
-const NewShares = ({ initialItems }: { initialItems: TrendingShare[] }) => {
+const NewShares = ({
+  initialItems = [],
+}: {
+  initialItems?: TrendingShare[];
+}) => {
   const t = useTranslate();
   const { siteName, baseUrl } = useSiteMeta();
   const description = t("seo.custom.new.description");

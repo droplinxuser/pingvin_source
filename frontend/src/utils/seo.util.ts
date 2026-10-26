@@ -29,8 +29,11 @@ export const truncateMetaText = (
   return `${(lastSpace > maxLength / 2 ? cut.slice(0, lastSpace) : cut).trimEnd()}…`;
 };
 
-export const getConfigValue = (config: Config[], key: string): string => {
-  const variable = config.find((item) => item.key === key);
+export const getConfigValue = (
+  config: Config[] | undefined,
+  key: string,
+): string => {
+  const variable = (config ?? []).find((item) => item.key === key);
   return (variable?.value ?? variable?.defaultValue ?? "").trim();
 };
 

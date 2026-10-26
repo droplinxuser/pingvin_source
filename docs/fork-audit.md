@@ -466,9 +466,14 @@ that cache. "Go home" links and the home-page redirect use the upstream
 - `/trending` and `/new` now server-render their first listing batch (100 and
   200 items respectively, with the first 24 cards painted in the HTML) inside
   `getServerSideProps`, so the first cards and crawlable links no longer wait
-  for a post-hydration API round trip. The response is edge-cacheable for 60s;
-  if the backend is unavailable the component falls back to its existing
-  client fetch. The JSON-LD ItemList uses the first fifty rendered shares.
+  for a post-hydration API round trip. The HTML is edge-cacheable for 60s;
+  client-navigation data responses (`/_next/data/...`) are explicitly
+  `no-store`, because caching one empty response during a deployment would
+  crash every client transition. The page components also default
+  `initialItems` to `[]` and fall back to their existing client fetch. The
+  JSON-LD ItemList uses the first fifty rendered shares.
+- `getConfigValue` tolerates a missing config array so a malformed or
+  deployment-time empty page payload cannot take down the whole app shell.
 - The file-preview modal is split into a lazy chunk
   (`utils/filePreview.util.ts` + `showFilePreviewModal`), so markdown rendering
   and all preview types are downloaded only when a visitor opens a file. This
@@ -639,6 +644,14 @@ that cache. "Go home" links and the home-page redirect use the upstream
   from ~0.177 to ~0.095 after reserving the footer country grid; the remaining
   shift is the intentional 5s empty-ad collapse. The share route first-load JS
   is ~316 kB (page JS ~16.3 kB) after lazy-loading the preview modal.
+- A live client-navigation transition from `/` to `/new` or `/trending`
+  initially failed with `Application error`. The cause was a CDN-cached empty
+  `/_next/data/<buildId>/new.json` / `trending.json` response captured during
+  deployment; the page then called `.slice` on `undefined`. The fix marks all
+  Next data responses `no-store`, defaults `initialItems` to `[]`, guards the
+  config helper, and keeps the client fetch fallback. A Playwright run that
+  intercepted those data responses and returned `{}` still navigated to both
+  pages with no error and loaded the listing from the client fallback.
 - Playwright against that database (11 smoke checks plus a 5-check upload
   flow): home page, footer stats, dynamic manifest, sign-in, account shares,
   share page with visitor badges and text preview, report modal, admin shares
