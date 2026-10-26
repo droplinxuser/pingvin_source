@@ -4,17 +4,17 @@ import {
   createStyles,
   Group,
   Text,
-  Menu,
   useMantineColorScheme,
 } from "@mantine/core";
 import { Dropzone as MantineDropzone } from "@mantine/dropzone";
 import React, { ForwardedRef, useEffect, useRef, useState } from "react";
-import { TbCloudUpload, TbUpload, TbFolder } from "react-icons/tb";
+import { TbCloudUpload, TbFolder } from "react-icons/tb";
 import { FormattedMessage } from "react-intl";
-import { fromEvent } from "file-selector";
+import useClipboardPaste from "../../hooks/useClipboardPaste.hook";
 import useTranslate from "../../hooks/useTranslate.hook";
 import { FileUpload } from "../../types/File.type";
 import { byteToHumanSizeString } from "../../utils/fileSize.util";
+import { getFilesFromEvent } from "../../utils/file.util";
 import toast from "../../utils/toast.util";
 
 const useStyles = createStyles((theme) => ({
@@ -55,87 +55,6 @@ const useStyles = createStyles((theme) => ({
   },
 }));
 
-const traverseDirectory = async (entry: any, path = ""): Promise<File[]> => {
-  if (entry.isFile) {
-    return new Promise((resolve) => {
-      entry.file((file: File) => {
-        const relativePath = path ? `${path}/${file.name}` : file.name;
-        Object.defineProperty(file, "webkitRelativePath", {
-          value: relativePath,
-          writable: true,
-          configurable: true,
-        });
-        resolve([file]);
-      });
-    });
-  } else if (entry.isDirectory) {
-    const dirReader = entry.createReader();
-    const readEntries = (): Promise<any[]> => {
-      return new Promise((resolve) => {
-        dirReader.readEntries(
-          (entries: any[]) => resolve(entries),
-          () => resolve([]),
-        );
-      });
-    };
-
-    let entries: any[] = [];
-    let readBatch = await readEntries();
-    while (readBatch.length > 0) {
-      entries = entries.concat(readBatch);
-      readBatch = await readEntries();
-    }
-
-    const promises = entries.map((e) =>
-      traverseDirectory(e, path ? `${path}/${entry.name}` : entry.name),
-    );
-    const results = await Promise.all(promises);
-    return results.flat();
-  }
-  return [];
-};
-
-const getFilesFromEvent = async (event: any): Promise<any[]> => {
-  if (Array.isArray(event)) {
-    const filePromises = event.map(async (item: any) => {
-      if (item && typeof item.getFile === "function") {
-        return await item.getFile();
-      }
-      return item;
-    });
-    return await Promise.all(filePromises);
-  }
-
-  if (event?.dataTransfer) {
-    const items = event.dataTransfer.items;
-    if (!items) return [];
-
-    const filePromises: Promise<File[]>[] = [];
-    for (let i = 0; i < items.length; i++) {
-      const item = items[i];
-      if (item.kind === "file") {
-        const entry = item.webkitGetAsEntry ? item.webkitGetAsEntry() : null;
-        if (entry) {
-          filePromises.push(traverseDirectory(entry));
-        } else {
-          const file = item.getAsFile();
-          if (file) {
-            filePromises.push(Promise.resolve([file]));
-          }
-        }
-      }
-    }
-    const fileArrays = await Promise.all(filePromises);
-    return fileArrays.flat();
-  }
-
-  if (event?.target?.files) {
-    return Array.from(event.target.files) as File[];
-  }
-
-  return await fromEvent(event);
-};
-
 const Dropzone = ({
   title,
   isUploading,
@@ -157,12 +76,14 @@ const Dropzone = ({
   const folderInputRef = useRef<HTMLInputElement>(null);
   const [isMounted, setIsMounted] = useState(false);
   const [isMac, setIsMac] = useState(false);
+  const [isFirefox, setIsFirefox] = useState(false);
   const { colorScheme } = useMantineColorScheme();
   const dark = colorScheme === "dark";
 
   useEffect(() => {
     setIsMounted(true);
     setIsMac(/Macintosh|Mac OS X/.test(navigator.userAgent));
+    setIsFirefox(/Firefox/.test(navigator.userAgent));
   }, []);
 
   const isFolderUploadSupported =
@@ -170,7 +91,9 @@ const Dropzone = ({
     typeof HTMLInputElement !== "undefined" &&
     "webkitdirectory" in HTMLInputElement.prototype;
 
-  const validateFiles = (files: { name: string; size: number }[]) => {
+  // The page enforces the total share size; this guard keeps the per-file cap
+  // applied to drops, folder picks and pasted files alike.
+  const handleFiles = (files: FileUpload[]) => {
     const oversizedFile =
       maxFileSize > 0 ? files.find((file) => file.size > maxFileSize) : null;
     if (oversizedFile) {
@@ -180,37 +103,37 @@ const Dropzone = ({
           maxSize: byteToHumanSizeString(maxFileSize),
         }),
       );
-      return false;
+      return;
     }
 
-    const fileSizeSum = files.reduce((n, { size }) => n + size, 0);
-    if (fileSizeSum + currentFilesSize > maxShareSize) {
-      toast.error(
-        t("upload.dropzone.notify.file-too-big", {
-          maxSize: byteToHumanSizeString(maxShareSize),
-        }),
-      );
-      return false;
-    }
-
-    return true;
+    onFilesChanged(
+      files.map((file) => {
+        file.uploadingProgress = 0;
+        return file;
+      }),
+    );
   };
+
+  useClipboardPaste({
+    onFiles: handleFiles,
+    disabled: isUploading,
+  });
 
   const handleFolderSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const filesList = event.target.files;
     if (!filesList) return;
-    const filesArray = Array.from(filesList) as FileUpload[];
 
-    const files = filesArray.map((newFile) => {
-      newFile.uploadingProgress = 0;
-      return newFile;
-    });
-
-    if (validateFiles(files)) {
-      onFilesChanged(files);
-    }
-
+    handleFiles(Array.from(filesList) as FileUpload[]);
     event.target.value = "";
+  };
+
+  const descriptionId = (mobile: boolean) => {
+    const suffix = isFolderUploadSupported ? "" : ".no-folder";
+    if (mobile) return `upload.dropzone.description.mobile${suffix}`;
+    if (isFirefox) {
+      return `upload.dropzone.description.desktop.firefox${suffix}`;
+    }
+    return `upload.dropzone.description.desktop${suffix}`;
   };
 
   return (
@@ -233,15 +156,7 @@ const Dropzone = ({
         disabled={isUploading}
         openRef={openRef as ForwardedRef<() => void>}
         getFilesFromEvent={getFilesFromEvent}
-        onDrop={(files: FileUpload[]) => {
-          if (validateFiles(files)) {
-            files = files.map((newFile) => {
-              newFile.uploadingProgress = 0;
-              return newFile;
-            });
-            onFilesChanged(files);
-          }
-        }}
+        onDrop={handleFiles}
         className={classes.dropzone}
         radius="md"
       >
@@ -256,8 +171,8 @@ const Dropzone = ({
             <span className={classes.mobileDescription}>
               <FormattedMessage
                 id={
-                  isMounted && !isFolderUploadSupported
-                    ? "upload.dropzone.description.mobile.no-folder"
+                  isMounted
+                    ? descriptionId(true)
                     : "upload.dropzone.description.mobile"
                 }
                 values={{
@@ -268,8 +183,8 @@ const Dropzone = ({
             <span className={classes.desktopDescription}>
               <FormattedMessage
                 id={
-                  isMounted && !isFolderUploadSupported
-                    ? "upload.dropzone.description.desktop.no-folder"
+                  isMounted
+                    ? descriptionId(false)
                     : "upload.dropzone.description.desktop"
                 }
                 values={{
