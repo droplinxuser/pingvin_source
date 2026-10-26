@@ -12,6 +12,10 @@ export type PreviewSelection = {
   hasVideo: boolean;
 };
 
+// A corrupt or unsupported first image should not leave a whole listing card
+// blank; try a few alternatives before giving up.
+export const MAX_PREVIEW_CANDIDATES = 5;
+
 // Browsers cannot decode every video container. Prefer a playable video from
 // the same share, then an image, so previews show a real frame instead of a
 // black box. Shares with neither keep the first video as a fallback.
@@ -52,4 +56,26 @@ export function findPreview(
     };
   }
   return { preview: firstMedia, hasVideo };
+}
+
+/**
+ * Ordered thumbnail candidates. The first entry is exactly what
+ * `findPreview` chooses for listings, so normal shares keep their current
+ * image/video. If that source cannot be decoded, the caller can retry the next
+ * image or video instead of serving a transparent placeholder.
+ */
+export function getPreviewCandidates(
+  files?: { id: string; name: string }[],
+): PreviewFile[] {
+  const candidates: PreviewFile[] = [];
+  let remaining = files ?? [];
+
+  while (remaining.length > 0 && candidates.length < MAX_PREVIEW_CANDIDATES) {
+    const selection = findPreview(remaining);
+    if (!selection) break;
+    candidates.push(selection.preview);
+    remaining = remaining.filter((file) => file.id !== selection.preview.id);
+  }
+
+  return candidates;
 }

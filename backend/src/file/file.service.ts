@@ -24,7 +24,7 @@ import { TrendingService } from "src/cache/trending.service";
 import { VirusTotalQueueService } from "src/virustotal/virustotalQueue.service";
 import { invalidateShareDataCache } from "src/utils/cache.util";
 import { getFileMimeType } from "src/utils/mime.util";
-import { findPreview } from "src/share/preview.util";
+import { getPreviewCandidates, PreviewFile } from "src/share/preview.util";
 import { DATA_DIRECTORY, SHARE_DIRECTORY } from "src/constants";
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const sharp = require("sharp");
@@ -619,134 +619,160 @@ export class FileService implements OnModuleInit {
       return undefined;
     }
 
-    const selection = findPreview(share.files);
-    if (!selection) {
+    const candidates = getPreviewCandidates(share.files);
+    if (candidates.length === 0) {
       this.thumbnailFailures.set(shareId, "no-media");
       return undefined;
     }
 
-    const preview = selection.preview;
-    const tempPath = `${thumbnailPath}.${process.pid}.${Math.random()
-      .toString(36)
-      .slice(2)}.tmp`;
-
     try {
       await fs.mkdir(THUMBNAIL_DIRECTORY, { recursive: true });
-
-      if (preview.kind === "image") {
-        const filePreview = await this.getWebpPreview(
-          shareId,
-          preview.id,
-          share.storageProvider,
-        );
-        if (!filePreview) {
-          this.thumbnailFailures.set(shareId, "image-failed");
-          return undefined;
-        }
-
-        // Hardlink the per-file WebP when possible. The gallery and listing
-        // then share the same inode instead of storing two copies.
-        try {
-          await fs.link(filePreview.path, tempPath);
-        } catch {
-          await fs.copyFile(filePreview.path, tempPath);
-        }
-      } else {
-        const framePath = `${tempPath}.png`;
-        try {
-          const sourceFile = share.files.find((file) => file.id === preview.id);
-          const formatHint = getVideoFormatHint(sourceFile?.name);
-
-          if (share.storageProvider === "S3") {
-            const source = await this.s3FileService.getPreSignedDownloadUrl(
-              shareId,
-              preview.id,
-              false,
-            );
-            await this.extractVideoFrame(source, framePath, formatHint);
-          } else {
-            const localSource = join(SHARE_DIRECTORY, shareId, preview.id);
-            const appUrl = this.configService.get("general.appUrl");
-            const base = appUrl?.replace(/\/+$/, "");
-            const publicSource = base
-              ? `${base}/api/shares/${shareId}/files/${preview.id}?download=false`
-              : undefined;
-            const publicHeaders = base
-              ? `Referer: ${base}/\r\nUser-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36\r\n`
-              : undefined;
-
-            let localError: unknown;
-            try {
-              await fs.stat(localSource);
-              await this.extractVideoFrame(localSource, framePath, formatHint);
-            } catch (error) {
-              localError = error;
-            }
-
-            if (localError !== undefined) {
-              // A disk restore can leave the DB row and edge cache intact
-              // while the origin bytes are missing or damaged. Retry the
-              // extraction against the public edge copy.
-              if (!publicSource) {
-                this.thumbnailFailures.set(shareId, "video-local-failed");
-                throw localError;
-              }
-              try {
-                await this.extractVideoFrame(
-                  publicSource,
-                  framePath,
-                  formatHint,
-                  publicHeaders,
-                );
-              } catch (publicError) {
-                const message = String(publicError);
-                this.thumbnailFailures.set(
-                  shareId,
-                  /timed out/i.test(message)
-                    ? "video-timeout"
-                    : /\b(?:401|403|404)\b|HTTP/i.test(message)
-                      ? "video-http-failed"
-                      : "video-edge-failed",
-                );
-                throw publicError;
-              }
-            }
-          }
-          await sharp(framePath)
-            .rotate()
-            .resize({
-              width: PREVIEW_MAX_DIMENSION,
-              height: PREVIEW_MAX_DIMENSION,
-              fit: "inside",
-              withoutEnlargement: true,
-            })
-            .webp({ quality: WEBP_QUALITY, effort: 4 })
-            .toFile(tempPath);
-        } finally {
-          await fs.rm(framePath, { force: true }).catch(() => {});
-        }
-      }
-
-      await fs.rename(tempPath, thumbnailPath);
-      // Hardlinks inherit the source inode's mtime. Refresh it so the 32-day
-      // cleanup measures when this share thumbnail was built, not when the
-      // per-file gallery preview happened to be created.
-      const builtAt = new Date();
-      await fs.utimes(thumbnailPath, builtAt, builtAt);
-      const stat = await fs.stat(thumbnailPath);
-      return { path: thumbnailPath, size: stat.size };
-    } catch (error) {
-      await fs.rm(tempPath, { force: true }).catch(() => {});
-      if (!this.thumbnailFailures.has(shareId)) {
-        this.thumbnailFailures.set(
-          shareId,
-          preview.kind === "video" ? "video-failed" : "image-failed",
-        );
-      }
-      this.logger.debug(
-        `Could not build share thumbnail for ${shareId}: ${error}`,
-      );
+    } catch {
+      this.thumbnailFailures.set(shareId, "unavailable");
       return undefined;
+    }
+
+    let failureReason = "unavailable";
+    for (const preview of candidates) {
+      const tempPath = `${thumbnailPath}.${process.pid}.${Math.random()
+        .toString(36)
+        .slice(2)}.tmp`;
+
+      try {
+        await this.renderThumbnailCandidate(share, preview, tempPath);
+
+        await fs.rename(tempPath, thumbnailPath);
+        // Hardlinks inherit the source inode's mtime. Refresh it so the
+        // 32-day cleanup measures when this share thumbnail was built, not
+        // when the per-file gallery preview happened to be created.
+        const builtAt = new Date();
+        await fs.utimes(thumbnailPath, builtAt, builtAt);
+        const stat = await fs.stat(thumbnailPath);
+        return { path: thumbnailPath, size: stat.size };
+      } catch (error) {
+        await fs.rm(tempPath, { force: true }).catch(() => {});
+        const reason = (error as { thumbnailReason?: string }).thumbnailReason;
+        failureReason =
+          reason ??
+          (preview.kind === "video" ? "video-failed" : "image-failed");
+        this.logger.debug(
+          `Could not build share thumbnail for ${shareId} from ${preview.id}: ${error}`,
+        );
+      }
+    }
+
+    this.thumbnailFailures.set(shareId, failureReason);
+    return undefined;
+  }
+
+  /**
+   * Renders one preview candidate into a temporary WebP. Images reuse the
+   * gallery's per-file preview; videos extract a frame. The caller retries
+   * another candidate when this throws, so one corrupt upload cannot blank a
+   * listing card.
+   */
+  private async renderThumbnailCandidate(
+    share: {
+      id: string;
+      storageProvider: string;
+      files: { id: string; name: string; size: string }[];
+    },
+    preview: PreviewFile,
+    tempPath: string,
+  ): Promise<void> {
+    if (preview.kind === "image") {
+      const filePreview = await this.getWebpPreview(
+        share.id,
+        preview.id,
+        share.storageProvider,
+      );
+      if (!filePreview)
+        throw Object.assign(new Error("image-preview-unavailable"), {
+          thumbnailReason: "image-failed",
+        });
+
+      // Hardlink the per-file WebP when possible. The gallery and listing then
+      // share the same inode instead of storing two copies.
+      try {
+        await fs.link(filePreview.path, tempPath);
+      } catch {
+        await fs.copyFile(filePreview.path, tempPath);
+      }
+      return;
+    }
+
+    const framePath = `${tempPath}.png`;
+    try {
+      const sourceFile = share.files.find((file) => file.id === preview.id);
+      const formatHint = getVideoFormatHint(sourceFile?.name);
+
+      if (share.storageProvider === "S3") {
+        const source = await this.s3FileService.getPreSignedDownloadUrl(
+          share.id,
+          preview.id,
+          false,
+        );
+        await this.extractVideoFrame(source, framePath, formatHint);
+      } else {
+        const localSource = join(SHARE_DIRECTORY, share.id, preview.id);
+        const appUrl = this.configService.get("general.appUrl");
+        const base = appUrl?.replace(/\/+$/, "");
+        const publicSource = base
+          ? `${base}/api/shares/${share.id}/files/${preview.id}?download=false`
+          : undefined;
+        const publicHeaders = base
+          ? `Referer: ${base}/\r\nUser-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36\r\n`
+          : undefined;
+
+        let localError: unknown;
+        try {
+          await fs.stat(localSource);
+          await this.extractVideoFrame(localSource, framePath, formatHint);
+        } catch (error) {
+          localError = error;
+        }
+
+        if (localError !== undefined) {
+          // A disk restore can leave the DB row and edge cache intact while
+          // the origin bytes are missing or damaged. Retry the extraction
+          // against the public edge copy.
+          if (!publicSource) {
+            throw Object.assign(new Error("video-local-failed"), {
+              thumbnailReason: "video-local-failed",
+            });
+          }
+          try {
+            await this.extractVideoFrame(
+              publicSource,
+              framePath,
+              formatHint,
+              publicHeaders,
+            );
+          } catch (publicError) {
+            const message = String(publicError);
+            throw Object.assign(new Error(message), {
+              thumbnailReason: /timed out/i.test(message)
+                ? "video-timeout"
+                : /\b(?:401|403|404)\b|HTTP/i.test(message)
+                  ? "video-http-failed"
+                  : "video-edge-failed",
+            });
+          }
+        }
+      }
+
+      await sharp(framePath)
+        .rotate()
+        .resize({
+          width: PREVIEW_MAX_DIMENSION,
+          height: PREVIEW_MAX_DIMENSION,
+          fit: "inside",
+          withoutEnlargement: true,
+        })
+        .webp({ quality: WEBP_QUALITY, effort: 4 })
+        .toFile(tempPath);
+    } finally {
+      await fs.rm(framePath, { force: true }).catch(() => {});
     }
   }
 

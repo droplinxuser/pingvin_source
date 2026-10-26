@@ -10,7 +10,10 @@ const dataDirectory = path.join(
 );
 process.env.DATA_DIRECTORY = dataDirectory;
 
-const { findPreview } = require("../dist/src/share/preview.util.js");
+const {
+  findPreview,
+  getPreviewCandidates,
+} = require("../dist/src/share/preview.util.js");
 const { FileService } = require("../dist/src/file/file.service.js");
 
 test("prefers an image preview and still reports the share has a video", () => {
@@ -37,6 +40,22 @@ test("uses a playable video when the share has no image", () => {
 
 test("has no preview for text-only shares", () => {
   assert.equal(findPreview([{ id: "text", name: "note.txt" }]), undefined);
+});
+
+test("orders a corrupt first image before later thumbnail fallbacks", () => {
+  const candidates = getPreviewCandidates([
+    { id: "broken-image", name: "scan.bmp" },
+    { id: "first-video", name: "clip.mp4" },
+    { id: "second-image", name: "photo.jpg" },
+    { id: "note", name: "note.txt" },
+  ]);
+
+  assert.deepEqual(
+    candidates.map((candidate) => candidate.id),
+    ["broken-image", "first-video", "second-image"],
+  );
+  assert.equal(candidates[0].kind, "image");
+  assert.equal(candidates[1].kind, "video");
 });
 
 test("deletes share thumbnails older than thirty-two days", async () => {

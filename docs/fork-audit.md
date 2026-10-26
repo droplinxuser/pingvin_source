@@ -19,7 +19,7 @@ so `git merge upstream/main` stays small.
 | Trending today | `backend/src/cache/trending.service.ts`, `GET /api/shares/trending?limit=100`, `frontend/src/components/share/TrendingToday.tsx` (client-side, viewport-triggered load with batched rendering and skeletons), `frontend/src/components/share/TrendingCountries.tsx` (up to ten countries, ten shares each), `frontend/src/pages/trending.tsx`, `frontend/src/pages/_app.tsx` |
 | New shares | `backend/src/cache/trending.service.ts` (`getRecent`), `GET /api/shares/recent?limit=200`, `frontend/src/pages/new.tsx`, shared `TrendingToday` grid/card (`loadItems`, media badge, 24-card batches), header/footer links, sitemap/robots |
 | Shared UI polish | `frontend/src/components/core/RelativeTime.tsx` (relative timestamps + full-date tooltip), `RouteProgress.tsx` (global navigation bar), `LazyImage.tsx` (lazy images with shimmer placeholder), `LazySection.tsx` / `LazyVideo.tsx`, `frontend/src/utils/filePreview.util.ts` (lazy file-preview modal chunk) |
-| Share thumbnails / OG | `backend/src/file/file.service.ts` (share-level 300px WebP, background queue, 32-day cleanup), `backend/src/share/preview.util.ts` (shared source selection), `GET /api/shares/:id/thumbnail`, `frontend/src/components/share/TrendingToday.tsx`, `TrendingCountries.tsx`, `Meta.tsx` |
+| Share thumbnails / OG | `backend/src/file/file.service.ts` (share-level 300px WebP, ordered preview fallbacks, background queue, 32-day cleanup), `backend/src/share/preview.util.ts` (shared source selection and `getPreviewCandidates`), `GET /api/shares/:id/thumbnail`, `frontend/src/components/share/TrendingToday.tsx`, `TrendingCountries.tsx`, `Meta.tsx` |
 | Cache headers / hotlink protection | `backend/src/utils/cache.util.ts` (shared `Cache-Control`, `CDN-Cache-Control`, `Cloudflare-CDN-Cache-Control`, public-file `ETag`), `backend/src/utils/referrer.util.ts`, `frontend/src/middleware.ts` (query-free anonymous page shells), `frontend/next.config.js` |
 | Per-IP+User-Agent rate limiting | `backend/src/utils/visitorIdentity.util.ts`, `backend/src/cache/valkeyThrottler.storage.ts`, `backend/src/cache/throttler.config.ts`, `backend/src/main.ts` |
 | Valkey/Redis cache | `backend/src/utils/cache.util.ts`, `backend/src/share/shareState.service.ts`, `backend/src/cache/cache.module.ts`, `backend/src/cache/valkey.service.ts` |
@@ -674,6 +674,14 @@ that cache. "Go home" links and the home-page redirect use the upstream
   fallback rendered the listing with no error; a one-time purge of
   `_next/data/*` (or a cache rule that honors origin headers) removes the
   extra fallback request.
+- A `/new` thumbnail scan of the live 200-item feed found one placeholder:
+  share C6ZZ returned a 72-byte transparent WebP with
+  `X-Thumbnail-Reason: image-failed`. Its first preview was a 1.6 MB BMP that
+  the installed sharp build rejects (`Input file contains unsupported image
+  format`), even though the share also contains MP4 videos. The new ordered
+  fallback rebuilt the thumbnail from the second candidate. A local fixture
+  (same BMP first, a valid MP4 second) now produces a 218-byte 300x225 WebP
+  video-frame thumbnail instead of the placeholder.
 - Playwright against that database (11 smoke checks plus a 5-check upload
   flow): home page, footer stats, dynamic manifest, sign-in, account shares,
   share page with visitor badges and text preview, report modal, admin shares
@@ -1297,7 +1305,12 @@ that cache. "Go home" links and the home-page redirect use the upstream
 - Image shares reuse the existing per-file 300px WebP: the share thumbnail is
   a hardlink when possible (copy fallback), so a share with an image does not
   pay for a second image decode. JPEG, PNG, WebP, GIF, BMP, TIFF and AVIF
-  sources are supported. Video-only shares extract a frame with `ffmpeg`
+  sources are supported. `getPreviewCandidates` now supplies up to five
+  ordered fallbacks (the normal `findPreview` choice first, then the next
+  image/playable video). A corrupt/unsupported BMP that sharp cannot decode
+  therefore falls through to the share's video instead of leaving the listing
+  card blank; the failed candidate is logged and the rebuilt thumbnail is
+  cached normally. Video-only shares extract a frame with `ffmpeg`
   (`FFMPEG_PATH` first, then `ffmpeg` on PATH; a manually installed
   `ffmpeg-static` is also supported). A full build with H.264/MPEG-TS support
   is required for video thumbnails; `ffprobe` is not used. The frame is then
