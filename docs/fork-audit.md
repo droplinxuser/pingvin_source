@@ -1486,8 +1486,59 @@ that cache. "Go home" links and the home-page redirect use the upstream
   robots/sitemap/manifest and the backend `no-store` default. The new
   `X-Powered-By` removal and security headers were confirmed with `curl`.
 
+### Live verification (2026-10-27)
+
+- The deployed HTML included the pushed commit hash `d6f8552c`, so the update
+  served the exact code from this pass. The dynamic manifest still reported
+  `DropMB` and 16 icons, and the imprint/privacy pages kept their canonical
+  URLs and `DropMB` descriptions.
+- Header pass: `X-Powered-By` was absent from both the Next HTML and backend
+  API responses. Anonymous page shells, legal pages and share pages kept the
+  60-second edge policy; `/auth/signIn` and all redirects were `no-store`;
+  `/api/configs` and the new `/api/oauth/available` cache were 30 seconds
+  (OAuth showed a Cloudflare `HIT`); stats, recent, trending and share SEO were
+  60 seconds; comments were 30 days; the sitemap index was one hour; its chunk,
+  robots and the manifest were one day; public files and thumbnails had a
+  day-long immutable `CDN-Cache-Control` plus ETags and no `Set-Cookie`; the
+  share API, metadata endpoint and `HEAD` remained `no-store`. The live proxy
+  rewrites browser `Cache-Control` for XML/TXT/file responses, so the edge
+  policy was verified on `CDN-Cache-Control` as documented above.
+- Guest/signed-in/mobile Playwright pass: 32 routes plus focused share checks
+  covered home, new, trending, legal, sign-in, 404, public share, short link,
+  robots, sitemap, manifest, upload, all account pages, admin redirects and
+  390px dark mode. Every page had one H1 and no horizontal overflow; there were
+  zero application console errors, warnings, page exceptions or failed
+  application requests. The non-admin account was redirected from `/admin` to
+  `/upload`, and both `/api/admin/virustotal` and `/api/shares/all` returned
+  `403`.
+- Upload/paste pass: a two-file image+text share and a 22-file
+  (21 documents + one image named last) share completed through the live UI.
+  The synthetic text paste produced one file row and the per-file size hint.
+  The two-file share downloaded the text file with the original bytes and
+  deleted with a subsequent `404`. The 22-file share returned
+  `thumbnailUrl` and served a WebP `og:image` despite the only image sorting
+  after the first 20 files, verifying the 50-file SEO preview sample. All
+  temporary shares were deleted.
+- Reverse-share pass: the API created a reverse share, the new public payload
+  returned only DTO fields (no creator/account columns), a guest opened
+  `/upload/<token>`, uploaded, completed and rendered the resulting share, and
+  the owner deleted the reverse share. Its share returned `404` afterwards.
+  Invalid tokens returned `404`.
+- Redirect hardening: absolute, protocol-relative and encoded-backslash
+  `?redirect=` values returned a clean `307` to `/auth/signIn` with no external
+  `Location`. The sitemap chunk (15,742 URLs) contained `/new`, `/trending` and
+  current public shares; the robots file allowed `/new` and the versioned
+  thumbnail path.
+
 ## Known non-issues
 
+- The live page responses carry duplicate but identical `X-Frame-Options` and
+  `Referrer-Policy` values because Next and the Angie h5bp include both add
+  them. Browsers use the first value and both copies are `SAMEORIGIN` /
+  `strict-origin-when-cross-origin`; API responses carry one
+  `X-Content-Type-Options` and HSTS. Cloudflare does not echo
+  `Cloudflare-CDN-Cache-Control`, but it honors `CDN-Cache-Control` (observed
+  `HIT`).
 - The ad container reserves about 90px plus 24px margins while third-party
   tags load, then collapses after 5s if no ad content is present. A
   `MutationObserver` reopens it if an ad arrives later. The media gallery is
