@@ -11,7 +11,7 @@ import {
   UnstyledButton,
 } from "@mantine/core";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useIntl } from "react-intl";
 import { TbClockHour4, TbEye, TbPlayerPlay, TbWorld } from "react-icons/tb";
 import useTranslate from "../../hooks/useTranslate.hook";
@@ -19,6 +19,7 @@ import shareService from "../../services/share.service";
 import { TrendingCountry } from "../../types/share.type";
 import { countryCodeToFlag, getCountryName } from "../../utils/country.util";
 import { getShareThumbnailUrl } from "../../utils/file.util";
+import { HoverTip } from "../core/HoverTip";
 import LazyImage from "../core/LazyImage";
 
 const useStyles = createStyles((theme) => {
@@ -33,12 +34,12 @@ const useStyles = createStyles((theme) => {
 
   return {
     root: {
-      marginTop: theme.spacing.xl,
-      marginBottom: theme.spacing.xl,
-      padding: theme.spacing.lg,
+      marginTop: theme.spacing.lg,
+      marginBottom: theme.spacing.lg,
+      padding: theme.spacing.md,
 
       [theme.fn.smallerThan("xs")]: {
-        padding: theme.spacing.md,
+        padding: theme.spacing.sm,
       },
     },
 
@@ -50,8 +51,8 @@ const useStyles = createStyles((theme) => {
       display: "flex",
       alignItems: "center",
       justifyContent: "center",
-      width: 38,
-      height: 38,
+      width: 34,
+      height: 34,
       flexShrink: 0,
       borderRadius: theme.radius.md,
       color: primary,
@@ -81,39 +82,38 @@ const useStyles = createStyles((theme) => {
     },
 
     tabs: {
-      marginTop: theme.spacing.xs,
+      marginTop: 0,
     },
 
     tabList: {
       flexWrap: "wrap",
-      gap: 6,
+      gap: 4,
       borderBottom: 0,
     },
 
     tab: {
       display: "inline-flex",
       alignItems: "center",
-      gap: 6,
-      height: 36,
-      padding: "0 11px",
-      fontSize: theme.fontSizes.sm,
+      justifyContent: "center",
+      height: 32,
+      minWidth: 32,
+      padding: "0 7px",
       fontWeight: 600,
 
-      "&[data-active] span:last-of-type": {
+      "&[data-active] span[data-count]": {
         backgroundColor: "rgba(255, 255, 255, 0.22)",
         color: theme.white,
       },
     },
 
     tabCount: {
-      marginLeft: 1,
-      padding: "1px 5px",
+      padding: "0 4px",
       borderRadius: 999,
       backgroundColor: theme.fn.rgba(primary, 0.12),
       color: primary,
-      fontSize: 10,
+      fontSize: 9,
       fontWeight: 800,
-      lineHeight: 1.35,
+      lineHeight: 1.6,
       fontVariantNumeric: "tabular-nums",
     },
 
@@ -121,24 +121,25 @@ const useStyles = createStyles((theme) => {
       display: "inline-flex",
       alignItems: "center",
       justifyContent: "center",
-      width: 22,
-      height: 18,
+      width: 20,
+      height: 16,
+      marginRight: 4,
       flexShrink: 0,
-      fontSize: 16,
+      fontSize: 15,
       lineHeight: 1,
     },
 
     list: {
-      marginTop: theme.spacing.md,
+      marginTop: theme.spacing.sm,
     },
 
     row: {
       display: "flex",
       alignItems: "center",
-      gap: theme.spacing.sm,
+      gap: 6,
       width: "100%",
       minWidth: 0,
-      padding: 8,
+      padding: 6,
       border: `1px solid ${border}`,
       borderRadius: theme.radius.sm,
       backgroundColor: rowBackground,
@@ -168,8 +169,8 @@ const useStyles = createStyles((theme) => {
       display: "flex",
       alignItems: "center",
       justifyContent: "center",
-      width: 24,
-      height: 24,
+      width: 22,
+      height: 22,
       flexShrink: 0,
       borderRadius: "50%",
       backgroundColor:
@@ -177,7 +178,7 @@ const useStyles = createStyles((theme) => {
           ? theme.colors.dark[6]
           : theme.colors.gray[1],
       color: muted,
-      fontSize: theme.fontSizes.xs,
+      fontSize: 10,
       fontWeight: 800,
       textAlign: "center",
       fontVariantNumeric: "tabular-nums",
@@ -193,8 +194,8 @@ const useStyles = createStyles((theme) => {
       display: "flex",
       alignItems: "center",
       justifyContent: "center",
-      width: 44,
-      height: 44,
+      width: 38,
+      height: 38,
       flexShrink: 0,
       overflow: "hidden",
       border: `1px solid ${border}`,
@@ -240,10 +241,10 @@ const useStyles = createStyles((theme) => {
     meta: {
       display: "flex",
       alignItems: "center",
-      gap: 4,
-      marginTop: 2,
+      gap: 3,
+      marginTop: 1,
       color: muted,
-      fontSize: theme.fontSizes.xs,
+      fontSize: 11,
       lineHeight: 1.2,
     },
   };
@@ -284,13 +285,28 @@ const TrendingCountries = ({
     };
   }, [countries]);
 
+  const compactNumber = useMemo(
+    () =>
+      new Intl.NumberFormat(intl.locale, {
+        notation: "compact",
+        maximumFractionDigits: 1,
+      }),
+    [intl.locale],
+  );
+
   if (isLoading) return <TrendingCountriesSkeleton />;
   if (!items.length) return null;
 
   const visibleCountries = items.filter((country) => country.shares.length > 0);
   if (visibleCountries.length === 0) return null;
 
-  const formatCount = (value: number) => intl.formatNumber(value);
+  const formatCount = (value: number) => compactNumber.format(value);
+  const formatViews = (views: number) =>
+    views < 1000
+      ? t("trending.custom.countries.views", { count: views })
+      : t("trending.custom.countries.views-compact", {
+          count: formatCount(views),
+        });
   const initialCountry = visibleCountries[0].country;
 
   return (
@@ -311,12 +327,12 @@ const TrendingCountries = ({
         position="apart"
         align="flex-start"
         spacing="md"
-        mb="md"
+        mb="sm"
         className={classes.header}
       >
         <Group spacing="sm" noWrap>
           <Box className={classes.headingIcon}>
-            <TbWorld size={20} aria-hidden />
+            <TbWorld size={18} aria-hidden />
           </Box>
           <Box sx={{ minWidth: 0 }}>
             <Title
@@ -346,17 +362,20 @@ const TrendingCountries = ({
           {visibleCountries.map(({ country, views }) => {
             const name = getCountryName(country, intl.locale);
             return (
-              <Tabs.Tab key={country} value={country} className={classes.tab}>
-                <Box component="span" className={classes.flag} aria-hidden>
-                  {countryCodeToFlag(country)}
-                </Box>
-                <Text component="span" size="sm" weight={600}>
-                  {name}
-                </Text>
-                <Box component="span" className={classes.tabCount}>
-                  {formatCount(views)}
-                </Box>
-              </Tabs.Tab>
+              <HoverTip key={country} label={name} position="top">
+                <Tabs.Tab
+                  value={country}
+                  className={classes.tab}
+                  aria-label={`${name} — ${formatViews(views)}`}
+                >
+                  <Box component="span" className={classes.flag} aria-hidden>
+                    {countryCodeToFlag(country)}
+                  </Box>
+                  <Box component="span" className={classes.tabCount} data-count>
+                    {formatCount(views)}
+                  </Box>
+                </Tabs.Tab>
+              </HoverTip>
             );
           })}
         </Tabs.List>
@@ -373,8 +392,8 @@ const TrendingCountries = ({
             >
               <SimpleGrid
                 cols={2}
-                spacing="sm"
-                verticalSpacing="sm"
+                spacing="xs"
+                verticalSpacing="xs"
                 className={classes.list}
                 breakpoints={[{ maxWidth: "sm", cols: 1 }]}
               >
@@ -387,10 +406,7 @@ const TrendingCountries = ({
                       href={`/share/${item.id}`}
                       className={classes.row}
                       title={label}
-                      aria-label={`${label} — ${t(
-                        "trending.custom.countries.views",
-                        { count: item.views },
-                      )}`}
+                      aria-label={`${label} — ${formatViews(item.views)}`}
                     >
                       <Box
                         component="span"
@@ -398,7 +414,7 @@ const TrendingCountries = ({
                           index < 3 ? classes.rankTop : ""
                         }`}
                       >
-                        {formatCount(index + 1)}
+                        {index + 1}
                       </Box>
                       <Box component="span" className={classes.thumb}>
                         <LazyImage
@@ -430,10 +446,8 @@ const TrendingCountries = ({
                           {label}
                         </Text>
                         <Box component="span" className={classes.meta}>
-                          <TbEye size={13} aria-hidden />
-                          {t("trending.custom.countries.views", {
-                            count: item.views,
-                          })}
+                          <TbEye size={12} aria-hidden />
+                          {formatViews(item.views)}
                         </Box>
                       </Box>
                     </UnstyledButton>
@@ -463,11 +477,11 @@ export const TrendingCountriesSkeleton = () => {
         position="apart"
         align="flex-start"
         spacing="md"
-        mb="md"
+        mb="sm"
         className={classes.header}
       >
         <Group spacing="sm" noWrap>
-          <Skeleton height={38} width={38} radius="md" />
+          <Skeleton height={34} width={34} radius="md" />
           <Box sx={{ minWidth: 0 }}>
             <Skeleton height={14} width={220} radius="sm" />
             <Skeleton height={10} width={170} mt={6} radius="sm" />
@@ -476,22 +490,22 @@ export const TrendingCountriesSkeleton = () => {
         <Skeleton height={12} width={110} radius="sm" />
       </Group>
 
-      <Group spacing={6}>
-        {[110, 96, 104, 90, 100, 108, 94, 102, 98, 106].map((width, index) => (
-          <Skeleton key={index} height={36} width={width} radius="sm" />
+      <Group spacing={4}>
+        {Array.from({ length: 10 }, (_, index) => (
+          <Skeleton key={index} height={32} width={58} radius="sm" />
         ))}
       </Group>
 
       <SimpleGrid
         cols={2}
-        spacing="sm"
-        verticalSpacing="sm"
+        spacing="xs"
+        verticalSpacing="xs"
         className={classes.list}
         breakpoints={[{ maxWidth: "sm", cols: 1 }]}
       >
         {/* The backend caps each country panel at ten shares (five rows). */}
         {Array.from({ length: 10 }, (_, index) => (
-          <Skeleton key={index} height={62} radius="sm" />
+          <Skeleton key={index} height={50} radius="sm" />
         ))}
       </SimpleGrid>
     </Paper>

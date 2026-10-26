@@ -1177,7 +1177,10 @@ that cache. "Go home" links and the home-page redirect use the upstream
   existing `LazySection` continues to defer share galleries, file lists,
   comments and visitor insights. `getRecent` returns at most 200 items and each
   country panel still holds at most ten shares; the country list is capped at
-  ten countries.
+  ten countries. The top-country tabs are compact flag-only buttons with a
+  shortened compact view count (`10.4K`, `980`); the full country name is in a
+  tooltip and the tab's accessible label. The tab row is 32px high, and panel
+  rows/counts use tighter spacing and compact numbers (`2.1K views`).
 - Verified locally with both production builds, all 112 backend unit tests,
   clean frontend lint and a Playwright pass over guest and signed-in routes.
   The pass confirmed the navigation bar, relative timestamps and full-date
