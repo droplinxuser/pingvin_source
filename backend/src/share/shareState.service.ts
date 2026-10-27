@@ -12,6 +12,7 @@ import { Request } from "express";
 import * as moment from "moment";
 import { I18nService } from "nestjs-i18n";
 import { PrismaService } from "src/prisma/prisma.service";
+import { MetricsService } from "src/cache/metrics.service";
 import { TrendingService } from "src/cache/trending.service";
 import { parseRelativeDateToAbsolute } from "src/utils/date.util";
 import { KeyedLock } from "src/utils/keyedLock.util";
@@ -96,6 +97,7 @@ export class ShareStateService implements OnApplicationShutdown {
     private prisma: PrismaService,
     private readonly i18n: I18nService,
     private readonly trending: TrendingService,
+    private readonly metrics: MetricsService,
     @Inject(CACHE_MANAGER) private cache: Cache,
   ) {}
 
@@ -458,9 +460,12 @@ export class ShareStateService implements OnApplicationShutdown {
         };
       }
 
-      info.visitors = [...(info.visitors ?? []), getVisitorInfo(request)].slice(
-        -MAX_VISITORS,
-      );
+      const visitor = getVisitorInfo(request);
+      // Aggregate the external referrer domain for the admin dashboard. This
+      // is fire-and-forget: a cache hiccup must not delay the share response.
+      if (visitor.referrer)
+        void this.metrics.recordReferrer(visitor.referrer).catch(() => {});
+      info.visitors = [...(info.visitors ?? []), visitor].slice(-MAX_VISITORS);
       this.pendingVisitors.set(shareId, info);
       this.queueVisitorWrite(shareId);
       return info;

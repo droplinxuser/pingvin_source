@@ -1,4 +1,4 @@
-import { Box, Card } from "@mantine/core";
+import { Card } from "@mantine/core";
 import { getCookie } from "cookies-next/client";
 import { useEffect, useRef, useState } from "react";
 import useUser from "../hooks/user.hook";
@@ -98,46 +98,38 @@ const Ads = ({ gallery = false }: { gallery?: boolean }) => {
       observer?.disconnect();
       scripts.forEach((script) => script.remove());
     };
-  }, [gallery, isGuest]);
+  }, [isGuest]);
 
   if (!isGuest) return null;
 
-  if (gallery) {
-    return (
-      <Card
-        data-testid="share-gallery-ad"
-        withBorder
-        radius="md"
-        p="sm"
-        mb="xl"
-        sx={{ display: collapsed ? "none" : "block" }}
-      >
-        <Box
-          ref={bannerRef}
-          aria-label="Advertisement"
-          sx={{
-            display: "flex",
-            justifyContent: "center",
-            minHeight: 90,
-            width: "100%",
-          }}
-        />
-      </Card>
-    );
-  }
-
+  // Keep one stable DOM node for every page variant. The share page switches
+  // the `gallery` layout after its data arrives; swapping an <aside> for a
+  // Card here used to unmount the element that held the injected ad scripts
+  // (and any popup opener), so the scripts were torn down and re-injected.
+  // Conditional props/styles now change the same node and the scripts keep
+  // running for the lifetime of the page.
   return (
-    <aside
+    <Card
       ref={bannerRef}
+      data-testid={gallery ? "share-gallery-ad" : undefined}
       aria-label="Advertisement"
-      style={{
+      withBorder={gallery}
+      radius={gallery ? "md" : undefined}
+      p={gallery ? "sm" : 0}
+      mb={gallery ? "xl" : 0}
+      sx={{
         display: collapsed ? "none" : "flex",
         justifyContent: "center",
-        margin: collapsed ? 0 : "24px auto",
-        minHeight: collapsed ? 0 : 90,
+        alignItems: "center",
         width: "100%",
+        minHeight: collapsed ? 0 : 90,
+        ...(gallery
+          ? {}
+          : { margin: "24px auto", background: "transparent", border: 0 }),
       }}
-    />
+    >
+      <span style={{ display: "none" }} />
+    </Card>
   );
 };
 

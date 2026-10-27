@@ -386,6 +386,7 @@ export default {
   "admin.button.config": "Configuration",
   "admin.button.virustotal": "VirusTotal",
   "admin.button.custom.logs": "Error logs",
+  "admin.button.custom.referrers": "Top referrers",
   "admin.version": "Version",
   // END /admin
 
@@ -435,6 +436,20 @@ export default {
   "admin.logs.custom.hint.env":
     "The newest 100 entries are kept per source for 7 days. Logs prefer Valkey and fall back to process memory; nothing is written to SQLite.",
   // END /admin/logs
+
+  // /admin/referrer
+  "admin.referrer.custom.title": "Top referrers",
+  "admin.referrer.custom.subtitle":
+    "External websites that sent visitors to share pages.",
+  "admin.referrer.custom.refresh": "Refresh referrers",
+  "admin.referrer.custom.domain": "Domain",
+  "admin.referrer.custom.views": "Views",
+  "admin.referrer.custom.empty":
+    "No referrer data yet. New share views will appear here.",
+  "admin.referrer.custom.load-error": "Could not load referrer data.",
+  "admin.referrer.custom.retry": "Try again",
+  "admin.referrer.custom.total": "{count} domains",
+  // END /admin/referrer
 
   // /admin/virustotal
   "admin.virustotal.custom.title": "VirusTotal scanning",

@@ -5,7 +5,7 @@ import { promises as fs } from "fs";
 import { Request } from "express";
 import * as path from "path";
 import { DATA_DIRECTORY } from "src/constants";
-import { MetricsService, PageViewMetrics } from "src/cache/metrics.service";
+import { MetricsService, PageViewMetrics, ReferrerPage } from "src/cache/metrics.service";
 import {
   ValkeyMetrics,
   emptyValkeyMetrics,
@@ -103,6 +103,10 @@ export class SystemService {
       this.metrics.recordPageView(country),
     ]);
     return { ...base, ...pageViews };
+  }
+
+  async getReferrers(page: number, pageSize: number): Promise<ReferrerPage> {
+    return this.metrics.getReferrers(page, pageSize);
   }
 
   // Sitemap artifacts are written to the persistent data directory. They are

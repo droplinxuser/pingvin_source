@@ -2047,6 +2047,49 @@ needed for the fix.
   frontend/backend builds and lint pass. The fix requires one more live
   deployment, after which the reverse-share flow will be re-checked.
 
+## Admin referrers page and ad slot stability (2026-10-27, eighth)
+
+- New admin page `/admin/referrer` with a card on the admin dashboard. It lists
+  external referrer hostnames and view counts, 50 rows per page, with the
+  admin-only API `GET /api/system/referrers?page=&pageSize=`. `pageSize` is
+  capped at 100; the API returns `{ referrers, total, page, pageSize }` and
+  stays `no-store`. Anonymous and non-admin requests return 403; the page is a
+  middleware-protected admin route and is `noindex`.
+- Storage uses one capped Valkey sorted set (`pingvin:metrics:referrers`):
+  `ZINCRBY` per external share view, top 2000 domains retained, 90-day TTL.
+  Only hostnames are stored (no paths/query strings), `www.` is stripped and
+  direct/same-site visits, IPs and malformed values are ignored. When Valkey is
+  unavailable a bounded in-process map with the same ordering/pagination is
+  used. Nothing is written to SQLite. Counts start with new share views; the
+  existing per-share visitor history is not backfilled.
+- The dashboard card uses `admin.button.custom.referrers`; the page adds
+  `admin.referrer.custom.*` English keys and falls back through the shared
+  English catalogue for other locales.
+- Ad slot: `Ads` now renders one stable `Card` for both the share and 404
+  layouts and only changes props/styles when `gallery` changes. Previously it
+  swapped an `<aside>` for a `Card`, which unmounted the node holding the
+  injected ad scripts (and any popup opener) as share data arrived, then
+  re-injected them. The effect now depends only on `isGuest`; the injection,
+  MutationObserver and cleanup stay attached to the same DOM node.
+- Ad diagnosis: the app contains no `window.close` call. A control
+  `window.open("https://example.com/")` stayed open, and a real banner click in
+  a non-headless Chromium opened the ad network's redirect chain and kept the
+  tab open for the whole observation window. The chain drops `window.opener` at
+  the third-party landing page (`sowve.com` -> `draviel.com`); removing our
+  `Cross-Origin-Opener-Policy` header did not change that. The only app-side
+  teardown found was the unstable ad slot above, now fixed. If a creative still
+  closes its own tab in a real browser, that is the ad landing page or a local
+  popup policy, not an application `close()`.
+- Verified locally: 133 backend tests pass (including the new referrer
+  ordering/pagination/validation tests), backend lint has only the upstream
+  `any` warnings, frontend build and lint pass, and Playwright covered the
+  guest/member/mobile routes with zero application console errors. The referrer
+  API returned 403 anonymously and for the non-admin, `no-store` for the admin,
+  and a fixture of 63 domains produced 50 rows on page 1 and 13 on page 2; the
+  page had one H1, noindex, no overflow at 1366px or 390px, and no console
+  errors. The ad slot kept one injected banner script connected across
+  re-renders on both the share gallery and the 404 layout.
+
 ## Known non-issues
 
 - Cloudflare does not echo `Cloudflare-CDN-Cache-Control`, but it honors

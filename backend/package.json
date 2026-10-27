@@ -7,7 +7,7 @@
     "prod": "prisma migrate deploy && prisma db seed && node dist/src/main",
     "lint": "eslint 'src/**/*.ts'",
     "format": "prettier --end-of-line=auto --write 'src/**/*.ts'",
-    "test:unit": "npm run build && node --test test/view-limit.test.js test/visitor-identity.test.js test/valkey-throttler.test.js test/uploader-info.test.js test/http-cache.test.js test/storage-quota.test.js test/local-file.test.js test/metrics.test.js test/valkey-metrics.test.js test/error-logs.test.js test/trending.test.js test/share-thumbnail.test.js test/share-state.test.js test/sitemap-disk.test.js test/comments.test.js test/archive-encryption.test.js test/virustotal-audit.test.js test/virustotal-file-removal.test.js test/virustotal-queue.test.js test/virustotal.test.js test/email-malware-notification.test.js test/reverse-share-guard.test.js",
+    "test:unit": "npm run build && node --test test/view-limit.test.js test/visitor-identity.test.js test/valkey-throttler.test.js test/uploader-info.test.js test/http-cache.test.js test/storage-quota.test.js test/local-file.test.js test/metrics.test.js test/valkey-metrics.test.js test/error-logs.test.js test/trending.test.js test/share-thumbnail.test.js test/share-state.test.js test/sitemap-disk.test.js test/comments.test.js test/archive-encryption.test.js test/virustotal-audit.test.js test/virustotal-file-removal.test.js test/virustotal-queue.test.js test/virustotal.test.js test/email-malware-notification.test.js test/reverse-share-guard.test.js test/referrer.test.js",
     "test:system": "prisma migrate reset -f && nest start & wait-on http://localhost:8080/api/configs && npx newman run ./test/newman-system-tests.json"
   },
   "prisma": {

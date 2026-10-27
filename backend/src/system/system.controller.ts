@@ -4,6 +4,7 @@ import {
   HttpCode,
   Param,
   Post,
+  Query,
   Req,
   Res,
   UseGuards,
@@ -15,6 +16,7 @@ import { JwtGuard } from "src/auth/guard/jwt.guard";
 import { SystemService, SystemStats } from "./system.service";
 import { getEdgeCacheHeaders } from "src/utils/cache.util";
 import { getRequestCountry } from "src/utils/uploaderInfo.util";
+import { parsePagination } from "src/utils/pagination.util";
 import { SystemInfoDTO } from "./dto/systemInfo.dto";
 
 @Controller("system")
@@ -31,6 +33,19 @@ export class SystemController {
   @UseGuards(JwtGuard, AdministratorGuard)
   async getValkeyMetrics() {
     return await this.systemService.getValkeyMetrics();
+  }
+
+  @Get("referrers")
+  @UseGuards(JwtGuard, AdministratorGuard)
+  async getReferrers(
+    @Query("page") page = "1",
+    @Query("pageSize") pageSize = "50",
+  ) {
+    const pagination = parsePagination(page, pageSize);
+    return this.systemService.getReferrers(
+      pagination.page,
+      pagination.pageSize,
+    );
   }
 
   @Get("stats")

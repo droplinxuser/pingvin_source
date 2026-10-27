@@ -33,6 +33,18 @@ export interface ValkeyMetrics {
   connectedClients: number | null;
 }
 
+export interface ReferrerEntry {
+  domain: string;
+  views: number;
+}
+
+export interface ReferrerPage {
+  referrers: ReferrerEntry[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
 const getSystemInfo = async (): Promise<SystemInfo | null> => {
   return (await api.get("system/info")).data;
 };
@@ -49,9 +61,19 @@ const recordPageView = async (): Promise<SystemStats> => {
   return (await api.post("system/pageview")).data;
 };
 
+const getReferrers = async (
+  page = 1,
+  pageSize = 50,
+): Promise<ReferrerPage> => {
+  return (
+    await api.get("system/referrers", { params: { page, pageSize } })
+  ).data;
+};
+
 export default {
   getSystemInfo,
   getSystemStats,
   getValkeyMetrics,
   recordPageView,
+  getReferrers,
 };

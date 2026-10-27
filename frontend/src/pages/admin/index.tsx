@@ -17,6 +17,7 @@ import {
   TbUsers,
   TbVirus,
   TbFileText,
+  TbWorld,
 } from "react-icons/tb";
 import { FormattedMessage } from "react-intl";
 import Meta from "../../components/Meta";
@@ -63,6 +64,11 @@ const Admin = () => {
       title: t("admin.button.custom.logs"),
       icon: TbFileText,
       route: "/admin/logs",
+    },
+    {
+      title: t("admin.button.custom.referrers"),
+      icon: TbWorld,
+      route: "/admin/referrer",
     },
     {
       title: t("admin.button.config"),
