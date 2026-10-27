@@ -1594,6 +1594,44 @@ that cache. "Go home" links and the home-page redirect use the upstream
   exceptions, failed requests or horizontal overflow. The temporary shares
   were deleted and both API and SEO routes returned 404 afterwards.
 
+#### Live verification
+
+- The deployed manifest/build markers reported `3e08c479`. The cached home
+  HTML switched from the previous build to `3e08c479` after its 60-second TTL;
+  a cache-busted home request returned the same build immediately.
+- A temporary two-file share was created through the live API, completed,
+  rendered its 300px WebP thumbnail/gallery, downloaded the text file with the
+  original bytes, accepted a comment (then deleted it), opened its owner edit
+  page, and returned 404 from the share and SEO APIs after deletion.
+- Playwright covered 28 guest, signed-in and 390px dark-mode routes plus a
+  separate guest mobile pass. Every page returned the expected status, had one
+  H1 (documents excluded), no horizontal overflow and no images without alt.
+  There were zero application console errors/warnings, page exceptions or
+  failed application requests. The only console entries with ads enabled came
+  from the third-party ad vendors.
+- Security headers are each present exactly once: `X-Content-Type-Options`,
+  `X-Frame-Options`, `Referrer-Policy` and HSTS; `X-Powered-By` is absent.
+  Public page shells, share SEO, comments, files, thumbnails, stats, recent,
+  trending, robots, the sitemap index/chunk and the manifest all returned their
+  documented `CDN-Cache-Control` policies; public files kept an ETag and no
+  `Set-Cookie`. Robots lists `/new` and the sitemap; the sitemap index points
+  at one 15,745-URL chunk containing `/new` and `/trending`; the manifest names
+  `DropMB` with 16 icons.
+- Edge header observation: fresh (`MISS`/`BYPASS`) responses have one correct
+  `Cache-Control`. Cloudflare serves an extra `Cache-Control: no-store` beside
+  the public value on cached `HIT`/`REVALIDATED` responses for `/`,
+  `/api/configs?v=...` and `/api/oauth/available?v=...`. `CDN-Cache-Control`
+  remains correct and edge caching works; the origin (verified locally and via
+  cache-busted requests) emits a single header. Purging those URLs or reviewing
+  the edge Cache/Transform rule removes the duplicate. The versioned config and
+  provider URLs still give each deployment a fresh origin read, but they do not
+  prevent the edge from adding the extra header once the response is cached.
+- Comments are versioned by the app (`?v=<commentsVersion>&page=N`); the
+  versioned URL refreshes immediately after a mutation. A request that omits
+  `v` can be served from a 30-day edge copy, so clients and tooling should keep
+  the version parameter. Purging `/api/shares/*/comments` clears old
+  unversioned copies.
+
 ## Known non-issues
 
 - Cloudflare does not echo `Cloudflare-CDN-Cache-Control`, but it honors
@@ -1612,13 +1650,17 @@ that cache. "Go home" links and the home-page redirect use the upstream
 - The recent-visitor list is intentionally visible to every site visitor,
   matching the original fork behavior. It contains the last 18 visitors'
   country/city/browser/OS/referrer values.
-- The live CDN still stores `/api/configs` and `/api/oauth/available` at the
-  **unversioned** URLs with a stale duplicate `Cache-Control: no-store` beside
-  the current public header. The app no longer requests those keys: SSR,
-  middleware, the client config refresh and the sign-in OAuth probe now add
-  `?v=<build>` (see `version.util.ts`), so a deployment reads a fresh origin
-  response with the single public header. The old copies expire naturally and
-  can also be purged; the response bodies were never affected.
+- Cloudflare adds a duplicate `Cache-Control: no-store` beside the public value
+  on cached responses for `/`, `/api/configs` and `/api/oauth/available`
+  (including their `?v=<build>` keys). Fresh origin/cache-busted responses have
+  a single public header, `CDN-Cache-Control` is unaffected and the edge still
+  caches correctly. The app adds `?v=<build>` (see `version.util.ts`) so each
+  deployment reads a fresh origin response. Purging those URLs or reviewing
+  the edge Cache/Transform rule removes the duplicate; bodies are unaffected.
+- Public comments are cached for 30 days, keyed by the app's `?v=<version>`
+  query. A request without `v` can keep an old copy until the edge TTL expires;
+  the application always sends the version, and purging the comments URL clears
+  stale unversioned entries.
 - Chrome may log the expected `403` while a protected share page fetches its
   share token, and `404`s for intentionally missing shares. These are network
   status logs, not JavaScript exceptions; the page recovers and renders
