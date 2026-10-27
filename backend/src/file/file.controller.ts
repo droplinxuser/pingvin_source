@@ -23,9 +23,15 @@ import { IdValidation } from "src/share/guard/shareIdValidation.guard";
 import {
   getDownloadCacheHeaders,
   getZipCacheHeaders,
+  isNotModified,
 } from "src/utils/cache.util";
 import { getFileMimeType } from "src/utils/mime.util";
 import { isRequestFromApp, redirectToSharePage } from "src/utils/referrer.util";
+import {
+  UploadAbortDTO,
+  UploadCompleteDTO,
+  UploadInitDTO,
+} from "./dto/upload.dto";
 import { FileService } from "./file.service";
 import { FileSecurityGuard } from "./guard/fileSecurity.guard";
 
@@ -52,12 +58,7 @@ export class FileController {
   @SkipThrottle({ default: true, visitor: true })
   @UseGuards(IdValidation, CreateShareGuard, StrictShareOwnerGuard)
   async uploadInit(
-    @Body()
-    body: {
-      id?: string;
-      name: string;
-      totalChunks: number;
-    },
+    @Body() body: UploadInitDTO,
     @Param("shareId") shareId: string,
   ) {
     return await this.fileService.createPreSignedUploadUrls(
@@ -71,13 +72,7 @@ export class FileController {
   @SkipThrottle({ default: true, visitor: true })
   @UseGuards(IdValidation, CreateShareGuard, StrictShareOwnerGuard)
   async uploadComplete(
-    @Body()
-    body: {
-      id?: string;
-      name: string;
-      uploadId: string;
-      parts: Array<{ ETag: string; PartNumber: number }>;
-    },
+    @Body() body: UploadCompleteDTO,
     @Param("shareId") shareId: string,
   ) {
     return await this.fileService.completePreSignedUpload(
@@ -93,11 +88,7 @@ export class FileController {
   @SkipThrottle({ default: true, visitor: true })
   @UseGuards(IdValidation, CreateShareGuard, StrictShareOwnerGuard)
   async uploadAbort(
-    @Body()
-    body: {
-      name: string;
-      uploadId: string;
-    },
+    @Body() body: UploadAbortDTO,
     @Param("shareId") shareId: string,
   ) {
     await this.fileService.abortPreSignedUpload(
@@ -207,14 +198,20 @@ export class FileController {
         storageProvider,
       );
       if (preview) {
+        const etag = `"${shareId}-${fileId}-webp-v300"`;
+        const cacheHeaders = getDownloadCacheHeaders(
+          (req as FileRequest).shareIsPublic === true,
+          etag,
+        );
+        if (isNotModified(req, cacheHeaders.ETag)) {
+          res.status(HttpStatus.NOT_MODIFIED).set(cacheHeaders).end();
+          return;
+        }
         res.set({
           "Content-Type": "image/webp",
           "Content-Length": preview.size,
           "X-Content-Type-Options": "nosniff",
-          ...getDownloadCacheHeaders(
-            (req as FileRequest).shareIsPublic === true,
-            `"${shareId}-${fileId}-webp-v300"`,
-          ),
+          ...cacheHeaders,
         });
         return new StreamableFile(createReadStream(preview.path));
       }
@@ -225,9 +222,12 @@ export class FileController {
         shareId,
         fileId,
         isDownload,
+        storageProvider,
       );
-      const fileName = await this.fileService.getFileName(shareId, fileId);
+      // The name is only needed for the download notification; an inline
+      // preview must not pay for another metadata query.
       if (isDownload) {
+        const fileName = await this.fileService.getFileName(shareId, fileId);
         void this.fileService.notifyRecipientDownload(
           shareId,
           fileName,
@@ -289,13 +289,16 @@ export class FileController {
       headers["Content-Security-Policy"] = "sandbox";
     }
 
-    Object.assign(
-      headers,
-      getDownloadCacheHeaders(
-        (req as FileRequest).shareIsPublic === true,
-        `"${shareId}-${fileId}-${totalSize}"`,
-      ),
+    const cacheHeaders = getDownloadCacheHeaders(
+      (req as FileRequest).shareIsPublic === true,
+      `"${shareId}-${fileId}-${totalSize}"`,
     );
+    Object.assign(headers, cacheHeaders);
+
+    if (isNotModified(req, cacheHeaders.ETag)) {
+      res.status(HttpStatus.NOT_MODIFIED).set(headers).end();
+      return;
+    }
 
     res.set(headers);
 

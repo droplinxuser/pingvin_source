@@ -20,9 +20,10 @@ const FILE_NAME = "comments.json";
 const MAX_COMMENTS = 500;
 export const MAX_COMMENT_LENGTH = 1000;
 export const COMMENTS_PAGE_SIZE = 20;
-// A month at the edge. The version in the share data keeps new comments from
-// being hidden behind an old cached URL.
-export const COMMENTS_EDGE_CACHE_SECONDS = 30 * 24 * 60 * 60;
+// A day at the edge. The version in the share data keeps new comments from
+// being hidden behind an old cached URL, while deleted content disappears from
+// the CDN within a day even if its old versioned URL is still requested.
+export const COMMENTS_EDGE_CACHE_SECONDS = 24 * 60 * 60;
 
 // Bare domains are only stripped when they use a known public suffix. This
 // avoids turning ordinary words such as "node.js" into empty comments.

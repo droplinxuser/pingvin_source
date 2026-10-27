@@ -165,7 +165,8 @@ const SharePage = ({
         })
       : undefined;
   }, [indexable, seo, shareId]);
-  const displayName = subject || shareName || shareId;
+  // Keep the visible H1/breadcrumb complete; only the meta title is shortened.
+  const displayName = shareName || subject || shareId;
   const displayDescription = share?.description || seo?.description;
   const skeletonMediaCount = indexable
     ? (seo?.files ?? []).filter((file) => isLikelyGalleryMedia(file.name))
@@ -275,7 +276,9 @@ const SharePage = ({
             image: seo.thumbnailUrl,
             mainEntity: {
               "@type": "ItemList",
-              numberOfItems: displayFileCount,
+              // The SEO payload samples the first 50 files; keep the declared
+              // count equal to the emitted entries.
+              numberOfItems: (seo.files ?? []).length,
               itemListElement: (seo.files ?? []).map((file, position) => ({
                 "@type": "ListItem",
                 position: position + 1,
@@ -335,8 +338,15 @@ const SharePage = ({
             t("share.error.visitor-limit-exceeded.description"),
             "go-home",
           );
-        } else if (error == "share_password_required") {
-          showEnterPasswordModal(modals, getShareToken);
+        } else if (
+          error == "share_password_required" ||
+          error == "wrong_password"
+        ) {
+          // An initial probe opens the form; a submitted password rejects so
+          // the same form can render its inline error.
+          if (password === undefined)
+            showEnterPasswordModal(modals, getShareToken);
+          else throw e;
         } else {
           toast.axiosError(e);
         }
@@ -521,7 +531,7 @@ const SharePage = ({
         )}
       </LazySection>
 
-      <Ads gallery={hasGalleryMedia} />
+      {!share?.hasPassword && <Ads gallery={hasGalleryMedia} />}
 
       <LazySection
         placeholder={<FileListSkeleton count={fileSkeletonCount} />}

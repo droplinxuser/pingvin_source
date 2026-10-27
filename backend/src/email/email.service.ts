@@ -47,18 +47,38 @@ export class EmailService {
   private formatTemplate(
     template: string,
     vars: Record<string, string | undefined>,
+    escapeForHtml = false,
   ): string {
     // {appName} is available to every email template
     const templateVars = {
       appName: this.config.get("general.appName"),
       ...vars,
     };
+    // Share names, file names and report messages are user-controlled. When
+    // the message is sent as HTML they must not be able to inject markup.
+    const values = escapeForHtml
+      ? this.escapeHtmlVars(templateVars)
+      : templateVars;
+
     return template
       .replaceAll("\\n", "\n")
-      .replace(
-        /\{([a-zA-Z0-9_-]+)\}/g,
-        (match, key) => templateVars[key] ?? match,
-      );
+      .replace(/\{([a-zA-Z0-9_-]+)\}/g, (match, key) => values[key] ?? match);
+  }
+
+  private escapeHtmlVars(vars: Record<string, string | undefined>) {
+    if (!this.config.get("email.sendHtmlEmails")) return vars;
+
+    const escape = (value?: string) =>
+      value
+        ?.replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#39;");
+
+    return Object.fromEntries(
+      Object.entries(vars).map(([key, value]) => [key, escape(value)]),
+    ) as Record<string, string | undefined>;
   }
 
   private async sendMail(
@@ -144,6 +164,7 @@ export class EmailService {
       this.formatTemplate(
         this.config.get("email.shareRecipientsMessage"),
         vars,
+        true,
       ),
       replyTo,
       recipientName,
@@ -181,6 +202,7 @@ export class EmailService {
       this.formatTemplate(
         this.config.get("email.shareDownloadNotificationMessage"),
         vars,
+        true,
       ),
       undefined,
       creatorName,
@@ -214,7 +236,9 @@ export class EmailService {
     await this.sendMail(
       recipientEmail,
       this.i18n.t("email.malwareRemovedSubject", { args: vars }),
-      this.i18n.t("email.malwareRemovedText", { args: vars }),
+      this.i18n.t("email.malwareRemovedText", {
+        args: this.escapeHtmlVars(vars),
+      }),
       undefined,
       recipientName,
     );
@@ -237,7 +261,11 @@ export class EmailService {
     await this.sendMail(
       recipientEmail,
       this.formatTemplate(this.config.get("email.reverseShareSubject"), vars),
-      this.formatTemplate(this.config.get("email.reverseShareMessage"), vars),
+      this.formatTemplate(
+        this.config.get("email.reverseShareMessage"),
+        vars,
+        true,
+      ),
       undefined,
       recipientName,
     );
@@ -262,7 +290,11 @@ export class EmailService {
     await this.sendMail(
       recipientEmail,
       this.formatTemplate(this.config.get("email.resetPasswordSubject"), vars),
-      this.formatTemplate(this.config.get("email.resetPasswordMessage"), vars),
+      this.formatTemplate(
+        this.config.get("email.resetPasswordMessage"),
+        vars,
+        true,
+      ),
       undefined,
       recipientName,
     );
@@ -286,7 +318,7 @@ export class EmailService {
     await this.sendMail(
       recipientEmail,
       this.formatTemplate(this.config.get("email.inviteSubject"), vars),
-      this.formatTemplate(this.config.get("email.inviteMessage"), vars),
+      this.formatTemplate(this.config.get("email.inviteMessage"), vars, true),
       undefined,
       recipientName,
     );
@@ -311,7 +343,11 @@ export class EmailService {
     await this.sendMail(
       recipientEmail,
       this.formatTemplate(this.config.get("email.verificationSubject"), vars),
-      this.formatTemplate(this.config.get("email.verificationMessage"), vars),
+      this.formatTemplate(
+        this.config.get("email.verificationMessage"),
+        vars,
+        true,
+      ),
       undefined,
       recipientName,
     );
@@ -350,7 +386,7 @@ export class EmailService {
     await this.sendMail(
       adminEmail,
       this.i18n.t("email.reportSubject", { args: vars }),
-      this.i18n.t("email.reportText", { args: vars }),
+      this.i18n.t("email.reportText", { args: this.escapeHtmlVars(vars) }),
     );
   }
 

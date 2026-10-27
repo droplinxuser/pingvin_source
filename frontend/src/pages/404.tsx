@@ -4,6 +4,7 @@ import { FormattedMessage } from "react-intl";
 import Meta from "../components/Meta";
 import Ads from "../components/Ads";
 import useHomeHref from "../hooks/homeHref.hook";
+import useTranslate from "../hooks/useTranslate.hook";
 
 const useStyles = createStyles((theme) => ({
   root: {
@@ -28,10 +29,11 @@ const useStyles = createStyles((theme) => ({
 const ErrorNotFound = () => {
   const { classes } = useStyles();
   const homeHref = useHomeHref();
+  const t = useTranslate();
 
   return (
     <>
-      <Meta title="Not found" canonicalPath="/404" noindex />
+      <Meta title={t("404.title")} noindex />
       <Container className={classes.root}>
         <div className={classes.label}>404</div>
         <Title align="center" order={1} size="h3">

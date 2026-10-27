@@ -18,8 +18,7 @@ import { FormattedMessage } from "react-intl";
 import Meta from "../../components/Meta";
 import Dropzone from "../../components/upload/Dropzone";
 import FileList from "../../components/upload/FileList";
-import showCompletedUploadModal from "../../components/upload/modals/showCompletedUploadModal";
-import showCreateUploadModal from "../../components/upload/modals/showCreateUploadModal";
+
 import useConfig from "../../hooks/config.hook";
 import useConfirmLeave from "../../hooks/confirm-leave.hook";
 import useTranslate from "../../hooks/useTranslate.hook";
@@ -36,6 +35,7 @@ import {
 import { byteToHumanSizeString } from "../../utils/fileSize.util";
 
 const promiseLimit = pLimit(3);
+const MAX_UPLOAD_RETRIES = 3;
 let errorToastShown = false;
 let createdShare: Share;
 
@@ -117,6 +117,7 @@ const Upload = ({
         // If the file is 0 bytes, we still need to upload 1 chunk
         if (chunks == 0) chunks++;
 
+        let retries = 0;
         for (let chunkIndex = 0; chunkIndex < chunks; chunkIndex++) {
           const from = chunkIndex * chunkSize.current;
           const to = from + chunkSize.current;
@@ -150,8 +151,15 @@ const Upload = ({
                 fileId = response.id;
               });
 
+            retries = 0;
             setFileProgress(((chunkIndex + 1) / chunks) * 100);
           } catch (e) {
+            // A rejected chunk used to restart the file forever. Stop after a
+            // small budget and leave the file marked as failed instead.
+            if (++retries > MAX_UPLOAD_RETRIES) {
+              setFileProgress(-1);
+              break;
+            }
             if (
               e instanceof AxiosError &&
               e.response?.data.error == "unexpected_chunk_index"
@@ -175,7 +183,11 @@ const Upload = ({
     Promise.all(fileUploadPromises);
   };
 
-  const showCreateUploadModalCallback = (files: FileUpload[]) => {
+  const showCreateUploadModalCallback = async (files: FileUpload[]) => {
+    // Both modals pull in yup, moment and the QR renderer. Load them only when
+    // the modal is actually opened so the first /upload paint stays light.
+    const { default: showCreateUploadModal } =
+      await import("../../components/upload/modals/showCreateUploadModal");
     showCreateUploadModal(
       modals,
       {
@@ -262,8 +274,10 @@ const Upload = ({
     ) {
       shareService
         .completeShare(createdShare.id)
-        .then((share) => {
+        .then(async (share) => {
           setisUploading(false);
+          const { default: showCompletedUploadModal } =
+            await import("../../components/upload/modals/showCompletedUploadModal");
           showCompletedUploadModal(
             modals,
             share,

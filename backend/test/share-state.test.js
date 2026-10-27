@@ -247,6 +247,67 @@ test("increments a limited view with one conditional update", async () => {
   assert.equal(lookups, 0);
 });
 
+test("batches unlimited views and still returns each live count", async () => {
+  let persisted = 10;
+  const increments = [];
+  const prisma = {
+    share: {
+      findUnique: async () => ({ views: persisted }),
+      update: async ({ data }) => {
+        increments.push(data.views.increment);
+        persisted += data.views.increment;
+        return { views: persisted };
+      },
+    },
+  };
+  const service = new ShareStateService(
+    prisma,
+    { t: (key) => key },
+    { invalidate: async () => {} },
+    {},
+  );
+
+  assert.equal(await service.recordUnlimitedView("share"), 11);
+  assert.equal(await service.recordUnlimitedView("share"), 12);
+  assert.equal(increments.length, 0);
+
+  await service.flushViews();
+  assert.deepEqual(increments, [2]);
+  assert.equal(persisted, 12);
+
+  assert.equal(await service.recordUnlimitedView("share"), 13);
+  await service.onApplicationShutdown();
+  assert.deepEqual(increments, [2, 1]);
+  assert.equal(persisted, 13);
+});
+
+test("flushes batched views on shutdown", async () => {
+  let persisted = 4;
+  const increments = [];
+  const prisma = {
+    share: {
+      findUnique: async () => ({ views: persisted }),
+      update: async ({ data }) => {
+        increments.push(data.views.increment);
+        persisted += data.views.increment;
+        return { views: persisted };
+      },
+    },
+  };
+  const service = new ShareStateService(
+    prisma,
+    { t: (key) => key },
+    { invalidate: async () => {} },
+    {},
+  );
+
+  await service.recordUnlimitedView("share");
+  await service.recordUnlimitedView("share");
+  await service.onApplicationShutdown();
+  assert.deepEqual(increments, [2]);
+  assert.equal(persisted, 6);
+});
+
 test("reports the view limit or a missing share after a failed update", async () => {
   const serviceWith = (share) =>
     new ShareStateService(

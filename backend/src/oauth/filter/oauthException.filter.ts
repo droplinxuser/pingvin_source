@@ -23,8 +23,12 @@ export class OAuthExceptionFilter implements ExceptionFilter {
     const request = ctx.getRequest();
 
     this.logger.error(exception.message);
+    // The callback query contains the authorization code and state. Record
+    // only whether they were present so they never reach the admin log store.
     this.logger.error(
-      "Request query: " + JSON.stringify(request.query, null, 2),
+      `OAuth callback: provider=${request.params?.provider ?? "unknown"} code=${
+        request.query?.code ? "present" : "missing"
+      } state=${request.query?.state ? "present" : "missing"}`,
     );
 
     const key = this.errorKeys[request.query.error] || "default";

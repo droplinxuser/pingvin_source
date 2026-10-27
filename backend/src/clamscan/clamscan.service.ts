@@ -58,68 +58,35 @@ export class ClamScanService {
     });
 
     const storageProvider = share?.storageProvider || "LOCAL";
-    const infectedFiles = [];
+    const infectedFiles: { id: string; name: string }[] = [];
 
-    if (storageProvider === "S3") {
-      const files = await this.prisma.file.findMany({
-        where: { shareId },
-        select: { id: true, name: true },
-      });
+    // One metadata read covers every file. The previous local path listed the
+    // directory synchronously and then queried each name separately.
+    const files = await this.prisma.file.findMany({
+      where: { shareId },
+      select: { id: true, name: true },
+    });
 
-      for (const f of files) {
-        try {
-          const fileObj = await this.fileService.get(shareId, f.id);
-          const result = await clamScan.scanStream(fileObj.file as Readable);
-          const isInfected = !!result?.isInfected;
-
-          if (isInfected) infectedFiles.push({ id: f.id, name: f.name });
-        } catch (err: any) {
-          this.logger.warn(
-            `ClamAV scan failed for S3 file ${f.name} (${f.id}) in share ${shareId}: ${err?.message || "unknown error"}`,
-          );
-        }
-      }
-
-      this.logger.log(
-        `ClamAV scan completed for S3 share ${shareId}: ${infectedFiles.length} infected file(s) found`,
-      );
-      return infectedFiles;
-    }
-
-    // Local Storage Provider
-    let files: string[] = [];
-    try {
-      files = fs
-        .readdirSync(`${SHARE_DIRECTORY}/${shareId}`)
-        .filter((file) => file != "archive.zip");
-    } catch (e) {
-      void e;
-      return [];
-    }
-
-    for (const fileId of files) {
+    for (const f of files) {
       try {
-        const filePath = `${SHARE_DIRECTORY}/${shareId}/${fileId}`;
-        const readStream = fs.createReadStream(filePath);
-        const result = await clamScan.scanStream(readStream);
+        const stream =
+          storageProvider === "S3"
+            ? ((await this.fileService.get(shareId, f.id, undefined, "S3"))
+                .file as Readable)
+            : fs.createReadStream(`${SHARE_DIRECTORY}/${shareId}/${f.id}`);
+        const result = await clamScan.scanStream(stream);
         const isInfected = !!result?.isInfected;
 
-        const fileName =
-          (await this.prisma.file.findUnique({ where: { id: fileId } }))
-            ?.name || fileId;
-
-        if (isInfected) {
-          infectedFiles.push({ id: fileId, name: fileName });
-        }
+        if (isInfected) infectedFiles.push({ id: f.id, name: f.name });
       } catch (err: any) {
         this.logger.warn(
-          `ClamAV scan failed for local file ${fileId} in share ${shareId}: ${err?.message || "unknown error"}`,
+          `ClamAV scan failed for ${storageProvider} file ${f.name} (${f.id}) in share ${shareId}: ${err?.message || "unknown error"}`,
         );
       }
     }
 
     this.logger.log(
-      `ClamAV scan completed for local share ${shareId}: ${infectedFiles.length} infected file(s) found`,
+      `ClamAV scan completed for ${storageProvider} share ${shareId}: ${infectedFiles.length} infected file(s) found`,
     );
     return infectedFiles;
   }

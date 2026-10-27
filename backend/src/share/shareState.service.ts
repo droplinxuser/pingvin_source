@@ -25,8 +25,9 @@ import {
 import {
   SHARE_DATA_CACHE_TTL_MS,
   getCachedValue,
+  getShareCacheEpoch,
   invalidateShareDataCache,
-  setCachedValue,
+  setCachedValueIfCurrent,
   shareDataCacheKey,
   shareGuardCacheKey,
 } from "src/utils/cache.util";
@@ -36,6 +37,11 @@ import { SHARE_EXPIRATION, sumFileSizes } from "./share.util";
 // Collapse bursts of share views into one metadata write per share. The
 // returned visitor list is updated immediately; only the disk write is delayed.
 const VISITOR_WRITE_DELAY_MS = 1000;
+// Unlimited share views are counted in memory and persisted in batches. With a
+// single SQLite connection this keeps a popular share from turning every page
+// view into a write transaction; the delivered count is still immediate.
+const VIEW_WRITE_DELAY_MS = 5 * 1000;
+const VIEW_BASE_LIMIT = 2000;
 // Keep the last persisted visitor list for recently viewed shares. A share
 // link can be opened many times per minute; without this snapshot every view
 // would read and parse uploader.json again after the previous batch flushed.
@@ -72,6 +78,10 @@ export class ShareStateService implements OnApplicationShutdown {
   private readonly visitorWrites = new Map<string, Promise<void>>();
   private readonly dirtyVisitors = new Set<string>();
   private readonly expirationWrites = new Map<string, number>();
+  private readonly viewBaseCounts = new Map<string, number>();
+  private readonly viewPendingCounts = new Map<string, number>();
+  private viewFlushTimer?: NodeJS.Timeout;
+  private viewFlush?: Promise<void>;
   private readonly pendingShareLoads = new Map<
     string,
     Promise<Record<string, unknown>>
@@ -118,6 +128,7 @@ export class ShareStateService implements OnApplicationShutdown {
     id: string,
     cacheKey: string,
   ): Promise<Record<string, unknown>> {
+    const epoch = getShareCacheEpoch(id);
     const share = await this.prisma.share.findUnique({
       where: { id },
       include: {
@@ -168,7 +179,14 @@ export class ShareStateService implements OnApplicationShutdown {
       maxViews: security?.maxViews,
       commentsVersion,
     };
-    await setCachedValue(this.cache, cacheKey, result, SHARE_DATA_CACHE_TTL_MS);
+    await setCachedValueIfCurrent(
+      this.cache,
+      cacheKey,
+      result,
+      SHARE_DATA_CACHE_TTL_MS,
+      id,
+      epoch,
+    );
     return result;
   }
 
@@ -197,6 +215,14 @@ export class ShareStateService implements OnApplicationShutdown {
 
   async invalidateData(shareId: string) {
     this.visitorSnapshots.delete(shareId);
+    // Persist batched views before an edit can tighten the view limit (or
+    // before a deletion removes the row), then forget the local counter.
+    if (this.viewPendingCounts.has(shareId)) await this.flushViews();
+    // A view can arrive while the first flush is in flight; flush again before
+    // dropping the local counter so a new view limit sees the real total.
+    if (this.viewPendingCounts.has(shareId)) await this.flushViews();
+    this.viewBaseCounts.delete(shareId);
+    this.viewPendingCounts.delete(shareId);
     await Promise.all([
       this.invalidateDataCache(shareId),
       this.trending.invalidate(shareId),
@@ -230,6 +256,7 @@ export class ShareStateService implements OnApplicationShutdown {
     shareId: string,
     key: string,
   ): Promise<GuardShare | null> {
+    const epoch = getShareCacheEpoch(shareId);
     const share = await this.prisma.share.findUnique({
       where: { id: shareId },
       include: GUARD_INCLUDE,
@@ -237,7 +264,14 @@ export class ShareStateService implements OnApplicationShutdown {
 
     if (!share || share.removedReason || !share.uploadLocked) return null;
 
-    await setCachedValue(this.cache, key, share, SHARE_DATA_CACHE_TTL_MS);
+    await setCachedValueIfCurrent(
+      this.cache,
+      key,
+      share,
+      SHARE_DATA_CACHE_TTL_MS,
+      shareId,
+      epoch,
+    );
     return share;
   }
 
@@ -251,6 +285,12 @@ export class ShareStateService implements OnApplicationShutdown {
   }
 
   async getCurrentViews(shareId: string): Promise<number> {
+    // Include batched views so a share that was just switched to a view limit
+    // is not enforced against a stale database counter.
+    const pending = this.viewPendingCounts.get(shareId);
+    if (pending !== undefined)
+      return (this.viewBaseCounts.get(shareId) ?? 0) + pending;
+
     const share = await this.prisma.share.findUnique({
       where: { id: shareId },
       select: { views: true },
@@ -267,24 +307,109 @@ export class ShareStateService implements OnApplicationShutdown {
     return { views, uploaderInfo };
   }
 
-  // The common case has no view limit, so a single atomic update is enough.
+  /**
+   * The common case has no view limit, so views are counted in memory and one
+   * conditional UPDATE per flush window persists the whole batch. The base
+   * counter is read once per share, then corrected from the value SQLite
+   * returns on every flush.
+   */
   private async recordUnlimitedView(id: string): Promise<number> {
-    try {
-      const share = await this.prisma.share.update({
+    let base = this.viewBaseCounts.get(id);
+    if (base === undefined) {
+      const share = await this.prisma.share.findUnique({
         where: { id },
-        data: { views: { increment: 1 } },
         select: { views: true },
       });
-      return share.views;
-    } catch (error) {
-      if (
-        error instanceof Prisma.PrismaClientKnownRequestError &&
-        error.code === "P2025"
-      ) {
-        throw new NotFoundException(this.i18n.t("share.notFound"));
-      }
-      throw error;
+      if (!share) throw new NotFoundException(this.i18n.t("share.notFound"));
+      base = share.views;
+      this.rememberViewBase(id, base);
     }
+
+    const pending = (this.viewPendingCounts.get(id) ?? 0) + 1;
+    this.viewPendingCounts.set(id, pending);
+    this.scheduleViewFlush();
+    return base + pending;
+  }
+
+  private rememberViewBase(id: string, views: number) {
+    if (
+      !this.viewBaseCounts.has(id) &&
+      this.viewBaseCounts.size >= VIEW_BASE_LIMIT
+    ) {
+      // Only drop counters with nothing waiting to be written; a dropped
+      // counter is simply re-read from SQLite on the next view.
+      for (const key of this.viewBaseCounts.keys()) {
+        if (this.viewPendingCounts.has(key)) continue;
+        this.viewBaseCounts.delete(key);
+        if (this.viewBaseCounts.size < VIEW_BASE_LIMIT / 2) break;
+      }
+    }
+    this.viewBaseCounts.set(id, views);
+  }
+
+  private scheduleViewFlush() {
+    if (this.shuttingDown || this.viewFlushTimer) return;
+    const timer = setTimeout(() => {
+      this.viewFlushTimer = undefined;
+      void this.flushViews();
+    }, VIEW_WRITE_DELAY_MS);
+    timer.unref();
+    this.viewFlushTimer = timer;
+  }
+
+  /**
+   * Persists the pending increments. The base is raised optimistically before
+   * the write so a view that arrives during the flush is counted correctly;
+   * the value returned by SQLite replaces it afterwards.
+   */
+  private async flushViews(): Promise<void> {
+    if (this.viewFlush) return this.viewFlush;
+
+    const batch: [string, number][] = [...this.viewPendingCounts];
+    if (batch.length === 0) return;
+    this.viewPendingCounts.clear();
+    for (const [id, count] of batch)
+      this.viewBaseCounts.set(id, (this.viewBaseCounts.get(id) ?? 0) + count);
+
+    const write = (async () => {
+      await Promise.all(
+        batch.map(async ([id, count]) => {
+          try {
+            const share = await this.prisma.share.update({
+              where: { id },
+              data: { views: { increment: count } },
+              select: { views: true },
+            });
+            this.viewBaseCounts.set(id, share.views);
+          } catch (error) {
+            // Put the unpersisted views back so the next flush retries them.
+            this.viewBaseCounts.set(
+              id,
+              Math.max(0, (this.viewBaseCounts.get(id) ?? count) - count),
+            );
+            this.viewPendingCounts.set(
+              id,
+              (this.viewPendingCounts.get(id) ?? 0) + count,
+            );
+            if (
+              error instanceof Prisma.PrismaClientKnownRequestError &&
+              error.code === "P2025"
+            ) {
+              this.viewBaseCounts.delete(id);
+              this.viewPendingCounts.delete(id);
+            }
+          }
+        }),
+      );
+    })();
+
+    this.viewFlush = write;
+    try {
+      await write;
+    } finally {
+      this.viewFlush = undefined;
+    }
+    if (this.viewPendingCounts.size > 0) this.scheduleViewFlush();
   }
 
   private async recordLimitedView(
@@ -383,6 +508,12 @@ export class ShareStateService implements OnApplicationShutdown {
 
   async onApplicationShutdown() {
     this.shuttingDown = true;
+    if (this.viewFlushTimer) clearTimeout(this.viewFlushTimer);
+    this.viewFlushTimer = undefined;
+    if (this.viewFlush) await this.viewFlush.catch(() => {});
+    if (this.viewPendingCounts.size > 0)
+      await this.flushViews().catch(() => {});
+
     for (const timer of this.visitorTimers.values()) clearTimeout(timer);
     this.visitorTimers.clear();
 

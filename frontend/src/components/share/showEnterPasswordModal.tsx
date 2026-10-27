@@ -37,7 +37,13 @@ const Body = ({
       <form
         onSubmit={(e) => {
           e.preventDefault();
-          submitCallback(password);
+          if (!password) {
+            setPasswordWrong(true);
+            return;
+          }
+          // Rejections are shown inline instead of opening a second modal.
+          setPasswordWrong(false);
+          submitCallback(password).catch(() => setPasswordWrong(true));
         }}
       >
         <Stack>
@@ -48,6 +54,7 @@ const Body = ({
             onFocus={() => setPasswordWrong(false)}
             onChange={(e) => setPassword(e.target.value)}
             value={password}
+            required
           />
           <Button type="submit">
             <FormattedMessage id="common.button.submit" />

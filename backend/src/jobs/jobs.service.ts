@@ -11,6 +11,7 @@ import { SHARE_DIRECTORY } from "../constants";
 @Injectable()
 export class JobsService {
   private readonly logger = new Logger(JobsService.name);
+  private cleaningExpiredShares = false;
 
   constructor(
     private prisma: PrismaService,
@@ -21,6 +22,18 @@ export class JobsService {
 
   @Cron("* * * * *")
   async deleteExpiredShares() {
+    // A large expired backlog can take longer than the one-minute interval.
+    // Skip the next tick instead of running two deletes over the same rows.
+    if (this.cleaningExpiredShares) return;
+    this.cleaningExpiredShares = true;
+    try {
+      await this.deleteExpiredSharesNow();
+    } finally {
+      this.cleaningExpiredShares = false;
+    }
+  }
+
+  private async deleteExpiredSharesNow() {
     const fileRetentionPeriod = this.configServer.get(
       "share.fileRetentionPeriod",
     );
@@ -103,15 +116,14 @@ export class JobsService {
   }
 
   @Cron("0 0 * * *")
-  deleteTemporaryFiles() {
+  async deleteTemporaryFiles() {
     let filesDeleted = 0;
 
-    let shareDirectories: string[];
+    let shareDirectories: Awaited<ReturnType<typeof fs.promises.readdir>>;
     try {
-      shareDirectories = fs
-        .readdirSync(SHARE_DIRECTORY, { withFileTypes: true })
-        .filter((dirent) => dirent.isDirectory())
-        .map((dirent) => dirent.name);
+      shareDirectories = await fs.promises.readdir(SHARE_DIRECTORY, {
+        withFileTypes: true,
+      });
     } catch (error) {
       // A fresh data directory has no shares yet; do not log an ENOENT.
       if ((error as NodeJS.ErrnoException).code !== "ENOENT")
@@ -119,13 +131,14 @@ export class JobsService {
       return;
     }
 
-    for (const shareDirectory of shareDirectories) {
-      const directory = `${SHARE_DIRECTORY}/${shareDirectory}`;
+    for (const share of shareDirectories) {
+      if (!share.isDirectory()) continue;
+      const directory = `${SHARE_DIRECTORY}/${share.name}`;
       let temporaryFiles: string[];
       try {
-        temporaryFiles = fs
-          .readdirSync(directory)
-          .filter((file) => file.endsWith(".tmp-chunk"));
+        temporaryFiles = (await fs.promises.readdir(directory)).filter((file) =>
+          file.endsWith(".tmp-chunk"),
+        );
       } catch (error) {
         // The share can be deleted while this loop is running.
         if ((error as NodeJS.ErrnoException).code !== "ENOENT")
@@ -135,9 +148,9 @@ export class JobsService {
 
       for (const file of temporaryFiles) {
         const filePath = `${directory}/${file}`;
-        let stats: fs.Stats;
+        let stats: Awaited<ReturnType<typeof fs.promises.stat>>;
         try {
-          stats = fs.statSync(filePath);
+          stats = await fs.promises.stat(filePath);
         } catch (error) {
           if ((error as NodeJS.ErrnoException).code !== "ENOENT")
             this.logger.warn(`Could not stat ${filePath}: ${error}`);
@@ -149,7 +162,7 @@ export class JobsService {
           .isBefore(moment());
 
         if (isOlderThanOneDay) {
-          fs.rmSync(filePath, { force: true });
+          await fs.promises.rm(filePath, { force: true });
           filesDeleted++;
         }
       }

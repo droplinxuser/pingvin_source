@@ -10,6 +10,11 @@ export function setPublicCacheHeaders(
   maxAge: number,
   staleWhileRevalidate = 86_400,
 ) {
+  // Middleware already decided whether this response may be shared (it sends
+  // no-store for signed-in users, non-default languages, dark theme and query
+  // strings). Never turn that decision back into a public header.
+  if (response.hasHeader("Cache-Control")) return;
+
   const value = `public, max-age=0, s-maxage=${maxAge}, stale-while-revalidate=${staleWhileRevalidate}`;
   response.setHeader("Cache-Control", value);
   response.setHeader("CDN-Cache-Control", value);

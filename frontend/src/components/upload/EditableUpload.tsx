@@ -20,6 +20,7 @@ import {
 import { byteToHumanSizeString } from "../../utils/fileSize.util";
 
 const promiseLimit = pLimit(3);
+const MAX_UPLOAD_RETRIES = 3;
 let errorToastShown = false;
 
 const EditableUpload = ({
@@ -109,6 +110,7 @@ const EditableUpload = ({
         // If the file is 0 bytes, we still need to upload 1 chunk
         if (chunks == 0) chunks++;
 
+        let retries = 0;
         for (let chunkIndex = 0; chunkIndex < chunks; chunkIndex++) {
           const from = chunkIndex * chunkSize.current;
           const to = from + chunkSize.current;
@@ -129,8 +131,14 @@ const EditableUpload = ({
                 fileId = response.id;
               });
 
+            retries = 0;
             setFileProgress(((chunkIndex + 1) / chunks) * 100);
           } catch (e) {
+            // Stop instead of restarting a permanently rejected file forever.
+            if (++retries > MAX_UPLOAD_RETRIES) {
+              setFileProgress(-1);
+              break;
+            }
             if (
               e instanceof AxiosError &&
               e.response?.data.error == "unexpected_chunk_index"
@@ -255,7 +263,6 @@ const EditableUpload = ({
       }
       errorToastShown = false;
     }
-
   }, [uploadingFiles]);
 
   return (

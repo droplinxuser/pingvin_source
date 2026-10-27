@@ -36,6 +36,7 @@ import {
   NO_STORE_HEADERS,
   getDownloadCacheHeaders,
   getEdgeCacheHeaders,
+  isNotModified,
 } from "src/utils/cache.util";
 import { parsePagination } from "src/utils/pagination.util";
 import {
@@ -231,11 +232,19 @@ export class ShareController {
 
     const isPublic =
       (request as Request & { shareIsPublic?: boolean }).shareIsPublic === true;
+    const cacheHeaders = getDownloadCacheHeaders(
+      isPublic,
+      `"${id}-thumbnail"`,
+    );
+    if (isNotModified(request, cacheHeaders.ETag)) {
+      response.status(304).set(cacheHeaders).end();
+      return;
+    }
     response.set({
       "Content-Type": "image/webp",
       "Content-Length": thumbnail.size,
       "X-Content-Type-Options": "nosniff",
-      ...getDownloadCacheHeaders(isPublic, `"${id}-thumbnail"`),
+      ...cacheHeaders,
     });
     return new StreamableFile(createReadStream(thumbnail.path));
   }

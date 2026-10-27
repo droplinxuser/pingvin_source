@@ -150,10 +150,11 @@ export class ConfigService extends EventEmitter {
           }
         }
       }
-    } catch (e) {
+    } catch {
       this.logger.error(
-        "Failed to parse config.yaml. Falling back to UI configuration: ",
-        e,
+        // Do not log the parser payload: a malformed line can contain SMTP,
+        // OAuth or S3 secrets and this message is stored in the admin log.
+        "Failed to parse config.yaml. Falling back to UI configuration.",
       );
     }
   }

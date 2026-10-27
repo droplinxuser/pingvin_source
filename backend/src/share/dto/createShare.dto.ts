@@ -1,5 +1,6 @@
 import { Type } from "class-transformer";
 import {
+  ArrayMaxSize,
   IsEmail,
   IsNumber,
   IsOptional,
@@ -28,6 +29,9 @@ export class CreateShareDTO {
   @IsOptional()
   description: string;
 
+  // Completion sends one email per recipient, so a large list is an easy way
+  // to tie up the API and the SMTP server. Keep the batch deliberately small.
+  @ArrayMaxSize(100)
   @IsEmail({}, { each: true })
   recipients: string[];
 

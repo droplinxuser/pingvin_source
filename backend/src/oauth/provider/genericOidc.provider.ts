@@ -132,8 +132,12 @@ export abstract class GenericOidcProvider implements OAuthProvider<OidcToken> {
     const idTokenData = this.decodeIdToken(token.idToken);
 
     if (!idTokenData) {
+      // Never log raw provider tokens: they contain access/refresh/ID tokens
+      // and would be persisted in the admin error log.
       this.logger.error(
-        `Can not get ID Token from response ${JSON.stringify(token.rawToken, undefined, 2)}`,
+        `Can not get ID Token from ${this.name} response (fields: ${Object.keys(
+          (token.rawToken ?? {}) as Record<string, unknown>,
+        ).join(", ")})`,
       );
       throw new InternalServerErrorException();
     }

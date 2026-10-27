@@ -9,6 +9,10 @@ import { writeFileAtomic } from "./fileWrite.util";
 
 const FILE_NAME = "uploader.json";
 export const MAX_VISITORS = 18;
+// Geo headers are display-only and come from the edge. Clamp them so a direct
+// origin request cannot store kilobytes of spoofed text in uploader.json or
+// push the "recent visitors" list far outside its intended size.
+const MAX_GEO_TEXT_LENGTH = 64;
 const FIELDS = [
   "country",
   "city",
@@ -86,6 +90,18 @@ function getHeader(request: Request, name: string): string | undefined {
   return header ? decodeText(header) : undefined;
 }
 
+function getGeoHeader(request: Request, name: string): string | undefined {
+  const value = getHeader(request, name)
+    // Control characters have no place in a city/region/timezone label.
+    // eslint-disable-next-line no-control-regex
+    ?.replace(/[\u0000-\u001f\u007f]/g, " ")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+  if (!value) return undefined;
+  // Slice by code point so a multibyte name is never cut mid-character.
+  return Array.from(value).slice(0, MAX_GEO_TEXT_LENGTH).join("");
+}
+
 function parseUserAgent(
   userAgent = "",
   platform?: string,
@@ -144,9 +160,9 @@ function getReferrerDomain(referrer?: string, ownHost?: string) {
 export function getUploaderInfo(request: Request): UploaderInfo {
   return {
     country: getRequestCountry(request),
-    city: getHeader(request, "cf-ipcity"),
-    region: getHeader(request, "cf-region"),
-    timezone: getHeader(request, "cf-timezone"),
+    city: getGeoHeader(request, "cf-ipcity"),
+    region: getGeoHeader(request, "cf-region"),
+    timezone: getGeoHeader(request, "cf-timezone"),
     ...parseUserAgent(
       getHeader(request, "user-agent"),
       getHeader(request, "sec-ch-ua-platform"),
@@ -173,7 +189,7 @@ export function getVisitorInfo(request: Request): ShareVisitor {
 
   return {
     country: getRequestCountry(request),
-    city: getHeader(request, "cf-ipcity"),
+    city: getGeoHeader(request, "cf-ipcity"),
     browser,
     os,
     referrer: getReferrerDomain(referrer, request.hostname),

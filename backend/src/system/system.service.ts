@@ -74,6 +74,13 @@ export class SystemService {
   private readonly logger = new Logger(SystemService.name);
   private baseStats?: { at: number; value: BaseSystemStats };
   private readonly sitemapBuilds = new Map<string, Promise<SitemapManifest>>();
+  // The manifest is small and changes at most every SITEMAP_REFRESH_MS, so a
+  // validated copy avoids reading it and stats every chunk on each robots or
+  // sitemap request.
+  private readonly sitemapManifests = new Map<
+    string,
+    { at: number; manifest: SitemapManifest }
+  >();
 
   constructor(
     private configService: ConfigService,
@@ -155,16 +162,38 @@ export class SystemService {
 
   private async ensureSitemapFiles(baseUrl: string): Promise<SitemapManifest> {
     const directory = this.sitemapDirectory(baseUrl);
+    const cached = this.sitemapManifests.get(directory);
+    if (cached && Date.now() - cached.at < SITEMAP_REFRESH_MS) {
+      // One cheap check keeps a manually removed artifact from being served
+      // from the in-memory copy until the next refresh window.
+      try {
+        await fs.access(path.join(directory, "sitemap.xml"));
+        return cached.manifest;
+      } catch {
+        this.sitemapManifests.delete(directory);
+      }
+    }
+
     const manifest = await this.readSitemapManifest(directory);
-    if (manifest && (await this.sitemapManifestIsFresh(directory, manifest)))
+    if (manifest && (await this.sitemapManifestIsFresh(directory, manifest))) {
+      this.sitemapManifests.set(directory, { at: Date.now(), manifest });
       return manifest;
+    }
 
     const running = this.sitemapBuilds.get(directory);
     if (running) return running;
 
-    const build = this.buildSitemapFiles(baseUrl, directory).finally(() => {
-      this.sitemapBuilds.delete(directory);
-    });
+    const build = this.buildSitemapFiles(baseUrl, directory)
+      .then((built) => {
+        this.sitemapManifests.set(directory, {
+          at: Date.now(),
+          manifest: built,
+        });
+        return built;
+      })
+      .finally(() => {
+        this.sitemapBuilds.delete(directory);
+      });
     this.sitemapBuilds.set(directory, build);
     return build;
   }

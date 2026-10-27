@@ -73,10 +73,12 @@ const Body = ({
       maxShareSize: userMaxShareSize,
       maxUseCount: 1,
       sendEmailNotification: false,
+      // Cookies are strings: "false" used to be truthy and always restored
+      // both switches as enabled.
       simplified: !reverseShareSimpleOnly
         ? false
-        : !!(getCookie("reverse-share.simplified") ?? false),
-      publicAccess: !!(getCookie("reverse-share.public-access") ?? true),
+        : getCookie("reverse-share.simplified") === "true",
+      publicAccess: getCookie("reverse-share.public-access") !== "false",
     },
     validate: yupResolver(
       yup.object().shape({

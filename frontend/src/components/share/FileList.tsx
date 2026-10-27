@@ -11,7 +11,14 @@ import {
 } from "@mantine/core";
 import { useClipboard } from "@mantine/hooks";
 import { useModals } from "@mantine/modals";
-import { Dispatch, SetStateAction, useMemo, useState } from "react";
+import {
+  Dispatch,
+  SetStateAction,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   TbClipboard,
   TbDownload,
@@ -45,6 +52,7 @@ import { HoverTip } from "../core/HoverTip";
 import FileName from "../core/FileName";
 
 const ARCHIVE_EXTENSION = /\.(zip|rar|7z|tar|gz|bz2|xz)$/i;
+const FILE_BATCH_SIZE = 50;
 
 const getFileVisual = (name: string) => {
   const kind = getGalleryMediaKind(name);
@@ -163,6 +171,10 @@ const FileList = ({
     property: "name",
     direction: "asc",
   });
+  // Large folder shares can contain thousands of rows. Render one batch at a
+  // time; an observer below the list reveals the next batch on scroll.
+  const [visibleCount, setVisibleCount] = useState(FILE_BATCH_SIZE);
+  const moreRef = useRef<HTMLDivElement>(null);
 
   const sortedFiles = useMemo(() => {
     if (!files) return [];
@@ -185,6 +197,35 @@ const FileList = ({
     [sortedFiles],
   );
 
+  useEffect(() => {
+    setVisibleCount(FILE_BATCH_SIZE);
+  }, [sortedFiles]);
+
+  useEffect(() => {
+    if (visibleCount >= sortedFiles.length) return;
+    const element = moreRef.current;
+    if (!element) return;
+
+    if (typeof IntersectionObserver === "undefined") {
+      setVisibleCount(sortedFiles.length);
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (!entries[0]?.isIntersecting) return;
+        setVisibleCount((count) =>
+          Math.min(count + FILE_BATCH_SIZE, sortedFiles.length),
+        );
+      },
+      { rootMargin: "400px 0px" },
+    );
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [sortedFiles.length, visibleCount]);
+
+  const visibleFiles = sortedFiles.slice(0, visibleCount);
+
   return (
     <Paper
       data-testid="share-file-list"
@@ -197,7 +238,7 @@ const FileList = ({
       <Stack spacing={0}>
         {isLoading
           ? skeletonRows(skeletonCount)
-          : sortedFiles.map((file, index) => {
+          : visibleFiles.map((file, index) => {
               const size = byteToHumanSizeString(parseInt(file.size));
               const visual = getFileVisual(file.name);
 
@@ -317,6 +358,17 @@ const FileList = ({
                 </Box>
               );
             })}
+        {!isLoading && visibleCount < sortedFiles.length && (
+          <Box
+            ref={moreRef}
+            px="md"
+            py="sm"
+            aria-hidden
+            data-testid="share-file-list-more"
+          >
+            <Skeleton height={10} width="30%" />
+          </Box>
+        )}
       </Stack>
     </Paper>
   );

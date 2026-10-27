@@ -7,15 +7,19 @@ import {
   useMantineColorScheme,
 } from "@mantine/core";
 import { useColorScheme } from "@mantine/hooks";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { TbDeviceLaptop, TbMoon, TbSun } from "react-icons/tb";
 import { FormattedMessage } from "react-intl";
 import userPreferences from "../../utils/userPreferences.util";
 
 const ThemeSwitcher = () => {
-  const [colorScheme, setColorScheme] = useState(
-    userPreferences.get("colorScheme"),
-  );
+  // localStorage is unavailable during SSR; load the preference after
+  // hydration to avoid a server/client mismatch on the selected segment.
+  const [colorScheme, setColorScheme] = useState<string>();
+
+  useEffect(() => {
+    setColorScheme(userPreferences.get("colorScheme") ?? undefined);
+  }, []);
   const { toggleColorScheme } = useMantineColorScheme();
   const systemColorScheme = useColorScheme();
   return (

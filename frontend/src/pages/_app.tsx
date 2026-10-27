@@ -34,7 +34,6 @@ import { isPublicPageRoute } from "../utils/router.util";
 import { getConfigValue } from "../utils/seo.util";
 import userPreferences from "../utils/userPreferences.util";
 import Footer from "../components/footer/Footer";
-import { fetchConfig } from "../utils/config.server.util";
 import { installGlobalErrorReporter } from "../utils/errorReporter.util";
 import AdminNoticeModal, {
   AdminNotice,
@@ -408,7 +407,9 @@ function App({ Component, pageProps }: AppProps) {
                   />
                   <SiteStructuredData />
                   {excludeDefaultLayoutRoutes.includes(router.pathname) ? (
-                    <Box component="main" id="main-content">
+                    // AppShell renders its own <main>; a second one here would
+                    // create duplicate landmarks.
+                    <Box id="main-content">
                       <Component {...pageProps} />
                     </Box>
                   ) : (
@@ -455,6 +456,10 @@ App.getInitialProps = async ({
   if (ctx.req) {
     const apiURL = process.env.API_URL || "http://localhost:8080";
     const cookieHeader = ctx.req.headers.cookie;
+
+    // Load the server-only config helper lazily so its defaults and fetch code
+    // do not end up in the public client chunk.
+    const { fetchConfig } = await import("../utils/config.server.util");
 
     // Start the public config request before the account lookup so SSR only
     // waits for the slower of the two, not for both in sequence.

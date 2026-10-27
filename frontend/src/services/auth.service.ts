@@ -1,5 +1,5 @@
-import { getCookie } from "cookies-next";
-import * as jose from "jose";
+import { deleteCookie, getCookie } from "cookies-next";
+import { jwtDecode } from "jwt-decode";
 import { withBuildVersion } from "../utils/version.util";
 import api from "./api.service";
 
@@ -42,9 +42,12 @@ const signUp = async (
 const signOut = async () => {
   const response = await api.post("/auth/signOut");
 
-  if (URL.canParse(response.data?.redirectURI))
-    window.location.href = response.data.redirectURI;
-  else window.location.reload();
+  // URL.canParse is too new for some Safari/older Chromium versions.
+  try {
+    window.location.href = new URL(response.data.redirectURI).toString();
+  } catch {
+    window.location.reload();
+  }
 };
 
 const refreshAccessToken = async () => {
@@ -54,12 +57,16 @@ const refreshAccessToken = async () => {
     // If the access token expires in less than 2 minutes refresh it
     if (
       accessToken &&
-      (jose.decodeJwt(accessToken).exp ?? 0) * 1000 < Date.now() + 2 * 60 * 1000
+      (jwtDecode<{ exp?: number }>(accessToken).exp ?? 0) * 1000 <
+        Date.now() + 2 * 60 * 1000
     ) {
       await api.post("/auth/token");
     }
   } catch (e) {
-    console.info("Refresh token invalid or expired");
+    // Stop retrying with a refresh token the server has already rejected,
+    // without logging routine network failures to the browser console.
+    if ((e as { response?: { status?: number } })?.response?.status === 401)
+      deleteCookie("access_token");
   }
 };
 

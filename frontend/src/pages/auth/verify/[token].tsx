@@ -40,7 +40,7 @@ export default function VerifyAccount() {
     <>
       <Meta title={t("verify.title")} />
       <Container size={420} my={40}>
-        <Title order={2} align="center" weight={900}>
+        <Title order={1} size="h2" align="center" weight={900}>
           <FormattedMessage id="verify.title" />
         </Title>
         <Paper withBorder shadow="md" p={30} mt={30} radius="md">

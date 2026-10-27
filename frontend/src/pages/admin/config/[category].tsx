@@ -237,7 +237,7 @@ export default function AppShellDemo() {
                         <Alert
                           mb={"lg"}
                           variant="light"
-                          color="primary"
+                          color="yellow"
                           title={t("admin.config.config-file-warning.title")}
                           icon={<TbInfoCircle />}
                         >
@@ -246,7 +246,8 @@ export default function AppShellDemo() {
                       )}
                       <Title
                         mb={categoryId.toLowerCase() === "s3" ? "xs" : "md"}
-                        order={3}
+                        order={1}
+                        size="h3"
                       >
                         {t("admin.config.category." + categoryId)}
                       </Title>

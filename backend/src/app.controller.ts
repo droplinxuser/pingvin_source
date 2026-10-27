@@ -9,7 +9,9 @@ export class AppController {
   @Get("health")
   async health(@Res({ passthrough: true }) res: Response) {
     try {
-      await this.prismaService.config.findMany();
+      // A constant probe is enough to prove the database is reachable; loading
+      // every config row on each health check only adds work and transfer.
+      await this.prismaService.$queryRaw`SELECT 1`;
       return "OK";
     } catch {
       res.statusCode = 500;

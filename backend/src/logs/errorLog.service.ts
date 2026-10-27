@@ -192,6 +192,10 @@ function text(value: unknown, maxLength: number): string | undefined {
   }
 
   if (!result) return undefined;
+  // Strip terminal control sequences from client-supplied text; keeping only
+  // newline and tab prevents ANSI escapes from reaching copied logs.
+  // eslint-disable-next-line no-control-regex
+  result = result.replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f-\u009f]/g, "");
   return result.length > maxLength ? `${result.slice(0, maxLength)}…` : result;
 }
 

@@ -1,10 +1,12 @@
 {
   "invalidIdFormat": "Invalid ID format",
+  "invalidFileName": "Invalid file name",
   "notFound": "File not found",
   "passwordProtected": "This share is password protected",
   "alreadyCompleted": "Share is already completed",
   "notEnoughSpace": "Not enough space on the server",
   "unexpectedChunk": "Unexpected chunk received",
+  "tooManyChunks": "Too many upload chunks requested",
   "maxSizeExceeded": "Max share size exceeded",
   "maxFileSizeExceeded": "Max file size exceeded. Each file may be up to {maxSize}.",
   "storageQuotaExceeded": "Your storage quota has been exceeded by {exceededSize}",

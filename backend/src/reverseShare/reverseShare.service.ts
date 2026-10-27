@@ -171,10 +171,55 @@ export class ReverseShareService {
       orderBy: {
         shareExpiration: "desc",
       },
-      include: { shares: { include: { creator: true } } },
+      // The response only exposes the public creator fields, so never load the
+      // full user row (password/TOTP secrets) for every reverse-share upload.
+      include: {
+        shares: {
+          include: {
+            creator: {
+              select: {
+                id: true,
+                username: true,
+                displayName: true,
+                shareSizeLimit: true,
+              },
+            },
+          },
+        },
+      },
     });
 
     return reverseShares;
+  }
+
+  /**
+   * Atomically consumes one use before a reverse-share upload is created.
+   * Doing this at creation (instead of completion) closes the race where
+   * parallel requests all pass the `remainingUses > 0` check.
+   */
+  async reserveUse(reverseShareToken?: string): Promise<boolean> {
+    if (!reverseShareToken) return false;
+
+    const { count } = await this.prisma.reverseShare.updateMany({
+      where: {
+        token: reverseShareToken,
+        remainingUses: { gt: 0 },
+        shareExpiration: { gt: new Date() },
+      },
+      data: { remainingUses: { decrement: 1 } },
+    });
+    return count > 0;
+  }
+
+  /** Returns a reserved use when the share could not be created. */
+  async refundUse(reverseShareToken?: string): Promise<void> {
+    if (!reverseShareToken) return;
+    await this.prisma.reverseShare
+      .updateMany({
+        where: { token: reverseShareToken },
+        data: { remainingUses: { increment: 1 } },
+      })
+      .catch(() => undefined);
   }
 
   async isValid(reverseShareToken: string) {

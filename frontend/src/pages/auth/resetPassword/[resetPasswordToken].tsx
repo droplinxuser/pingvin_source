@@ -73,9 +73,7 @@ const ResetPassword = () => {
             t("common.error.password.number"),
           )
           .matches(
-            requireSpecialCharacter
-              ? /[^a-zA-Z0-9]/
-              : /.*/,
+            requireSpecialCharacter ? /[^a-zA-Z0-9]/ : /.*/,
             t("common.error.password.special"),
           )
           .required(t("common.error.field-required")),
@@ -88,7 +86,7 @@ const ResetPassword = () => {
   return (
     <Container size={460} my={30}>
       <Meta title={t("resetPassword.text.resetPassword")} />
-      <Title order={2} weight={900} align="center">
+      <Title order={1} size="h2" weight={900} align="center">
         <FormattedMessage id="resetPassword.text.resetPassword" />
       </Title>
       <Text color="dimmed" size="sm" align="center">

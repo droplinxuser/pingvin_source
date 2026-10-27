@@ -19,8 +19,9 @@ const QRCode = ({ link }: { link: string }) => {
     return (
       <div
         style={{
-          width: 400,
-          height: 400,
+          width: "100%",
+          maxWidth: 400,
+          aspectRatio: "1 / 1",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
@@ -39,7 +40,7 @@ const QRCode = ({ link }: { link: string }) => {
       height={400}
       loading="lazy"
       decoding="async"
-      style={{ width: 400, height: 400 }}
+      style={{ width: "100%", maxWidth: 400, height: "auto" }}
     />
   );
 };

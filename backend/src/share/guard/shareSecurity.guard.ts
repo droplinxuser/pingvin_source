@@ -9,6 +9,7 @@ import * as moment from "moment";
 import { I18nService } from "nestjs-i18n";
 import { PrismaService } from "src/prisma/prisma.service";
 import { ShareService } from "src/share/share.service";
+import { GuardShare } from "src/share/shareState.service";
 import { isPublicShare } from "src/share/share.util";
 import { ConfigService } from "src/config/config.service";
 import { JwtGuard } from "src/auth/guard/jwt.guard";
@@ -77,7 +78,13 @@ export class ShareSecurityGuard extends JwtGuard {
 
     const shareToken = request.cookies[`share_${shareId}_token`];
 
-    const share = await this.shareService.getGuardShare(shareId);
+    // FileSecurityGuard already loaded the same guard entry before delegating
+    // here; reuse it instead of issuing a second cache read per file.
+    const guardedRequest = request as Request & { guardShare?: GuardShare | null };
+    const share =
+      guardedRequest.guardShare === undefined
+        ? await this.shareService.getGuardShare(shareId)
+        : guardedRequest.guardShare;
 
     if (!share) throw new NotFoundException(this.i18n.t("share.notFound"));
 

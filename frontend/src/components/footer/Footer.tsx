@@ -12,7 +12,7 @@ import {
 } from "@mantine/core";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useIntl } from "react-intl";
 import { TbEye } from "react-icons/tb";
 import useConfig from "../../hooks/config.hook";
@@ -151,6 +151,7 @@ const Footer = () => {
   const { siteName } = useSiteMeta();
   const [stats, setStats] = useState<SystemStats | null>(null);
   const [isLoadingStats, setIsLoadingStats] = useState(true);
+  const lastTrackedPath = useRef<string>();
 
   // This is also the page-view beacon: one POST per rendered page, with the
   // counters kept in Valkey instead of SQLite. Start it after the first paint
@@ -160,9 +161,14 @@ const Footer = () => {
     let idleHandle: number | undefined;
     let timeout: ReturnType<typeof setTimeout> | undefined;
 
+    // Hash-only changes are the same page; keep the current numbers instead
+    // of flashing the skeleton and sending another page view.
+    const path = router.asPath.split("#")[0];
+    if (lastTrackedPath.current === path) return;
+    lastTrackedPath.current = path;
+
     const loadStats = async () => {
       if (cancelled) return;
-      setIsLoadingStats(true);
       let result: SystemStats | null = null;
       try {
         result = await systemService.recordPageView();

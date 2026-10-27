@@ -23,6 +23,17 @@ const withPWA = require("next-pwa")({
   // /sw.js cannot keep an old service worker alive across deployments.
   register: false,
   reloadOnOnline: false,
+  // Navigations are NetworkOnly, so precaching every lazy chunk only costs
+  // bandwidth (5 MB+) without enabling offline use. Keep the core bundles and
+  // page chunks, and leave replaceable branding to the HTTP cache.
+  buildExcludes: [/static\/chunks\/(?!pages\/)(?!framework|main|webpack).*/],
+  publicExcludes: [
+    "!img/logo*.png",
+    "!img/logo*.webp",
+    "!img/icons/**/*",
+    "!img/og-image.png",
+    "!favicon.ico",
+  ],
   runtimeCaching: [
     {
       urlPattern: /^(?!.*\/api(\/|$)).*/,
@@ -52,6 +63,17 @@ const CACHE_RULES = [
 
 module.exports = withPWA({
   poweredByHeader: false,
+  async redirects() {
+    // Short share links are the common email link. Let Next answer them before
+    // middleware/SSR instead of rendering a page only to return the same 308.
+    return [
+      {
+        source: "/s/:shareId",
+        destination: "/share/:shareId",
+        permanent: true,
+      },
+    ];
+  },
   async headers() {
     return [
       {

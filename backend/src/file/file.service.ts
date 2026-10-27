@@ -50,6 +50,11 @@ const THUMBNAIL_DIRECTORY = `${THUMBNAIL_ROOT}/${THUMBNAIL_VERSION}`;
 const THUMBNAIL_MAX_AGE_MS = 32 * 24 * 60 * 60 * 1000;
 const THUMBNAIL_CONCURRENCY = 3;
 const THUMBNAIL_WARM_LIMIT = 48;
+// A public share id is enough to request a thumbnail, so keep the pending
+// conversion queue bounded instead of letting scrapers stack ffmpeg/sharp work.
+const THUMBNAIL_QUEUE_LIMIT = 200;
+// Reject decompression-bomb images well below sharp's default limit.
+const PREVIEW_MAX_INPUT_PIXELS = 64_000_000;
 const THUMBNAIL_TIMEOUT_MS = 20_000;
 const WEBP_IMAGE_TYPES = new Set([
   "image/jpeg",
@@ -177,6 +182,18 @@ export class FileService implements OnModuleInit {
     fileName: string,
     totalChunks: number,
   ) {
+    // Do not sign an arbitrary number of URLs: the client cannot need more
+    // chunks than the configured per-file limit allows.
+    const chunkSize =
+      parseInt(this.configService.get("share.chunkSize")) || 10_000_000;
+    const maxFileSize =
+      parseInt(this.configService.get("share.maxFileSize")) || 0;
+    const maxChunks =
+      maxFileSize > 0 ? Math.ceil(maxFileSize / chunkSize) : 10_000;
+    if (totalChunks > Math.min(maxChunks, 10_000)) {
+      throw new BadRequestException(this.i18n.t("file.tooManyChunks"));
+    }
+
     const share = await this.prisma.share.findFirst({
       where: { id: shareId },
       select: { storageProvider: true },
@@ -236,12 +253,18 @@ export class FileService implements OnModuleInit {
     shareId: string,
     fileId: string,
     isDownload: boolean,
+    storageProvider?: string,
   ): Promise<string> {
-    const share = await this.prisma.share.findFirst({
-      where: { id: shareId },
-      select: { storageProvider: true },
-    });
-    if (share?.storageProvider !== "S3") {
+    // The caller usually already has the provider from the security guard.
+    const provider =
+      storageProvider ??
+      (
+        await this.prisma.share.findFirst({
+          where: { id: shareId },
+          select: { storageProvider: true },
+        })
+      )?.storageProvider;
+    if (provider !== "S3") {
       throw new BadRequestException(this.i18n.t("file.s3NotSupported"));
     }
     return this.s3FileService.getPreSignedDownloadUrl(
@@ -357,7 +380,7 @@ export class FileService implements OnModuleInit {
       await fs.mkdir(shareDirectory, { recursive: true });
       await pipeline(
         original.file,
-        sharp()
+        sharp({ limitInputPixels: PREVIEW_MAX_INPUT_PIXELS })
           .rotate()
           .resize({
             width: PREVIEW_MAX_DIMENSION,
@@ -547,6 +570,11 @@ export class FileService implements OnModuleInit {
 
     const running = this.thumbnailBuilds.get(shareId);
     if (running) return running;
+
+    if (this.thumbnailQueue.length >= THUMBNAIL_QUEUE_LIMIT) {
+      this.rememberThumbnailFailure(shareId, "queue-full");
+      return undefined;
+    }
 
     const build = this.enqueueThumbnail(() =>
       this.buildShareThumbnail(shareId, path),
@@ -783,7 +811,9 @@ export class FileService implements OnModuleInit {
         }
       }
 
-      await sharp(framePath)
+      await sharp(framePath, {
+        limitInputPixels: PREVIEW_MAX_INPUT_PIXELS,
+      })
         .rotate()
         .resize({
           width: PREVIEW_MAX_DIMENSION,

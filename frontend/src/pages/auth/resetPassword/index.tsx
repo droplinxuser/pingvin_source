@@ -65,7 +65,7 @@ const ResetPassword = () => {
   return (
     <Container size={460} my={30}>
       <Meta title={t("resetPassword.title")} />
-      <Title order={2} weight={900} align="center">
+      <Title order={1} size="h2" weight={900} align="center">
         <FormattedMessage id="resetPassword.title" />
       </Title>
       <Text color="dimmed" size="sm" align="center">

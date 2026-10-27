@@ -12,7 +12,8 @@ so `git merge upstream/main` stays small.
 | Rolling 100-day expiration | `backend/src/share/share.util.ts` (`SHARE_EXPIRATION`), migrations `20261016000000` / `20261016000001`, share create/edit modals |
 | Admin pagination, search and sorting | `backend/src/share/share.service.ts`, `backend/src/user/user.service.ts` (quota columns sorted and paged in SQL), `frontend/src/pages/admin/*`, `frontend/src/components/core/SortIcon.tsx` |
 | Share reports | `backend/src/share/dto/reportShare.dto.ts`, `backend/src/email/email.service.ts`, `frontend/src/components/share/showReportShareModal.tsx` |
-| Uploader metadata / visitors | `backend/src/utils/uploaderInfo.util.ts`, `ShareDTO.uploaderInfo`, `frontend/src/components/share/UploaderInfoBadges.tsx`, `ShareStats.tsx`; view counts stay in `Share.views`. The recent-visitor list is shown to every visitor (guest, owner, administrator) |
+| Uploader metadata / visitors | `backend/src/utils/uploaderInfo.util.ts`, `ShareDTO.uploaderInfo`, `frontend/src/components/share/UploaderInfoBadges.tsx`, `ShareStats.tsx`; view counts stay in `Share.views`, written in five-second batches for unlimited shares and atomically for limited ones (`shareState.service.ts`). Geo labels are clamped before storage. The recent-visitor list is shown to every visitor (guest, owner, administrator) |
+| Reverse-share use limits | `backend/src/reverseShare/reverseShare.service.ts` (`reserveUse` / `refundUse`), `backend/src/share/share.service.ts` (reserve at create, reject invalid cookies, no refund on revert) |
 | Inline media gallery | `frontend/src/components/share/MediaPreviewGallery.tsx` (up to 100 supported image/video cards at 250px, revealed in 12-card lazy batches with a skeleton card; videos show a skeleton until their lazy first frame loads; every image/video in the share is available from the popup through previous/next buttons and ArrowLeft/ArrowRight); `frontend/src/components/core/LazySection.tsx` reserves space for the gallery, file list, comments and visitor insights |
 | Individual downloads / legacy ZIP | `frontend/src/components/share/DownloadAllButton.tsx` (confirmation + sequential per-file downloads), `frontend/src/services/share.service.ts` (anchor-based downloads), `backend/src/share/share.service.ts` (no automatic archive creation); existing `archive.zip` files remain served by the legacy API. The share file count uses `share.custom.fileCount` without the old ZIP note. |
 | Share and file size limits | `backend/prisma/seed/config.seed.ts` (`share.maxSize` 5 GB, `share.maxFileSize` 512 MB), migration `20261025000000_raise_share_size_limit`, `backend/src/share/share.util.ts` (`resolveShareSizeLimit`), local/S3 upload guards, `frontend/src/components/upload/Dropzone.tsx` and upload pages |
@@ -20,17 +21,17 @@ so `git merge upstream/main` stays small.
 | New shares | `backend/src/cache/trending.service.ts` (`getRecent`), `GET /api/shares/recent?limit=200`, `frontend/src/pages/new.tsx`, shared `TrendingToday` grid/card (`loadItems`, media badge, 24-card batches), header/footer links, sitemap/robots |
 | Shared UI polish | `frontend/src/components/core/RelativeTime.tsx` (relative timestamps + full-date tooltip), `RouteProgress.tsx` (global navigation bar), `LazyImage.tsx` (lazy images with shimmer placeholder), `LazySection.tsx` / `LazyVideo.tsx`, `frontend/src/utils/filePreview.util.ts` (lazy file-preview modal chunk) |
 | Legal pages | `frontend/src/components/legal/LegalDocument.tsx` (shared imprint/privacy markdown layout, one H1 and canonical JSON-LD) |
-| Upload paste and folder picks | Upstream `frontend/src/hooks/useClipboardPaste.hook.ts`, `utils/file.util.ts` and `utils/folder.util.ts`; the fork only adds `share.maxFileSize` validation in `components/upload/Dropzone.tsx` and keeps the folder button |
+| Upload paste and folder picks | Upstream `frontend/src/hooks/useClipboardPaste.hook.ts`, `utils/file.util.ts` and `utils/folder.util.ts`; the fork adds `share.maxFileSize` validation in `components/upload/Dropzone.tsx`, keeps the folder button, and validates upload-init/complete/abort with `backend/src/file/dto/upload.dto.ts` (safe names, bounded chunks/parts) |
 | Share thumbnails / OG | `backend/src/file/file.service.ts` (share-level 300px WebP, ordered preview fallbacks, background queue, 32-day cleanup), `backend/src/share/preview.util.ts` (shared source selection and `getPreviewCandidates`), `GET /api/shares/:id/thumbnail`, `frontend/src/components/share/TrendingToday.tsx`, `TrendingCountries.tsx`, `Meta.tsx` |
-| Cache headers / hotlink protection | `backend/src/utils/cache.util.ts` (shared `Cache-Control`, `CDN-Cache-Control`, `Cloudflare-CDN-Cache-Control`, public-file `ETag`), `frontend/src/utils/version.util.ts` (build-versioned public config/provider URLs), `backend/src/utils/referrer.util.ts`, `frontend/src/middleware.ts` (query-free anonymous page shells), `frontend/next.config.js` |
+| Cache headers / hotlink protection | `backend/src/utils/cache.util.ts` (shared `Cache-Control`, `CDN-Cache-Control`, `Cloudflare-CDN-Cache-Control`, public-file `ETag`, `If-None-Match` 304 handling, per-share cache epochs), `frontend/src/utils/version.util.ts` (build-versioned public config/provider URLs), `backend/src/utils/referrer.util.ts`, `frontend/src/middleware.ts` (query-free anonymous page shells; its `no-store` decision is authoritative), `frontend/next.config.js` (`/s/:shareId` redirect, PWA precache exclusions) |
 | Per-IP+User-Agent rate limiting | `backend/src/utils/visitorIdentity.util.ts`, `backend/src/cache/valkeyThrottler.storage.ts`, `backend/src/cache/throttler.config.ts`, `backend/src/main.ts` |
 | Valkey/Redis cache | `backend/src/utils/cache.util.ts`, `backend/src/share/shareState.service.ts`, `backend/src/cache/cache.module.ts`, `backend/src/cache/valkey.service.ts` |
 | VirusTotal background scanning | `backend/src/virustotal/*` (worker, file-backed audit, admin controller), `backend/src/share/share.service.ts` (completion hook), `backend/src/share/share.module.ts`, `backend/src/clamscan/clamscan.service.ts` (shared malicious-share removal), `frontend/src/pages/admin/virustotal.tsx`, `backend/.env.example` |
 | Site stats and footer | `backend/src/system/system.service.ts`, `backend/src/cache/metrics.service.ts`, `frontend/src/components/footer/Footer.tsx`; `POST /api/system/pageview` |
 | Valkey metrics and error logs | `backend/src/cache/valkeyMetrics.util.ts`, `backend/src/logs/*`, `backend/src/system/system.controller.ts` (`GET /api/system/valkey`), `frontend/src/components/admin/ValkeyMetricsCard.tsx`, `frontend/src/pages/admin/logs.tsx`, `frontend/src/services/log.service.ts`, `frontend/src/utils/errorReporter.util.ts` |
-| Home copy and ads | `frontend/src/pages/index.tsx` (upstream layout and redirect), `home.custom.*` keys in `en-US.ts`, `frontend/src/components/Ads.tsx` (guest-only: resolves `useUser` plus the `access_token` cookie before mounting the ad slot, so signed-in visitors load none of the three publisher scripts); upstream `hooks/homeHref.hook.ts` owns every "go home" target (honours `general.showHomePage`, `security.allowUnauthenticatedShares` and the signed-in state), including the share error screen, breadcrumb, error modals and post-delete redirect |
+| Home copy and ads | `frontend/src/pages/index.tsx` (upstream layout and redirect), `home.custom.*` keys in `en-US.ts`, `frontend/src/components/Ads.tsx` (guest-only: resolves `useUser`, the `access_token` cookie and the `reverse_share_token` cookie before mounting the ad slot; the share page also skips the slot for password-protected shares), so signed-in visitors and protected shares load none of the three publisher scripts; upstream `hooks/homeHref.hook.ts` owns every "go home" target (honours `general.showHomePage`, `security.allowUnauthenticatedShares` and the signed-in state), including the share error screen, breadcrumb, error modals and post-delete redirect |
 | Fork branding / deployment | `frontend/public/img/**`, `frontend/public/favicon.ico`, `frontend/src/pages/manifest.json.tsx`, `pingvin-*.service`, `update.sh` |
-| SEO / crawlers | `frontend/src/components/Meta.tsx`, `SiteStructuredData.tsx`, `frontend/src/hooks/siteMeta.hook.ts`, `frontend/src/pages/robots.txt.tsx`, `frontend/src/pages/sitemap.xml.tsx`, `frontend/src/utils/seo.util.ts` (`DEFAULT_SITE_NAME`, `buildWebsiteRef`, `buildBreadcrumbList`, `buildItemList`, `buildCollectionPage`, `getShareSubject`, auto share descriptions), `frontend/src/utils/seo.server.util.ts` (`fetchShareSeo`, `fetchShareList`), `backend/src/share/share.service.ts` (`getSeo`), `backend/src/system/system.service.ts` (disk-backed `getRobotsTxt`, 50k-entry sitemap index/chunks, `getSitemapFile`) |
+| SEO / crawlers | `frontend/src/components/Meta.tsx`, `SiteStructuredData.tsx`, `frontend/src/hooks/siteMeta.hook.ts`, `frontend/src/pages/robots.txt.tsx`, `frontend/src/pages/sitemap.xml.tsx`, `frontend/src/utils/seo.util.ts` (`DEFAULT_SITE_NAME`, `buildWebsiteRef`, `buildBreadcrumbList`, `buildItemList`, `buildCollectionPage`, `getShareSubject`, auto share descriptions), `frontend/src/utils/seo.server.util.ts` (`fetchShareSeo`, `fetchShareList`), `backend/src/share/share.service.ts` (`getSeo`, 60-second `share:seo` cache invalidated with the share data), `backend/src/system/system.service.ts` (disk-backed `getRobotsTxt`, 50k-entry sitemap index/chunks, `getSitemapFile`) |
 | WebP / image pipeline | `backend/src/file/file.service.ts` (per-file preview cache + share-level listing/OG thumbnail), `backend/src/file/file.controller.ts` (`webp=300`), `backend/src/config/logo.service.ts`, `frontend/src/utils/file.util.ts`, `frontend/src/components/Logo.tsx`, `frontend/public/img/*.webp`, `og-image.png` |
 
 Fork-only UI strings live in `frontend/src/i18n/translations/en-US.ts`; every
@@ -1679,6 +1680,124 @@ that cache. "Go home" links and the home-page redirect use the upstream
   headers remained as documented; share token cookies carried `SameSite=Lax`
   and `HttpOnly`.
 
+## Optimization and hardening pass (2026-10-27, third)
+
+### Backend
+
+- Unlimited share views are counted in memory and written in one batch every
+  five seconds (`shareState.service.ts`, `VIEW_WRITE_DELAY_MS`). The response
+  still returns the live count, the base counter is read once per share, the
+  value returned by SQLite replaces the optimistic base after each flush, and
+  shutdown flushes pending counts. Shares with `maxViews` keep the existing
+  conditional `UPDATE ... RETURNING` path, so their limit stays atomic. Editing
+  or deleting a share flushes and clears its counter first.
+- Share data, guard and SEO cache fills are generation-checked. A per-share
+  epoch is bumped by `invalidateShareDataCache()`, and a fill that started
+  before the bump is either skipped or deleted immediately after its write
+  (`setCachedValueIfCurrent()` in `utils/cache.util.ts`). This closes the race
+  where a late read could restore a pre-password/pre-expiry share object.
+- Public SEO payloads are cached for 60 seconds under `share:seo:<id>`, with the
+  same invalidation path as the share data and guard entries. `getSeo()` now
+  normally costs one cache read instead of a share query, a size aggregate and
+  a thumbnail `stat()`.
+- Public files, WebP previews and share thumbnails honor `If-None-Match` and
+  return `304` instead of re-streaming an unchanged body. Range requests keep
+  working on the full response; S3 presigning no longer re-queries the storage
+  provider and only fetches the file name when a download notification is sent.
+- Reverse-share uses are reserved atomically with a conditional
+  `updateMany` at share creation, not at completion. `revertComplete()` no
+  longer refunds a use, invalid/exhausted cookies are rejected instead of
+  falling back to a normal anonymous share, and concurrent creates can no
+  longer exceed `maxUseCount`.
+- Upload-init/complete/abort bodies now use class-validator DTOs. File names
+  reject absolute paths, `..` segments, backslashes and control characters;
+  `totalChunks` and `parts` are bounded, and the service also caps chunk count
+  against `share.maxFileSize` / `share.chunkSize` before signing S3 URLs.
+- Recipient notification emails are sent after the completion response with a
+  bounded recipient list (100) and per-recipient error logging. HTML email
+  templates escape user-controlled values; report and malware templates use
+  the same escaping. Reverse-share recipient rows select only public user
+  fields.
+- OAuth token logging no longer prints raw provider tokens or callback
+  `code`/`state` values, and a malformed `config.yaml` logs a generic message
+  instead of the parser payload. Client error logs strip terminal control
+  characters and are limited to 10 reports per minute.
+- The thumbnail conversion queue is capped (200 pending) and sharp rejects
+  images above 64 megapixels. ClamAV scans now load file rows once and reuse
+  them for local and S3 shares instead of listing directories synchronously
+  and querying each name.
+- The expired-share cron has an in-flight guard, and the daily temporary-file
+  scan uses `fs.promises` instead of blocking the event loop. The sitemap
+  manifest is validated in memory for its 10-minute window, and `/health` uses
+  a constant SQL probe instead of loading the config table.
+- Cloudflare city/region/timezone headers are trimmed, stripped of control
+  characters and capped at 64 code points before they reach `uploader.json`.
+- Comment edge caching changed from 30 days to 24 hours. The versioned comment
+  URL still refreshes immediately after a mutation; the shorter ceiling only
+  bounds how long an old versioned copy can be requested.
+
+### Frontend
+
+- Page handlers no longer overwrite the middleware's cache decision:
+  `setPublicCacheHeaders()` leaves an existing `Cache-Control` untouched. A
+  non-default language/theme, query string or signed-in session now stays
+  `no-store` on `/new`, `/trending` and `/share/*` instead of being turned back
+  into a publicly cacheable localized shell.
+- `/s/:shareId` is a static Next redirect, so the common short link no longer
+  renders a page/SSR/middleware only to return the same 308. The redirect
+  preserves the query string.
+- The service worker precaches only the core bundles/page chunks and excludes
+  replaceable logo/icon/OG assets, cutting the install download from roughly
+  5 MB to the core build. Runtime navigation remains NetworkOnly.
+- Uploads stop after three retries per file instead of restarting forever.
+  `/upload` loads the create/completed modals (yup, moment, QR) on demand,
+  reducing its first-load JS from about 364 kB to 283 kB.
+- Share file lists reveal 50 rows at a time on scroll, matching the gallery and
+  trending batching pattern. Footer stats keep their previous numbers while a
+  new page view is recorded and ignore hash-only changes.
+- The password modal shows its inline error and no longer stacks a second modal
+  on a wrong/empty submission. Protected shares do not mount the ad slot;
+  ads also stay disabled while a reverse-share cookie is active.
+- Reverse-share boolean cookies are compared to the string `"false"` (instead
+  of being coerced as truthy), language/theme controls initialize after
+  hydration, QR codes scale inside narrow modals, and the sign-out path no
+  longer depends on `URL.canParse`. `jose` was removed from the client bundle
+  in favor of the existing `jwt-decode`.
+- Share H1/breadcrumbs use the full owner-provided name; only the meta title is
+  shortened. JSON-LD `numberOfItems` matches the emitted file entries. Auth
+  verification/reset pages and the admin config page now render a single H1,
+  and the error page builds its translation values correctly.
+- `.dockerignore` now excludes `.env` and `*.log` from the build context.
+
+### Verification (2026-10-27, third)
+
+- Node `26.12.1`: backend build, all 128 unit tests and backend lint pass
+  (14 upstream warnings only). Frontend production build and lint pass.
+- API checks: three share views returned 1/2/3 while SQLite stayed at 0 and
+  reached 3 after the flush; 20 concurrent views produced 20 unique counts and
+  the final database value matched. SEO cache returned the old name until an
+  edit, then the new name. Reverse-share tests returned `201` for the first
+  create, `400` after revert, and `[201, 400]` for two concurrent creates with
+  one use. Upload-init rejected a huge chunk count, a traversal name, a
+  backslash name and an absolute path with `400`.
+- HTTP checks: `If-None-Match` returned `304` for a public file, a WebP preview
+  and a share thumbnail. Default-language anonymous `/`, `/new`, `/trending`
+  and `/share/*` remained public; language/theme/query variants and the
+  protected page returned `no-store`; robots/sitemap/manifest kept their
+  documented public TTLs. The protected share still returned `403` before a
+  token and `200` after it; the view-limited share returned `403` on the third
+  view and still served its file at the limit.
+- Playwright covered the guest, member and admin routes plus 390px dark-mode
+  pages: every page returned the expected status, one H1, no horizontal
+  overflow and no missing image alt attributes. The public share gallery
+  opened/closed, a file downloaded as `photo.png`, a comment was created, and
+  the protected flow showed one modal with an inline error before loading with
+  the correct password. There were zero application console errors/warnings,
+  page exceptions or failed requests after excluding the expected password/404
+  status logs and third-party ad domains.
+- All temporary shares, the temporary admin user and its cache/files were
+  deleted after verification.
+
 ## Known non-issues
 
 - Cloudflare does not echo `Cloudflare-CDN-Cache-Control`, but it honors
@@ -1704,7 +1823,7 @@ that cache. "Go home" links and the home-page redirect use the upstream
   caches correctly. The app adds `?v=<build>` (see `version.util.ts`) so each
   deployment reads a fresh origin response. Purging those URLs or reviewing
   the edge Cache/Transform rule removes the duplicate; bodies are unaffected.
-- Public comments are cached for 30 days, keyed by the app's `?v=<version>`
+- Public comments are cached for 24 hours, keyed by the app's `?v=<version>`
   query. A request without `v` can keep an old copy until the edge TTL expires;
   the application always sends the version, and purging the comments URL clears
   stale unversioned entries.

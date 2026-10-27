@@ -1,10 +1,13 @@
+import { CACHE_MANAGER } from "@nestjs/cache-manager";
 import {
   BadRequestException,
   ForbiddenException,
+  Inject,
   Injectable,
   Logger,
   NotFoundException,
 } from "@nestjs/common";
+import type { Cache } from "cache-manager";
 import { JwtService, JwtSignOptions } from "@nestjs/jwt";
 import { Prisma, Share, User, ShareSecurity } from "@prisma/client";
 import * as argon from "argon2";
@@ -24,6 +27,12 @@ import { VirusTotalService } from "src/virustotal/virustotal.service";
 import { parseRelativeDateToAbsolute } from "src/utils/date.util";
 import { byteToHumanSizeString } from "src/utils/fileSize.util";
 import { getUserActiveStorageUsage } from "src/utils/storageQuota.util";
+import {
+  getCachedValue,
+  getShareCacheEpoch,
+  setCachedValueIfCurrent,
+  shareSeoCacheKey,
+} from "src/utils/cache.util";
 import { SHARE_DIRECTORY } from "../constants";
 import { findPreview } from "./preview.util";
 import { CreateShareDTO } from "./dto/createShare.dto";
@@ -73,6 +82,13 @@ const SHARE_INCLUDE = {
   recipients: { select: { email: true } },
 } satisfies Prisma.ShareInclude;
 
+// The admin table only exposes the derived share size, so it does not need
+// file names or ids for every row in the page.
+const ADMIN_SHARE_INCLUDE = {
+  ...SHARE_INCLUDE,
+  files: { select: { size: true } },
+} satisfies Prisma.ShareInclude;
+
 export type ShareSeo = {
   indexable: boolean;
   id: string;
@@ -102,12 +118,21 @@ export class ShareService {
     private readonly i18n: I18nService,
     private shareState: ShareStateService,
     private virusTotalService: VirusTotalService,
+    @Inject(CACHE_MANAGER) private readonly cache: Cache,
   ) {}
 
   async create(share: CreateShareDTO, user?: User, reverseShareToken?: string) {
     const reverseShare = reverseShareToken
       ? await this.reverseShareService.getValidByToken(reverseShareToken)
       : null;
+
+    // A stale/exhausted reverse-share cookie must not silently fall through
+    // to a normal (anonymous) share, which would bypass its size/use limits.
+    if (reverseShareToken && !reverseShare) {
+      throw new BadRequestException(
+        this.i18n.t("reverseShare.noUsesRemaining"),
+      );
+    }
 
     const quotaOwner = reverseShare ? reverseShare.creator : user;
 
@@ -196,6 +221,18 @@ export class ShareService {
     // expiration of 100 days, which is extended on every visit of the share page.
     const expirationDate = parseRelativeDateToAbsolute(SHARE_EXPIRATION);
 
+    // Consume the reverse-share use atomically before writing anything. The
+    // previous check-then-decrement-on-complete flow allowed parallel creates
+    // (and the revert loop) to exceed maxUseCount.
+    const reservedUse = reverseShare
+      ? await this.reverseShareService.reserveUse(reverseShareToken)
+      : false;
+    if (reverseShare && !reservedUse) {
+      throw new BadRequestException(
+        this.i18n.t("reverseShare.noUsesRemaining"),
+      );
+    }
+
     fs.mkdirSync(`${SHARE_DIRECTORY}/${share.id}`, {
       recursive: true,
     });
@@ -207,31 +244,53 @@ export class ShareService {
       ...shareData
     } = share;
 
-    const shareTuple = await this.prisma.share.create({
-      data: {
-        ...shareData,
-        expiration: expirationDate,
-        creator: { connect: user ? { id: user.id } : undefined },
-        security: { create: share.security },
-        recipients: {
-          create: share.recipients
-            ? share.recipients.map((email) => ({ email }))
-            : [],
-        },
-        storageProvider: this.configService.get("s3.enabled") ? "S3" : "LOCAL",
-      },
-    });
-
-    if (reverseShare) {
-      // Assign share to reverse share token
-      await this.prisma.reverseShare.update({
-        where: { token: reverseShareToken },
+    let shareTuple;
+    try {
+      shareTuple = await this.prisma.share.create({
         data: {
-          shares: {
-            connect: { id: shareTuple.id },
+          ...shareData,
+          expiration: expirationDate,
+          creator: { connect: user ? { id: user.id } : undefined },
+          security: { create: share.security },
+          recipients: {
+            create: share.recipients
+              ? share.recipients.map((email) => ({ email }))
+              : [],
           },
+          storageProvider: this.configService.get("s3.enabled")
+            ? "S3"
+            : "LOCAL",
         },
       });
+
+      if (reverseShare) {
+        // Assign share to reverse share token
+        await this.prisma.reverseShare.update({
+          where: { token: reverseShareToken },
+          data: {
+            shares: {
+              connect: { id: shareTuple.id },
+            },
+          },
+        });
+      }
+    } catch (error) {
+      // Do not burn a use, and do not leave an unlinked share behind, when
+      // the create/link step fails after the reservation.
+      if (reservedUse)
+        await this.reverseShareService.refundUse(reverseShareToken);
+      if (shareTuple) {
+        await this.prisma.share
+          .delete({ where: { id: shareTuple.id } })
+          .catch(() => undefined);
+        await fs.promises
+          .rm(`${SHARE_DIRECTORY}/${share.id}`, {
+            recursive: true,
+            force: true,
+          })
+          .catch(() => undefined);
+      }
+      throw error;
     }
 
     return shareTuple;
@@ -321,20 +380,12 @@ export class ShareService {
         : [];
     const userByEmail = new Map(matchedUsers.map((u) => [u.email, u]));
 
-    // Send email for each recipient
-    for (const recipient of share.recipients) {
-      const userDetails = userByEmail.get(recipient.email);
-
-      await this.emailService.sendMailToShareRecipients(
-        recipient.email,
-        recipient.id,
-        share.id,
-        share.creator || share.reverseShare?.creator,
-        share.description,
-        share.expiration,
-        userDetails?.displayName || userDetails?.username,
-      );
-    }
+    // A large recipient list would otherwise keep the completion request open
+    // for the whole SMTP round trip. Notifications are sent after the response
+    // and any failure is logged instead of failing the upload.
+    void this.sendRecipientEmails(share, userByEmail).catch((error) =>
+      this.logger.warn(`Could not notify share recipients: ${error}`),
+    );
 
     // Auto-link email recipients who are registered users so the share appears in their dashboard
     if (this.configService.get("share.enableUserRecipients")) {
@@ -366,13 +417,8 @@ export class ShareService {
     // Check if any file is malicious with ClamAV
     void this.clamScanService.checkAndRemove(share.id);
 
-    if (share.reverseShare) {
-      await this.prisma.reverseShare.update({
-        where: { id: share.reverseShare.id },
-        data: { remainingUses: { decrement: 1 } },
-      });
-    }
-
+    // The reverse-share use was reserved atomically in create(); completing or
+    // reverting the upload must not change it again.
     const updatedShare = await this.prisma.share.update({
       where: { id },
       data: { uploadLocked: true },
@@ -394,21 +440,55 @@ export class ShareService {
     };
   }
 
+  private async sendRecipientEmails(
+    share: {
+      id: string;
+      description: string | null;
+      expiration: Date;
+      recipients: { id: string; email: string }[];
+      creator: Pick<User, "email" | "displayName" | "username"> | null;
+      reverseShare: {
+        creator: Pick<User, "email" | "displayName" | "username">;
+      } | null;
+    },
+    userByEmail: Map<string, Pick<User, "displayName" | "username">>,
+  ) {
+    if (
+      !this.configService.get("share.enableShareEmailRecipients") ||
+      !this.configService.get("smtp.enabled")
+    )
+      return;
+
+    for (const recipient of share.recipients) {
+      const userDetails = userByEmail.get(recipient.email);
+      try {
+        await this.emailService.sendMailToShareRecipients(
+          recipient.email,
+          recipient.id,
+          share.id,
+          share.creator ?? share.reverseShare?.creator,
+          share.description,
+          share.expiration,
+          userDetails?.displayName || userDetails?.username,
+        );
+      } catch (error) {
+        this.logger.warn(
+          `Could not send share email to ${recipient.email}: ${error}`,
+        );
+      }
+    }
+  }
+
   async revertComplete(id: string) {
     const share = await this.prisma.share.findUnique({
       where: { id },
-      include: { reverseShare: true },
+      select: { uploadLocked: true },
     });
 
     if (!share) throw new NotFoundException(this.i18n.t("share.notFound"));
 
-    if (share.uploadLocked && share.reverseShare) {
-      await this.prisma.reverseShare.update({
-        where: { id: share.reverseShare.id },
-        data: { remainingUses: { increment: 1 } },
-      });
-    }
-
+    // Never refund a reverse-share use here: reverting and re-completing the
+    // same upload would otherwise restore the use indefinitely.
     const updatedShare = await this.prisma.share.update({
       where: { id },
       data: { uploadLocked: false, isZipReady: false },
@@ -425,7 +505,7 @@ export class ShareService {
     sortBy?: string,
     sortDirection?: string,
   ) {
-    const include = SHARE_INCLUDE;
+    const include = ADMIN_SHARE_INCLUDE;
 
     // Size is derived from the files, so it can't be sorted with a Prisma
     // orderBy clause. Order just the requested page in SQL instead of loading
@@ -554,6 +634,14 @@ export class ShareService {
    * HTML metadata, structured data and sitemaps.
    */
   async getSeo(id: string): Promise<ShareSeo> {
+    // The share page SSR asks for this on every uncached render. A 60-second
+    // entry (matching the edge TTL) removes the share/size queries from the
+    // hot path; every mutation already invalidates the share data cache.
+    const cacheKey = shareSeoCacheKey(id);
+    const cached = await getCachedValue<ShareSeo>(this.cache, cacheKey);
+    if (cached) return cached;
+
+    const epoch = getShareCacheEpoch(id);
     const share = await this.prisma.share.findUnique({
       where: { id },
       select: {
@@ -616,7 +704,7 @@ export class ShareService {
         ).getTime()}`
       : undefined;
 
-    return {
+    const result: ShareSeo = {
       indexable: true,
       id: share.id,
       name: share.name ?? undefined,
@@ -628,6 +716,15 @@ export class ShareService {
       files: share.files,
       thumbnailUrl,
     };
+    await setCachedValueIfCurrent(
+      this.cache,
+      cacheKey,
+      result,
+      60_000,
+      id,
+      epoch,
+    );
+    return result;
   }
 
   async report(id: string, report: ReportShareDTO) {

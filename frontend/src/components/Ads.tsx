@@ -21,7 +21,11 @@ const Ads = ({ gallery = false }: { gallery?: boolean }) => {
   // Resolve the session in the browser before mounting the ad slot so account
   // holders never execute or see the publisher scripts.
   useEffect(() => {
-    setIsGuest(!user && !getCookie("access_token"));
+    // Never inject third-party scripts while a reverse-share cookie is active:
+    // it grants upload permission and is readable by page scripts.
+    setIsGuest(
+      !user && !getCookie("access_token") && !getCookie("reverse_share_token"),
+    );
   }, [user]);
 
   useEffect(() => {

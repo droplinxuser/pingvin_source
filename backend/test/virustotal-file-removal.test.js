@@ -82,7 +82,7 @@ test("removes only the offending file and keeps clean files", async () => {
   assert.equal(calls.updates.length, 1);
   assert.equal(calls.updates[0].data.isZipReady, false);
   assert.equal("removedReason" in calls.updates[0].data, false);
-  assert.equal(calls.cacheDel.length, 2);
+  assert.equal(calls.cacheDel.length, 3);
 });
 
 test("uses a custom removed reason when provided", async () => {
@@ -119,7 +119,7 @@ test("marks the share removed when the offending file was the last file", async 
   assert.equal(calls.updates.length, 1);
   assert.equal(calls.updates[0].data.isZipReady, false);
   assert.match(calls.updates[0].data.removedReason, /infected\.zip/);
-  assert.equal(calls.cacheDel.length, 2);
+  assert.equal(calls.cacheDel.length, 3);
 
   fs.rmSync(dataDirectory, { recursive: true, force: true });
 });

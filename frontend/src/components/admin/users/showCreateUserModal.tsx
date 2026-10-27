@@ -27,7 +27,7 @@ const showCreateUserModal = (
   customPasswordPolicy: CustomPasswordPolicy,
 ) => {
   return modals.openModal({
-    title: "Create user",
+    title: <FormattedMessage id="admin.users.modal.create.title" />,
     children: (
       <Body
         modals={modals}
@@ -111,8 +111,7 @@ const Body = ({
           .when("setPasswordManually", {
             is: (setPasswordManually: boolean) =>
               !smtpEnabled || setPasswordManually,
-            then: (schema) =>
-              schema.required(t("common.error.field-required")),
+            then: (schema) => schema.required(t("common.error.field-required")),
             otherwise: (schema) => schema.optional(),
           }),
         maxShares: yup

@@ -21,6 +21,7 @@ import { validate as isValidUUID } from "uuid";
 import { SHARE_DIRECTORY } from "../constants";
 import { Readable } from "stream";
 import * as rangeParser from "range-parser";
+import { SAFE_FILE_NAME } from "./dto/upload.dto";
 import { File } from "./file.service";
 
 @Injectable()
@@ -37,6 +38,14 @@ export class LocalFileService {
     file: { id?: string; name: string },
     shareId: string,
   ) {
+    if (
+      typeof file.name !== "string" ||
+      file.name.length > 1024 ||
+      !SAFE_FILE_NAME.test(file.name)
+    ) {
+      throw new BadRequestException(this.i18n.t("file.invalidFileName"));
+    }
+
     if (!file.id) {
       file.id = crypto.randomUUID();
     } else if (!isValidUUID(file.id)) {

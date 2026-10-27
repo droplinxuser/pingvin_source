@@ -29,6 +29,21 @@ test("normalizes browser and OS names", () => {
   assert.equal(info.deviceType, "mobile");
 });
 
+test("clamps spoofed geo text to a bounded, single-line label", () => {
+  const longCity = `  Bad\u0000\nCity ${"x".repeat(200)}  `;
+  const info = getUploaderInfo(
+    request("Mozilla/5.0", { "cf-ipcity": longCity, "cf-region": "  " }),
+  );
+  assert.equal(info.city, `Bad City ${"x".repeat(55)}`);
+  assert.equal(info.city.length, 64);
+  assert.equal(info.region, undefined);
+
+  const visitor = getVisitorInfo(
+    request("Mozilla/5.0", { "cf-ipcity": "Dasmariñas" }),
+  );
+  assert.equal(visitor.city, "Dasmariñas");
+});
+
 test("records only external referrer domains", () => {
   const external = getVisitorInfo(
     request("Mozilla/5.0", { "x-visitor-referrer": "https://example.com/page" }),

@@ -9,6 +9,39 @@ export const SHARE_DATA_CACHE_TTL_MS = 30 * 1000;
 
 export const shareDataCacheKey = (shareId: string) => `share:data:${shareId}`;
 export const shareGuardCacheKey = (shareId: string) => `share:guard:${shareId}`;
+export const shareSeoCacheKey = (shareId: string) => `share:seo:${shareId}`;
+
+/**
+ * A cache fill can start before an edit and finish after the invalidation.
+ * This counter is bumped on every invalidation so such a late write is either
+ * skipped or immediately removed, instead of restoring a pre-edit (possibly
+ * unprotected) share object for the next TTL window.
+ */
+const shareCacheEpochs = new Map<string, number>();
+
+export function getShareCacheEpoch(shareId: string): number {
+  return shareCacheEpochs.get(shareId) ?? 0;
+}
+
+function bumpShareCacheEpoch(shareId: string) {
+  if (shareCacheEpochs.size > 50_000) shareCacheEpochs.clear();
+  shareCacheEpochs.set(shareId, getShareCacheEpoch(shareId) + 1);
+}
+
+export async function setCachedValueIfCurrent(
+  cache: Cache,
+  key: string,
+  value: unknown,
+  ttl: number,
+  shareId: string,
+  epoch: number,
+): Promise<void> {
+  if (getShareCacheEpoch(shareId) !== epoch) return;
+  await setCachedValue(cache, key, value, ttl);
+  // A write can overlap the invalidation; remove it if the generation moved.
+  if (getShareCacheEpoch(shareId) !== epoch)
+    await deleteCachedValue(cache, key);
+}
 
 const cacheHeaders = (value: string) => ({
   "Cache-Control": value,
@@ -61,6 +94,27 @@ export function getDownloadCacheHeaders(
   return headers;
 }
 
+/**
+ * Public files and previews are served as streams, so Express never applies
+ * its built-in freshness check. Comparing If-None-Match here lets a browser or
+ * the CDN revalidate an expired copy with a 304 instead of downloading the
+ * whole file again.
+ */
+export function isNotModified(
+  request: { headers: Record<string, string | string[] | undefined> },
+  etag?: string,
+): boolean {
+  if (!etag) return false;
+  const header = request.headers["if-none-match"];
+  const value = Array.isArray(header) ? header.join(",") : header;
+  if (!value) return false;
+
+  return value
+    .split(",")
+    .map((candidate) => candidate.trim())
+    .some((candidate) => candidate === "*" || candidate === etag);
+}
+
 export async function getCachedValue<T>(
   cache: Cache,
   key: string,
@@ -98,8 +152,10 @@ export async function invalidateShareDataCache(
   cache: Cache,
   shareId: string,
 ): Promise<void> {
+  bumpShareCacheEpoch(shareId);
   await Promise.all([
     deleteCachedValue(cache, shareDataCacheKey(shareId)),
     deleteCachedValue(cache, shareGuardCacheKey(shareId)),
+    deleteCachedValue(cache, shareSeoCacheKey(shareId)),
   ]);
 }
