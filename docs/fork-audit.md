@@ -2090,6 +2090,41 @@ needed for the fix.
   errors. The ad slot kept one injected banner script connected across
   re-renders on both the share gallery and the 404 layout.
 
+### Live verification (2026-10-27, deploy `4de7c3ca`)
+
+- The deployed `_app`/service worker reported `4de7c3ca` (build
+  `TVdUlUOAnABLVdek0DKbd`). Guest, signed-in and 390px dark-mode passes covered
+  home, new, trending, legal, sign-in, image/video/missing shares, short link,
+  upload, every account page, reverse shares, robots, sitemap and manifest.
+  Every page had one H1, no horizontal overflow and no missing image alt text;
+  there were zero application console errors/warnings, page exceptions or
+  failed requests (only the expected 404 document-status logs).
+- Reverse-share upload was re-tested live with unauthenticated shares
+  disabled: the reverse cookie was set, `upload-init` and the chunk upload
+  succeeded, the share reached "Share ready", the reverse cookie was cleared
+  and no 4xx/console errors appeared. The short link rendered; the temporary
+  reverse share and its share were deleted and returned 404 afterwards.
+- The new `/admin/referrer` route and its page chunk are in the live build
+  manifest. A guest is redirected to sign-in, the non-admin test account is
+  redirected to `/upload`, and `/api/system/referrers` returns 403 with
+  `no-store` for both. The populated table (50 rows on page 1, 13 on page 2)
+  was verified locally with an admin account; the live page requires the
+  site administrator's login. Referrer counts start with share views after the
+  deploy, so the first visit can legitimately show the empty state.
+- Service worker `?v=4de7c3ca` installed/activated and all 43 precache URLs
+  returned 200. PWA/runtime caching, public shell/API cache headers, immutable
+  static assets, ETag/304 file reads, security headers (each once, no
+  `X-Powered-By`) and the sitemap/robots/manifest were unchanged.
+- Ad slot: the live share page renders the stable `Card` (`share-gallery-ad`)
+  with one injected banner script still connected after several seconds. A
+  real banner click in a non-headless Chromium opened the network chain and the
+  tab stayed open for the whole observation window; the chain still drops
+  `window.opener` at the third-party landing page. No application
+  `window.close` was observed.
+- Performance at 1366px: home LCP ~0.72s, new ~1.45s, trending ~1.43s, image
+  share ~2.23s, video share ~2.04s; CLS stayed below 0.031 and script transfer
+  was 275-333 kB.
+
 ## Known non-issues
 
 - Cloudflare does not echo `Cloudflare-CDN-Cache-Control`, but it honors
