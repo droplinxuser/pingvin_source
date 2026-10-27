@@ -1836,9 +1836,11 @@ needed for the fix.
   password modal directly instead of logging a guaranteed 403. A non-public
   share response is `no-store`; only indexable pages receive a public cache
   header. The old 30-second positive SSR SEO memo was removed.
-- Ads are rendered only for indexable (public) shares, so publisher scripts
-  never run while a password gate is open. Protected share responses and
-  legacy 404s are no longer publicly cacheable.
+- Ads render for signed-out visitors on share and 404 pages regardless of
+  password, recipient restriction or max-view state. Signed-in visitors never
+  load publisher scripts. An active reverse-share upload cookie remains a
+  security exception: ads stay off so page scripts cannot read that token.
+
 - Public file downloads send a one-hour browser TTL but only a ten-minute
   shared-cache TTL (no `immutable`), so a deletion or takedown leaves
   Cloudflare within minutes. The live edge rule may extend the browser copy to
@@ -1868,8 +1870,11 @@ needed for the fix.
   `/account/received`, a public share and the non-admin `/admin` redirect.
   There were no application console errors/warnings. The intentional 404
   route logs one browser network-status error; inactive media/requests aborted
-  on navigation were test artifacts. Guest ad scripts loaded only on public
-  pages, never on the protected share or the signed-in context.
+  on navigation were test artifacts. Guest ad scripts loaded on public,
+  password-protected, recipient-restricted, max-view and 404 pages, and did
+  not load in the signed-in contexts. A later change removes the share-state
+  gate entirely as requested; only signed-in visitors (and the reverse-share
+  upload-cookie guard) suppress ads.
 - Unauthenticated admin APIs returned `403`; no CORS `Access-Control-Allow-*`
   header was returned; signup returned `403` while registration is disabled;
   an empty login password returned `400`; resend-verification returned `204`
