@@ -400,13 +400,13 @@ export class ShareController {
 
   @Post(":id/complete")
   @HttpCode(202)
-  @UseGuards(IdValidation, CreateShareGuard, StrictShareOwnerGuard)
+  @UseGuards(IdValidation, StrictShareOwnerGuard)
   async complete(@Param("id") id: string) {
     return new CompletedShareDTO().from(await this.shareService.complete(id));
   }
 
   @Delete(":id/complete")
-  @UseGuards(IdValidation, CreateShareGuard, StrictShareOwnerGuard)
+  @UseGuards(IdValidation, StrictShareOwnerGuard)
   async revertComplete(@Param("id") id: string) {
     return new ShareDTO().from(await this.shareService.revertComplete(id));
   }

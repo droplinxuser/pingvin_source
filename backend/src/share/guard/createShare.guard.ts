@@ -12,6 +12,12 @@ export class CreateShareGuard extends JwtGuard {
     super(configService);
   }
 
+  /**
+   * Only guards share creation. A reverse-share use is reserved during that
+   * request, so later upload/complete/removal routes must rely on
+   * StrictShareOwnerGuard (which matches the linked token) instead; calling
+   * isValid() there would reject the in-progress upload with no remaining use.
+   */
   async canActivate(context: ExecutionContext): Promise<boolean> {
     if (await super.canActivate(context)) return true;
 

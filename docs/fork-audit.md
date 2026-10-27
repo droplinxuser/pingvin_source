@@ -2016,6 +2016,37 @@ needed for the fix.
   files still return 403 without a token and `*` cannot be used for
   credentialed CORS.
 
+## Cookies-next v6 live pass and reverse-share guard fix (2026-10-27)
+
+- Merged upstream `760aa6f0` (cookies-next `6.1.1`). Browser helpers import
+  `cookies-next/client`; the server-side theme read in `_app.getInitialProps`
+  awaits the root API. The fork keeps its `jwt-decode` token handling and
+  reverse-share modal fields, and adopts upstream's corrected `simplified`
+  default. Both builds, lint and all backend tests pass.
+- Live deployment `338d6049` was checked as guest, signed-in and 390px dark
+  mode: session restore on a public share, sign-out, theme cookie + reload,
+  German language switch, reverse-share switch/cookie restore, reverse upload
+  cookie + ad suppression, UI upload/download/comment/delete, service worker
+  (42/42 precache URLs) and the usual cache/security headers all passed with no
+  application console errors or warnings.
+- The live pass exposed a reverse-share upload bug when
+  `security.allowUnauthenticatedShares` is false: share creation reserves the
+  only reverse-share use, then the upload-init/chunk/complete routes ran
+  `CreateShareGuard.isValid()` again, saw `remainingUses=0` and rejected the
+  in-progress upload with 403. Local tests had masked it because the guard
+  fail-open returned true when unauthenticated shares were allowed.
+- Fix: `CreateShareGuard` is now used only on `POST /shares`. Upload,
+  upload-complete, upload-abort, chunk, file-removal and share
+  complete/revert-complete routes rely on `StrictShareOwnerGuard`, which
+  already matches the creator or the linked reverse-share token. The guard
+  carries a comment documenting the invariant, and
+  `backend/test/reverse-share-guard.test.js` asserts the route wiring.
+- Verified locally with `allowUnauthenticatedShares=false`: a guest reverse
+  upload creates the linked share, uploads the file and completes it (the row
+  has `uploadLocked=1` and one file). Backend tests now total 130 and pass;
+  frontend/backend builds and lint pass. The fix requires one more live
+  deployment, after which the reverse-share flow will be re-checked.
+
 ## Known non-issues
 
 - Cloudflare does not echo `Cloudflare-CDN-Cache-Control`, but it honors

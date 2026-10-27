@@ -18,7 +18,6 @@ import * as contentDisposition from "content-disposition";
 import { createReadStream } from "fs";
 import { Request, Response } from "express";
 import { ConfigService } from "src/config/config.service";
-import { CreateShareGuard } from "src/share/guard/createShare.guard";
 import { StrictShareOwnerGuard } from "src/share/guard/strictShareOwner.guard";
 import { IdValidation } from "src/share/guard/shareIdValidation.guard";
 import {
@@ -61,7 +60,7 @@ export class FileController {
     default: { limit: 300, ttl: 60 * 1000 },
     visitor: { limit: 300, ttl: 60 * 1000 },
   })
-  @UseGuards(IdValidation, CreateShareGuard, StrictShareOwnerGuard)
+  @UseGuards(IdValidation, StrictShareOwnerGuard)
   async uploadInit(
     @Body() body: UploadInitDTO,
     @Param("shareId") shareId: string,
@@ -78,7 +77,7 @@ export class FileController {
     default: { limit: 300, ttl: 60 * 1000 },
     visitor: { limit: 300, ttl: 60 * 1000 },
   })
-  @UseGuards(IdValidation, CreateShareGuard, StrictShareOwnerGuard)
+  @UseGuards(IdValidation, StrictShareOwnerGuard)
   async uploadComplete(
     @Body() body: UploadCompleteDTO,
     @Param("shareId") shareId: string,
@@ -97,7 +96,7 @@ export class FileController {
     default: { limit: 300, ttl: 60 * 1000 },
     visitor: { limit: 300, ttl: 60 * 1000 },
   })
-  @UseGuards(IdValidation, CreateShareGuard, StrictShareOwnerGuard)
+  @UseGuards(IdValidation, StrictShareOwnerGuard)
   async uploadAbort(
     @Body() body: UploadAbortDTO,
     @Param("shareId") shareId: string,
@@ -117,7 +116,7 @@ export class FileController {
     default: { limit: 1200, ttl: 60 * 1000 },
     visitor: { limit: 600, ttl: 60 * 1000 },
   })
-  @UseGuards(IdValidation, CreateShareGuard, StrictShareOwnerGuard)
+  @UseGuards(IdValidation, StrictShareOwnerGuard)
   async create(
     @Query()
     query: {
@@ -345,7 +344,7 @@ export class FileController {
     default: { limit: 120, ttl: 60 * 1000 },
     visitor: { limit: 120, ttl: 60 * 1000 },
   })
-  @UseGuards(IdValidation, CreateShareGuard, StrictShareOwnerGuard)
+  @UseGuards(IdValidation, StrictShareOwnerGuard)
   async remove(
     @Param("fileId") fileId: string,
     @Param("shareId") shareId: string,
