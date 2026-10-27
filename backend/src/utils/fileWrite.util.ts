@@ -16,7 +16,7 @@ type AtomicWriteOptions = {
  */
 export async function writeFileAtomic(
   filePath: string,
-  data: string,
+  data: string | Buffer,
   { mode = 0o600, requireDirectory = false }: AtomicWriteOptions = {},
 ): Promise<boolean> {
   if (requireDirectory) {

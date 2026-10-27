@@ -2,7 +2,16 @@ import { Expose, plainToClass, Type } from "class-transformer";
 
 class ReceivedShareCreatorDTO {
   @Expose()
+  id: string;
+
+  @Expose()
   username: string;
+
+  @Expose()
+  displayName?: string;
+
+  @Expose()
+  avatarUpdatedAt?: Date | null;
 }
 
 class ReceivedShareDetailsDTO {

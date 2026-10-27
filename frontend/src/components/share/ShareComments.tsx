@@ -1,6 +1,5 @@
 import {
   ActionIcon,
-  Avatar,
   Badge,
   Box,
   Button,
@@ -33,10 +32,8 @@ import commentService, {
 import { ShareComment } from "../../types/share.type";
 import toast from "../../utils/toast.util";
 import { HoverTip } from "../core/HoverTip";
+import UserAvatar from "../core/UserAvatar";
 import RelativeTime from "../core/RelativeTime";
-
-const avatarLabel = (name: string) =>
-  name.trim().charAt(0).toUpperCase() || "?";
 
 const commentName = (comment: ShareComment) =>
   comment.displayName?.trim() || comment.username;
@@ -413,15 +410,16 @@ const ShareComments = ({
                   data-testid="share-comment"
                 >
                   <Group align="flex-start" spacing="sm" noWrap>
-                    <Avatar
+                    <UserAvatar
+                      user={{
+                        id: comment.userId,
+                        username: comment.username,
+                        displayName: comment.displayName,
+                        avatarUpdatedAt: comment.avatarUpdatedAt,
+                      }}
                       size={28}
-                      radius="xl"
-                      color="blue"
-                      variant="light"
                       aria-hidden
-                    >
-                      {avatarLabel(name)}
-                    </Avatar>
+                    />
                     <Box sx={{ minWidth: 0, flex: 1 }}>
                       <Group
                         position="apart"

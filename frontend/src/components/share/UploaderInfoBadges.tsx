@@ -20,6 +20,7 @@ import useTranslate from "../../hooks/useTranslate.hook";
 import { Share, UploaderInfo } from "../../types/share.type";
 import { countryCodeToFlag, getCountryName } from "../../utils/country.util";
 import { HoverTip } from "../core/HoverTip";
+import UserAvatar from "../core/UserAvatar";
 
 const ICON_SIZE = 16;
 const UNKNOWN_ICON_COLOR = "#868E96";
@@ -132,6 +133,7 @@ const UploaderInfoBadges = ({
 
   return (
     <Group spacing={6}>
+      {share.creator && <UserAvatar user={share.creator} size={20} aria-hidden />}
       <Text size="sm" color="dimmed">
         {creator
           ? t("share.custom.uploader.by", { name: creator })

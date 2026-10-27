@@ -37,6 +37,16 @@ const updateCurrentUser = async (user: UpdateCurrentUser) => {
   return (await api.patch("/users/me", user)).data;
 };
 
+const uploadAvatar = async (file: File) => {
+  const form = new FormData();
+  form.append("file", file);
+  return (await api.post("/users/me/avatar", form)).data;
+};
+
+const removeAvatar = async () => {
+  return (await api.delete("/users/me/avatar")).data;
+};
+
 const removeCurrentUser = async () => {
   await api.delete("/users/me");
 };
@@ -61,5 +71,7 @@ export default {
   remove,
   getCurrentUser,
   updateCurrentUser,
+  uploadAvatar,
+  removeAvatar,
   removeCurrentUser,
 };

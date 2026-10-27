@@ -15,6 +15,7 @@ import { SortableTh, TableSort } from "../../core/SortIcon";
 import showShareInformationsModal from "../../share/showShareInformationsModal";
 import showShareLinkModal from "../../account/showShareLinkModal";
 import { HoverTip } from "../../core/HoverTip";
+import UserAvatar from "../../core/UserAvatar";
 
 const SORTABLE_COLUMNS: [id: string, property: string][] = [
   ["account.shares.table.id", "id"],
@@ -81,7 +82,14 @@ const ManageShareTable = ({
                   <td>{share.name}</td>
                   <td>
                     {share.creator ? (
-                      share.creator.username
+                      <Group spacing={6} noWrap>
+                        <UserAvatar
+                          user={share.creator}
+                          size={22}
+                          aria-hidden
+                        />
+                        <Text size="sm">{share.creator.username}</Text>
+                      </Group>
                     ) : (
                       <Text color="dimmed">Anonymous</Text>
                     )}

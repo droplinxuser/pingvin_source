@@ -20,6 +20,7 @@ so `git merge upstream/main` stays small.
 | Trending today | `backend/src/cache/trending.service.ts`, `GET /api/shares/trending?limit=100`, `frontend/src/components/share/TrendingToday.tsx` (client-side, viewport-triggered load with batched rendering and skeletons), `frontend/src/components/share/TrendingCountries.tsx` (up to ten countries, ten shares each), `frontend/src/pages/trending.tsx`, `frontend/src/pages/_app.tsx` |
 | New shares | `backend/src/cache/trending.service.ts` (`getRecent`), `GET /api/shares/recent?limit=200`, `frontend/src/pages/new.tsx`, shared `TrendingToday` grid/card (`loadItems`, media badge, 24-card batches), header/footer links, sitemap/robots |
 | Shared UI polish | `frontend/src/components/core/RelativeTime.tsx` (relative timestamps + full-date tooltip), `RouteProgress.tsx` (global navigation bar), `LazyImage.tsx` (lazy images with shimmer placeholder), `LazySection.tsx` / `LazyVideo.tsx`, `frontend/src/utils/filePreview.util.ts` (lazy file-preview modal chunk) |
+| Profile pictures | `backend/prisma/schema.prisma` (`User.avatarUpdatedAt`), migration `20261028010000_add_user_avatar`, `backend/src/user/avatar.service.ts` (5 MB/40 MP/10k-dimension limits, EXIF rotate, 256px centre-crop, metadata-stripped WebP, atomic 0600 write, removal with account deletion), `backend/src/user/user.controller.ts` (`POST`/`DELETE /api/users/me/avatar`, public versioned `GET /api/users/:id/avatar.webp` with ETag/304 and immutable cache), `backend/src/share/comment.service.ts` (one batched avatar-version lookup per comment page), `frontend/src/components/core/UserAvatar.tsx`, `frontend/src/utils/avatar.util.ts`, `frontend/src/pages/account/index.tsx`; avatars are shown in the header, comments, share uploader badges, received shares, admin users and admin shares |
 | Legal pages | `frontend/src/components/legal/LegalDocument.tsx` (shared imprint/privacy markdown layout, one H1 and canonical JSON-LD) |
 | Upload paste and folder picks | Upstream `frontend/src/hooks/useClipboardPaste.hook.ts`, `utils/file.util.ts` and `utils/folder.util.ts`; the fork adds `share.maxFileSize` validation in `components/upload/Dropzone.tsx`, keeps the folder button, and validates upload-init/complete/abort with `backend/src/file/dto/upload.dto.ts` (safe names, bounded chunks/parts) |
 | Share thumbnails / OG | `backend/src/file/file.service.ts` (share-level 300px WebP, ordered preview fallbacks, background queue, 32-day cleanup), `backend/src/share/preview.util.ts` (shared source selection and `getPreviewCandidates`), `GET /api/shares/:id/thumbnail`, `frontend/src/components/share/TrendingToday.tsx`, `TrendingCountries.tsx`, `Meta.tsx` |
@@ -71,8 +72,9 @@ hand-rolled lock or temp-file block.
    description, file count, size, relative upload date and views over a lightly
    blurred preview that clears on hover, the new `/new` page (200 newest media shares,
    image/play badges, header/footer links), file download headers, report modal, footer
-   page-view/top-country
-   metrics, the dynamic `/manifest.json`, and the disk-backed `/sitemap.xml`
+   page-view/top-country metrics, the profile-picture upload/remove flow (and
+   its appearance in the header, comments, share uploader badge, received
+   shares and admin tables), the dynamic `/manifest.json`, and the disk-backed `/sitemap.xml`
    index plus a versioned `/api/system/sitemaps/sitemap-N.xml` chunk (one
    `<loc>` per index entry, no more than 50,000 `<url>` entries per chunk).
    Repeat once with Valkey stopped
@@ -2238,10 +2240,14 @@ needed for the fix.
   the ad vendor, not application code; the app's own requests and pages stay
   error-free. Block the ad domains or use an ad-free network when validating
   the application console.
-- `npm audit --omit=dev` reports no vulnerabilities in the frontend or backend
-  after the Next.js 15.5.28 upgrade. The app remains Pages Router only (no App
-  Router/RSC/Server Actions) and Next i18n is not configured; `images` stays
-  unoptimized, and middleware redirects still send `no-store` + `Vary`.
+- `npm audit --omit=dev` is clean for the backend. The frontend reports five
+  low-severity build-time advisories through
+  `next-pwa -> workbox-build -> @rollup/plugin-node-resolve -> deepmerge`
+  (4.3.1, the latest release). Workbox runs only while building; the suggested
+  fix downgrades `next-pwa` to 3.1.5, so it is intentionally not applied. The
+  app remains Pages Router only (no App Router/RSC/Server Actions) and Next
+  i18n is not configured; `images` stays unoptimized, and middleware redirects
+  still send `no-store` + `Vary`.
 - Backend lint reports upstream warnings only.
 - A fresh data directory logs one `ENOENT` from the temporary-file cron.
 - The recent-visitor list is intentionally visible to every site visitor,
@@ -2258,6 +2264,12 @@ needed for the fix.
   query. A request without `v` can keep an old copy until the edge TTL expires;
   the application always sends the version, and purging the comments URL clears
   stale unversioned entries.
+- Profile pictures are versioned by `avatarUpdatedAt`, so the header, account,
+  share uploader badge and admin tables change immediately. Public comment
+  pages are cached for up to 24 hours with the avatar version embedded in the
+  payload, so a returning visitor can see the previous picture on an
+  already-cached comment page until the comment cache version changes; new
+  comments and uncached pages use the current picture.
 - After a share is deleted or expired, Cloudflare can keep serving its last
   public HTML shell for the remaining 60-second `s-maxage` window. The API and
   the client payload already report 404, and the next request after the TTL

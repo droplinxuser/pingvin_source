@@ -34,6 +34,11 @@ export class UserDTO {
   })
   displayName?: string;
 
+  // The frontend appends this timestamp to the avatar URL so a replaced
+  // picture is fetched immediately while older URLs stay cacheable.
+  @Expose()
+  avatarUpdatedAt?: Date | null;
+
   @Expose()
   hasPassword: boolean;
 

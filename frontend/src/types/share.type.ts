@@ -22,6 +22,7 @@ export type ShareComment = {
   userId: string;
   username: string;
   displayName?: string;
+  avatarUpdatedAt?: string | Date | null;
   content: string;
   createdAt: string;
 };

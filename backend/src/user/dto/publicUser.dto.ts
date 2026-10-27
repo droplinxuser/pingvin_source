@@ -6,4 +6,5 @@ export class PublicUserDTO extends PickType(UserDTO, [
   "username",
   "displayName",
   "shareSizeLimit",
+  "avatarUpdatedAt",
 ] as const) {}

@@ -12,6 +12,7 @@ import { inspect } from "util";
 import { ConfigService } from "../config/config.service";
 import { FileService } from "../file/file.service";
 import { tableOrderBy } from "../utils/pagination.util";
+import { AvatarService } from "./avatar.service";
 import { CreateUserDTO } from "./dto/createUser.dto";
 import { UpdateUserDto } from "./dto/updateUser.dto";
 
@@ -38,6 +39,7 @@ const USER_SELECT = {
   username: true,
   email: true,
   displayName: true,
+  avatarUpdatedAt: true,
   isAdmin: true,
   isActivated: true,
   ldapDN: true,
@@ -58,6 +60,7 @@ export class UserSevice {
     private prisma: PrismaService,
     private emailService: EmailService,
     private fileService: FileService,
+    private avatarService: AvatarService,
     private configService: ConfigService,
     private readonly i18n: I18nService,
   ) {}
@@ -253,9 +256,12 @@ export class UserSevice {
         reverseShare.shares.map((share) => share.id),
       ),
     ]);
-    await Promise.all(
-      [...shareIds].map((shareId) => this.fileService.deleteAllFiles(shareId)),
-    );
+    await Promise.all([
+      ...[...shareIds].map((shareId) =>
+        this.fileService.deleteAllFiles(shareId),
+      ),
+      this.avatarService.deleteFile(id),
+    ]);
 
     return await this.prisma.user.delete({ where: { id } });
   }

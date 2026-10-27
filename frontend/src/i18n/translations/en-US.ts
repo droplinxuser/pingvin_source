@@ -216,6 +216,16 @@ export default {
   "account.card.info.displayName": "Display name",
   "account.card.info.username": "Username",
   "account.card.info.email": "Email",
+  "account.custom.avatar.title": "Profile picture",
+  "account.custom.avatar.description":
+    "PNG, JPEG or WebP, up to 5 MB. Saved as a 256px WebP.",
+  "account.custom.avatar.upload": "Upload picture",
+  "account.custom.avatar.remove": "Remove",
+  "account.custom.avatar.success": "Profile picture updated.",
+  "account.custom.avatar.removed": "Profile picture removed.",
+  "account.custom.avatar.invalid-type":
+    "Please choose a PNG, JPEG or WebP image.",
+  "account.custom.avatar.too-large": "The image must be 5 MB or smaller.",
   "account.notify.info.success": "Account updated successfully",
 
   "account.card.password.title": "Password",

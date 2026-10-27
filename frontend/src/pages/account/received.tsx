@@ -16,6 +16,7 @@ import { FormattedMessage } from "react-intl";
 import Meta from "../../components/Meta";
 import CenterLoader from "../../components/core/CenterLoader";
 import RelativeTime from "../../components/core/RelativeTime";
+import UserAvatar from "../../components/core/UserAvatar";
 import useConfig from "../../hooks/config.hook";
 import useHomeHref from "../../hooks/homeHref.hook";
 import useTranslate from "../../hooks/useTranslate.hook";
@@ -84,7 +85,20 @@ const ReceivedShares = () => {
                 <tr key={share.id}>
                   <td>{share.id}</td>
                   <td>{share.name}</td>
-                  <td>{share.creator?.username ?? "—"}</td>
+                  <td>
+                    {share.creator ? (
+                      <Group spacing={6} noWrap>
+                        <UserAvatar
+                          user={share.creator}
+                          size={22}
+                          aria-hidden
+                        />
+                        <Text size="sm">{share.creator.username}</Text>
+                      </Group>
+                    ) : (
+                      "—"
+                    )}
+                  </td>
                   <td>
                     {new Date(share.expiration).getTime() === 0 ? (
                       <FormattedMessage id="account.shares.table.expiry-never" />

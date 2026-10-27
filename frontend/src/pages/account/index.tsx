@@ -3,6 +3,7 @@ import {
   Button,
   Center,
   Container,
+  FileButton,
   Group,
   Paper,
   PasswordInput,
@@ -23,6 +24,7 @@ import LanguagePicker from "../../components/account/LanguagePicker";
 import ThemeSwitcher from "../../components/account/ThemeSwitcher";
 import showEnableTotpModal from "../../components/account/showEnableTotpModal";
 import { HoverTip } from "../../components/core/HoverTip";
+import UserAvatar from "../../components/core/UserAvatar";
 import useConfig from "../../hooks/config.hook";
 import useTranslate from "../../hooks/useTranslate.hook";
 import useUser from "../../hooks/user.hook";
@@ -44,6 +46,41 @@ const Account = () => {
   const modals = useModals();
   const t = useTranslate();
   const config = useConfig();
+  const [avatarUploading, setAvatarUploading] = useState(false);
+
+  const uploadAvatar = (file: File | null) => {
+    if (!file) return;
+    if (!["image/png", "image/jpeg", "image/webp"].includes(file.type)) {
+      toast.error(t("account.custom.avatar.invalid-type"));
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error(t("account.custom.avatar.too-large"));
+      return;
+    }
+
+    setAvatarUploading(true);
+    userService
+      .uploadAvatar(file)
+      .then(async () => {
+        await refreshUser();
+        toast.success(t("account.custom.avatar.success"));
+      })
+      .catch(toast.axiosError)
+      .finally(() => setAvatarUploading(false));
+  };
+
+  const removeAvatar = () => {
+    setAvatarUploading(true);
+    userService
+      .removeAvatar()
+      .then(async () => {
+        await refreshUser();
+        toast.success(t("account.custom.avatar.removed"));
+      })
+      .catch(toast.axiosError)
+      .finally(() => setAvatarUploading(false));
+  };
 
   let minLength = 8;
   let requireLowercase = false;
@@ -179,6 +216,42 @@ const Account = () => {
               <Badge style={{ marginLeft: "1em" }}>LDAP</Badge>
             ) : null}
           </Title>
+          <Group position="apart" align="center" mb="lg">
+            <Group spacing="md" noWrap>
+              <UserAvatar user={user} size={64} loading="eager" />
+              <div>
+                <Text size="sm" weight={600}>
+                  <FormattedMessage id="account.custom.avatar.title" />
+                </Text>
+                <Text size="xs" color="dimmed">
+                  <FormattedMessage id="account.custom.avatar.description" />
+                </Text>
+              </div>
+            </Group>
+            <Group spacing="xs" noWrap>
+              <FileButton
+                accept="image/png,image/jpeg,image/webp"
+                onChange={uploadAvatar}
+                disabled={avatarUploading}
+              >
+                {(props) => (
+                  <Button {...props} variant="light" loading={avatarUploading}>
+                    <FormattedMessage id="account.custom.avatar.upload" />
+                  </Button>
+                )}
+              </FileButton>
+              {user?.avatarUpdatedAt && (
+                <Button
+                  variant="subtle"
+                  color="red"
+                  onClick={removeAvatar}
+                  disabled={avatarUploading}
+                >
+                  <FormattedMessage id="account.custom.avatar.remove" />
+                </Button>
+              )}
+            </Group>
+          </Group>
           <form
             onSubmit={accountForm.onSubmit((values) =>
               userService

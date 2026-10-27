@@ -2,6 +2,7 @@ type User = {
   id: string;
   displayName?: string | null;
   username: string;
+  avatarUpdatedAt?: string | Date | null;
   email: string;
   isAdmin: boolean;
   isActivated: boolean;

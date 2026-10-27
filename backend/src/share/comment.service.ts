@@ -11,6 +11,7 @@ import { promises as fs } from "fs";
 import { I18nService } from "nestjs-i18n";
 import { join } from "path";
 import { SHARE_DIRECTORY } from "../constants";
+import { PrismaService } from "../prisma/prisma.service";
 import { writeFileAtomic } from "../utils/fileWrite.util";
 import { KeyedLock } from "../utils/keyedLock.util";
 import { parsePagination } from "../utils/pagination.util";
@@ -46,6 +47,9 @@ export type ShareComment = {
   userId: string;
   username: string;
   displayName?: string;
+  // Derived at read time so a changed profile picture is reflected without
+  // rewriting every comment file. Stored comments keep the old shape.
+  avatarUpdatedAt?: string | null;
   content: string;
   createdAt: string;
 };
@@ -200,7 +204,10 @@ export async function readCommentVersion(shareId: string): Promise<number> {
 export class CommentService {
   private readonly locks = new KeyedLock();
 
-  constructor(private readonly i18n: I18nService) {}
+  constructor(
+    private readonly i18n: I18nService,
+    private readonly prisma: PrismaService,
+  ) {}
 
   async list(shareId: string, page = "1"): Promise<ShareCommentPage> {
     const file = await readCommentFile(shareId);
@@ -212,15 +219,40 @@ export class CommentService {
 
     return {
       // Newest first; the file itself stays append-only.
-      comments: [...file.comments]
-        .reverse()
-        .slice(start, start + COMMENTS_PAGE_SIZE),
+      comments: await this.withAvatars(
+        [...file.comments].reverse().slice(start, start + COMMENTS_PAGE_SIZE),
+      ),
       total,
       page: pageNum,
       pageSize: COMMENTS_PAGE_SIZE,
       totalPages,
       version: file.version,
     };
+  }
+
+  /**
+   * Adds the profile-picture version to the comments on the requested page.
+   * One indexed query covers up to 20 authors; comments without an avatar
+   * simply keep the initials fallback.
+   */
+  private async withAvatars(comments: ShareComment[]): Promise<ShareComment[]> {
+    const userIds = [
+      ...new Set(comments.map((comment) => comment.userId)),
+    ].filter(Boolean);
+    if (userIds.length === 0) return comments;
+
+    const users = await this.prisma.user.findMany({
+      where: { id: { in: userIds } },
+      select: { id: true, avatarUpdatedAt: true },
+    });
+    const avatars = new Map(
+      users.map((user) => [user.id, user.avatarUpdatedAt?.toISOString()]),
+    );
+
+    return comments.map((comment) => ({
+      ...comment,
+      avatarUpdatedAt: avatars.get(comment.userId) ?? null,
+    }));
   }
 
   async create(
@@ -249,7 +281,7 @@ export class CommentService {
       await this.write(path, file);
 
       return {
-        comment,
+        comment: this.withUserAvatar(comment, user),
         version: file.version,
         total: file.comments.length,
       };
@@ -279,11 +311,18 @@ export class CommentService {
       await this.write(path, file);
 
       return {
-        comment,
+        comment: this.withUserAvatar(comment, user),
         version: file.version,
         total: file.comments.length,
       };
     });
+  }
+
+  private withUserAvatar(comment: ShareComment, user: User): ShareComment {
+    return {
+      ...comment,
+      avatarUpdatedAt: user.avatarUpdatedAt?.toISOString() ?? null,
+    };
   }
 
   async remove(

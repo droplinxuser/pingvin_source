@@ -1,10 +1,11 @@
-import { ActionIcon, Avatar, Menu } from "@mantine/core";
+import { ActionIcon, Menu } from "@mantine/core";
 import Link from "next/link";
 import { TbDoorExit, TbSettings, TbUser, TbUserCircle } from "react-icons/tb";
 import useUser from "../../hooks/user.hook";
 import authService from "../../services/auth.service";
 import { FormattedMessage, useIntl } from "react-intl";
 import { HoverTip } from "../../components/core/HoverTip";
+import UserAvatar from "../../components/core/UserAvatar";
 import useTranslate from "../../hooks/useTranslate.hook";
 import { useState } from "react";
 
@@ -18,7 +19,7 @@ const ActionAvatar = () => {
       <Menu.Target>
         <ActionIcon>
           <HoverTip label={t("common.button.profile")} disabled={menuOpened}>
-            <Avatar size={28} />
+            <UserAvatar user={user} size={28} loading="eager" />
           </HoverTip>
         </ActionIcon>
       </Menu.Target>

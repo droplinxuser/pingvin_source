@@ -71,6 +71,7 @@ const SHARE_INCLUDE = {
       username: true,
       displayName: true,
       shareSizeLimit: true,
+      avatarUpdatedAt: true,
     },
   },
   security: {
@@ -322,6 +323,7 @@ export class ShareService {
             id: true,
             username: true,
             displayName: true,
+            avatarUpdatedAt: true,
             email: true,
             allowShare: true,
             maxShares: true,
@@ -947,7 +949,10 @@ export class ShareService {
             expiration: true,
             creator: {
               select: {
+                id: true,
                 username: true,
+                displayName: true,
+                avatarUpdatedAt: true,
               },
             },
           },

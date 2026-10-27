@@ -1,36 +1,53 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
+  FileTypeValidator,
   Get,
   HttpCode,
+  NotFoundException,
   Param,
+  ParseFilePipe,
   Patch,
   Post,
   Query,
+  Req,
   Res,
+  StreamableFile,
+  UploadedFile,
   UseGuards,
+  UseInterceptors,
 } from "@nestjs/common";
-import { SkipThrottle } from "@nestjs/throttler";
+import { FileInterceptor } from "@nestjs/platform-express";
+import { SkipThrottle, Throttle } from "@nestjs/throttler";
 import { User } from "@prisma/client";
-import { Response } from "express";
+import { createReadStream } from "fs";
+import { Request, Response } from "express";
+import { I18nService } from "nestjs-i18n";
 import { GetUser } from "src/auth/decorator/getUser.decorator";
 import { AdministratorGuard } from "src/auth/guard/isAdmin.guard";
 import { JwtGuard } from "src/auth/guard/jwt.guard";
 import { ConfigService } from "../config/config.service";
+import { isNotModified } from "src/utils/cache.util";
 import { useSecureCookies } from "src/utils/cookie.util";
 import { parsePagination } from "src/utils/pagination.util";
+import { AvatarService } from "./avatar.service";
 import { CreateUserDTO } from "./dto/createUser.dto";
 import { UpdateOwnUserDTO } from "./dto/updateOwnUser.dto";
 import { UpdateUserDto } from "./dto/updateUser.dto";
 import { UserDTO } from "./dto/user.dto";
 import { UserSevice } from "./user.service";
 
+const AVATAR_UPLOAD_LIMIT = 5 * 1024 * 1024;
+
 @Controller("users")
 export class UserController {
   constructor(
     private userService: UserSevice,
+    private avatarService: AvatarService,
     private config: ConfigService,
+    private readonly i18n: I18nService,
   ) {}
 
   // Own user operations
@@ -45,6 +62,88 @@ export class UserController {
     const userDTO = new UserDTO().from(user);
     userDTO.hasPassword = !!user.password;
     return userDTO;
+  }
+
+  @Post("me/avatar")
+  @Throttle({ default: { limit: 10, ttl: 60 * 1000 } })
+  @UseGuards(JwtGuard)
+  @UseInterceptors(
+    FileInterceptor("file", {
+      limits: { fileSize: AVATAR_UPLOAD_LIMIT, files: 1 },
+    }),
+  )
+  async uploadAvatar(
+    @GetUser() user: User,
+    @UploadedFile(
+      new ParseFilePipe({
+        validators: [
+          new FileTypeValidator({ fileType: /^image\/(png|jpe?g|webp)$/ }),
+        ],
+      }),
+    )
+    file: Express.Multer.File,
+  ) {
+    if (!file) throw new BadRequestException(this.i18n.t("auth.avatarInvalid"));
+    return this.toCurrentUserDTO(
+      await this.avatarService.save(user.id, file.buffer),
+    );
+  }
+
+  @Delete("me/avatar")
+  @Throttle({ default: { limit: 10, ttl: 60 * 1000 } })
+  @UseGuards(JwtGuard)
+  async removeAvatar(@GetUser() user: User) {
+    return this.toCurrentUserDTO(await this.avatarService.remove(user.id));
+  }
+
+  /**
+   * Public, versioned profile picture. The file is immutable for a given
+   * avatarUpdatedAt, so the frontend appends it as `?v=` and the response can
+   * be cached for a year. Unversioned requests stay short-lived.
+   */
+  @Get(":id/avatar.webp")
+  @Throttle({ default: { limit: 1200, ttl: 60 * 1000 } })
+  @SkipThrottle({ visitor: true })
+  async getAvatar(
+    @Param("id") id: string,
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    const avatar = await this.avatarService.get(id);
+    if (!avatar) throw new NotFoundException();
+
+    const etag = `"avatar-${id}-${Math.floor(avatar.mtimeMs)}"`;
+    const versioned =
+      typeof request.query.v === "string" && /^\d+$/.test(request.query.v);
+    const cacheControl = versioned
+      ? "public, max-age=31536000, immutable"
+      : "public, max-age=300, must-revalidate";
+    const headers = {
+      "Cache-Control": cacheControl,
+      "CDN-Cache-Control": cacheControl,
+      "Cloudflare-CDN-Cache-Control": cacheControl,
+      ETag: etag,
+    };
+
+    if (isNotModified(request, etag)) {
+      response.status(304).set(headers).end();
+      return;
+    }
+
+    response.set({
+      ...headers,
+      "Content-Type": "image/webp",
+      "Content-Length": avatar.size,
+      "X-Content-Type-Options": "nosniff",
+      "Content-Disposition": 'inline; filename="avatar.webp"',
+    });
+    return new StreamableFile(createReadStream(avatar.path));
+  }
+
+  private toCurrentUserDTO(user: User) {
+    const dto = new UserDTO().from(user);
+    dto.hasPassword = !!user.password;
+    return dto;
   }
 
   @Patch("me")

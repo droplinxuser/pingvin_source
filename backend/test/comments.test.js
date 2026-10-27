@@ -28,7 +28,10 @@ const user = {
 };
 
 function createService() {
-  return new CommentService({ t: (key) => key });
+  return new CommentService(
+    { t: (key) => key },
+    { user: { findMany: async () => [] } },
+  );
 }
 
 test("keeps plain text untouched", () => {

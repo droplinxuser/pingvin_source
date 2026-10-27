@@ -7,6 +7,7 @@ import showUpdateUserModal from "./showUpdateUserModal";
 import useTranslate from "../../../hooks/useTranslate.hook";
 import { HoverTip } from "../../core/HoverTip";
 import { SortableTh, TableSort } from "../../core/SortIcon";
+import UserAvatar from "../../core/UserAvatar";
 import { byteToHumanSizeString } from "../../../utils/fileSize.util";
 import { CustomPasswordPolicy } from "../../../types/config.type";
 
@@ -86,10 +87,11 @@ const ManageUserTable = ({
                 <tr key={user.id}>
                   {showDisplayName && <td>{user.displayName || "-"}</td>}
                   <td>
-                    {user.username}{" "}
-                    {user.isLdap ? (
-                      <Badge style={{ marginLeft: "1em" }}>LDAP</Badge>
-                    ) : null}
+                    <Group spacing={6} noWrap>
+                      <UserAvatar user={user} size={22} aria-hidden />
+                      <span>{user.username}</span>
+                      {user.isLdap ? <Badge>LDAP</Badge> : null}
+                    </Group>
                   </td>
                   <td>{user.email}</td>
                   <td>{user.isAdmin && <TbCheck />}</td>

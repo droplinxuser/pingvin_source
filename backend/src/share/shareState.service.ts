@@ -157,6 +157,7 @@ export class ShareStateService implements OnApplicationShutdown {
             username: true,
             displayName: true,
             shareSizeLimit: true,
+            avatarUpdatedAt: true,
           },
         },
         security: {
@@ -176,8 +177,7 @@ export class ShareStateService implements OnApplicationShutdown {
 
     // The row already contains the counter, so seed the batched-view base and
     // skip the extra SELECT the first unlimited view would otherwise run.
-    if (!this.viewPendingCounts.has(id))
-      this.rememberViewBase(id, share.views);
+    if (!this.viewPendingCounts.has(id)) this.rememberViewBase(id, share.views);
 
     // Refresh the rolling expiration on a cache miss, but persist it at most
     // once per six hours per share. The cached response still shows a fresh
