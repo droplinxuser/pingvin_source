@@ -1956,6 +1956,66 @@ needed for the fix.
   re-checked. A real UI upload created a share, the file downloaded with the
   original bytes, and both temporary shares were deleted and returned 404.
 
+### Live verification (2026-10-27, Next.js 15 deploy)
+
+- The deployed `_app` chunk contains `sw.js?v=50a4ba26`, matching the pushed
+  merge commit. The fresh Next 15 chunk names, the versioned service worker and
+  the 60-second HTML shells were all served by the edge.
+- Guest, signed-in (`thuoct222026`) and 390px dark-mode passes covered home,
+  new, trending, legal, sign-in, an image share (`VFED`), a video share
+  (`rAUH`), a missing share, robots, sitemap, manifest, upload, every account
+  page, reverse shares, the short link and the non-admin `/admin` redirect.
+  Every page had one H1, no horizontal overflow and no images without alt;
+  there were zero application console errors/warnings, page exceptions or
+  failed requests. The only console entries were the browser's expected 404
+  document-status logs and the deliberate wrong-password 403.
+- SEO: home/new/trending/share/legal pages returned their canonical URL,
+  indexable robots, OG/Twitter tags and JSON-LD; signed-in pages were
+  `noindex`; the missing share kept its 404 and noindex. `robots.txt` allows
+  `/new`, `/trending`, the sitemap and thumbnails, and the sitemap index
+  pointed at a 15,773-URL chunk containing `/new`, `/trending` and current
+  shares with `lastmod`. The manifest still reports `DropMB` with 16 icons.
+- Media: a synthetic 2200x1500 WebP uploaded through the API produced a
+  2,370-byte gallery/preload preview instead of the 44,844-byte original
+  (19x smaller), and the share's `og:image` pointed at its 300px thumbnail.
+  A real UI upload created a share, the text preview rendered, the download
+  returned the original 51 bytes, a comment was posted and deleted, and the
+  share was removed (API and page then 404). A password-protected share
+  showed the password modal with an inline "Invalid password" for a wrong
+  attempt and loaded after the correct one; an anonymous preview was 403 and
+  the token flow returned 200. A reverse-share link rendered `/upload/<token>`
+  and was deleted afterwards (token 404).
+- Cache headers: public shells 60s (Cloudflare `HIT`/`REVALIDATED`), signed-in
+  and query variants no-store at the origin, sign-in `BYPASS`; configs and
+  OAuth availability 30s; stats, recent, trending and share SEO 60s; country
+  aggregates 300s; comments 24h; the sitemap index one hour and its chunk,
+  robots and manifest one day; `_next/static` and Workbox bundles one year
+  immutable; public files/thumbnails kept their ETag, revalidated with 304 and
+  sent no `Set-Cookie`.
+- Security: `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`,
+  HSTS, `Permissions-Policy`, `Cross-Origin-Opener-Policy` and
+  `X-Permitted-Cross-Domain-Policies` each appeared once on HTML, and
+  `X-Powered-By` was absent. Admin APIs returned 403 for the non-admin and
+  anonymous callers; no CORS headers appear on JSON APIs.
+- PWA: the versioned service worker installed, activated and precached 42/42
+  URLs with 200 responses. It also includes a leftover untracked
+  `frontend/public/777dfeffe57045f24c87aaf524b46cac.html` (32 bytes, content
+  equals its name) from an earlier server-side test; deleting it on the server
+  and rebuilding removes that one entry.
+- Performance at 1366px: home LCP 1.34s / CLS 0 / 445 kB; new LCP 2.44s /
+  CLS 0.0015 / 578 kB; trending LCP 2.49s / CLS 0.0024 / 560 kB; share VFED
+  LCP 3.51s / CLS 0.0027 / 543 kB; video share rAUH LCP 3.28s / CLS 0.036.
+  Script transfer stayed at 271-337 kB.
+- Edge observations: the unversioned `/sw.js` is cached for a year (the live
+  proxy differs from the sample's `no-store` location), but the app always
+  registers `/sw.js?v=<commit>`; that URL served the new worker. Cached
+  preview/thumbnail variants showed the same extra `Cache-Control: no-store`
+  beside the public value as `/api/configs`; `CDN-Cache-Control` remained
+  correct and the origin emits one header. Public file responses carried
+  `Access-Control-Allow-Origin: *` from the edge/proxy, not the app; protected
+  files still return 403 without a token and `*` cannot be used for
+  credentialed CORS.
+
 ## Known non-issues
 
 - Cloudflare does not echo `Cloudflare-CDN-Cache-Control`, but it honors
