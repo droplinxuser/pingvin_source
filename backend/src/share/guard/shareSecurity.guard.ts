@@ -85,6 +85,16 @@ export class ShareSecurityGuard extends JwtGuard {
     (request as Request & { shareIsPublic?: boolean }).shareIsPublic =
       publicShare;
 
+    const expired =
+      moment().isAfter(share.expiration) &&
+      !moment(share.expiration).isSame(0);
+
+    // A public, unexpired GET needs no account lookup. Skipping authentication
+    // here keeps the share payload, comments and thumbnail reads from issuing
+    // a refresh-token query for every signed-in visitor. Mutations still
+    // authenticate so comment authors and admin previews keep working.
+    if (publicShare && request.method === "GET" && !expired) return true;
+
     const user = await this.authenticateUser(context);
 
     // If admin access is enabled and user is admin, allow access
@@ -95,10 +105,7 @@ export class ShareSecurityGuard extends JwtGuard {
       return true;
     }
 
-    if (
-      moment().isAfter(share.expiration) &&
-      !moment(share.expiration).isSame(0)
-    ) {
+    if (expired) {
       throw new NotFoundException(this.i18n.t("share.notFound"));
     }
 

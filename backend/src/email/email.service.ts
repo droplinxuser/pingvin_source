@@ -89,7 +89,7 @@ export class EmailService {
     recipientEmail: string,
     recipientId: string,
     shareId: string,
-    creator?: User,
+    creator?: Pick<User, "email" | "displayName" | "username">,
     description?: string,
     expiration?: Date,
     recipientName?: string,

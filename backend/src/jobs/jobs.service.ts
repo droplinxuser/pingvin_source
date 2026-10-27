@@ -41,6 +41,7 @@ export class JobsService {
           { expiration: { not: moment(0).toDate() } },
         ],
       },
+      select: { id: true },
     });
 
     for (const expiredShare of expiredShares) {
@@ -61,6 +62,7 @@ export class JobsService {
       where: {
         shareExpiration: { lt: new Date() },
       },
+      select: { id: true },
     });
 
     for (const expiredReverseShare of expiredReverseShares) {
@@ -85,6 +87,7 @@ export class JobsService {
           { updatedAt: { equals: null }, createdAt: { lt: cutoff } },
         ],
       },
+      select: { id: true },
     });
 
     for (const unfinishedShare of unfinishedShares) {
@@ -103,26 +106,50 @@ export class JobsService {
   deleteTemporaryFiles() {
     let filesDeleted = 0;
 
-    const shareDirectories = fs
-      .readdirSync(SHARE_DIRECTORY, { withFileTypes: true })
-      .filter((dirent) => dirent.isDirectory())
-      .map((dirent) => dirent.name);
+    let shareDirectories: string[];
+    try {
+      shareDirectories = fs
+        .readdirSync(SHARE_DIRECTORY, { withFileTypes: true })
+        .filter((dirent) => dirent.isDirectory())
+        .map((dirent) => dirent.name);
+    } catch (error) {
+      // A fresh data directory has no shares yet; do not log an ENOENT.
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT")
+        this.logger.warn(`Could not scan temporary files: ${error}`);
+      return;
+    }
 
     for (const shareDirectory of shareDirectories) {
-      const temporaryFiles = fs
-        .readdirSync(`${SHARE_DIRECTORY}/${shareDirectory}`)
-        .filter((file) => file.endsWith(".tmp-chunk"));
+      const directory = `${SHARE_DIRECTORY}/${shareDirectory}`;
+      let temporaryFiles: string[];
+      try {
+        temporaryFiles = fs
+          .readdirSync(directory)
+          .filter((file) => file.endsWith(".tmp-chunk"));
+      } catch (error) {
+        // The share can be deleted while this loop is running.
+        if ((error as NodeJS.ErrnoException).code !== "ENOENT")
+          this.logger.warn(`Could not scan ${directory}: ${error}`);
+        continue;
+      }
 
       for (const file of temporaryFiles) {
-        const stats = fs.statSync(
-          `${SHARE_DIRECTORY}/${shareDirectory}/${file}`,
-        );
+        const filePath = `${directory}/${file}`;
+        let stats: fs.Stats;
+        try {
+          stats = fs.statSync(filePath);
+        } catch (error) {
+          if ((error as NodeJS.ErrnoException).code !== "ENOENT")
+            this.logger.warn(`Could not stat ${filePath}: ${error}`);
+          continue;
+        }
+
         const isOlderThanOneDay = moment(stats.mtime)
           .add(1, "day")
           .isBefore(moment());
 
         if (isOlderThanOneDay) {
-          fs.rmSync(`${SHARE_DIRECTORY}/${shareDirectory}/${file}`);
+          fs.rmSync(filePath, { force: true });
           filesDeleted++;
         }
       }
@@ -172,7 +199,10 @@ export class JobsService {
           { activationTokenExpiresAt: null },
         ],
       },
-      include: { shares: true },
+      select: {
+        id: true,
+        shares: { select: { id: true } },
+      },
     });
 
     for (const user of unactivatedUsers) {

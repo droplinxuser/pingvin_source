@@ -57,6 +57,16 @@ export class FileSecurityGuard extends ShareSecurityGuard {
 
     // If there is no share token the user requests a file directly
     if (!shareToken) {
+      const expired =
+        !!share &&
+        moment().isAfter(share.expiration) &&
+        !moment(share.expiration).isSame(0);
+
+      // Public, unexpired file reads do not need an account lookup. A share
+      // page can request dozens of previews, so this keeps signed-in visitors
+      // from issuing one refresh-token query per image.
+      if (share && shareRequest.shareIsPublic && !expired) return true;
+
       const user = await this.authenticateUser(context);
 
       // If admin access is enabled and user is admin, allow access
@@ -66,11 +76,7 @@ export class FileSecurityGuard extends ShareSecurityGuard {
         }
       }
 
-      if (
-        !share ||
-        (moment().isAfter(share.expiration) &&
-          !moment(share.expiration).isSame(0))
-      ) {
+      if (!share || expired) {
         throw new NotFoundException(this._i18n.t("file.notFound"));
       }
 

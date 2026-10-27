@@ -240,13 +240,41 @@ export class ShareService {
   async complete(id: string) {
     const share = await this.prisma.share.findUnique({
       where: { id },
-      include: {
-        files: true,
-        recipients: true,
-        creator: true,
-        reverseShare: { include: { creator: true } },
+      select: {
+        id: true,
+        description: true,
+        expiration: true,
+        uploadLocked: true,
+        files: { select: { id: true, name: true, size: true } },
+        recipients: { select: { id: true, email: true } },
+        creator: {
+          select: {
+            id: true,
+            username: true,
+            displayName: true,
+            email: true,
+            allowShare: true,
+            maxShares: true,
+          },
+        },
+        reverseShare: {
+          select: {
+            id: true,
+            sendEmailNotification: true,
+            creator: {
+              select: {
+                id: true,
+                username: true,
+                displayName: true,
+                email: true,
+              },
+            },
+          },
+        },
       },
     });
+
+    if (!share) throw new NotFoundException(this.i18n.t("share.notFound"));
 
     if (share.uploadLocked)
       throw new BadRequestException(this.i18n.t("share.alreadyCompleted"));
