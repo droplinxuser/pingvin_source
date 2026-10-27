@@ -22,7 +22,7 @@ so `git merge upstream/main` stays small.
 | Legal pages | `frontend/src/components/legal/LegalDocument.tsx` (shared imprint/privacy markdown layout, one H1 and canonical JSON-LD) |
 | Upload paste and folder picks | Upstream `frontend/src/hooks/useClipboardPaste.hook.ts`, `utils/file.util.ts` and `utils/folder.util.ts`; the fork only adds `share.maxFileSize` validation in `components/upload/Dropzone.tsx` and keeps the folder button |
 | Share thumbnails / OG | `backend/src/file/file.service.ts` (share-level 300px WebP, ordered preview fallbacks, background queue, 32-day cleanup), `backend/src/share/preview.util.ts` (shared source selection and `getPreviewCandidates`), `GET /api/shares/:id/thumbnail`, `frontend/src/components/share/TrendingToday.tsx`, `TrendingCountries.tsx`, `Meta.tsx` |
-| Cache headers / hotlink protection | `backend/src/utils/cache.util.ts` (shared `Cache-Control`, `CDN-Cache-Control`, `Cloudflare-CDN-Cache-Control`, public-file `ETag`), `backend/src/utils/referrer.util.ts`, `frontend/src/middleware.ts` (query-free anonymous page shells), `frontend/next.config.js` |
+| Cache headers / hotlink protection | `backend/src/utils/cache.util.ts` (shared `Cache-Control`, `CDN-Cache-Control`, `Cloudflare-CDN-Cache-Control`, public-file `ETag`), `frontend/src/utils/version.util.ts` (build-versioned public config/provider URLs), `backend/src/utils/referrer.util.ts`, `frontend/src/middleware.ts` (query-free anonymous page shells), `frontend/next.config.js` |
 | Per-IP+User-Agent rate limiting | `backend/src/utils/visitorIdentity.util.ts`, `backend/src/cache/valkeyThrottler.storage.ts`, `backend/src/cache/throttler.config.ts`, `backend/src/main.ts` |
 | Valkey/Redis cache | `backend/src/utils/cache.util.ts`, `backend/src/share/shareState.service.ts`, `backend/src/cache/cache.module.ts`, `backend/src/cache/valkey.service.ts` |
 | VirusTotal background scanning | `backend/src/virustotal/*` (worker, file-backed audit, admin controller), `backend/src/share/share.service.ts` (completion hook), `backend/src/share/share.module.ts`, `backend/src/clamscan/clamscan.service.ts` (shared malicious-share removal), `frontend/src/pages/admin/virustotal.tsx`, `backend/.env.example` |
@@ -1553,6 +1553,47 @@ that cache. "Go home" links and the home-page redirect use the upstream
   Cache-busting requests to those endpoints return a single correct public
   header from the origin; purging the two cached URLs clears the stale copy.
 
+### Auth/query/cache pass (2026-10-27)
+
+- Public share reads no longer authenticate. `ShareSecurityGuard` returns
+  immediately for a public, unexpired `GET` (share payload, comments,
+  metadata), and `FileSecurityGuard` does the same for public, unexpired file
+  and preview requests without a share token. A signed-in visitor previously
+  made the JWT strategy load a refresh token plus its user row for every
+  request; a share page with dozens of previews produced dozens of those
+  queries. Comment mutations still authenticate, protected shares still run the
+  full token/password/recipient checks, and an expired share still falls
+  through to the admin check before returning 404.
+- `share.complete` selects only the columns the completion flow uses (file
+  id/name/size, recipient id/email, creator allow/share/quota fields and the
+  reverse-share notification flag/creator identity) instead of loading every
+  user, file and reverse-share column. A missing share now returns 404 instead
+  of dereferencing `null`. `sendMailToShareRecipients` accepts that narrower
+  creator shape.
+- Cron reads select only ids: expired shares, expired reverse shares,
+  unfinished shares and unactivated users (with their share ids). The
+  temporary-file cleanup tolerates a fresh data directory and a share
+  directory removed mid-scan, and uses `rmSync(..., { force: true })`, so a
+  fresh install no longer logs the daily `ENOENT`.
+- The frontend's public `/api/configs` and `/api/oauth/available` requests
+  carry the build hash (`?v=COMMIT_HASH`). `frontend/src/utils/version.util.ts`
+  is shared by SSR/middleware, the client config refresh and the sign-in OAuth
+  probe. A deployment therefore gets a fresh edge key instead of inheriting
+  the stale duplicate `Cache-Control: no-store` copy that Cloudflare kept for
+  the unversioned URLs; the origin headers are unchanged (30-second edge TTL).
+- Verified locally with Node `26.12.1`: both production builds pass, all 119
+  backend unit tests pass, frontend lint is clean and backend lint reports only
+  the upstream `any` warnings. A direct `complete()` upload through the API
+  succeeded, the edit cache invalidated correctly, and a password-protected
+  share still returned 403 without a token and 200 with the correct token for
+  both the share and file routes. Public file/preview responses kept the
+  day-long immutable cache headers and ETag with no `Set-Cookie`; comments
+  stayed at 30 days; the share API stayed `no-store`. Playwright covered 28
+  guest, signed-in and 390px dark-mode routes plus the share gallery and
+  download action with zero application console errors, warnings, page
+  exceptions, failed requests or horizontal overflow. The temporary shares
+  were deleted and both API and SEO routes returned 404 afterwards.
+
 ## Known non-issues
 
 - Cloudflare does not echo `Cloudflare-CDN-Cache-Control`, but it honors
@@ -1571,11 +1612,13 @@ that cache. "Go home" links and the home-page redirect use the upstream
 - The recent-visitor list is intentionally visible to every site visitor,
   matching the original fork behavior. It contains the last 18 visitors'
   country/city/browser/OS/referrer values.
-- The live CDN currently stores `/api/configs` and `/api/oauth/available` with
-  a stale duplicate `Cache-Control: no-store` beside the current public header.
-  A cache-busting query returns the origin's single correct header and
-  Cloudflare still reports a cache result; the response bodies are unaffected.
-  Purging those two URLs removes the stale stored copies.
+- The live CDN still stores `/api/configs` and `/api/oauth/available` at the
+  **unversioned** URLs with a stale duplicate `Cache-Control: no-store` beside
+  the current public header. The app no longer requests those keys: SSR,
+  middleware, the client config refresh and the sign-in OAuth probe now add
+  `?v=<build>` (see `version.util.ts`), so a deployment reads a fresh origin
+  response with the single public header. The old copies expire naturally and
+  can also be purged; the response bodies were never affected.
 - Chrome may log the expected `403` while a protected share page fetches its
   share token, and `404`s for intentionally missing shares. These are network
   status logs, not JavaScript exceptions; the page recovers and renders

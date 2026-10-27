@@ -1,5 +1,6 @@
 import type Config from "../types/config.type";
 import { getDefaultConfig } from "./defaultConfig.util";
+import { withBuildVersion } from "./version.util";
 
 type ConfigResponse = {
   config: Config[];
@@ -24,7 +25,7 @@ export async function fetchConfig(apiUrl: string): Promise<ConfigResponse> {
   if (cached && Date.now() - cached.at < maxAge) return cached.value;
 
   try {
-    const response = await fetch(`${apiUrl}/api/configs`, {
+    const response = await fetch(withBuildVersion(`${apiUrl}/api/configs`), {
       cache: "no-store",
       signal: AbortSignal.timeout(1000),
     });

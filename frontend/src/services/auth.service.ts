@@ -1,5 +1,6 @@
 import { getCookie } from "cookies-next";
 import * as jose from "jose";
+import { withBuildVersion } from "../utils/version.util";
 import api from "./api.service";
 
 const signIn = async (emailOrUsername: string, password: string) => {
@@ -107,7 +108,7 @@ const disableTOTP = async (totpCode: string, password: string) => {
 };
 
 const getAvailableOAuth = async () => {
-  return api.get("/oauth/available");
+  return api.get(withBuildVersion("/oauth/available"));
 };
 
 const getOAuthStatus = () => {

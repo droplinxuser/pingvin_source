@@ -1,6 +1,7 @@
 import axios from "axios";
 import Config, { AdminConfig, UpdateConfig } from "../types/config.type";
 import { getConfig } from "../utils/config.util";
+import { withBuildVersion } from "../utils/version.util";
 import api from "./api.service";
 
 const categories = [
@@ -18,7 +19,7 @@ const categories = [
 ];
 
 const list = async (): Promise<Config[]> => {
-  return (await api.get("/configs")).data;
+  return (await api.get(withBuildVersion("/configs"))).data;
 };
 
 const getByCategory = async (categoryInput: string): Promise<AdminConfig[]> => {
