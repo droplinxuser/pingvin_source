@@ -5,6 +5,7 @@ import { join } from "path";
 import { AVATAR_DIRECTORY } from "src/constants";
 import { PrismaService } from "src/prisma/prisma.service";
 import { writeFileAtomic } from "src/utils/fileWrite.util";
+import { KeyedLock } from "src/utils/keyedLock.util";
 import { validate as isValidUUID } from "uuid";
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const sharp = require("sharp");
@@ -31,6 +32,8 @@ export type AvatarFile = {
  */
 @Injectable()
 export class AvatarService {
+  private readonly locks = new KeyedLock();
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly i18n: I18nService,
@@ -57,6 +60,12 @@ export class AvatarService {
   }
 
   async save(userId: string, file: Buffer) {
+    // Two rapid uploads (or an upload racing a removal) must not leave the
+    // version timestamp pointing at the other request's bytes.
+    return this.locks.run(userId, () => this.saveLocked(userId, file));
+  }
+
+  private async saveLocked(userId: string, file: Buffer) {
     const path = this.filePath(userId);
     if (!path) throw new BadRequestException(this.i18n.t("auth.avatarInvalid"));
 
@@ -106,12 +115,14 @@ export class AvatarService {
   }
 
   async remove(userId: string) {
-    const path = this.filePath(userId);
-    if (path) await fs.rm(path, { force: true });
+    return this.locks.run(userId, async () => {
+      const path = this.filePath(userId);
+      if (path) await fs.rm(path, { force: true });
 
-    return this.prisma.user.update({
-      where: { id: userId },
-      data: { avatarUpdatedAt: null },
+      return this.prisma.user.update({
+        where: { id: userId },
+        data: { avatarUpdatedAt: null },
+      });
     });
   }
 

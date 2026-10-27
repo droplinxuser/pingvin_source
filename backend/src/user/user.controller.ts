@@ -15,6 +15,7 @@ import {
   Req,
   Res,
   StreamableFile,
+  UnauthorizedException,
   UploadedFile,
   UseGuards,
   UseInterceptors,
@@ -83,6 +84,9 @@ export class UserController {
     )
     file: Express.Multer.File,
   ) {
+    // JwtGuard is fail-open while unauthenticated shares are enabled, so the
+    // avatar endpoints must not rely on the guard alone.
+    if (!user) throw new UnauthorizedException();
     if (!file) throw new BadRequestException(this.i18n.t("auth.avatarInvalid"));
     return this.toCurrentUserDTO(
       await this.avatarService.save(user.id, file.buffer),
@@ -93,6 +97,7 @@ export class UserController {
   @Throttle({ default: { limit: 10, ttl: 60 * 1000 } })
   @UseGuards(JwtGuard)
   async removeAvatar(@GetUser() user: User) {
+    if (!user) throw new UnauthorizedException();
     return this.toCurrentUserDTO(await this.avatarService.remove(user.id));
   }
 
@@ -115,13 +120,20 @@ export class UserController {
     const etag = `"avatar-${id}-${Math.floor(avatar.mtimeMs)}"`;
     const versioned =
       typeof request.query.v === "string" && /^\d+$/.test(request.query.v);
-    const cacheControl = versioned
-      ? "public, max-age=31536000, immutable"
+    // A new upload changes the URL, so versioned pictures can be cached for a
+    // day. Keep the CDN copy to the same window instead of a year: deleting a
+    // picture should stop serving the old URL reasonably soon, and comment
+    // pages themselves are cached for at most a day.
+    const browserCache = versioned
+      ? "public, max-age=86400"
       : "public, max-age=300, must-revalidate";
+    const edgeCache = versioned
+      ? "public, max-age=0, s-maxage=86400, stale-while-revalidate=3600"
+      : browserCache;
     const headers = {
-      "Cache-Control": cacheControl,
-      "CDN-Cache-Control": cacheControl,
-      "Cloudflare-CDN-Cache-Control": cacheControl,
+      "Cache-Control": browserCache,
+      "CDN-Cache-Control": edgeCache,
+      "Cloudflare-CDN-Cache-Control": edgeCache,
       ETag: etag,
     };
 
