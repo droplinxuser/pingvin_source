@@ -1839,14 +1839,44 @@ needed for the fix.
 - Ads are rendered only for indexable (public) shares, so publisher scripts
   never run while a password gate is open. Protected share responses and
   legacy 404s are no longer publicly cacheable.
-- Public file downloads keep a one-hour browser TTL but only a ten-minute
+- Public file downloads send a one-hour browser TTL but only a ten-minute
   shared-cache TTL (no `immutable`), so a deletion or takedown leaves
-  Cloudflare within minutes. Upload endpoints use generous but finite rate
-  limits instead of being fully exempt.
+  Cloudflare within minutes. The live edge rule may extend the browser copy to
+  a year; the `CDN-Cache-Control` s-maxage still governs the edge and was
+  observed revalidating after 640 seconds. Upload endpoints use generous but
+  finite rate limits instead of being fully exempt.
 - The frontend sends `Permissions-Policy`, `Cross-Origin-Opener-Policy` and
   `X-Permitted-Cross-Domain-Policies`. A malformed `language` cookie is
   normalized before it reaches `IntlProvider`, and production crawler
   artifacts no longer derive their origin from `Host`/`X-Forwarded-Host`.
+
+### Live verification after deployment
+
+- Cache-busted HTML and API responses returned the new `Permissions-Policy`,
+  `Cross-Origin-Opener-Policy` and `X-Permitted-Cross-Domain-Policies` headers,
+  plus HSTS, `X-Frame-Options`, `Referrer-Policy` and `nosniff`.
+- Public pages and API reads kept their documented edge TTLs; the missing-share
+  SEO endpoint returned `404` with `no-store`; protected share pages returned
+  `no-store`. A public file URL was revalidated by Cloudflare after its
+  640-second edge window, confirming the ten-minute `CDN-Cache-Control` TTL.
+- Inline HTML uploads returned `Content-Type: text/html`,
+  `Content-Security-Policy: sandbox` and `nosniff`; the same file with
+  `?download=true` returned `Content-Disposition: attachment`.
+- Playwright covered guest `/`, `/trending`, `/new`, a public share, a
+  password share (modal, unlock, token cookie flags and reload), a malformed
+  language cookie, signed-in `/upload`, `/account`, `/account/shares`,
+  `/account/received`, a public share and the non-admin `/admin` redirect.
+  There were no application console errors/warnings. The intentional 404
+  route logs one browser network-status error; inactive media/requests aborted
+  on navigation were test artifacts. Guest ad scripts loaded only on public
+  pages, never on the protected share or the signed-in context.
+- Unauthenticated admin APIs returned `403`; no CORS `Access-Control-Allow-*`
+  header was returned; signup returned `403` while registration is disabled;
+  an empty login password returned `400`; resend-verification returned `204`
+  for both known and unknown addresses. Auth cookies were `Secure` and the
+  refresh cookie was `HttpOnly`.
+- Temporary live shares (protected and HTML-header checks) were deleted and
+  verified missing after the run.
 
 ## Known non-issues
 
@@ -1861,6 +1891,11 @@ needed for the fix.
   the ad vendor, not application code; the app's own requests and pages stay
   error-free. Block the ad domains or use an ad-free network when validating
   the application console.
+- `npm audit` reports Next.js 14 advisories. The vulnerable features are not
+  used here: `images.unoptimized` is on, the app is Pages Router only (no App
+  Router/RSC/Server Actions), Next i18n is not configured and middleware
+  redirects send `no-store` + `Vary`. Next 14 is end-of-life; a major upgrade
+  should be planned as a separate change, after upstream moves.
 - Backend lint reports upstream warnings only.
 - A fresh data directory logs one `ENOENT` from the temporary-file cron.
 - The recent-visitor list is intentionally visible to every site visitor,
