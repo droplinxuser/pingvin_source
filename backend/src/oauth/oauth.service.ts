@@ -56,6 +56,11 @@ export class OAuthService {
   }
 
   async signIn(user: OAuthSignInDto, ip: string) {
+    // An empty provider id must never become an unconstrained Prisma filter.
+    if (!user.provider || !user.providerId) {
+      throw new ErrorPageException("invalid_token");
+    }
+
     const oauthUser = await this.prisma.oAuthUser.findFirst({
       where: {
         provider: user.provider,
@@ -82,6 +87,10 @@ export class OAuthService {
     providerUserId: string,
     providerUsername: string,
   ) {
+    if (!provider || !providerUserId) {
+      throw new ErrorPageException("invalid_token");
+    }
+
     const oauthUser = await this.prisma.oAuthUser.findFirst({
       where: {
         provider,

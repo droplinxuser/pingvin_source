@@ -15,6 +15,7 @@ import { Request, Response } from "express";
 import * as moment from "moment";
 import { I18nService } from "nestjs-i18n";
 import { ConfigService } from "src/config/config.service";
+import { useSecureCookies } from "src/utils/cookie.util";
 import { EmailService } from "src/email/email.service";
 import { PrismaService } from "src/prisma/prisma.service";
 import { OAuthService } from "../oauth/oauth.service";
@@ -37,6 +38,9 @@ export class AuthService {
     private readonly i18n: I18nService,
   ) {}
   private readonly logger = new Logger(AuthService.name);
+  // Used to keep the response time of an unknown account close to a known one,
+  // so login cannot be used as a reliable account-enumeration oracle.
+  private dummyPasswordHash?: string;
 
   async signUp(
     dto: AuthRegisterDTO,
@@ -140,6 +144,10 @@ export class AuthService {
         );
         return this.generateToken(user);
       }
+
+      // Spend the same Argon2 work for a missing account or an account without
+      // a password (OAuth/LDAP only) as for a wrong password.
+      if (!user?.password) await this.verifyDummyPassword(dto.password);
     }
 
     if (this.config.get("ldap.enabled")) {
@@ -168,6 +176,19 @@ export class AuthService {
       `Failed login attempt for user ${dto.email || dto.username} from IP ${ip}`,
     );
     throw new UnauthorizedException(this.i18n.t("auth.wrongCredentials"));
+  }
+
+  /**
+   * Runs a real Argon2 verification against a hash this process generated, so
+   * an unknown username and a wrong password take comparable time.
+   */
+  private async verifyDummyPassword(password: string) {
+    try {
+      this.dummyPasswordHash ??= await argon.hash(crypto.randomUUID());
+      await argon.verify(this.dummyPasswordHash, password);
+    } catch {
+      // Never let diagnostic timing work fail the login request path.
+    }
   }
 
   async generateToken(user: User, oauth?: { idToken?: string }) {
@@ -201,12 +222,10 @@ export class AuthService {
     if (!user) return;
 
     if (user.ldapDN) {
-      this.logger.log(
-        `Failed password reset request for user ${email} because it is an LDAP user`,
-      );
-      throw new BadRequestException(
-        this.i18n.t("auth.ldapResetPasswordNotAllowed"),
-      );
+      // Return the same 202 as a normal request instead of revealing whether
+      // the address belongs to an LDAP-managed account.
+      this.logger.log(`Ignored password reset request for LDAP user ${email}`);
+      return;
     }
 
     const { token } = await this.prisma.$transaction(async (tx) => {
@@ -303,7 +322,8 @@ export class AuthService {
     if (!user) return;
 
     if (user.isActivated) {
-      throw new BadRequestException(this.i18n.t("auth.userAlreadyActivated"));
+      // Do not disclose account state: resend always answers 204.
+      return;
     }
 
     const activationToken = crypto.randomUUID();
@@ -482,7 +502,7 @@ export class AuthService {
     refreshToken?: string,
     accessToken?: string,
   ) {
-    const isSecure = this.config.get("security.secureCookies");
+    const isSecure = useSecureCookies(this.config);
     if (accessToken)
       response.cookie("access_token", accessToken, {
         sameSite: "lax",

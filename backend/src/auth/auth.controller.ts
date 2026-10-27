@@ -16,6 +16,7 @@ import { User } from "@prisma/client";
 import { Request, Response } from "express";
 import { I18nService } from "nestjs-i18n";
 import { ConfigService } from "src/config/config.service";
+import { useSecureCookies } from "src/utils/cookie.util";
 import { AuthService } from "./auth.service";
 import { AuthTotpService } from "./authTotp.service";
 import { GetUser } from "./decorator/getUser.decorator";
@@ -62,6 +63,14 @@ export class AuthController {
       result.refreshToken,
       result.accessToken,
     );
+
+    // Never echo the Prisma user row (password hash and other secrets) back to
+    // the client. The browser only needs the token cookies and, when e-mail
+    // verification is on, the verification flag.
+    if ("user" in result) {
+      const { user: _user, ...tokens } = result;
+      return tokens;
+    }
 
     return result;
   }
@@ -208,7 +217,7 @@ export class AuthController {
       request.cookies.access_token,
     );
 
-    const isSecure = this.config.get("security.secureCookies");
+    const isSecure = useSecureCookies(this.config);
     response.cookie("access_token", "", {
       maxAge: -1,
       secure: isSecure,

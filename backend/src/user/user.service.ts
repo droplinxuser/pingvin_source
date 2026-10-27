@@ -116,7 +116,10 @@ export class UserSevice {
     let hash: string;
     let randomPassword: string;
 
-    if (typeof dto.password === "string" && !(await this.enforcePasswordPolicy(dto.password))) {
+    if (
+      typeof dto.password === "string" &&
+      !(await this.enforcePasswordPolicy(dto.password))
+    ) {
       throw new BadRequestException(this.i18n.t("auth.passwordPolicyNotMet"));
     }
 
@@ -170,7 +173,10 @@ export class UserSevice {
 
   async update(id: string, user: UpdateUserDto) {
     try {
-      if (typeof user.password === "string" && !(await this.enforcePasswordPolicy(user.password))) {
+      if (
+        typeof user.password === "string" &&
+        !(await this.enforcePasswordPolicy(user.password))
+      ) {
         throw new BadRequestException(this.i18n.t("auth.passwordPolicyNotMet"));
       }
 
@@ -216,7 +222,16 @@ export class UserSevice {
   async delete(id: string) {
     const user = await this.prisma.user.findUnique({
       where: { id },
-      select: { isAdmin: true, shares: { select: { id: true } } },
+      select: {
+        isAdmin: true,
+        shares: { select: { id: true } },
+        // Shares uploaded through the user's reverse shares have no creatorId,
+        // so they are not in `shares`; deleting the account must still remove
+        // their bytes instead of orphaning them on disk/S3 forever.
+        reverseShares: {
+          select: { shares: { select: { id: true } } },
+        },
+      },
     });
     if (!user) throw new BadRequestException(this.i18n.t("auth.userNotFound"));
 
@@ -232,8 +247,14 @@ export class UserSevice {
       }
     }
 
+    const shareIds = new Set([
+      ...user.shares.map((share) => share.id),
+      ...user.reverseShares.flatMap((reverseShare) =>
+        reverseShare.shares.map((share) => share.id),
+      ),
+    ]);
     await Promise.all(
-      user.shares.map((share) => this.fileService.deleteAllFiles(share.id)),
+      [...shareIds].map((shareId) => this.fileService.deleteAllFiles(shareId)),
     );
 
     return await this.prisma.user.delete({ where: { id } });
@@ -286,7 +307,7 @@ export class UserSevice {
       }
     }
 
-    if (providedCredentials.email) {
+    if (providedCredentials.email && !userEmail) {
       /* if LDAP does not provides an users email address, take the user provided email address instead */
       userEmail = providedCredentials.email;
     }

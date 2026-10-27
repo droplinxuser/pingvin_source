@@ -43,6 +43,13 @@ export class LdapService {
     username: string,
     password: string,
   ): Promise<Entry | null> {
+    // RFC 4513: a bind with a DN and an empty password may be treated as an
+    // unauthenticated bind by many servers. Never forward an empty secret.
+    if (!password || !password.trim()) {
+      this.logger.verbose("Empty LDAP password rejected.");
+      return null;
+    }
+
     if (!username.match(/^[a-zA-Z0-9-_.@]+$/)) {
       this.logger.verbose(
         `Username ${username} does not match username pattern. Authentication failed.`,
@@ -100,6 +107,9 @@ export class LdapService {
     } catch (error) {
       this.logger.warn(`Connect error: ${inspect(error)}`);
       return null;
+    } finally {
+      // Do not keep one server connection open per login attempt.
+      await ldapClient.unbind().catch(() => undefined);
     }
   }
 }

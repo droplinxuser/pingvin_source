@@ -18,6 +18,7 @@ import { GetUser } from "src/auth/decorator/getUser.decorator";
 import { AdministratorGuard } from "src/auth/guard/isAdmin.guard";
 import { JwtGuard } from "src/auth/guard/jwt.guard";
 import { ConfigService } from "../config/config.service";
+import { useSecureCookies } from "src/utils/cookie.util";
 import { parsePagination } from "src/utils/pagination.util";
 import { CreateUserDTO } from "./dto/createUser.dto";
 import { UpdateOwnUserDTO } from "./dto/updateOwnUser.dto";
@@ -64,7 +65,7 @@ export class UserController {
   ) {
     await this.userService.delete(user.id);
 
-    const isSecure = this.config.get("security.secureCookies");
+    const isSecure = useSecureCookies(this.config);
 
     response.cookie("access_token", "accessToken", {
       maxAge: -1,
@@ -87,10 +88,11 @@ export class UserController {
     @Query("sortBy") sortBy?: string,
     @Query("sortDirection") sortDirection?: string,
   ) {
-    const { page: pageNum, pageSize: size, skip } = parsePagination(
-      page,
-      pageSize,
-    );
+    const {
+      page: pageNum,
+      pageSize: size,
+      skip,
+    } = parsePagination(page, pageSize);
     const [users, total] = await Promise.all([
       this.userService.list(size, skip, sortBy, sortDirection),
       this.userService.count(),

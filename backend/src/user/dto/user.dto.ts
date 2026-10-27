@@ -7,6 +7,7 @@ import {
   IsOptional,
   Length,
   Matches,
+  MaxLength,
   Min,
 } from "class-validator";
 import { i18nValidationMessage } from "nestjs-i18n";
@@ -37,6 +38,7 @@ export class UserDTO {
   hasPassword: boolean;
 
   @IsString()
+  @MaxLength(128)
   password: string;
 
   @Expose()

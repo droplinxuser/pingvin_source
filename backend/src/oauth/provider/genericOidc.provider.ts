@@ -142,6 +142,20 @@ export abstract class GenericOidcProvider implements OAuthProvider<OidcToken> {
       throw new InternalServerErrorException();
     }
 
+    // `sub` is the account key used by OAuthService. A missing value would be
+    // dropped from the Prisma filter and could match an unrelated account.
+    if (typeof idTokenData.sub !== "string" || !idTokenData.sub) {
+      this.logger.error(`ID Token from ${this.name} has no subject claim`);
+      throw new ErrorPageException("invalid_token");
+    }
+    if (
+      typeof idTokenData.exp === "number" &&
+      idTokenData.exp * 1000 <= Date.now()
+    ) {
+      this.logger.error(`ID Token from ${this.name} is expired`);
+      throw new ErrorPageException("expired_token");
+    }
+
     const key = `oauth-${this.name}-nonce-${query.state}`;
     const nonce = await this.cache.get(key);
     await this.cache.del(key);

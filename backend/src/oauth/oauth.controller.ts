@@ -18,6 +18,7 @@ import { AuthService } from "../auth/auth.service";
 import { GetUser } from "../auth/decorator/getUser.decorator";
 import { JwtGuard } from "../auth/guard/jwt.guard";
 import { ConfigService } from "../config/config.service";
+import { useSecureCookies } from "src/utils/cookie.util";
 import { OAuthCallbackDto } from "./dto/oauthCallback.dto";
 import { ErrorPageExceptionFilter } from "./filter/errorPageException.filter";
 import { OAuthGuard } from "./guard/oauth.guard";
@@ -42,8 +43,9 @@ export class OAuthController {
   available(@Res({ passthrough: true }) response: Response) {
     // Provider availability only changes when an admin edits the config, so
     // the edge can answer the sign-in and account pages without the backend.
+    const providers = this.oauthService.available();
     response.set(getEdgeCacheHeaders(30));
-    return this.oauthService.available();
+    return providers;
   }
 
   private getOAuthOrigin(request: Request): string {
@@ -54,7 +56,11 @@ export class OAuthController {
     if (host === new URL(appUrl).host.toLowerCase()) return appUrl;
 
     const allowedHosts: string = this.config.get("oauth.allowedHosts") || "";
-    const allowed = allowedHosts.toLowerCase().split(",").map((h) => h.trim()).filter(Boolean);
+    const allowed = allowedHosts
+      .toLowerCase()
+      .split(",")
+      .map((h) => h.trim())
+      .filter(Boolean);
 
     return allowed.includes(host) ? `${request.protocol}://${host}` : appUrl;
   }
@@ -75,9 +81,12 @@ export class OAuthController {
   ) {
     const state = nanoid(16);
     const redirectUri = `${this.getOAuthOrigin(request)}/api/oauth/callback/${provider}`;
-    const url = await this.providers[provider].getAuthEndpoint(state, redirectUri);
+    const url = await this.providers[provider].getAuthEndpoint(
+      state,
+      redirectUri,
+    );
 
-    const isSecure = this.config.get("security.secureCookies");
+    const isSecure = useSecureCookies(this.config);
     response.cookie(`oauth_${provider}_state`, state, {
       sameSite: "lax",
       secure: isSecure,
@@ -97,7 +106,10 @@ export class OAuthController {
     @Res({ passthrough: true }) response: Response,
   ) {
     const redirectUri = `${this.getOAuthOrigin(request)}/api/oauth/callback/${provider}`;
-    const oauthToken = await this.providers[provider].getToken(query, redirectUri);
+    const oauthToken = await this.providers[provider].getToken(
+      query,
+      redirectUri,
+    );
     const user = await this.providers[provider].getUserInfo(oauthToken, query);
     const id = await this.authService.getIdOfCurrentUser(request);
 
@@ -105,7 +117,7 @@ export class OAuthController {
       maxAge: -1,
       sameSite: "lax",
       httpOnly: true,
-      secure: this.config.get("security.secureCookies"),
+      secure: useSecureCookies(this.config),
     });
 
     if (id) {
