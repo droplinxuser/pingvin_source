@@ -1,5 +1,5 @@
 import { Box, Card } from "@mantine/core";
-import { getCookie } from "cookies-next";
+import { getCookie } from "cookies-next/client";
 import { useEffect, useRef, useState } from "react";
 import useUser from "../hooks/user.hook";
 

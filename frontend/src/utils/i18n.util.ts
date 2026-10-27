@@ -1,4 +1,4 @@
-import { setCookie } from "cookies-next";
+import { setCookie } from "cookies-next/client";
 import english from "../i18n/translations/en-US";
 import { DEFAULT_LOCALE, LOCALE_LOADERS, LOCALES } from "../i18n/locales";
 import type { Locale, LocaleMessages } from "../i18n/locales";

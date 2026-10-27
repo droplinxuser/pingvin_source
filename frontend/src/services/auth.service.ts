@@ -1,4 +1,4 @@
-import { deleteCookie, getCookie } from "cookies-next";
+import { deleteCookie, getCookie } from "cookies-next/client";
 import { jwtDecode } from "jwt-decode";
 import { withBuildVersion } from "../utils/version.util";
 import api from "./api.service";
@@ -52,7 +52,7 @@ const signOut = async () => {
 
 const refreshAccessToken = async () => {
   try {
-    const accessToken = getCookie("access_token") as string;
+    const accessToken = getCookie("access_token");
 
     // If the access token expires in less than 2 minutes refresh it
     if (

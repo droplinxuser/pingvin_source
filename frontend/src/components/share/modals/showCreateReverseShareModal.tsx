@@ -2,7 +2,7 @@ import { Button, Group, NumberInput, Stack, Switch } from "@mantine/core";
 import { useForm, yupResolver } from "@mantine/form";
 import { useModals } from "@mantine/modals";
 import { ModalsContextProps } from "@mantine/modals/lib/context";
-import { getCookie, setCookie } from "cookies-next";
+import { getCookie, setCookie } from "cookies-next/client";
 import { FormattedMessage } from "react-intl";
 import * as yup from "yup";
 import useTranslate, {
@@ -75,8 +75,8 @@ const Body = ({
       sendEmailNotification: false,
       // Cookies are strings: "false" used to be truthy and always restored
       // both switches as enabled.
-      simplified: !reverseShareSimpleOnly
-        ? false
+      simplified: reverseShareSimpleOnly
+        ? true
         : getCookie("reverse-share.simplified") === "true",
       publicAccess: getCookie("reverse-share.public-access") !== "false",
     },

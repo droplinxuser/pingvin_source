@@ -10,7 +10,8 @@ import {
 import { useColorScheme } from "@mantine/hooks";
 import { ModalsProvider } from "@mantine/modals";
 import { Notifications } from "@mantine/notifications";
-import { getCookie, setCookie } from "cookies-next";
+import { getCookie as getClientCookie, setCookie } from "cookies-next/client";
+import { getCookie as getServerCookie } from "cookies-next";
 import { GetServerSidePropsContext } from "next";
 import type { AppProps } from "next/app";
 import dynamic from "next/dynamic";
@@ -237,7 +238,7 @@ function App({ Component, pageProps }: AppProps) {
   // Public pages are rendered as anonymous shells. Restore the real user
   // immediately in the browser so the header and owner actions stay correct.
   useEffect(() => {
-    if (pageProps.user || !getCookie("access_token")) return;
+    if (pageProps.user || !getClientCookie("access_token")) return;
 
     userService
       .getCurrentUser()
@@ -258,7 +259,7 @@ function App({ Component, pageProps }: AppProps) {
 
   useEffect(() => {
     if (!pageProps.language) return;
-    const cookieLanguage = getCookie("language");
+    const cookieLanguage = getClientCookie("language");
     if (!cookieLanguage) {
       if (!pageProps.isConfigFallback) {
         i18nUtil.setLanguageCookie(pageProps.language);
@@ -450,7 +451,9 @@ App.getInitialProps = async ({
     isConfigFallback?: boolean;
   } = {
     colorScheme:
-      (getCookie("mantine-color-scheme", ctx) as ColorScheme) ?? "light",
+      ((await getServerCookie("mantine-color-scheme", ctx)) as
+        | ColorScheme
+        | undefined) ?? "light",
   };
 
   if (ctx.req) {
