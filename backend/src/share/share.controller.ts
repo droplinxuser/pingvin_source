@@ -461,6 +461,8 @@ export class ShareController {
     response.cookie(`share_${id}_token`, token, {
       path: "/",
       httpOnly: true,
+      sameSite: "lax",
+      secure: this.config.get("security.secureCookies"),
     });
 
     return { token };
@@ -470,25 +472,32 @@ export class ShareController {
    * Keeps the 10 most recent share token cookies and deletes the rest and all expired ones
    */
   private clearShareTokenCookies(request: Request, response: Response) {
+    const now = moment().unix();
     const shareTokenCookies = Object.entries(request.cookies)
       .filter(([key]) => key.startsWith("share_") && key.endsWith("_token"))
-      .map(([key, value]) => ({
-        key,
-        payload: this.jwtService.decode(value),
-      }));
+      .map(([key, value]) => {
+        try {
+          const payload = this.jwtService.decode(value) as {
+            exp?: number;
+          } | null;
+          return { key, exp: payload?.exp };
+        } catch {
+          // A malformed/legacy cookie must not break the token endpoint.
+          return { key, exp: undefined };
+        }
+      });
 
-    const expiredTokens = shareTokenCookies.filter(
-      (cookie) => cookie.payload.exp < moment().unix(),
-    );
     const validTokens = shareTokenCookies.filter(
-      (cookie) => cookie.payload.exp >= moment().unix(),
+      (cookie) => typeof cookie.exp === "number" && cookie.exp >= now,
     );
-
-    expiredTokens.forEach((cookie) => response.clearCookie(cookie.key));
+    // Tokens for never-expiring shares have no `exp` claim and stay valid.
+    shareTokenCookies
+      .filter((cookie) => typeof cookie.exp === "number" && cookie.exp < now)
+      .forEach((cookie) => response.clearCookie(cookie.key));
 
     if (validTokens.length > 10) {
       validTokens
-        .sort((a, b) => a.payload.exp - b.payload.exp)
+        .sort((a, b) => (a.exp ?? 0) - (b.exp ?? 0))
         .slice(0, -10)
         .forEach((cookie) => response.clearCookie(cookie.key));
     }

@@ -103,7 +103,7 @@ const FilePreview = ({
 };
 
 const FileDecider = () => {
-  const { mimeType, setIsNotSupported } = React.useContext(FilePreviewContext);
+  const { mimeType } = React.useContext(FilePreviewContext);
 
   if (mimeType == "application/pdf") {
     return <PdfPreview />;
@@ -116,8 +116,9 @@ const FileDecider = () => {
   } else if (mimeType.startsWith("text/")) {
     return <TextPreview />;
   } else {
-    setIsNotSupported(true);
-    return null;
+    // Render the fallback directly instead of setting parent state during
+    // render, which React reports as a cross-component update warning.
+    return <UnSupportedFile />;
   }
 };
 
@@ -255,11 +256,26 @@ const TextPreview = () => {
 };
 
 const PdfPreview = () => {
-  const { shareId, fileId } = React.useContext(FilePreviewContext);
-  if (typeof window !== "undefined") {
-    window.location.href = `/api/shares/${shareId}/files/${fileId}?download=false`;
-  }
-  return null;
+  const { shareId, fileId, fileName } = React.useContext(FilePreviewContext);
+  const src = getShareFileUrl(shareId, fileId, { download: false });
+
+  return (
+    <Box
+      sx={{
+        width: "100%",
+        height: MEDIA_MAX_HEIGHT,
+        overflow: "hidden",
+        borderRadius: 4,
+        backgroundColor: "rgba(0, 0, 0, 0.04)",
+      }}
+    >
+      <iframe
+        src={`${src}#view=FitH`}
+        title={fileName || fileId}
+        style={{ display: "block", width: "100%", height: "100%", border: 0 }}
+      />
+    </Box>
+  );
 };
 
 const UnSupportedFile = () => {

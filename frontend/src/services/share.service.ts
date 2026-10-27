@@ -62,8 +62,7 @@ const cachedShareList = (
 };
 
 let trendingCountriesCache:
-  | { at: number; items: TrendingCountry[] }
-  | undefined;
+  { at: number; items: TrendingCountry[] } | undefined;
 
 const list = async (
   page = 1,
@@ -320,8 +319,9 @@ const uploadFileDirectS3 = async (
           name: file.name,
           uploadId: session.uploadId,
         });
-      } catch (abortError) {
-        console.error("Failed to abort multipart S3 upload:", abortError);
+      } catch {
+        // The original upload error is reported to the caller; a failed abort
+        // is a best-effort cleanup and must not add console noise.
       }
       delete s3UploadSessions[sessionKey];
     }
@@ -427,11 +427,9 @@ const uploadFile = async (
       } else {
         s3UploadSupportedShares[shareId] = false;
       }
-    } catch (err) {
-      console.warn(
-        "Direct S3 upload init failed. Falling back to proxied upload.",
-        err,
-      );
+    } catch {
+      // Direct multipart upload is optional. Fall back to the proxied upload
+      // without logging a handled failure to the browser console.
       s3UploadSupportedShares[shareId] = false;
     }
   }

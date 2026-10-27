@@ -873,6 +873,9 @@ export class FileService implements OnModuleInit {
 
   private async removePreviewCache(shareId: string, fileId?: string) {
     if (!SAFE_ID.test(shareId)) return;
+    // Let in-flight conversions finish first. Otherwise a preview that was
+    // already being generated could recreate its file after this cleanup.
+    await this.waitForPreviewBuilds(shareId, fileId);
     const target = fileId
       ? join(PREVIEW_DIRECTORY, shareId, `${fileId}.webp`)
       : join(PREVIEW_DIRECTORY, shareId);
@@ -884,6 +887,19 @@ export class FileService implements OnModuleInit {
     }
 
     await fs.rm(target, { recursive: !fileId, force: true }).catch(() => {});
+  }
+
+  private async waitForPreviewBuilds(shareId: string, fileId?: string) {
+    const prefix = `${shareId}:`;
+    const keys = [...this.previewBuilds.keys()].filter((key) =>
+      fileId ? key === `${prefix}${fileId}` : key.startsWith(prefix),
+    );
+    const builds = keys.flatMap((key) => {
+      const build = this.previewBuilds.get(key);
+      return build ? [build.catch(() => undefined)] : [];
+    });
+    await Promise.all(builds);
+    keys.forEach((key) => this.previewBuilds.delete(key));
   }
 
   async exists(shareId: string, fileId: string): Promise<boolean> {

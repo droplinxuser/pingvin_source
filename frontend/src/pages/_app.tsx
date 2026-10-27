@@ -146,7 +146,6 @@ function App({ Component, pageProps }: AppProps) {
   const [colorScheme, setColorScheme] = useState<ColorScheme>(systemTheme);
 
   const [user, setUser] = useState<CurrentUser | null>(pageProps.user);
-  const [route, setRoute] = useState<string>(pageProps.route);
   const initialLanguage = pageProps.language ?? LOCALES.ENGLISH.code;
   const [messages, setMessages] = useState<Record<string, string>>(
     pageProps.messages ?? i18nUtil.getLocaleByCode(initialLanguage).messages,
@@ -224,10 +223,6 @@ function App({ Component, pageProps }: AppProps) {
       ...(adminTheme.colors ?? {}),
     },
   };
-
-  useEffect(() => {
-    setRoute(router.pathname);
-  }, [router.pathname]);
 
   // Version the service worker URL so browsers fetch the new worker even if
   // Cloudflare or the browser has cached /sw.js from a previous deployment.
@@ -412,7 +407,7 @@ function App({ Component, pageProps }: AppProps) {
                     onDismiss={handleDismissNotice}
                   />
                   <SiteStructuredData />
-                  {excludeDefaultLayoutRoutes.includes(route) ? (
+                  {excludeDefaultLayoutRoutes.includes(router.pathname) ? (
                     <Box component="main" id="main-content">
                       <Component {...pageProps} />
                     </Box>
@@ -448,13 +443,11 @@ App.getInitialProps = async ({
   let pageProps: {
     user?: CurrentUser;
     configVariables?: Config[];
-    route?: string;
     colorScheme: ColorScheme;
     language?: string;
     messages?: Record<string, string>;
     isConfigFallback?: boolean;
   } = {
-    route: ctx.resolvedUrl,
     colorScheme:
       (getCookie("mantine-color-scheme", ctx) as ColorScheme) ?? "light",
   };
@@ -483,8 +476,6 @@ App.getInitialProps = async ({
     const { config, fallback } = await configRequest;
     pageProps.configVariables = config;
     pageProps.isConfigFallback = fallback;
-
-    pageProps.route = ctx.req.url;
 
     const requestLanguage = i18nUtil.getLanguageFromAcceptHeader(
       ctx.req.headers["accept-language"],

@@ -7,12 +7,12 @@ import {
 import { Request } from "express";
 import * as moment from "moment";
 import { I18nService } from "nestjs-i18n";
-import { PrismaService } from "src/prisma/prisma.service";
+import { ShareService } from "src/share/share.service";
 
 @Injectable()
 export class ShareTokenSecurity implements CanActivate {
   constructor(
-    private prisma: PrismaService,
+    private shareService: ShareService,
     private readonly i18n: I18nService,
   ) {}
 
@@ -25,10 +25,9 @@ export class ShareTokenSecurity implements CanActivate {
       ? request.params.shareId
       : request.params.id;
 
-    const share = await this.prisma.share.findUnique({
-      where: { id: shareId },
-      include: { security: true },
-    });
+    // Reuse the short-lived guard cache. The share page's 403 already loaded
+    // this entry, so issuing a token no longer runs a second SQLite query.
+    const share = await this.shareService.getGuardShare(shareId);
 
     if (
       !share ||

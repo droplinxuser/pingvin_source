@@ -1632,6 +1632,40 @@ that cache. "Go home" links and the home-page redirect use the upstream
   the version parameter. Purging `/api/shares/*/comments` clears old
   unversioned copies.
 
+## Maintenance pass (2026-10-27, second)
+
+- `ShareTokenSecurity` reuses `ShareStateService.getGuardShare()` instead of
+  running its own SQLite read, so the share page's `403 -> token -> retry` flow
+  does not query the same share twice. The guard still rejects expired shares,
+  and now also rejects incomplete/removed shares that have no guard entry.
+- Share token cookies set `SameSite=Lax` and inherit
+  `security.secureCookies`, and malformed/legacy share cookies are ignored while
+  clearing old tokens. A garbage `share_<id>_token` cookie can no longer make
+  `POST /api/shares/:id/token` fail. Tokens for never-expiring shares (no `exp`
+  claim) are kept rather than treated as expired.
+- A share with `commentsVersion === 0` no longer requests its empty comment
+  listing; the section renders straight from the share payload, and the first
+  real comment still loads through the versioned endpoint.
+- PDF previews render in a modal iframe instead of navigating the current page
+  to the file URL. Unsupported preview types render the fallback directly rather
+  than updating parent state during render.
+- Deleting a file or share waits for an in-flight WebP preview conversion
+  before removing the preview cache, so a late conversion cannot recreate a
+  preview after deletion.
+- `_app` uses `router.pathname` for the admin-config layout exception and no
+  longer carries a duplicate `route` prop/state.
+- Removed handled S3 upload fallback `console.warn`/`console.error` calls, so a
+  failed direct-upload probe or abort does not add browser console noise.
+- Verified locally with Node `26.12.1`: backend build and all 119 unit tests
+  pass; frontend production build and lint pass. Playwright covered 29 guest,
+  member and 390px dark-mode routes, a public share (text/image/PDF, gallery,
+  PDF iframe, comments), a password-protected share (wrong/correct token and
+  file access), the malformed-cookie token path and admin API boundaries. There
+  were no application console errors/warnings, page exceptions, failed
+  requests, horizontal overflow or missing image `alt` attributes. Cache
+  headers remained as documented; share token cookies carried `SameSite=Lax`
+  and `HttpOnly`.
+
 ## Known non-issues
 
 - Cloudflare does not echo `Cloudflare-CDN-Cache-Control`, but it honors

@@ -87,7 +87,9 @@ const ShareComments = ({
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [version, setVersion] = useState(initialVersion);
-  const [isLoading, setIsLoading] = useState(true);
+  // A zero version means the share has no comment file yet. Skip the listing
+  // request instead of asking the API for an empty list on every share page.
+  const [isLoading, setIsLoading] = useState(initialVersion > 0);
   const [loadFailed, setLoadFailed] = useState(false);
   const [content, setContent] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -113,6 +115,8 @@ const ShareComments = ({
   );
 
   useEffect(() => {
+    if (initialVersion <= 0) return;
+
     let cancelled = false;
 
     setIsLoading(true);
