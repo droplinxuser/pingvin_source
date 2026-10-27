@@ -621,8 +621,12 @@ export class S3FileService {
         where: { id: fileId },
       });
       // An upload id may only ever finalize a file inside the share that owns
-      // it; never let it overwrite a row belonging to another share.
-      if (existingFile && existingFile.shareId !== shareId) {
+      // it; never let it overwrite a row belonging to another share. A retry
+      // must use the same object name so the DB row and S3 key stay in sync.
+      if (
+        existingFile &&
+        (existingFile.shareId !== shareId || existingFile.name !== fileName)
+      ) {
         throw new BadRequestException(this.i18n.t("file.invalidIdFormat"));
       }
       const previousSize = existingFile
