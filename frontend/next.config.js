@@ -80,7 +80,21 @@ module.exports = withPWA({
         source: "/:path*",
         // X-Frame-Options and Referrer-Policy are owned by the Angie h5bp
         // include; setting them here as well sends duplicate response headers.
-        headers: [{ key: "X-Content-Type-Options", value: "nosniff" }],
+        headers: [
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          // This app never needs camera, microphone, location or payment
+          // access. Keep third-party ad code from requesting them.
+          {
+            key: "Permissions-Policy",
+            value:
+              "camera=(), microphone=(), geolocation=(), payment=(), usb=(), magnetometer=(), gyroscope=()",
+          },
+          {
+            key: "Cross-Origin-Opener-Policy",
+            value: "same-origin-allow-popups",
+          },
+          { key: "X-Permitted-Cross-Domain-Policies", value: "none" },
+        ],
       },
       ...CACHE_RULES.map(([source, value]) => ({
         source,

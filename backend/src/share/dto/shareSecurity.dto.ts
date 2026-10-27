@@ -1,9 +1,10 @@
 import {
   IsBoolean,
-  IsNumber,
+  IsInt,
   IsOptional,
   IsString,
   Length,
+  Min,
 } from "class-validator";
 
 export class ShareSecurityDTO {
@@ -12,7 +13,8 @@ export class ShareSecurityDTO {
   @Length(3, 30)
   password: string;
 
-  @IsNumber()
+  @IsInt()
+  @Min(1)
   @IsOptional()
   maxViews: number;
 

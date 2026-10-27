@@ -163,9 +163,15 @@ export class ShareStateService implements OnApplicationShutdown {
 
     // Refresh the rolling expiration on a cache miss, but persist it at most
     // once per six hours per share. The cached response still shows a fresh
-    // 100-day date on every visit.
+    // 100-day date on every visit. Expired shares must not be revived by an
+    // owner-management request (GET /shares/:id/from-owner) or by a late cache
+    // miss: expiration is also how takedowns and reverse-share deletion work.
     const commentsVersionRead = readCommentVersion(id);
-    if (!moment(share.expiration).isSame(0)) {
+    const hasExpiration = !moment(share.expiration).isSame(0);
+    if (hasExpiration && moment().isAfter(share.expiration)) {
+      throw new NotFoundException(this.i18n.t("share.notFound"));
+    }
+    if (hasExpiration) {
       share.expiration = parseRelativeDateToAbsolute(SHARE_EXPIRATION);
       await this.persistExpiration(share.id, share.expiration);
     }

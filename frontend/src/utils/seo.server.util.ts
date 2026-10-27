@@ -3,7 +3,6 @@ import Config from "../types/config.type";
 import { ShareSeo, TrendingShare } from "../types/share.type";
 import { getConfiguredSiteUrl, normalizeBaseUrl } from "./seo.util";
 
-const SEO_CACHE_MS = 30_000;
 const ERROR_CACHE_MS = 5_000;
 const SEO_CACHE_MAX_ENTRIES = 500;
 
@@ -16,13 +15,12 @@ type CachedSeo = { at: number; value: ShareSeoResult; error?: boolean };
 
 const seoCache = new Map<string, CachedSeo>();
 
-// Share URLs are unbounded, so keep the per-process SSR cache small instead of
-// retaining every share ever crawled for the lifetime of the frontend.
+// Share URLs are unbounded, so keep the per-process negative cache small
+// instead of retaining every share ever crawled for the process lifetime.
 function cacheSeo(shareId: string, entry: CachedSeo) {
   const now = Date.now();
   for (const [id, cached] of seoCache) {
-    if (now - cached.at < (cached.error ? ERROR_CACHE_MS : SEO_CACHE_MS))
-      continue;
+    if (now - cached.at < ERROR_CACHE_MS) continue;
     seoCache.delete(id);
   }
   if (seoCache.size >= SEO_CACHE_MAX_ENTRIES) {
@@ -46,6 +44,10 @@ export function resolveSiteUrl(
     !configured ||
     /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(configured);
   if (!localConfigured) return configured;
+  // In production the public URL must come from configuration. Deriving it
+  // from the request would let an attacker pin crawler artifacts (and their
+  // public cache entries) to an arbitrary Host/X-Forwarded-Host value.
+  if (process.env.NODE_ENV === "production") return "";
   if (!request) return configured;
 
   const forwardedHost = request.headers["x-forwarded-host"];
@@ -97,11 +99,15 @@ export async function fetchShareSeo(
   apiUrl: string,
   shareId: string,
 ): Promise<ShareSeoResult> {
+  // Only failures are briefly memoized. A positive share payload is never held
+  // in this process: after a password/lockdown the SSR page must immediately
+  // stop rendering the old title, description and file names. The backend's
+  // own SEO cache is invalidated per share on every mutation.
   const cached = seoCache.get(shareId);
-  if (cached) {
-    const ttl = cached.error ? ERROR_CACHE_MS : SEO_CACHE_MS;
-    if (Date.now() - cached.at < ttl) return cached.value;
+  if (cached?.error && Date.now() - cached.at < ERROR_CACHE_MS) {
+    return cached.value;
   }
+  if (cached && !cached.error) seoCache.delete(shareId);
 
   try {
     const response = await fetch(
@@ -110,7 +116,7 @@ export async function fetchShareSeo(
     );
     if (response.status === 404) {
       const value: ShareSeoResult = { status: "not-found" };
-      cacheSeo(shareId, { at: Date.now(), value });
+      cacheSeo(shareId, { at: Date.now(), value, error: true });
       return value;
     }
     if (!response.ok) throw new Error(`SEO fetch failed: ${response.status}`);
@@ -119,7 +125,7 @@ export async function fetchShareSeo(
       status: "ok",
       data: (await response.json()) as ShareSeo,
     };
-    cacheSeo(shareId, { at: Date.now(), value });
+    seoCache.delete(shareId);
     return value;
   } catch {
     // A short negative cache stops a slow backend from being retried on every

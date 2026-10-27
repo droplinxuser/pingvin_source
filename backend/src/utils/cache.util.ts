@@ -1,9 +1,11 @@
 import type { Cache } from "cache-manager";
 
 const NO_STORE = "no-store";
-// Long enough for effective edge caching, short enough that a share becoming
-// password-protected or deleted stops being served from caches within a day.
-const PUBLIC_CACHE_MAX_AGE = 60 * 60 * 24;
+// Browser caches may keep a public file for an hour. Shared caches get a much
+// shorter TTL (and no `immutable`) so an owner/admin deletion or takedown stops
+// being served from Cloudflare within minutes instead of a full day.
+const PUBLIC_CACHE_MAX_AGE = 60 * 60;
+const PUBLIC_EDGE_MAX_AGE = 10 * 60;
 
 export const SHARE_DATA_CACHE_TTL_MS = 30 * 1000;
 
@@ -51,12 +53,6 @@ const cacheHeaders = (value: string) => ({
 
 export const NO_STORE_HEADERS = cacheHeaders(NO_STORE);
 
-export function getPublicCacheHeaders(maxAge: number, immutable = false) {
-  return cacheHeaders(
-    `public, max-age=${maxAge}${immutable ? ", immutable" : ""}`,
-  );
-}
-
 /**
  * Cache headers for API responses that are safe to store on the CDN but should
  * be revalidated by browsers (config, public counters).
@@ -79,16 +75,18 @@ export function getZipCacheHeaders(
 }
 
 /**
- * Cache headers for a successful file response. Files belonging to a public
- * share can be stored on Cloudflare and in browsers for a day; protected
- * shares stay private so CDN edges never serve them to other visitors.
+ * Cache headers for a successful file response. Public-share files get a short
+ * shared-cache TTL so removals propagate quickly; protected shares stay
+ * private so CDN edges never serve them to other visitors.
  */
 export function getDownloadCacheHeaders(
   isPublicShare: boolean,
   etag?: string,
 ): Record<string, string> {
   const headers: Record<string, string> = isPublicShare
-    ? getPublicCacheHeaders(PUBLIC_CACHE_MAX_AGE, true)
+    ? cacheHeaders(
+        `public, max-age=${PUBLIC_CACHE_MAX_AGE}, s-maxage=${PUBLIC_EDGE_MAX_AGE}, stale-while-revalidate=60`,
+      )
     : cacheHeaders("private");
   if (isPublicShare && etag) headers.ETag = etag;
   return headers;

@@ -152,7 +152,19 @@ export class FileService implements OnModuleInit {
   ) {
     await this.touchShare(shareId);
     const storageService = this.getStorageService();
-    return storageService.create(data, chunk, file, shareId);
+    const result = await storageService.create(data, chunk, file, shareId);
+    // A legacy archive.zip is a snapshot. It must never keep serving a file
+    // that was removed or an older version of the share after an upload.
+    await this.removeLocalZip(shareId);
+    return result;
+  }
+
+  /** Removes the legacy local ZIP snapshot for a share, if one exists. */
+  async removeLocalZip(shareId: string) {
+    if (!SAFE_ID.test(shareId)) return;
+    await fs
+      .rm(join(SHARE_DIRECTORY, shareId, "archive.zip"), { force: true })
+      .catch(() => undefined);
   }
 
   private async touchShare(shareId: string) {
@@ -196,8 +208,10 @@ export class FileService implements OnModuleInit {
 
     const share = await this.prisma.share.findFirst({
       where: { id: shareId },
-      select: { storageProvider: true },
+      select: { storageProvider: true, uploadLocked: true },
     });
+    if (share?.uploadLocked)
+      throw new BadRequestException(this.i18n.t("file.alreadyCompleted"));
     if (share?.storageProvider !== "S3") {
       return { directToS3: false };
     }
@@ -219,8 +233,10 @@ export class FileService implements OnModuleInit {
   ) {
     const share = await this.prisma.share.findFirst({
       where: { id: shareId },
-      select: { storageProvider: true },
+      select: { storageProvider: true, uploadLocked: true },
     });
+    if (share?.uploadLocked)
+      throw new BadRequestException(this.i18n.t("file.alreadyCompleted"));
     if (share?.storageProvider !== "S3") {
       throw new BadRequestException(this.i18n.t("file.s3NotSupported"));
     }
@@ -241,8 +257,10 @@ export class FileService implements OnModuleInit {
   ) {
     const share = await this.prisma.share.findFirst({
       where: { id: shareId },
-      select: { storageProvider: true },
+      select: { storageProvider: true, uploadLocked: true },
     });
+    if (share?.uploadLocked)
+      throw new BadRequestException(this.i18n.t("file.alreadyCompleted"));
     if (share?.storageProvider !== "S3") {
       throw new BadRequestException(this.i18n.t("file.s3NotSupported"));
     }
@@ -960,6 +978,7 @@ export class FileService implements OnModuleInit {
     await Promise.all([
       this.removePreviewCache(shareId, fileId),
       this.removeShareThumbnail(shareId),
+      this.removeLocalZip(shareId),
       invalidateShareDataCache(this.cache, shareId),
       this.trending.invalidate(shareId),
     ]);

@@ -46,6 +46,12 @@ export class ReverseShareService {
       );
     }
 
+    // A reverse share is still a way to create shares. Do not let an account
+    // with sharing disabled use one to bypass that restriction.
+    if (creator.allowShare === false) {
+      throw new ForbiddenException(this.i18n.t("share.notAllowedToShare"));
+    }
+
     if (creator.maxReverseShares != null && creator.maxReverseShares > 0) {
       const activeReverseSharesCount = await this.prisma.reverseShare.count({
         where: {

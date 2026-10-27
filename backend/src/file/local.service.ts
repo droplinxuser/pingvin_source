@@ -26,6 +26,13 @@ import { File } from "./file.service";
 
 @Injectable()
 export class LocalFileService {
+  // Bytes appended by uploads that have not produced a File row yet. Without
+  // this, several parallel files can each pass the share/account quota check
+  // while together exceeding it. The maps are bounded and process-local; the
+  // completion check in ShareService is the final backstop.
+  private readonly pendingShareBytes = new Map<string, number>();
+  private readonly pendingUserBytes = new Map<string, number>();
+
   constructor(
     private prisma: PrismaService,
     private config: ConfigService,
@@ -107,6 +114,20 @@ export class LocalFileService {
       );
     }
 
+    const quotaOwner = share.reverseShare
+      ? share.reverseShare.creator
+      : share.creator;
+    const quotaOwnerId = share.reverseShare
+      ? share.reverseShare.creatorId
+      : share.creatorId;
+
+    // Pending bytes already include this file's earlier chunks. On a process
+    // restart the map is empty, so fall back to the chunk already on disk.
+    const pendingShare = this.pendingShareBytes.get(shareId) ?? diskFileSize;
+    const pendingUser = quotaOwnerId
+      ? (this.pendingUserBytes.get(quotaOwnerId) ?? diskFileSize)
+      : 0;
+
     // Each file must fit the edge cache limit, while the whole share has its
     // own (larger) quota.
     const maxFileSize = parseInt(this.config.get("share.maxFileSize"));
@@ -120,7 +141,8 @@ export class LocalFileService {
       );
     }
 
-    const shareSizeSum = sumFileSizes(share.files) + uploadedFileSize;
+    const shareSizeSum =
+      sumFileSizes(share.files) + pendingShare + buffer.byteLength;
     const limit = resolveShareSizeLimit(
       parseInt(this.config.get("share.maxSize")),
       share,
@@ -133,13 +155,6 @@ export class LocalFileService {
       );
     }
 
-    const quotaOwner = share.reverseShare
-      ? share.reverseShare.creator
-      : share.creator;
-    const quotaOwnerId = share.reverseShare
-      ? share.reverseShare.creatorId
-      : share.creatorId;
-
     if (quotaOwnerId && quotaOwner?.storageQuotaLimit) {
       const quotaLimit = parseInt(quotaOwner.storageQuotaLimit);
       const activeStorageUsage = await getUserActiveStorageUsage(
@@ -147,7 +162,7 @@ export class LocalFileService {
         quotaOwnerId,
       );
       const projectedUsage =
-        activeStorageUsage + diskFileSize + buffer.byteLength;
+        activeStorageUsage + pendingUser + buffer.byteLength;
 
       if (projectedUsage > quotaLimit) {
         const exceededBytes = projectedUsage - quotaLimit;
@@ -169,6 +184,13 @@ export class LocalFileService {
       `${SHARE_DIRECTORY}/${shareId}/${file.id}.tmp-chunk`,
       buffer,
     );
+    this.reservePendingBytes(
+      shareId,
+      quotaOwnerId,
+      pendingShare,
+      pendingUser,
+      buffer.byteLength,
+    );
 
     const isLastChunk = chunk.index == chunk.total - 1;
     if (isLastChunk) {
@@ -187,9 +209,42 @@ export class LocalFileService {
           share: { connect: { id: shareId } },
         },
       });
+      // The bytes are now counted by the File row.
+      this.releasePendingBytes(shareId, quotaOwnerId, fileSize);
     }
 
     return file;
+  }
+
+  private reservePendingBytes(
+    shareId: string,
+    userId: string | null | undefined,
+    pendingShare: number,
+    pendingUser: number,
+    bytes: number,
+  ) {
+    if (this.pendingShareBytes.size > 5000) this.pendingShareBytes.clear();
+    if (this.pendingUserBytes.size > 5000) this.pendingUserBytes.clear();
+    this.pendingShareBytes.set(shareId, pendingShare + bytes);
+    if (userId) this.pendingUserBytes.set(userId, pendingUser + bytes);
+  }
+
+  private releasePendingBytes(
+    shareId: string,
+    userId: string | null | undefined,
+    fileSize: number,
+  ) {
+    // Read the current map instead of a value captured before the async write:
+    // another file may have reserved bytes in the meantime.
+    this.pendingShareBytes.set(
+      shareId,
+      Math.max(0, (this.pendingShareBytes.get(shareId) ?? 0) - fileSize),
+    );
+    if (userId)
+      this.pendingUserBytes.set(
+        userId,
+        Math.max(0, (this.pendingUserBytes.get(userId) ?? 0) - fileSize),
+      );
   }
 
   async get(
@@ -280,6 +335,7 @@ export class LocalFileService {
   }
 
   async deleteAllFiles(shareId: string) {
+    this.pendingShareBytes.delete(shareId);
     await fs.rm(`${SHARE_DIRECTORY}/${shareId}`, {
       recursive: true,
       force: true,

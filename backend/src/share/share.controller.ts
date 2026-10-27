@@ -26,6 +26,7 @@ import { GetUser } from "src/auth/decorator/getUser.decorator";
 import { AdministratorGuard } from "src/auth/guard/isAdmin.guard";
 import { JwtGuard } from "src/auth/guard/jwt.guard";
 import { ConfigService } from "src/config/config.service";
+import { useSecureCookies } from "src/utils/cookie.util";
 import { FileService } from "src/file/file.service";
 import {
   TrendingCountry,
@@ -133,11 +134,11 @@ export class ShareController {
     @Query("limit") limit: string,
     @Res({ passthrough: true }) response: Response,
   ): Promise<TrendingShare[]> {
-    response.set(getEdgeCacheHeaders(60));
     const parsedLimit = Number.parseInt(limit ?? "", 10);
     const items = await this.trending.getTrending(
       Number.isFinite(parsedLimit) ? parsedLimit : undefined,
     );
+    response.set(getEdgeCacheHeaders(60));
     void this.fileService.warmShareThumbnails(items.map((item) => item.id));
     return items;
   }
@@ -149,8 +150,8 @@ export class ShareController {
   async getTrendingCountries(
     @Res({ passthrough: true }) response: Response,
   ): Promise<TrendingCountry[]> {
-    response.set(getEdgeCacheHeaders(300));
     const countries = await this.trending.getTrendingCountries();
+    response.set(getEdgeCacheHeaders(300));
     void this.fileService.warmShareThumbnails(
       countries.flatMap((country) => country.shares.map((item) => item.id)),
     );
@@ -165,11 +166,11 @@ export class ShareController {
     @Query("limit") limit: string,
     @Res({ passthrough: true }) response: Response,
   ): Promise<TrendingShare[]> {
-    response.set(getEdgeCacheHeaders(60));
     const parsedLimit = Number.parseInt(limit ?? "", 10);
     const items = await this.trending.getRecent(
       Number.isFinite(parsedLimit) ? parsedLimit : undefined,
     );
+    response.set(getEdgeCacheHeaders(60));
     void this.fileService.warmShareThumbnails(items.map((item) => item.id));
     return items;
   }
@@ -177,6 +178,7 @@ export class ShareController {
   // Lightweight existence check used by external monitors and the share page
   // SSR so missing shares get a real 404 without recording a view.
   @Head(":id")
+  @Throttle({ default: { limit: 60, ttl: 60 * 1000 } })
   @SkipThrottle({ visitor: true })
   async exists(@Param("id") id: string) {
     if (!(await this.shareService.shareExists(id)))
@@ -232,10 +234,7 @@ export class ShareController {
 
     const isPublic =
       (request as Request & { shareIsPublic?: boolean }).shareIsPublic === true;
-    const cacheHeaders = getDownloadCacheHeaders(
-      isPublic,
-      `"${id}-thumbnail"`,
-    );
+    const cacheHeaders = getDownloadCacheHeaders(isPublic, `"${id}-thumbnail"`);
     if (isNotModified(request, cacheHeaders.ETag)) {
       response.status(304).set(cacheHeaders).end();
       return;
@@ -256,8 +255,12 @@ export class ShareController {
     @Param("id") id: string,
     @Res({ passthrough: true }) response: Response,
   ) {
-    response.set(getEdgeCacheHeaders(60));
-    return this.shareService.getSeo(id);
+    // Set the cache headers only for a successful, indexable payload. A
+    // missing, protected or restricted share must keep the API's default
+    // no-store so old metadata can never be pinned at the edge after an edit.
+    const seo = await this.shareService.getSeo(id);
+    response.set(seo.indexable ? getEdgeCacheHeaders(60) : NO_STORE_HEADERS);
+    return seo;
   }
 
   /**
@@ -362,6 +365,7 @@ export class ShareController {
   }
 
   @Post()
+  @Throttle({ default: { limit: 20, ttl: 60 * 1000 } })
   @UseGuards(CreateShareGuard)
   async create(
     @Body() body: CreateShareDTO,
@@ -402,7 +406,7 @@ export class ShareController {
   }
 
   @Delete(":id/complete")
-  @UseGuards(IdValidation, StrictShareOwnerGuard)
+  @UseGuards(IdValidation, CreateShareGuard, StrictShareOwnerGuard)
   async revertComplete(@Param("id") id: string) {
     return new ShareDTO().from(await this.shareService.revertComplete(id));
   }
@@ -471,7 +475,7 @@ export class ShareController {
       path: "/",
       httpOnly: true,
       sameSite: "lax",
-      secure: this.config.get("security.secureCookies"),
+      secure: useSecureCookies(this.config),
     });
 
     return { token };

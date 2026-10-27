@@ -1,11 +1,12 @@
 import { Type } from "class-transformer";
 import {
   IsBoolean,
-  IsNumber,
+  IsInt,
   IsOptional,
   IsString,
   Length,
   MaxLength,
+  Min,
   ValidateNested,
 } from "class-validator";
 
@@ -19,7 +20,8 @@ export class UpdateShareSecurityDTO {
   @IsOptional()
   removePassword?: boolean;
 
-  @IsNumber()
+  @IsInt()
+  @Min(1)
   @IsOptional()
   maxViews?: number | null;
 }

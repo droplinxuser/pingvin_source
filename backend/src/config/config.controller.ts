@@ -44,8 +44,9 @@ export class ConfigController {
   async list(@Res({ passthrough: true }) response: Response) {
     // The public config is identical for every visitor. A short CDN TTL keeps
     // middleware/SSR reads off the backend without delaying admin changes.
+    const configs = new ConfigDTO().fromList(await this.configService.list());
     response.set(getEdgeCacheHeaders(30));
-    return new ConfigDTO().fromList(await this.configService.list());
+    return configs;
   }
 
   @Get("admin/:category")

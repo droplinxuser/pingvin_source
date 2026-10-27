@@ -44,6 +44,7 @@ import {
   activeShareWhere,
   isPublicShare,
   isViewLimitExceeded,
+  resolveShareSizeLimit,
   sumFileSizes,
 } from "./share.util";
 import { tableOrderBy } from "src/utils/pagination.util";
@@ -92,6 +93,10 @@ const ADMIN_SHARE_INCLUDE = {
 export type ShareSeo = {
   indexable: boolean;
   id: string;
+  // Visibility hints let the share page render the password gate without
+  // first issuing a request that is guaranteed to return 403 (which browsers
+  // report as a console error).
+  requiresPassword?: boolean;
   name?: string;
   description?: string;
   createdAt?: Date;
@@ -136,7 +141,10 @@ export class ShareService {
 
     const quotaOwner = reverseShare ? reverseShare.creator : user;
 
-    if (!reverseShare && user) {
+    // Authenticated creators must obey their account limits even when they use
+    // a reverse-share token. Otherwise a user at maxShares (or with sharing
+    // disabled) could keep creating shares through any reverse-share link.
+    if (user) {
       if (user.allowShare === false) {
         throw new ForbiddenException(this.i18n.t("share.notAllowedToShare"));
       }
@@ -314,12 +322,14 @@ export class ShareService {
             email: true,
             allowShare: true,
             maxShares: true,
+            shareSizeLimit: true,
           },
         },
         reverseShare: {
           select: {
             id: true,
             sendEmailNotification: true,
+            maxShareSize: true,
             creator: {
               select: {
                 id: true,
@@ -343,7 +353,19 @@ export class ShareService {
         this.i18n.t("share.completionRequiresFile"),
       );
 
-    if (!share.reverseShare && share.creator) {
+    // Concurrent uploads for separate files are only accounted for in the DB
+    // once each one finishes. Re-check the aggregate here so a burst can never
+    // publish a share above the configured share or account limit.
+    const shareSize = sumFileSizes(share.files);
+    const sizeLimit = resolveShareSizeLimit(
+      parseInt(this.configService.get("share.maxSize")),
+      share,
+    );
+    if (sizeLimit > 0 && shareSize > sizeLimit) {
+      throw new BadRequestException(this.i18n.t("file.maxSizeExceeded"));
+    }
+
+    if (share.creator) {
       if (share.creator.allowShare === false) {
         throw new ForbiddenException(this.i18n.t("share.notAllowedToShare"));
       }
@@ -495,6 +517,7 @@ export class ShareService {
     });
     await this.shareState.invalidateData(id);
     await this.fileService.removeShareThumbnail(id);
+    await this.fileService.removeLocalZip(id);
     return updatedShare;
   }
 
@@ -682,7 +705,11 @@ export class ShareService {
       throw new NotFoundException(this.i18n.t("share.notFound"));
 
     if (!isPublicShare(share) || share._count.files === 0)
-      return { indexable: false, id: share.id };
+      return {
+        indexable: false,
+        id: share.id,
+        requiresPassword: !!share.security?.password,
+      };
 
     const sizeRows = await this.prisma.$queryRaw<
       { size: number | bigint | null }[]

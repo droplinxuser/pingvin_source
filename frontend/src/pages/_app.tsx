@@ -490,8 +490,17 @@ App.getInitialProps = async ({
       (item) => item.key === "general.defaultLanguage",
     )?.value;
 
+    // Never pass a raw cookie value to IntlProvider: a malformed tag throws a
+    // RangeError and would 500 every page for that browser.
+    const cookieLanguage = ctx.req.cookies["language"];
     pageProps.language =
-      ctx.req.cookies["language"] || defaultLanguage || requestLanguage;
+      typeof cookieLanguage === "string" &&
+      i18nUtil.isLanguageSupported(cookieLanguage)
+        ? cookieLanguage
+        : typeof defaultLanguage === "string" &&
+            i18nUtil.isLanguageSupported(defaultLanguage)
+          ? defaultLanguage
+          : requestLanguage;
 
     // Ship only the active language. The full translation catalogue remains in
     // lazy chunks instead of the main client bundle.

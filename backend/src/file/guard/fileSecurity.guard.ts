@@ -51,10 +51,12 @@ export class FileSecurityGuard extends ShareSecurityGuard {
     const shareRequest = request as Request & {
       shareIsPublic?: boolean;
       shareStorageProvider?: string;
+      shareIsZipReady?: boolean;
       guardShare?: typeof share;
     };
     shareRequest.shareIsPublic = isPublicShare(share);
     shareRequest.shareStorageProvider = share?.storageProvider ?? "LOCAL";
+    shareRequest.shareIsZipReady = share?.isZipReady === true;
     // ShareSecurityGuard can reuse this load when the token path delegates.
     shareRequest.guardShare = share;
 

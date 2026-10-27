@@ -1798,6 +1798,56 @@ that cache. "Go home" links and the home-page redirect use the upstream
 - All temporary shares, the temporary admin user and its cache/files were
   deleted after verification.
 
+## Security hardening pass (2026-10-27)
+
+A full route/auth/storage/cache review was run against the fork and upstream
+behaviour. The changes below keep the fork surface small and only touch code
+needed for the fix.
+
+- Auth responses no longer echo the Prisma user row (which contained the
+  Argon2 password hash) from sign-up. Refresh/access tokens in the JSON body
+  remain for compatibility with the upstream API and its Newman suite.
+- Passwords are length-bounded on every login, reset, TOTP, share-password and
+  sign-up DTO. An unknown username now pays the same Argon2 cost as a wrong
+  password, and LDAP refuses empty passwords (RFC 4513 unauthenticated bind).
+- Resend-verification and password-reset requests answer uniformly for known,
+  activated, LDAP and unknown addresses.
+- Cookies are marked `Secure` whenever `general.appUrl` is HTTPS, even if the
+  legacy `security.secureCookies` value is false.
+- OAuth callbacks require a non-empty state on both sides; ID tokens must have
+  a subject and must not be expired; OAuth lookup/link refuse empty provider
+  IDs. The ID-token signature is still not re-verified (the token is obtained
+  directly from the configured token endpoint over TLS), so a compromised IdP
+  remains trusted by design.
+- A reverse-share token can no longer bypass `allowShare`/`maxShares`, and an
+  account with sharing disabled cannot create a reverse share.
+- Completed shares reject further local or S3 uploads; S3 filenames are
+  validated, replacing another share's file row is rejected, the user quota is
+  enforced at S3 completion, S3 deletion follows all `ListObjectsV2` pages,
+  and active documents (HTML/SVG/XML/JS/CSS) are forced to attachment/octet
+  stream on inline S3 reads.
+- Local uploads reserve in-flight bytes per share and per user, so parallel
+  incomplete files cannot pass the share/quota check together. Completion
+  re-checks the aggregate share size.
+- Expired shares can no longer be revived through the owner `from-owner` GET;
+  file removal also drops a legacy `archive.zip`, and deleting a user removes
+  bytes uploaded through that user's reverse shares.
+- Share SEO now distinguishes password protection so the page opens the
+  password modal directly instead of logging a guaranteed 403. A non-public
+  share response is `no-store`; only indexable pages receive a public cache
+  header. The old 30-second positive SSR SEO memo was removed.
+- Ads are rendered only for indexable (public) shares, so publisher scripts
+  never run while a password gate is open. Protected share responses and
+  legacy 404s are no longer publicly cacheable.
+- Public file downloads keep a one-hour browser TTL but only a ten-minute
+  shared-cache TTL (no `immutable`), so a deletion or takedown leaves
+  Cloudflare within minutes. Upload endpoints use generous but finite rate
+  limits instead of being fully exempt.
+- The frontend sends `Permissions-Policy`, `Cross-Origin-Opener-Policy` and
+  `X-Permitted-Cross-Domain-Policies`. A malformed `language` cookie is
+  normalized before it reaches `IntlProvider`, and production crawler
+  artifacts no longer derive their origin from `Host`/`X-Forwarded-Host`.
+
 ## Known non-issues
 
 - Cloudflare does not echo `Cloudflare-CDN-Cache-Control`, but it honors
@@ -1827,10 +1877,12 @@ that cache. "Go home" links and the home-page redirect use the upstream
   query. A request without `v` can keep an old copy until the edge TTL expires;
   the application always sends the version, and purging the comments URL clears
   stale unversioned entries.
-- Chrome may log the expected `403` while a protected share page fetches its
-  share token, and `404`s for intentionally missing shares. These are network
-  status logs, not JavaScript exceptions; the page recovers and renders
-  normally. Public shares no longer make the token request.
+- Chrome may log the expected `404` for intentionally missing shares. This is
+  a network status log, not a JavaScript exception. A protected share now
+  opens its password modal from the SEO hint, so the first visit no longer
+  makes the guaranteed `403` probe; the old `403` note applies only to a
+  visitor with a stale browser hint/token. Public shares make no token
+  request.
 - Node 24+ prints an upstream `util._extend` deprecation warning at frontend
   startup.
 - The home page's logged-in redirect uses a full `window.location.replace`

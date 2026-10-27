@@ -4,6 +4,7 @@ import {
   Delete,
   Get,
   HttpStatus,
+  NotFoundException,
   Param,
   Post,
   Query,
@@ -40,6 +41,7 @@ const VALID_ID_REGEX = /^[a-zA-Z0-9-]*={0,2}$/;
 type FileRequest = Request & {
   shareIsPublic?: boolean;
   shareStorageProvider?: string;
+  shareIsZipReady?: boolean;
 };
 
 function getValidRecipientId(recipientId?: string): string | undefined {
@@ -55,7 +57,10 @@ export class FileController {
   ) {}
 
   @Post("upload-init")
-  @SkipThrottle({ default: true, visitor: true })
+  @Throttle({
+    default: { limit: 300, ttl: 60 * 1000 },
+    visitor: { limit: 300, ttl: 60 * 1000 },
+  })
   @UseGuards(IdValidation, CreateShareGuard, StrictShareOwnerGuard)
   async uploadInit(
     @Body() body: UploadInitDTO,
@@ -69,7 +74,10 @@ export class FileController {
   }
 
   @Post("upload-complete")
-  @SkipThrottle({ default: true, visitor: true })
+  @Throttle({
+    default: { limit: 300, ttl: 60 * 1000 },
+    visitor: { limit: 300, ttl: 60 * 1000 },
+  })
   @UseGuards(IdValidation, CreateShareGuard, StrictShareOwnerGuard)
   async uploadComplete(
     @Body() body: UploadCompleteDTO,
@@ -85,7 +93,10 @@ export class FileController {
   }
 
   @Post("upload-abort")
-  @SkipThrottle({ default: true, visitor: true })
+  @Throttle({
+    default: { limit: 300, ttl: 60 * 1000 },
+    visitor: { limit: 300, ttl: 60 * 1000 },
+  })
   @UseGuards(IdValidation, CreateShareGuard, StrictShareOwnerGuard)
   async uploadAbort(
     @Body() body: UploadAbortDTO,
@@ -99,7 +110,13 @@ export class FileController {
   }
 
   @Post()
-  @SkipThrottle({ default: true, visitor: true })
+  // Large shares need many chunks, but an unbounded endpoint is a cheap disk
+  // and CPU DoS. These limits still allow a 5 GB share at the default chunk
+  // size to finish well within a minute.
+  @Throttle({
+    default: { limit: 1200, ttl: 60 * 1000 },
+    visitor: { limit: 600, ttl: 60 * 1000 },
+  })
   @UseGuards(IdValidation, CreateShareGuard, StrictShareOwnerGuard)
   async create(
     @Query()
@@ -136,6 +153,16 @@ export class FileController {
     if (!isRequestFromApp(req, appUrl)) {
       redirectToSharePage(res, appUrl, shareId);
       return;
+    }
+
+    // A legacy archive.zip is only valid while the share still advertises it.
+    // Otherwise a removed/edited file could keep being served from the old
+    // snapshot. S3 builds the archive live from the current objects.
+    if (
+      (req as FileRequest).shareStorageProvider !== "S3" &&
+      (req as FileRequest).shareIsZipReady !== true
+    ) {
+      throw new NotFoundException();
     }
 
     const zipStream = await this.fileService.getZip(
@@ -314,7 +341,10 @@ export class FileController {
   }
 
   @Delete(":fileId")
-  @SkipThrottle({ default: true, visitor: true })
+  @Throttle({
+    default: { limit: 120, ttl: 60 * 1000 },
+    visitor: { limit: 120, ttl: 60 * 1000 },
+  })
   @UseGuards(IdValidation, CreateShareGuard, StrictShareOwnerGuard)
   async remove(
     @Param("fileId") fileId: string,

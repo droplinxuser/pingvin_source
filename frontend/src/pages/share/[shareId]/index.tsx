@@ -73,9 +73,21 @@ export async function getServerSideProps(context: GetServerSidePropsContext) {
   // short backend outage cannot deindex a valid public share.
   if (initialNotFound) context.res.statusCode = 404;
   if (result.status === "ok") {
-    if (context.req.url?.startsWith("/_next/data/"))
+    // Only a public, indexable share may produce a shared cache entry. A
+    // protected or removed share must not keep serving its old title,
+    // description or file names from the CDN for the TTL window.
+    if (seo?.indexable === true) {
+      if (context.req.url?.startsWith("/_next/data/"))
+        setNoStoreHeaders(context.res);
+      else setPublicCacheHeaders(context.res, 60, 30);
+    } else {
       setNoStoreHeaders(context.res);
-    else setPublicCacheHeaders(context.res, 60, 30);
+    }
+  }
+  if (initialNotFound) {
+    // A share can be created or unlocked after this response; do not let the
+    // CDN pin the 404/skeleton for a minute.
+    setNoStoreHeaders(context.res);
   }
   if (result.status === "error") {
     context.res.statusCode = 503;
@@ -318,6 +330,14 @@ const SharePage = ({
       .getShareToken(shareId, password)
       .then(() => {
         modals.closeAll();
+        // Non-sensitive browser hint: this visitor already unlocked the share,
+        // so a reload can call the API directly instead of showing the modal
+        // and logging a guaranteed 403.
+        try {
+          window.localStorage.setItem(`share_ready_${shareId}`, "1");
+        } catch {
+          // Storage can be disabled; the modal simply appears again.
+        }
         getFiles();
       })
       .catch((e) => {
@@ -407,7 +427,9 @@ const SharePage = ({
         } else if (error == "share_password_required") {
           showEnterPasswordModal(modals, getShareToken);
         } else if (error == "share_token_required") {
-          getShareToken();
+          if (seo?.requiresPassword)
+            showEnterPasswordModal(modals, getShareToken);
+          else getShareToken();
         } else {
           showErrorModal(
             modals,
@@ -420,7 +442,20 @@ const SharePage = ({
   };
 
   useEffect(() => {
-    if (!initialNotFound) getFiles();
+    if (initialNotFound) return;
+
+    // The SEO payload already tells us whether the share is password
+    // protected. Open the gate directly instead of issuing a GET that is
+    // guaranteed to fail with 403 (and show up as a console error).
+    if (
+      seo?.requiresPassword &&
+      !window.localStorage.getItem(`share_ready_${shareId}`)
+    ) {
+      showEnterPasswordModal(modals, getShareToken);
+      return;
+    }
+
+    getFiles();
   }, []);
 
   if (isRestricted) {
@@ -531,7 +566,7 @@ const SharePage = ({
         )}
       </LazySection>
 
-      {!share?.hasPassword && <Ads gallery={hasGalleryMedia} />}
+      {indexable && <Ads gallery={hasGalleryMedia} />}
 
       <LazySection
         placeholder={<FileListSkeleton count={fileSkeletonCount} />}

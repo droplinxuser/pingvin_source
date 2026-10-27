@@ -37,6 +37,7 @@ import { File } from "./file.service";
 import { Readable } from "stream";
 import { validate as isValidUUID } from "uuid";
 import * as archiver from "archiver";
+import { SAFE_FILE_NAME } from "./dto/upload.dto";
 
 @Injectable()
 export class S3FileService {
@@ -63,6 +64,14 @@ export class S3FileService {
     file: { id?: string; name: string },
     shareId: string,
   ) {
+    if (
+      typeof file.name !== "string" ||
+      file.name.length > 1024 ||
+      !SAFE_FILE_NAME.test(file.name)
+    ) {
+      throw new BadRequestException(this.i18n.t("file.invalidFileName"));
+    }
+
     if (!file.id) {
       file.id = crypto.randomUUID();
     } else if (!isValidUUID(file.id)) {
@@ -93,6 +102,10 @@ export class S3FileService {
         },
       },
     });
+
+    if (!share) throw new NotFoundException(this.i18n.t("share.notFound"));
+    if (share.uploadLocked)
+      throw new BadRequestException(this.i18n.t("file.alreadyCompleted"));
 
     try {
       // Initialize multipart upload if it's the first chunk
@@ -356,32 +369,38 @@ export class S3FileService {
     };
 
     try {
-      // List all objects under the given prefix
-      const listResponse = await s3Instance.send(
-        new ListObjectsV2Command({
-          Bucket: bucketName,
-          Prefix: prefix,
-        }),
-      );
+      // ListObjectsV2 is paginated at 1,000 keys. Follow the continuation
+      // token so a large share cannot leave objects (including malware)
+      // behind after deletion.
+      let continuationToken: string | undefined;
+      do {
+        const listResponse = await s3Instance.send(
+          new ListObjectsV2Command({
+            Bucket: bucketName,
+            Prefix: prefix,
+            ContinuationToken: continuationToken,
+          }),
+        );
 
-      if (!listResponse.Contents || listResponse.Contents.length === 0) {
-        return;
-      }
+        const objectsToDelete = (listResponse.Contents ?? []).flatMap((file) =>
+          file.Key ? [{ Key: file.Key }] : [],
+        );
 
-      // Extract the keys of the files to be deleted
-      const objectsToDelete = listResponse.Contents.map((file) => ({
-        Key: file.Key!,
-      }));
+        if (objectsToDelete.length > 0) {
+          await s3Instance.send(
+            new DeleteObjectsCommand({
+              Bucket: bucketName,
+              Delete: {
+                Objects: objectsToDelete,
+              },
+            }),
+          );
+        }
 
-      // Delete all files in a single request (up to 1000 objects at once)
-      await s3Instance.send(
-        new DeleteObjectsCommand({
-          Bucket: bucketName,
-          Delete: {
-            Objects: objectsToDelete,
-          },
-        }),
-      );
+        continuationToken = listResponse.IsTruncated
+          ? listResponse.NextContinuationToken
+          : undefined;
+      } while (continuationToken);
     } catch (error) {
       // try deleting by known file names from DB instead.
       await fallbackDeleteByDb("list_or_bulk_delete_failed");
@@ -491,6 +510,7 @@ export class S3FileService {
     fileName: string,
     totalChunks: number,
   ): Promise<{ uploadId: string; key: string; urls: string[] }> {
+    this.assertSafeFileName(fileName);
     const key = `${this.getS3Path()}${shareId}/${fileName}`;
     const bucketName = this.config.get("s3.bucketName");
     const s3Instance = this.getS3Instance();
@@ -541,11 +561,36 @@ export class S3FileService {
     uploadId: string,
     parts: Array<{ ETag: string; PartNumber: number }>,
   ): Promise<{ id: string; name: string }> {
+    this.assertSafeFileName(fileName);
     if (!fileId) {
       fileId = crypto.randomUUID();
     } else if (!isValidUUID(fileId)) {
       throw new BadRequestException(this.i18n.t("file.invalidIdFormat"));
     }
+
+    const share = await this.prisma.share.findUnique({
+      where: { id: shareId },
+      include: {
+        files: { select: { size: true } },
+        creator: {
+          select: {
+            id: true,
+            storageQuotaLimit: true,
+            shareSizeLimit: true,
+          },
+        },
+        reverseShare: {
+          select: {
+            creatorId: true,
+            maxShareSize: true,
+            creator: { select: { id: true, storageQuotaLimit: true } },
+          },
+        },
+      },
+    });
+    if (!share) throw new NotFoundException(this.i18n.t("share.notFound"));
+    if (share.uploadLocked)
+      throw new BadRequestException(this.i18n.t("file.alreadyCompleted"));
 
     const key = `${this.getS3Path()}${shareId}/${fileName}`;
     const bucketName = this.config.get("s3.bucketName");
@@ -575,51 +620,88 @@ export class S3FileService {
       const existingFile = await this.prisma.file.findUnique({
         where: { id: fileId },
       });
+      // An upload id may only ever finalize a file inside the share that owns
+      // it; never let it overwrite a row belonging to another share.
+      if (existingFile && existingFile.shareId !== shareId) {
+        throw new BadRequestException(this.i18n.t("file.invalidIdFormat"));
+      }
+      const previousSize = existingFile
+        ? parseInt(existingFile.size, 10) || 0
+        : 0;
 
-      if (!existingFile) {
-        const share = await this.prisma.share.findUnique({
-          where: { id: shareId },
-          include: { files: true, creator: true, reverseShare: true },
-        });
-        if (!share) throw new NotFoundException(this.i18n.t("share.notFound"));
+      const maxFileSize = parseInt(this.config.get("share.maxFileSize"));
+      const shareSizeLimit = resolveShareSizeLimit(
+        parseInt(this.config.get("share.maxSize")),
+        share,
+      );
+      const fileTooLarge = maxFileSize > 0 && fileSize > maxFileSize;
+      const shareTooLarge =
+        sumFileSizes(share.files) - previousSize + fileSize > shareSizeLimit;
 
-        const maxFileSize = parseInt(this.config.get("share.maxFileSize"));
-        const shareSizeLimit = resolveShareSizeLimit(
-          parseInt(this.config.get("share.maxSize")),
-          share,
+      const quotaOwner = share.reverseShare
+        ? share.reverseShare.creator
+        : share.creator;
+      const quotaOwnerId = share.reverseShare
+        ? share.reverseShare.creatorId
+        : share.creatorId;
+      let quotaExceeded: string | undefined;
+      if (quotaOwnerId && quotaOwner?.storageQuotaLimit) {
+        const quotaLimit = parseInt(quotaOwner.storageQuotaLimit);
+        const activeStorageUsage = await getUserActiveStorageUsage(
+          this.prisma,
+          quotaOwnerId,
         );
-        const fileTooLarge = maxFileSize > 0 && fileSize > maxFileSize;
-        const shareTooLarge =
-          sumFileSizes(share.files) + fileSize > shareSizeLimit;
+        const projectedUsage = activeStorageUsage - previousSize + fileSize;
+        if (projectedUsage > quotaLimit) {
+          quotaExceeded = byteToHumanSizeString(projectedUsage - quotaLimit);
+        }
+      }
 
-        if (fileTooLarge || shareTooLarge) {
-          try {
-            await s3Instance.send(
-              new DeleteObjectCommand({
-                Bucket: bucketName,
-                Key: key,
-              }),
-            );
-          } catch (deleteError) {
-            this.logger.error(
-              "Failed to remove an oversized S3 upload:",
-              deleteError,
-            );
-          }
-
-          throw fileTooLarge
-            ? new HttpException(
-                this.i18n.t("file.maxFileSizeExceeded", {
-                  args: { maxSize: byteToHumanSizeString(maxFileSize) },
-                }),
-                HttpStatus.PAYLOAD_TOO_LARGE,
-              )
-            : new HttpException(
-                this.i18n.t("file.maxSizeExceeded"),
-                HttpStatus.PAYLOAD_TOO_LARGE,
-              );
+      if (fileTooLarge || shareTooLarge || quotaExceeded) {
+        try {
+          await s3Instance.send(
+            new DeleteObjectCommand({
+              Bucket: bucketName,
+              Key: key,
+            }),
+          );
+        } catch (deleteError) {
+          this.logger.error(
+            "Failed to remove an oversized S3 upload:",
+            deleteError,
+          );
         }
 
+        if (fileTooLarge)
+          throw new HttpException(
+            this.i18n.t("file.maxFileSizeExceeded", {
+              args: { maxSize: byteToHumanSizeString(maxFileSize) },
+            }),
+            HttpStatus.PAYLOAD_TOO_LARGE,
+          );
+        if (shareTooLarge)
+          throw new HttpException(
+            this.i18n.t("file.maxSizeExceeded"),
+            HttpStatus.PAYLOAD_TOO_LARGE,
+          );
+        throw new HttpException(
+          share.reverseShare
+            ? this.i18n.t("file.reverseShareQuotaExceeded", {
+                args: { exceededSize: quotaExceeded },
+              })
+            : this.i18n.t("file.storageQuotaExceeded", {
+                args: { exceededSize: quotaExceeded },
+              }),
+          HttpStatus.PAYLOAD_TOO_LARGE,
+        );
+      }
+
+      if (existingFile) {
+        await this.prisma.file.update({
+          where: { id: fileId },
+          data: { size: fileSize.toString() },
+        });
+      } else {
         await this.prisma.file.create({
           data: {
             id: fileId,
@@ -643,11 +725,22 @@ export class S3FileService {
     }
   }
 
+  private assertSafeFileName(fileName: string) {
+    if (
+      typeof fileName !== "string" ||
+      fileName.length > 1024 ||
+      !SAFE_FILE_NAME.test(fileName)
+    ) {
+      throw new BadRequestException(this.i18n.t("file.invalidFileName"));
+    }
+  }
+
   async abortPreSignedUpload(
     shareId: string,
     fileName: string,
     uploadId: string,
   ): Promise<void> {
+    this.assertSafeFileName(fileName);
     const key = `${this.getS3Path()}${shareId}/${fileName}`;
     const bucketName = this.config.get("s3.bucketName");
     const s3Instance = this.getS3Instance();
@@ -683,16 +776,27 @@ export class S3FileService {
 
     // Serve inline QuickTime files as video/mp4 so browsers can preview them
     // (see mime.util.ts). Downloads keep the stored MIME type.
+    const mimeType = getFileMimeType(fileRecord.name, false);
+    // S3 responses do not pass through the backend, so they cannot inherit the
+    // local `Content-Security-Policy: sandbox` / nosniff headers. Never let an
+    // active document (HTML, SVG, XML, JS, CSS) render inline from the bucket.
+    const activeContent =
+      /^(?:text\/html|application\/xhtml\+xml|image\/svg\+xml|text\/xml|application\/xml|application\/javascript|text\/javascript|text\/css)/i.test(
+        mimeType,
+      );
+    const inline = !isDownload && !activeContent;
     const responseContentType = isDownload
       ? undefined
-      : getFileMimeType(fileRecord.name, false);
+      : activeContent
+        ? "application/octet-stream"
+        : mimeType;
 
     const getObjectCommand = new GetObjectCommand({
       Bucket: bucketName,
       Key: key,
       ResponseContentDisposition: contentDisposition(
         fileRecord.name,
-        isDownload ? undefined : { type: "inline" },
+        inline ? { type: "inline" } : undefined,
       ),
       ResponseContentType: responseContentType,
     });

@@ -89,6 +89,7 @@ export type UpdateShare = {
 export type ShareSeo = {
   indexable: boolean;
   id: string;
+  requiresPassword?: boolean;
   name?: string;
   description?: string;
   createdAt?: string;

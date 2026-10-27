@@ -38,8 +38,9 @@ export class SystemController {
   async getSystemStats(
     @Res({ passthrough: true }) response: Response,
   ): Promise<SystemStats> {
+    const stats = await this.systemService.getSystemStats();
     response.set(getEdgeCacheHeaders(60));
-    return await this.systemService.getSystemStats();
+    return stats;
   }
 
   @Post("pageview")
@@ -54,9 +55,10 @@ export class SystemController {
     @Req() request: Request,
     @Res({ passthrough: true }) response: Response,
   ) {
+    const robots = await this.systemService.getRobotsTxt(request);
     response.set(getEdgeCacheHeaders(86_400));
     response.setHeader("Content-Type", "text/plain; charset=utf-8");
-    return this.systemService.getRobotsTxt(request);
+    return robots;
   }
 
   @Get("sitemap.xml")
@@ -65,9 +67,10 @@ export class SystemController {
     @Req() request: Request,
     @Res({ passthrough: true }) response: Response,
   ) {
+    const xml = await this.systemService.getSitemapXml(request);
     response.set(getEdgeCacheHeaders(3_600));
     response.setHeader("Content-Type", "application/xml; charset=utf-8");
-    return this.systemService.getSitemapXml(request);
+    return xml;
   }
 
   @Get("sitemaps/:name")
