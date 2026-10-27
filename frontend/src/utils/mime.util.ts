@@ -60,7 +60,9 @@ const GALLERY_IMAGE_EXTENSIONS = new Set([
 
 // Formats the backend can convert to a resized WebP. GIF uses the first frame
 // for the gallery card (the full-size modal still shows the original animated
-// file). APNG, SVG and ICO are displayed as-is so the gallery does not request
+// file). WebP sources are included too: the original may be far wider than the
+// 300px card, so the preview keeps a listing from downloading megabytes per
+// image. APNG, SVG and ICO are displayed as-is so the gallery does not request
 // a preview that can never be generated.
 const WEBP_PREVIEW_EXTENSIONS = new Set([
   "jpg",
@@ -77,6 +79,7 @@ const WEBP_PREVIEW_EXTENSIONS = new Set([
   "dib",
   "tif",
   "tiff",
+  "webp",
   "avif",
 ]);
 

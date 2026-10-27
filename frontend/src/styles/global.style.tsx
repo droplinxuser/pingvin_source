@@ -45,6 +45,11 @@ const GlobalStyle = () => {
           whiteSpace: "nowrap",
           border: 0,
         },
+        // The header is sticky, so an in-page jump (including the skip link)
+        // must leave room for it instead of hiding the target underneath.
+        "#main-content": {
+          scrollMarginTop: 70,
+        },
         "img, video": {
           maxWidth: "100%",
         },

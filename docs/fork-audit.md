@@ -1883,6 +1883,38 @@ needed for the fix.
 - Temporary live shares (protected and HTML-header checks) were deleted and
   verified missing after the run.
 
+## Media preview and navigation polish (2026-10-27, fourth)
+
+- WebP uploads now use the same 300px WebP preview as every other gallery
+  image. The gallery and the share page's `og` preload previously requested the
+  full-size `.webp` original because only converted formats were in
+  `WEBP_PREVIEW_EXTENSIONS`. A 2600x1800 synthetic upload measured 51,048 bytes
+  for the original and 1,976 bytes for the preview; the share page requested
+  the preview URL (`?download=false&webp=300`) and the HTML preload uses the
+  same URL. The full-size modal still loads the original.
+- The comment listing no longer sends the `pageSize` query parameter. The
+  backend always pages comments in blocks of 20, so the parameter was ignored
+  while still widening the edge cache key. The versioned URL is now
+  `.../comments?page=N&v=<version>`; creating a comment still refreshes the
+  listing immediately.
+- In-page jumps leave room for the sticky 54px header: `#main-content` has a
+  70px `scroll-margin-top`. Keyboard Tab now reveals the skip link, Enter moves
+  the main landmark to 70px from the viewport top (below the header), and the
+  page does not jump to the very top of the content under the navigation.
+- Verified locally with Node `26.12.1`: the frontend production build and lint
+  pass, and all 128 backend unit tests pass with only the upstream lint
+  warnings. Playwright covered the guest, member and 390px dark-mode routes
+  (home, new, trending, legal, sign-in, public image/text share, missing share,
+  robots/sitemap/manifest, upload, account pages and the non-admin `/admin`
+  redirect) with zero application console errors/warnings, page exceptions,
+  failed requests or horizontal overflow; the only console entries were the
+  browser's expected document-status logs for the intentional 404 pages. A
+  temporary comment on a share rendered through the new URL and was deleted;
+  the page then reported no comments. A password-protected WebP share returned
+  `403` for the preview without a token and passed the guard with the correct
+  token, and both temporary shares plus their files were deleted (API, SEO and
+  page routes returned `404` afterwards).
+
 ## Known non-issues
 
 - Cloudflare does not echo `Cloudflare-CDN-Cache-Control`, but it honors

@@ -15,7 +15,7 @@ const list = async (
     await api.get(`shares/${shareId}/comments`, {
       // The version is part of the URL so a new comment always bypasses the
       // Cloudflare edge copy while unchanged pages stay cached.
-      params: { page, pageSize: COMMENTS_PAGE_SIZE, v: version },
+      params: { page, v: version },
     })
   ).data;
 };
