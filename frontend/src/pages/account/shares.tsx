@@ -49,7 +49,13 @@ const MyShares = () => {
   const [shares, setShares] = useState<MyShare[]>();
 
   useEffect(() => {
-    shareService.getMyShares().then((shares) => setShares(shares));
+    shareService
+      .getMyShares()
+      .then((shares) => setShares(shares))
+      .catch((error) => {
+        toast.axiosError(error);
+        setShares([]);
+      });
   }, []);
 
   if (!shares) return <CenterLoader />;
@@ -251,13 +257,17 @@ const MyShares = () => {
                                   confirm: t("common.button.delete"),
                                   cancel: t("common.button.cancel"),
                                 },
-                                onConfirm: () => {
-                                  shareService.expire(share.id);
-                                  setShares(
-                                    shares.filter(
-                                      (item) => item.id !== share.id,
-                                    ),
-                                  );
+                                onConfirm: async () => {
+                                  try {
+                                    await shareService.expire(share.id);
+                                    setShares(
+                                      shares.filter(
+                                        (item) => item.id !== share.id,
+                                      ),
+                                    );
+                                  } catch (error) {
+                                    toast.axiosError(error);
+                                  }
                                 },
                               });
                             }}

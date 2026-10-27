@@ -73,6 +73,7 @@ type PendingSitemapWrite = {
 export class SystemService {
   private readonly logger = new Logger(SystemService.name);
   private baseStats?: { at: number; value: BaseSystemStats };
+  private baseStatsPending?: Promise<BaseSystemStats>;
   private readonly sitemapBuilds = new Map<string, Promise<SitemapManifest>>();
   // The manifest is small and changes at most every SITEMAP_REFRESH_MS, so a
   // validated copy avoids reading it and stats every chunk on each robots or
@@ -518,6 +519,21 @@ export class SystemService {
       return this.baseStats.value;
     }
 
+    // Footer page-view beacons arrive in bursts. Reuse one in-flight count so a
+    // cold cache does not queue the aggregate query once per visitor on the
+    // single SQLite connection.
+    if (this.baseStatsPending) return this.baseStatsPending;
+
+    const load = this.loadBaseSystemStats();
+    this.baseStatsPending = load;
+    try {
+      return await load;
+    } finally {
+      if (this.baseStatsPending === load) this.baseStatsPending = undefined;
+    }
+  }
+
+  private async loadBaseSystemStats(): Promise<BaseSystemStats> {
     // One query for every counter keeps the 60-second cache miss cheap.
     const rows = await this.prisma.$queryRaw<
       {

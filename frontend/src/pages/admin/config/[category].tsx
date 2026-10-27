@@ -32,18 +32,20 @@ import { AdminConfig, UpdateConfig } from "../../../types/config.type";
 import { camelToKebab } from "../../../utils/string.util";
 import toast from "../../../utils/toast.util";
 
-const categories = [
-  "General",
-  "Appearance",
-  "Security",
-  "Email",
-  "Share",
-  "SMTP",
-  "OAuth",
-  "LDAP",
-  "S3",
-  "Legal",
-  "Cache",
+// Routes use the lowercase category ids understood by the config API. Any
+// other value falls back to General instead of rendering a missing heading.
+const configCategories = [
+  "general",
+  "appearance",
+  "security",
+  "email",
+  "share",
+  "smtp",
+  "oauth",
+  "ldap",
+  "s3",
+  "legal",
+  "cache",
 ];
 
 export default function AppShellDemo() {
@@ -55,13 +57,11 @@ export default function AppShellDemo() {
   const isMobile = useMediaQuery("(max-width: 560px)");
   const config = useConfig();
 
-  let categoryId = "General";
-  if (
-    router.query.category &&
-    !categories.includes(router.query.category as string)
-  ) {
-    categoryId = router.query.category as string;
-  }
+  const requestedCategory =
+    typeof router.query.category === "string" ? router.query.category : "";
+  const categoryId = configCategories.includes(requestedCategory)
+    ? requestedCategory
+    : "general";
 
   const [configVariables, setConfigVariables] = useState<AdminConfig[]>();
   const [updatedConfigVariables, setUpdatedConfigVariables] = useState<
@@ -69,6 +69,8 @@ export default function AppShellDemo() {
   >([]);
   const [optionalConfigVariables, setOptionalConfigVariables] =
     useState<AdminConfig[]>();
+  const [loadError, setLoadError] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
 
   const [logo, setLogo] = useState<File | null>(null);
   const [darkLogo, setDarkLogo] = useState<File | null>(null);
@@ -114,7 +116,10 @@ export default function AppShellDemo() {
           toast.success(t("admin.config.notify.success"));
         })
         .catch(toast.axiosError);
-      void config.refresh();
+      void config.refresh().catch(() => {
+        // The saved values are already in local state; a failed refresh only
+        // delays the public-config update until the next page load.
+      });
     } else {
       toast.success(t("admin.config.notify.no-changes"));
     }
@@ -144,27 +149,50 @@ export default function AppShellDemo() {
   };
 
   useEffect(() => {
-    configService.getByCategory(categoryId).then((configVariables) => {
-      setConfigVariables(configVariables);
-    });
+    let cancelled = false;
+    setLoadError(false);
+    // Edits belong to the category they were made in. Keeping them while the
+    // admin switches categories could silently save another section's values.
+    setUpdatedConfigVariables([]);
+    setOptionalConfigVariables(undefined);
+    setLogo(null);
+    setDarkLogo(null);
+
+    configService
+      .getByCategory(categoryId)
+      .then((configVariables) => {
+        if (!cancelled) setConfigVariables(configVariables);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setConfigVariables(undefined);
+        setLoadError(true);
+      });
 
     if (
       categoryId === "email" ||
       categoryId === "security" ||
       categoryId === "share"
     ) {
-      configService.getByCategory("smtp").then((smtpConfigVariables) => {
-        const optionalConfigVariables = smtpConfigVariables.filter(
-          (configVariable) => {
-            if (configVariable.key === "smtp.enabled") {
-              return configVariable;
-            }
-          },
-        );
-        setOptionalConfigVariables(optionalConfigVariables);
-      });
+      configService
+        .getByCategory("smtp")
+        .then((smtpConfigVariables) => {
+          if (cancelled) return;
+          setOptionalConfigVariables(
+            smtpConfigVariables.filter(
+              (configVariable) => configVariable.key === "smtp.enabled",
+            ),
+          );
+        })
+        .catch(() => {
+          // The SMTP toggle is optional; the category still renders.
+        });
     }
-  }, [categoryId]);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [categoryId, reloadKey]);
 
   return (
     <>
@@ -193,7 +221,23 @@ export default function AppShellDemo() {
         }
       >
         <Container size="lg">
-          {!configVariables ? (
+          {loadError ? (
+            <Alert
+              color="red"
+              variant="light"
+              title={t("common.error")}
+              icon={<TbInfoCircle />}
+            >
+              <Group>
+                <Button
+                  variant="light"
+                  onClick={() => setReloadKey((key) => key + 1)}
+                >
+                  <FormattedMessage id="common.custom.retry" />
+                </Button>
+              </Group>
+            </Alert>
+          ) : !configVariables ? (
             <CenterLoader />
           ) : (
             <>

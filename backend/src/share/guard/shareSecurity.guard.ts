@@ -15,8 +15,15 @@ import { ConfigService } from "src/config/config.service";
 import { JwtGuard } from "src/auth/guard/jwt.guard";
 import { User } from "@prisma/client";
 
+const LINKED_RECIPIENT_LIMIT = 10_000;
+
 @Injectable()
 export class ShareSecurityGuard extends JwtGuard {
+  // The recipient link is idempotent and only needs one write. Remembering
+  // the pairs avoids repeating the UPSERT on every request that falls inside
+  // the 30-second guard-cache window (a gallery means one per file).
+  private readonly linkedRecipients = new Set<string>();
+
   constructor(
     private shareService: ShareService,
     private prisma: PrismaService,
@@ -56,11 +63,17 @@ export class ShareSecurityGuard extends JwtGuard {
       !!userEmail &&
       share.recipients.some((r) => r.email.toLowerCase() === userEmail);
     if (isEmailRecipient) {
-      await this.prisma.shareUserRecipient.upsert({
-        where: { userId_shareId: { userId: user.id, shareId: share.id } },
-        create: { userId: user.id, shareId: share.id },
-        update: {},
-      });
+      const linkKey = `${share.id}:${user.id}`;
+      if (!this.linkedRecipients.has(linkKey)) {
+        await this.prisma.shareUserRecipient.upsert({
+          where: { userId_shareId: { userId: user.id, shareId: share.id } },
+          create: { userId: user.id, shareId: share.id },
+          update: {},
+        });
+        if (this.linkedRecipients.size >= LINKED_RECIPIENT_LIMIT)
+          this.linkedRecipients.clear();
+        this.linkedRecipients.add(linkKey);
+      }
       return true;
     }
     return false;

@@ -56,6 +56,7 @@ export class MetricsService {
   private readonly memory = new Map<number, Bucket>();
   private readonly referrerMemory = new Map<string, number>();
   private aggregate?: { at: number; value: PageViewMetrics };
+  private aggregatePending?: Promise<PageViewMetrics>;
 
   constructor(private readonly valkey: ValkeyService) {}
 
@@ -161,6 +162,17 @@ export class MetricsService {
       return this.aggregate.value;
     }
 
+    // Every page view reads the same 24 hourly buckets when the aggregate
+    // expires. Coalesce those reads instead of sending one HGETALL batch per
+    // concurrent visitor.
+    if (!this.aggregatePending)
+      this.aggregatePending = this.loadLastDay().finally(() => {
+        this.aggregatePending = undefined;
+      });
+    return this.aggregatePending;
+  }
+
+  private async loadLastDay(): Promise<PageViewMetrics> {
     const hour = currentHour();
     const result = await this.valkey.run((client) =>
       this.readValkey(client, hour),

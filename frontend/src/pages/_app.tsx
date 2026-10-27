@@ -239,6 +239,9 @@ function App({ Component, pageProps }: AppProps) {
   // immediately in the browser so the header and owner actions stay correct.
   useEffect(() => {
     if (pageProps.user || !getClientCookie("access_token")) return;
+    // The sign-in page owns the refresh-and-redirect flow; restoring here
+    // would send the same user/token requests twice on that route.
+    if (router.pathname === "/auth/signIn") return;
 
     userService
       .getCurrentUser()
@@ -282,11 +285,11 @@ function App({ Component, pageProps }: AppProps) {
   }, [pageProps.language, pageProps.isConfigFallback]);
 
   useEffect(() => {
-    const userColorPreference = userPreferences.get("colorScheme");
-    const colorScheme = user
-      ? userColorPreference === "system"
-        ? systemTheme
-        : userColorPreference
+    const preference = userPreferences.get("colorScheme");
+    const explicitPreference =
+      preference === "light" || preference === "dark" ? preference : undefined;
+    const colorScheme: ColorScheme = user
+      ? (explicitPreference ?? systemTheme)
       : adminDefaultColorScheme === "system"
         ? systemTheme
         : adminDefaultColorScheme;
@@ -472,7 +475,11 @@ App.getInitialProps = async ({
     // when an edge Cache Rule ignores the origin's no-store header. The client
     // restores the signed-in user from the access token after hydration.
     const requestPath = (ctx.req.url || "/").split("?")[0];
-    if (!isPublicPageRoute(requestPath) && ctx.req.cookies.access_token) {
+    if (
+      !isPublicPageRoute(requestPath) &&
+      requestPath !== "/auth/signIn" &&
+      ctx.req.cookies.access_token
+    ) {
       pageProps.user = await fetch(`${apiURL}/api/users/me`, {
         headers: cookieHeader ? { cookie: cookieHeader } : undefined,
         signal: AbortSignal.timeout(2000),

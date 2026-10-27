@@ -34,6 +34,7 @@ export default {
   "seo.custom.breadcrumb.home": "Home",
   "common.custom.skip-to-content": "Skip to content",
   "common.custom.loading": "Loading",
+  "common.custom.retry": "Try again",
   "navbar.custom.primary": "Primary navigation",
   "navbar.custom.open-menu": "Open navigation menu",
   "footer.custom.navigation": "Footer navigation",

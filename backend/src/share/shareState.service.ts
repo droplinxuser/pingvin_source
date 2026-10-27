@@ -27,6 +27,7 @@ import {
   SHARE_DATA_CACHE_TTL_MS,
   getCachedValue,
   getShareCacheEpoch,
+  invalidateShareData,
   invalidateShareDataCache,
   setCachedValueIfCurrent,
   shareDataCacheKey,
@@ -51,6 +52,12 @@ const VISITOR_SNAPSHOT_LIMIT = 256;
 // still shows the fresh 100-day date on every visit; the database write is
 // throttled per process so a popular share cannot cause an UPDATE per view.
 const EXPIRATION_WRITE_INTERVAL_MS = 6 * 60 * 60 * 1000;
+// A view-limited share checks its counter for every gallery/file request after
+// the page view. Remember the value the atomic UPDATE returned for a moment so
+// a 100-image share does not run 100 identical SELECTs; SQLite stays the
+// authority for the next check.
+const LIMITED_VIEW_CACHE_MS = 2 * 1000;
+const LIMITED_VIEW_CACHE_LIMIT = 1000;
 
 const GUARD_INCLUDE = {
   security: {
@@ -81,6 +88,10 @@ export class ShareStateService implements OnApplicationShutdown {
   private readonly expirationWrites = new Map<string, number>();
   private readonly viewBaseCounts = new Map<string, number>();
   private readonly viewPendingCounts = new Map<string, number>();
+  private readonly limitedViewCounts = new Map<
+    string,
+    { views: number; at: number }
+  >();
   private viewFlushTimer?: NodeJS.Timeout;
   private viewFlush?: Promise<void>;
   private readonly pendingShareLoads = new Map<
@@ -163,6 +174,11 @@ export class ShareStateService implements OnApplicationShutdown {
     if (!share.uploadLocked)
       throw new NotFoundException(this.i18n.t("share.notFound"));
 
+    // The row already contains the counter, so seed the batched-view base and
+    // skip the extra SELECT the first unlimited view would otherwise run.
+    if (!this.viewPendingCounts.has(id))
+      this.rememberViewBase(id, share.views);
+
     // Refresh the rolling expiration on a cache miss, but persist it at most
     // once per six hours per share. The cached response still shows a fresh
     // 100-day date on every visit. Expired shares must not be revived by an
@@ -231,10 +247,20 @@ export class ShareStateService implements OnApplicationShutdown {
     if (this.viewPendingCounts.has(shareId)) await this.flushViews();
     this.viewBaseCounts.delete(shareId);
     this.viewPendingCounts.delete(shareId);
+    this.limitedViewCounts.delete(shareId);
     await Promise.all([
       this.invalidateDataCache(shareId),
       this.trending.invalidate(shareId),
     ]);
+  }
+
+  /**
+   * Comments only change the share payload's `commentsVersion`; security and
+   * SEO data stay valid. Invalidating just the share data keeps those cache
+   * entries (and their database loads) from being rebuilt on a comment edit.
+   */
+  async invalidateCommentsData(shareId: string) {
+    await invalidateShareData(this.cache, shareId);
   }
 
   async invalidateDataCache(shareId: string) {
@@ -293,6 +319,12 @@ export class ShareStateService implements OnApplicationShutdown {
   }
 
   async getCurrentViews(shareId: string): Promise<number> {
+    // A view-limited share just wrote the exact counter on the page view;
+    // reuse it for the file requests that follow instead of one SELECT each.
+    const limited = this.limitedViewCounts.get(shareId);
+    if (limited && Date.now() - limited.at < LIMITED_VIEW_CACHE_MS)
+      return limited.views;
+
     // Include batched views so a share that was just switched to a view limit
     // is not enforced against a stale database counter.
     const pending = this.viewPendingCounts.get(shareId);
@@ -337,6 +369,15 @@ export class ShareStateService implements OnApplicationShutdown {
     this.viewPendingCounts.set(id, pending);
     this.scheduleViewFlush();
     return base + pending;
+  }
+
+  private rememberLimitedView(id: string, views: number) {
+    if (
+      !this.limitedViewCounts.has(id) &&
+      this.limitedViewCounts.size >= LIMITED_VIEW_CACHE_LIMIT
+    )
+      this.limitedViewCounts.clear();
+    this.limitedViewCounts.set(id, { views, at: Date.now() });
   }
 
   private rememberViewBase(id: string, views: number) {
@@ -433,7 +474,11 @@ export class ShareStateService implements OnApplicationShutdown {
       WHERE "id" = ${id} AND "views" < ${maxViews}
       RETURNING "views"
     `;
-    if (rows.length > 0) return Number(rows[0].views);
+    if (rows.length > 0) {
+      const views = Number(rows[0].views);
+      this.rememberLimitedView(id, views);
+      return views;
+    }
 
     // No row updated: either the share is gone or the limit is exhausted.
     const share = await this.prisma.share.findUnique({

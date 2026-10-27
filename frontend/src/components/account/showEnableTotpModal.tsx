@@ -91,8 +91,19 @@ const CreateEnableTotpModal = ({
           <Tooltip label={t("common.button.clickToCopy")}>
             <Button
               onClick={() => {
-                navigator.clipboard.writeText(options.secret);
-                toast.success(t("common.notify.copied"));
+                // Clipboard access is unavailable on insecure origins and can
+                // be denied by the browser. Report the real outcome instead of
+                // an unhandled rejection with a false success toast.
+                const copied = navigator.clipboard?.writeText(options.secret);
+                if (!copied) {
+                  toast.error(t("share.notify.copy-not-supported-error"));
+                  return;
+                }
+                copied
+                  .then(() => toast.success(t("common.notify.copied")))
+                  .catch(() =>
+                    toast.error(t("share.notify.copy-not-supported-error")),
+                  );
               }}
             >
               {options.secret}

@@ -33,7 +33,10 @@ const ReceivedShares = () => {
       router.replace(homeHref);
       return;
     }
-    shareService.getReceivedShares().then((data) => setReceivedShares(data));
+    shareService
+      .getReceivedShares()
+      .then((data) => setReceivedShares(data))
+      .catch(() => setReceivedShares([]));
   }, []);
 
   if (!receivedShares) return <CenterLoader />;

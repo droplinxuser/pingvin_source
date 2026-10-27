@@ -146,13 +146,24 @@ async function deleteCachedValue(cache: Cache, key: string): Promise<void> {
   }
 }
 
-export async function invalidateShareDataCache(
+/**
+ * Drops only the visitor-facing share payload. Comment changes need this but
+ * leave the security/SEO entries valid, so their next read stays free.
+ */
+export async function invalidateShareData(
   cache: Cache,
   shareId: string,
 ): Promise<void> {
   bumpShareCacheEpoch(shareId);
+  await deleteCachedValue(cache, shareDataCacheKey(shareId));
+}
+
+export async function invalidateShareDataCache(
+  cache: Cache,
+  shareId: string,
+): Promise<void> {
   await Promise.all([
-    deleteCachedValue(cache, shareDataCacheKey(shareId)),
+    invalidateShareData(cache, shareId),
     deleteCachedValue(cache, shareGuardCacheKey(shareId)),
     deleteCachedValue(cache, shareSeoCacheKey(shareId)),
   ]);

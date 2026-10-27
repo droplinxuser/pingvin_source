@@ -304,7 +304,7 @@ export class ShareController {
   ) {
     if (!user) throw new UnauthorizedException();
     const result = await this.commentService.create(id, user, body.content);
-    await this.shareService.invalidateDataCache(id);
+    await this.shareService.invalidateCommentsDataCache(id);
     return result;
   }
 
@@ -329,7 +329,7 @@ export class ShareController {
       user,
       body.content,
     );
-    await this.shareService.invalidateDataCache(id);
+    await this.shareService.invalidateCommentsDataCache(id);
     return result;
   }
 
@@ -348,7 +348,7 @@ export class ShareController {
   ) {
     if (!user) throw new UnauthorizedException();
     const result = await this.commentService.remove(id, commentId, user);
-    await this.shareService.invalidateDataCache(id);
+    await this.shareService.invalidateCommentsDataCache(id);
     return result;
   }
 

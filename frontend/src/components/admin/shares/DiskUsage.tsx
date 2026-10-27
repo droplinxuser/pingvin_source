@@ -8,7 +8,12 @@ const DiskUsage = () => {
   const [systemInfo, setSystemInfo] = useState<SystemInfo | null>(null);
 
   useEffect(() => {
-    systemService.getSystemInfo().then(setSystemInfo);
+    systemService
+      .getSystemInfo()
+      .then(setSystemInfo)
+      .catch(() => {
+        // The card is optional; keep the rest of the admin page usable.
+      });
   }, []);
 
   if (!systemInfo) return null;

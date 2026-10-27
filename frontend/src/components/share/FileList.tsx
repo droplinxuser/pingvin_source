@@ -301,7 +301,9 @@ const FileList = ({
                           aria-label={t("share.copy-text-contents")}
                           onClick={() => {
                             if (!window.isSecureContext) {
-                              toast.error(t("share.notify.copy-not-supported"));
+                              toast.error(
+                                t("share.notify.copy-not-supported-error"),
+                              );
                               return;
                             }
                             api

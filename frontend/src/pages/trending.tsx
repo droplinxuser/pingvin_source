@@ -11,9 +11,12 @@ import {
   setNoStoreHeaders,
   setPublicCacheHeaders,
 } from "../utils/httpCache.util";
-import { fetchShareList } from "../utils/seo.server.util";
+import {
+  fetchShareList,
+  fetchTrendingCountries,
+} from "../utils/seo.server.util";
 import { buildCollectionPage, buildItemList } from "../utils/seo.util";
-import { TrendingShare } from "../types/share.type";
+import { TrendingCountry, TrendingShare } from "../types/share.type";
 import { getShareThumbnailUrl } from "../utils/file.util";
 
 export async function getServerSideProps({
@@ -21,17 +24,33 @@ export async function getServerSideProps({
   res,
 }: GetServerSidePropsContext) {
   const apiURL = process.env.API_URL || "http://localhost:8080";
-  const initialItems = await fetchShareList(apiURL, "trending", 100);
-  // See /new: never let the CDN cache an empty client-navigation payload.
-  if (req.url?.startsWith("/_next/data/")) setNoStoreHeaders(res);
+  const [initialItems, initialCountries] = await Promise.all([
+    fetchShareList(apiURL, "trending", 100),
+    fetchTrendingCountries(apiURL),
+  ]);
+  // Never let the CDN cache a failed backend response or an empty
+  // client-navigation payload; the client retries both.
+  if (
+    req.url?.startsWith("/_next/data/") ||
+    initialItems === null ||
+    initialCountries === null
+  )
+    setNoStoreHeaders(res);
   else setPublicCacheHeaders(res, 60, 30);
-  return { props: { initialItems } };
+  return {
+    props: {
+      initialItems: initialItems ?? [],
+      initialCountries: initialCountries ?? [],
+    },
+  };
 }
 
 const Trending = ({
   initialItems = [],
+  initialCountries = [],
 }: {
   initialItems?: TrendingShare[];
+  initialCountries?: TrendingCountry[];
 }) => {
   const t = useTranslate();
   const { siteName, baseUrl } = useSiteMeta();
@@ -70,7 +89,7 @@ const Trending = ({
           placeholder={<TrendingCountriesSkeleton />}
           rootMargin="400px"
         >
-          <TrendingCountries />
+          <TrendingCountries countries={initialCountries} />
         </LazySection>
       </TrendingToday>
     </>

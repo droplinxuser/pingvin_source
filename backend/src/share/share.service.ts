@@ -110,6 +110,9 @@ export type ShareSeo = {
 @Injectable()
 export class ShareService {
   private readonly logger = new Logger(ShareService.name);
+  // The share page SSR and a crawler can request the same cold SEO payload at
+  // once; share the in-flight load instead of running its queries twice.
+  private readonly pendingSeoLoads = new Map<string, Promise<ShareSeo>>();
   constructor(
     private prisma: PrismaService,
     private configService: ConfigService,
@@ -640,6 +643,10 @@ export class ShareService {
     await this.shareState.invalidateDataCache(id);
   }
 
+  async invalidateCommentsDataCache(id: string): Promise<void> {
+    await this.shareState.invalidateCommentsData(id);
+  }
+
   async getMetaData(id: string) {
     // ZIP archives are not built automatically. Existing archives remain
     // downloadable through the API; the flag is kept for client compatibility.
@@ -664,6 +671,21 @@ export class ShareService {
     const cached = await getCachedValue<ShareSeo>(this.cache, cacheKey);
     if (cached) return cached;
 
+    const pending = this.pendingSeoLoads.get(id);
+    if (pending) return pending;
+
+    const load = this.loadSeo(id, cacheKey);
+    this.pendingSeoLoads.set(id, load);
+    void load
+      .finally(() => {
+        if (this.pendingSeoLoads.get(id) === load)
+          this.pendingSeoLoads.delete(id);
+      })
+      .catch(() => {});
+    return load;
+  }
+
+  private async loadSeo(id: string, cacheKey: string): Promise<ShareSeo> {
     const epoch = getShareCacheEpoch(id);
     const share = await this.prisma.share.findUnique({
       where: { id },

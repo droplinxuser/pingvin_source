@@ -106,6 +106,7 @@ export class TrendingService {
   private recentCached?: { at: number; items: TrendingShare[] };
   private pendingRanking?: Promise<TrendingShare[] | undefined>;
   private pendingCountries?: Promise<TrendingCountry[] | undefined>;
+  private pendingRecent?: Promise<TrendingShare[]>;
   private seedCheckedAt = 0;
 
   constructor(
@@ -248,6 +249,17 @@ export class TrendingService {
     )
       return this.recentCached.items.slice(0, resultLimit);
 
+    // The home page, /new and client navigations can miss the same 30-second
+    // window together. One query fill serves all of them.
+    if (!this.pendingRecent)
+      this.pendingRecent = this.loadRecent().finally(() => {
+        this.pendingRecent = undefined;
+      });
+    const items = await this.pendingRecent;
+    return items.slice(0, resultLimit);
+  }
+
+  private async loadRecent(): Promise<TrendingShare[]> {
     const shares = await this.prisma.share
       .findMany({
         where: publicShareWhere(),
@@ -293,7 +305,7 @@ export class TrendingService {
     }
 
     this.recentCached = { at: Date.now(), items };
-    return items.slice(0, resultLimit);
+    return items;
   }
 
   /**

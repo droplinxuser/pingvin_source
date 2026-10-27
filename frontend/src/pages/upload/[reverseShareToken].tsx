@@ -22,14 +22,19 @@ const Share = ({ reverseShareToken }: { reverseShareToken: string }) => {
   const [simplified, setSimplified] = useState(false);
 
   useEffect(() => {
+    let cancelled = false;
+    setIsLoading(true);
+
     shareService
       .setReverseShare(reverseShareToken)
       .then((reverseShareTokenData) => {
+        if (cancelled) return;
         setMaxShareSize(parseInt(reverseShareTokenData.maxShareSize));
         setSimplified(reverseShareTokenData.simplified);
         setIsLoading(false);
       })
       .catch(() => {
+        if (cancelled) return;
         showErrorModal(
           modals,
           t("upload.reverse-share.error.invalid.title"),
@@ -38,7 +43,11 @@ const Share = ({ reverseShareToken }: { reverseShareToken: string }) => {
         );
         setIsLoading(false);
       });
-  }, []);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [reverseShareToken]);
 
   if (isLoading) return <LoadingOverlay visible />;
 

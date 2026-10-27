@@ -23,19 +23,27 @@ const Share = ({ shareId }: { shareId: string }) => {
 
   const [isLoading, setIsLoading] = useState(true);
   const [share, setShare] = useState<ShareType>();
+  const [isDirty, setIsDirty] = useState(false);
 
-  useConfirmLeave({
+  // Ask before leaving only when there are unsaved file changes.
+  const allowLeave = useConfirmLeave({
     message: t("upload.notify.confirm-leave"),
-    enabled: isLoading,
+    enabled: isDirty,
   });
 
   useEffect(() => {
+    let cancelled = false;
+    setIsLoading(true);
+    setShare(undefined);
+    setIsDirty(false);
+
     shareService
       .getFromOwner(shareId)
       .then((share) => {
-        setShare(share);
+        if (!cancelled) setShare(share);
       })
       .catch((e) => {
+        if (cancelled) return;
         if (!e.response) {
           toast.axiosError(e);
           return;
@@ -76,9 +84,13 @@ const Share = ({ shareId }: { shareId: string }) => {
         }
       })
       .finally(() => {
-        setIsLoading(false);
+        if (!cancelled) setIsLoading(false);
       });
-  }, []);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [shareId]);
 
   if (isLoading) return <LoadingOverlay visible />;
 
@@ -91,6 +103,8 @@ const Share = ({ shareId }: { shareId: string }) => {
       <EditableUpload
         shareId={shareId}
         files={share?.files || []}
+        onDirtyChange={setIsDirty}
+        onSaved={allowLeave}
         maxShareSize={
           share?.creator?.shareSizeLimit
             ? parseInt(share.creator.shareSizeLimit)

@@ -134,6 +134,9 @@ model ReverseShare {
   creator   User   @relation(fields: [creatorId], references: [id], onDelete: Cascade)
 
   shares Share[]
+
+  @@index([creatorId])
+  @@index([shareExpiration])
 }
 
 model ShareRecipient {
@@ -182,6 +185,7 @@ model ShareUserRecipient {
   share   Share  @relation(fields: [shareId], references: [id], onDelete: Cascade)
 
   @@unique([userId, shareId])
+  @@index([shareId])
 }
 
 model Config {

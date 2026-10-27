@@ -329,3 +329,94 @@ test("reports the view limit or a missing share after a failed update", async ()
     (error) => error.getStatus() === 404,
   );
 });
+
+test("reuses the share row's counter for the first unlimited view", async () => {
+  const cacheUtil = require("../dist/src/utils/cache.util.js");
+  const originalGet = cacheUtil.getCachedValue;
+  const originalSet = cacheUtil.setCachedValue;
+  cacheUtil.getCachedValue = async () => undefined;
+  cacheUtil.setCachedValue = async () => {};
+
+  captureVisitorWrites();
+  let lookups = 0;
+  let increments = 0;
+  const prisma = {
+    share: {
+      findUnique: async () => {
+        lookups += 1;
+        return {
+          id: "views",
+          name: "Views",
+          uploadLocked: true,
+          removedReason: null,
+          expiration: new Date(0),
+          files: [],
+          creator: null,
+          security: null,
+          views: 41,
+        };
+      },
+      update: async ({ data }) => {
+        increments += 1;
+        return { views: 41 + data.views.increment };
+      },
+    },
+  };
+  const service = new ShareStateService(
+    prisma,
+    { t: (key) => key },
+    { invalidate: async () => {} },
+    {},
+  );
+
+  try {
+    await service.getShare("views");
+    const { views } = await service.recordView("views", request);
+    assert.equal(views, 42);
+    // The GET already read the row; counting must not run another SELECT.
+    assert.equal(lookups, 1);
+
+    await new Promise((resolve) => setTimeout(resolve, 5200));
+    assert.equal(increments, 1);
+  } finally {
+    await service.onApplicationShutdown();
+    cacheUtil.getCachedValue = originalGet;
+    cacheUtil.setCachedValue = originalSet;
+  }
+});
+
+test("serves the view-limited counter from the last atomic write", async () => {
+  captureVisitorWrites();
+  let selects = 0;
+  let rawCalls = 0;
+  const prisma = {
+    $queryRaw: async () => {
+      rawCalls += 1;
+      return [{ views: 3 }];
+    },
+    share: {
+      findUnique: async () => {
+        selects += 1;
+        return { views: 3 };
+      },
+    },
+  };
+  const service = new ShareStateService(
+    prisma,
+    { t: (key) => key },
+    { invalidate: async () => {} },
+    {},
+  );
+
+  try {
+    const { views } = await service.recordView("limited", request, 5);
+    assert.equal(views, 3);
+    assert.equal(await service.getCurrentViews("limited"), 3);
+    assert.equal(await service.getCurrentViews("limited"), 3);
+    assert.equal(rawCalls, 1);
+    // A gallery's file requests reuse the recorded value instead of SELECTs.
+    assert.equal(selects, 0);
+  } finally {
+    await service.onApplicationShutdown();
+  }
+});

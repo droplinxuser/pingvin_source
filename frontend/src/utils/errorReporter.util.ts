@@ -102,6 +102,13 @@ export function installGlobalErrorReporter() {
       return;
     }
 
+    // `useConfirmLeave` aborts navigation by throwing this sentinel. It is a
+    // user choice, not an application failure.
+    if (reason === "Route change aborted.") {
+      event.preventDefault();
+      return;
+    }
+
     report({
       message: stringifyReason(reason),
       stack: reason instanceof Error ? reason.stack : undefined,

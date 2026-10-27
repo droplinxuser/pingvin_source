@@ -1,6 +1,10 @@
 import type { IncomingMessage } from "http";
 import Config from "../types/config.type";
-import { ShareSeo, TrendingShare } from "../types/share.type";
+import {
+  ShareSeo,
+  TrendingCountry,
+  TrendingShare,
+} from "../types/share.type";
 import { getConfiguredSiteUrl, normalizeBaseUrl } from "./seo.util";
 
 const ERROR_CACHE_MS = 5_000;
@@ -76,7 +80,7 @@ export async function fetchShareList(
   apiUrl: string,
   path: "trending" | "recent",
   limit: number,
-): Promise<TrendingShare[]> {
+): Promise<TrendingShare[] | null> {
   try {
     const response = await fetch(
       `${apiUrl}/api/shares/${path}?limit=${limit}`,
@@ -87,11 +91,33 @@ export async function fetchShareList(
         signal: AbortSignal.timeout(2000),
       },
     );
-    if (!response.ok) return [];
+    // `null` means the backend did not answer; the caller must not cache that
+    // as a valid (empty) listing.
+    if (!response.ok) return null;
     const data = (await response.json()) as unknown;
-    return Array.isArray(data) ? (data as TrendingShare[]) : [];
+    return Array.isArray(data) ? (data as TrendingShare[]) : null;
   } catch {
-    return [];
+    return null;
+  }
+}
+
+/**
+ * Server-renders the country panel so /trending costs one HTML request instead
+ * of a second client API call after hydration. `null` marks a backend failure.
+ */
+export async function fetchTrendingCountries(
+  apiUrl: string,
+): Promise<TrendingCountry[] | null> {
+  try {
+    const response = await fetch(`${apiUrl}/api/shares/trending/countries`, {
+      next: { revalidate: 300 },
+      signal: AbortSignal.timeout(2000),
+    });
+    if (!response.ok) return null;
+    const data = (await response.json()) as unknown;
+    return Array.isArray(data) ? (data as TrendingCountry[]) : null;
+  } catch {
+    return null;
   }
 }
 

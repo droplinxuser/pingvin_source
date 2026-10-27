@@ -22,9 +22,11 @@ export async function getServerSideProps({
   // The HTML shell is safe to cache, but the client-navigation data response
   // must not be stored by the CDN. A single empty response cached during a
   // deployment would otherwise make every client transition render an error.
-  if (req.url?.startsWith("/_next/data/")) setNoStoreHeaders(res);
+  // A failed backend request (`null`) is never cached either.
+  if (req.url?.startsWith("/_next/data/") || initialItems === null)
+    setNoStoreHeaders(res);
   else setPublicCacheHeaders(res, 60, 30);
-  return { props: { initialItems } };
+  return { props: { initialItems: initialItems ?? [] } };
 }
 
 const NewShares = ({

@@ -295,6 +295,12 @@ const SharePage = ({
                 "@type": "ListItem",
                 position: position + 1,
                 name: getBaseName(file.name),
+                // A nested item keeps the entry complete for rich-result
+                // consumers without pointing at a non-indexable API URL.
+                item: {
+                  "@type": "DigitalDocument",
+                  name: getBaseName(file.name),
+                },
               })),
             },
           }),

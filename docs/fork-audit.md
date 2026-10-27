@@ -26,6 +26,7 @@ so `git merge upstream/main` stays small.
 | Cache headers / hotlink protection | `backend/src/utils/cache.util.ts` (shared `Cache-Control`, `CDN-Cache-Control`, `Cloudflare-CDN-Cache-Control`, public-file `ETag`, `If-None-Match` 304 handling, per-share cache epochs), `frontend/src/utils/version.util.ts` (build-versioned public config/provider URLs), `backend/src/utils/referrer.util.ts`, `frontend/src/middleware.ts` (query-free anonymous page shells; its `no-store` decision is authoritative), `frontend/next.config.js` (`/s/:shareId` redirect, PWA precache exclusions) |
 | Per-IP+User-Agent rate limiting | `backend/src/utils/visitorIdentity.util.ts`, `backend/src/cache/valkeyThrottler.storage.ts`, `backend/src/cache/throttler.config.ts`, `backend/src/main.ts` |
 | Valkey/Redis cache | `backend/src/utils/cache.util.ts`, `backend/src/share/shareState.service.ts`, `backend/src/cache/cache.module.ts`, `backend/src/cache/valkey.service.ts` |
+| Hot-path queries and cache fills | `backend/src/share/shareState.service.ts` (view counters, comment-only invalidation), `backend/src/share/share.service.ts` (SEO fill), `backend/src/cache/metrics.service.ts`, `backend/src/system/system.service.ts`, `backend/src/cache/trending.service.ts` (recent fill), migration `20261028000000_add_relation_indexes` |
 | VirusTotal background scanning | `backend/src/virustotal/*` (worker, file-backed audit, admin controller), `backend/src/share/share.service.ts` (completion hook), `backend/src/share/share.module.ts`, `backend/src/clamscan/clamscan.service.ts` (shared malicious-share removal), `frontend/src/pages/admin/virustotal.tsx`, `backend/.env.example` |
 | Site stats and footer | `backend/src/system/system.service.ts`, `backend/src/cache/metrics.service.ts`, `frontend/src/components/footer/Footer.tsx`; `POST /api/system/pageview` |
 | Valkey metrics and error logs | `backend/src/cache/valkeyMetrics.util.ts`, `backend/src/logs/*`, `backend/src/system/system.controller.ts` (`GET /api/system/valkey`), `frontend/src/components/admin/ValkeyMetricsCard.tsx`, `frontend/src/pages/admin/logs.tsx`, `frontend/src/services/log.service.ts`, `frontend/src/utils/errorReporter.util.ts` |
@@ -2124,6 +2125,59 @@ needed for the fix.
 - Performance at 1366px: home LCP ~0.72s, new ~1.45s, trending ~1.43s, image
   share ~2.23s, video share ~2.04s; CLS stayed below 0.031 and script transfer
   was 275-333 kB.
+
+## Hot-path query and cache pass (2026-10-28, ninth)
+
+- Cold cache stampedes: base system stats, the 24-hour page-view aggregate,
+  `share:seo` and the recent-share listing now share an in-flight promise (the
+  same pattern already used for share data and the trending ranking). A footer
+  beacon burst or a crawler no longer queues duplicate aggregate queries on the
+  single SQLite connection.
+- View counters: `loadShare` seeds the batched view base from the row it has
+  just read, removing one SELECT per share per process. View-limited shares
+  keep the exact value returned by the atomic `UPDATE ... RETURNING` for two
+  seconds, so a gallery's file requests stop issuing one SELECT per file.
+  SQLite remains the authority after that window, and a mutation clears the
+  value.
+- Recipient linking: the email-recipient `UPSERT` is remembered per share and
+  user for the process lifetime instead of running on every file request inside
+  the 30-second guard-cache window. The relation is create-only, so the memo
+  cannot hide a real revocation.
+- Comments: create/edit/delete invalidate only the share payload (which carries
+  `commentsVersion`); the guard and SEO entries stay valid, so a comment no
+  longer forces the next page view to rebuild its security and SEO queries.
+- Indexes: migration `20261028000000_add_relation_indexes` adds
+  `ShareUserRecipient(shareId)`, `ReverseShare(creatorId)` and
+  `ReverseShare(shareExpiration)` (SQLite does not index foreign keys). The
+  local database was migrated; production applies it through
+  `prisma migrate deploy`.
+- Frontend: `/trending` fetches the country panel in the same SSR pass and
+  passes it to `TrendingCountries`, removing the client request after
+  hydration. A failed backend fetch for `/new` or `/trending` now sends
+  `no-store` instead of caching an empty listing. Unknown or capitalized
+  `/admin/config/*` categories fall back to General, category switches clear
+  pending edits, and a load failure shows a retry alert instead of an endless
+  spinner.
+- QR: the `qrcode` encoder is imported on demand and only while the QR panel is
+  open; the completed-upload and completed-reverse-share modals no longer
+  generate a QR bitmap while collapsed.
+- Client polish: fixed the missing `share.notify.copy-not-supported-error` key;
+  clipboard failures report an error instead of a false success; preferences
+  parsing tolerates blocked or corrupt `localStorage`; account list and delete
+  failures are surfaced instead of leaving spinners or unhandled rejections;
+  the share edit page warns only when files are dirty and follows the route
+  parameter; the reverse-share upload page follows its token; the confirm-leave
+  abort is no longer reported as an application error; the sign-in route no
+  longer duplicates the `_app` user refresh; share `ItemList` entries include a
+  nested `DigitalDocument`.
+- Verified locally: backend build and 135 unit tests, frontend build and lint,
+  backend lint (upstream `any` warnings only), and `npm audit --omit=dev` clean
+  in both packages. Playwright at 1366px and 390px covered the guest, member and
+  admin routes with zero application console errors or warnings (only the
+  intentional 404 document status). It also covered the admin config
+  fallback/retry, the QR modal, the dirty edit guard (no prompt when clean, a
+  prompt after deleting a file), an upload/download/comment/delete flow, and
+  `no-store` on `/new` and `/trending` while the backend was stopped.
 
 ## Known non-issues
 

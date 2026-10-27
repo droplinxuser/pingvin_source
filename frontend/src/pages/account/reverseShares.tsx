@@ -50,7 +50,11 @@ const MyShares = () => {
   const getReverseShares = () => {
     shareService
       .getMyReverseShares()
-      .then((shares) => setReverseShares(shares));
+      .then((shares) => setReverseShares(shares))
+      .catch((error) => {
+        toast.axiosError(error);
+        setReverseShares([]);
+      });
   };
 
   useEffect(() => {
@@ -264,15 +268,19 @@ const MyShares = () => {
                                 confirm: t("common.button.delete"),
                                 cancel: t("common.button.cancel"),
                               },
-                              onConfirm: () => {
-                                shareService.removeReverseShare(
-                                  reverseShare.id,
-                                );
-                                setReverseShares(
-                                  reverseShares.filter(
-                                    (item) => item.id !== reverseShare.id,
-                                  ),
-                                );
+                              onConfirm: async () => {
+                                try {
+                                  await shareService.removeReverseShare(
+                                    reverseShare.id,
+                                  );
+                                  setReverseShares(
+                                    reverseShares.filter(
+                                      (item) => item.id !== reverseShare.id,
+                                    ),
+                                  );
+                                } catch (error) {
+                                  toast.axiosError(error);
+                                }
                               },
                             });
                           }}

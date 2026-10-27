@@ -27,11 +27,15 @@ const EditableUpload = ({
   maxShareSize,
   shareId,
   files: savedFiles = [],
+  onDirtyChange,
+  onSaved,
 }: {
   maxShareSize?: number;
   isReverseShare?: boolean;
   shareId: string;
   files?: FileMetaData[];
+  onDirtyChange?: (dirty: boolean) => void;
+  onSaved?: () => void;
 }) => {
   const t = useTranslate();
   const router = useRouter();
@@ -60,6 +64,14 @@ const EditableUpload = ({
       existingFiles.some((file) => !!file.deleted) || !!uploadingFiles.length
     );
   }, [existingFiles, uploadingFiles]);
+
+  // Let the edit page guard its own navigation only while there are unsaved
+  // changes or an upload is running.
+  useEffect(() => {
+    onDirtyChange?.(dirty || isUploading);
+  }, [dirty, isUploading, onDirtyChange]);
+
+  useEffect(() => () => onDirtyChange?.(false), [onDirtyChange]);
 
   const setFiles = (files: FileListItem[]) => {
     const _uploadFiles = files.filter(
@@ -203,6 +215,8 @@ const EditableUpload = ({
 
       if (!hasFailed) {
         toast.success(t("share.edit.notify.save-success"));
+        // The save was explicit; do not ask about the edits just persisted.
+        onSaved?.();
         router.back();
       }
     } catch {
