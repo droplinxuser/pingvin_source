@@ -26,7 +26,13 @@ const withPWA = require("next-pwa")({
   // Navigations are NetworkOnly, so precaching every lazy chunk only costs
   // bandwidth (5 MB+) without enabling offline use. Keep the core bundles and
   // page chunks, and leave replaceable branding to the HTTP cache.
-  buildExcludes: [/static\/chunks\/(?!pages\/)(?!framework|main|webpack).*/],
+  buildExcludes: [
+    /static\/chunks\/(?!pages\/)(?!framework|main|webpack).*/,
+    // Next 15 writes this manifest under .next, but the standalone server does
+    // not expose it at /_next/. A 404 in the precache list aborts the whole
+    // service-worker install, so leave it out of the manifest list.
+    /dynamic-css-manifest\.json$/,
+  ],
   publicExcludes: [
     "!img/logo*.png",
     "!img/logo*.webp",
@@ -58,11 +64,16 @@ const CACHE_RULES = [
   ["/img/:path*", "public, max-age=86400, stale-while-revalidate=604800"],
   ["/favicon.ico", "public, max-age=86400, stale-while-revalidate=604800"],
   ["/sw.js", "no-cache"],
-  ["/workbox-:path*", "public, max-age=31536000, immutable"],
+  ["/workbox-:path(.*)", "public, max-age=31536000, immutable"],
 ];
 
 module.exports = withPWA({
   poweredByHeader: false,
+  // The repository root also has a package.json/lockfile, so Next 15 would
+  // otherwise trace the workspace from there and emit
+  // .next/standalone/frontend/server.js. Pinning the root to the frontend keeps
+  // the documented .next/standalone/server.js entrypoint for the systemd unit.
+  outputFileTracingRoot: __dirname,
   async redirects() {
     // Short share links are the common email link. Let Next answer them before
     // middleware/SSR instead of rendering a page only to return the same 308.

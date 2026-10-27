@@ -1915,6 +1915,47 @@ needed for the fix.
   token, and both temporary shares plus their files were deleted (API, SEO and
   page routes returned `404` afterwards).
 
+## Upstream Next.js 15 upgrade (2026-10-27, fifth)
+
+- Merged `upstream/main` `b4a4f219` ("upgrade Next.js to v15"). Next.js is now
+  `~15.5.28`, `react-intl` `^12.1.5`, `@types/node` `^24`; the unused
+  `file-saver` dependency is gone. The merge keeps the local header link order
+  and the corrected mobile dropzone description (the upstream version uses the
+  desktop keys), and keeps the fork's atomic view-limit check in
+  `FileSecurityGuard` instead of upstream's `handleViewCount` call.
+- `@types/node` 24 changed the inferred type of `readdir(..., {
+  withFileTypes: true })`. `cleanupShareThumbnails` and the temporary-file
+  cron now use an explicit `Dirent[]` instead of `ReturnType<typeof readdir>`,
+  which resolved to the last overload (`Dirent<NonSharedBuffer>[]`).
+- `next.config.js`:
+  - `outputFileTracingRoot: __dirname` pins the standalone trace root to
+    `frontend/`. Without it Next 15 detects the repository-root lockfile and
+    would emit `.next/standalone/frontend/server.js`, breaking the systemd
+    `ExecStart` path used by `update.sh`.
+  - The Workbox header source changed from `/workbox-:path*` to
+    `/workbox-:path(.*)`. Next 15's path-to-regexp rejects a wildcard with a
+    literal prefix in the same segment, which aborted the build with
+    `Can not repeat "path" without a prefix and suffix`.
+  - `buildExcludes` now also drops `dynamic-css-manifest.json` from the PWA
+    precache list. Next 15 writes it under `.next/` but the standalone server
+    does not serve `/_next/dynamic-css-manifest.json`; a 404 in the precache
+    manifest left the service worker unregistered. All 41 remaining precache
+    URLs return 200 and the worker installs and activates.
+- Verified locally with Node `26.12.1`: clean frontend build (after removing
+  `.next`) and backend build pass; all 128 backend unit tests pass; frontend
+  lint is clean; backend lint reports only the upstream `any` warnings;
+  `npm audit --omit=dev` is clean for both packages. The Next 15 standalone
+  server (`node .next/standalone/server.js`, after copying `public` and
+  `.next/static` the same way `update.sh` does) served every route. Playwright
+  covered the guest, member and 390px dark-mode routes with zero application
+  console errors/warnings, page exceptions, failed requests or horizontal
+  overflow (only the expected 404 document-status logs). German (`de-DE`)
+  rendering, the service worker, PWA precache, `/s/:id` 308 redirect,
+  `_next/data` no-store responses, security headers, immutable static assets,
+  the day-long image/favicon cache and the 60-second public shells were all
+  re-checked. A real UI upload created a share, the file downloaded with the
+  original bytes, and both temporary shares were deleted and returned 404.
+
 ## Known non-issues
 
 - Cloudflare does not echo `Cloudflare-CDN-Cache-Control`, but it honors
@@ -1928,11 +1969,10 @@ needed for the fix.
   the ad vendor, not application code; the app's own requests and pages stay
   error-free. Block the ad domains or use an ad-free network when validating
   the application console.
-- `npm audit` reports Next.js 14 advisories. The vulnerable features are not
-  used here: `images.unoptimized` is on, the app is Pages Router only (no App
-  Router/RSC/Server Actions), Next i18n is not configured and middleware
-  redirects send `no-store` + `Vary`. Next 14 is end-of-life; a major upgrade
-  should be planned as a separate change, after upstream moves.
+- `npm audit --omit=dev` reports no vulnerabilities in the frontend or backend
+  after the Next.js 15.5.28 upgrade. The app remains Pages Router only (no App
+  Router/RSC/Server Actions) and Next i18n is not configured; `images` stays
+  unoptimized, and middleware redirects still send `no-store` + `Vary`.
 - Backend lint reports upstream warnings only.
 - A fresh data directory logs one `ENOENT` from the temporary-file cron.
 - The recent-visitor list is intentionally visible to every site visitor,

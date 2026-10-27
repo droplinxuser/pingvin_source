@@ -1,5 +1,6 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { Cron } from "@nestjs/schedule";
+import { Dirent } from "fs";
 import * as fs from "fs";
 import * as moment from "moment";
 import { FileService } from "src/file/file.service";
@@ -119,7 +120,7 @@ export class JobsService {
   async deleteTemporaryFiles() {
     let filesDeleted = 0;
 
-    let shareDirectories: Awaited<ReturnType<typeof fs.promises.readdir>>;
+    let shareDirectories: Dirent[];
     try {
       shareDirectories = await fs.promises.readdir(SHARE_DIRECTORY, {
         withFileTypes: true,

@@ -12,7 +12,7 @@ import { LocalFileService } from "./local.service";
 import { S3FileService } from "./s3.service";
 import { ConfigService } from "src/config/config.service";
 import { spawn } from "child_process";
-import { createWriteStream } from "fs";
+import { Dirent, createWriteStream } from "fs";
 import { promises as fs } from "fs";
 import { join } from "path";
 import { Readable } from "stream";
@@ -540,7 +540,7 @@ export class FileService implements OnModuleInit {
   async cleanupShareThumbnails(): Promise<number> {
     const cutoff = Date.now() - THUMBNAIL_MAX_AGE_MS;
     let deleted = 0;
-    let entries: Awaited<ReturnType<typeof fs.readdir>> | undefined;
+    let entries: Dirent[] | undefined;
 
     try {
       entries = await fs.readdir(THUMBNAIL_DIRECTORY, { withFileTypes: true });
