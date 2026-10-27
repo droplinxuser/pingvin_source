@@ -26,15 +26,21 @@ const MAX_GALLERY_ITEMS = 100;
 // a skeleton card reserving the next row.
 const GALLERY_BATCH_SIZE = 12;
 const GALLERY_MEDIA_HEIGHT = 250;
+// A single media card would otherwise stretch across the whole content column
+// as a very wide 250px strip. Cap it at a nearly square canvas so the preview
+// shows most of the image/video without dominating the page.
+const SINGLE_GALLERY_MAX_WIDTH = 520;
 
 const GalleryMediaCard = ({
   shareId,
   entry,
   onOpen,
+  single,
 }: {
   shareId: string;
   entry: ShareMediaFile;
   onOpen: (file: FileMetaData) => void;
+  single: boolean;
 }) => {
   const { file, kind } = entry;
   const t = useTranslate();
@@ -50,7 +56,21 @@ const GalleryMediaCard = ({
     : url;
 
   return (
-    <Card data-testid="media-preview-item" withBorder radius="md" p="sm">
+    <Card
+      data-testid="media-preview-item"
+      withBorder
+      radius="md"
+      p="sm"
+      sx={
+        single
+          ? {
+              width: "100%",
+              maxWidth: SINGLE_GALLERY_MAX_WIDTH,
+              marginInline: "auto",
+            }
+          : undefined
+      }
+    >
       <UnstyledButton
         onClick={() => onOpen(file)}
         aria-label={`${t("common.button.preview")}: ${name}`}
@@ -67,8 +87,12 @@ const GalleryMediaCard = ({
         <Box
           sx={(theme) => ({
             position: "relative",
-            height: GALLERY_MEDIA_HEIGHT,
-            maxHeight: GALLERY_MEDIA_HEIGHT,
+            ...(single
+              ? { aspectRatio: "1 / 1", width: "100%" }
+              : {
+                  height: GALLERY_MEDIA_HEIGHT,
+                  maxHeight: GALLERY_MEDIA_HEIGHT,
+                }),
             overflow: "hidden",
             borderRadius: theme.radius.sm,
             backgroundColor:
@@ -79,8 +103,10 @@ const GalleryMediaCard = ({
               display: "block",
               width: "100%",
               height: "100%",
-              maxHeight: GALLERY_MEDIA_HEIGHT,
-              objectFit: "cover",
+              maxHeight: single ? "100%" : GALLERY_MEDIA_HEIGHT,
+              // A single preview keeps the whole frame visible inside the
+              // square card; multiple cards stay edge-to-edge thumbnails.
+              objectFit: single ? "contain" : "cover",
               backgroundColor: "#000",
             },
           })}
@@ -202,6 +228,7 @@ const MediaPreviewGallery = ({
 
   const visibleItems = galleryItems.slice(0, visibleCount);
   const previewFiles = mediaFiles.map((entry) => entry.file);
+  const single = galleryItems.length === 1;
 
   return (
     <SimpleGrid
@@ -219,6 +246,7 @@ const MediaPreviewGallery = ({
           key={entry.file.id}
           shareId={shareId}
           entry={entry}
+          single={single}
           onOpen={(file) =>
             openFilePreview(shareId, file, modals, previewFiles)
           }
@@ -246,6 +274,7 @@ export const MediaPreviewGallerySkeleton = ({ count }: { count: number }) => {
   // Match the first gallery batch so the initial placeholder is not heavier
   // than the content it replaces. The gallery reveals the rest lazily.
   const itemCount = Math.min(count, GALLERY_BATCH_SIZE);
+  const single = itemCount === 1;
 
   return (
     <SimpleGrid
@@ -258,8 +287,29 @@ export const MediaPreviewGallerySkeleton = ({ count }: { count: number }) => {
       ]}
     >
       {Array.from({ length: itemCount }, (_, index) => (
-        <Card key={index} withBorder radius="md" p="sm">
-          <Skeleton height={GALLERY_MEDIA_HEIGHT} radius="sm" />
+        <Card
+          key={index}
+          withBorder
+          radius="md"
+          p="sm"
+          sx={
+            single
+              ? {
+                  width: "100%",
+                  maxWidth: SINGLE_GALLERY_MAX_WIDTH,
+                  marginInline: "auto",
+                }
+              : undefined
+          }
+        >
+          {single ? (
+            <Skeleton
+              radius="sm"
+              sx={{ aspectRatio: "1 / 1", height: "auto", width: "100%" }}
+            />
+          ) : (
+            <Skeleton height={GALLERY_MEDIA_HEIGHT} radius="sm" />
+          )}
           <Skeleton height={12} width="60%" mt="sm" />
         </Card>
       ))}

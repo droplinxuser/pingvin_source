@@ -14,7 +14,7 @@ so `git merge upstream/main` stays small.
 | Share reports | `backend/src/share/dto/reportShare.dto.ts`, `backend/src/email/email.service.ts`, `frontend/src/components/share/showReportShareModal.tsx` |
 | Uploader metadata / visitors | `backend/src/utils/uploaderInfo.util.ts`, `ShareDTO.uploaderInfo`, `frontend/src/components/share/UploaderInfoBadges.tsx`, `ShareStats.tsx`; view counts stay in `Share.views`, written in five-second batches for unlimited shares and atomically for limited ones (`shareState.service.ts`). Geo labels are clamped before storage. The recent-visitor list is shown to every visitor (guest, owner, administrator) |
 | Reverse-share use limits | `backend/src/reverseShare/reverseShare.service.ts` (`reserveUse` / `refundUse`), `backend/src/share/share.service.ts` (reserve at create, reject invalid cookies, no refund on revert) |
-| Inline media gallery | `frontend/src/components/share/MediaPreviewGallery.tsx` (up to 100 supported image/video cards at 250px, revealed in 12-card lazy batches with a skeleton card; videos show a skeleton until their lazy first frame loads; every image/video in the share is available from the popup through previous/next buttons and ArrowLeft/ArrowRight); `frontend/src/components/core/LazySection.tsx` reserves space for the gallery, file list, comments and visitor insights |
+| Inline media gallery | `frontend/src/components/share/MediaPreviewGallery.tsx` (up to 100 supported image/video cards at 250px, revealed in 12-card lazy batches with a skeleton card; a share with a single media file shows a centered 520px nearly square card with `object-fit: contain` so the whole frame is visible; videos show a skeleton until their lazy first frame loads; every image/video in the share is available from the popup through previous/next buttons and ArrowLeft/ArrowRight); `frontend/src/components/core/LazySection.tsx` reserves space for the gallery, file list, comments and visitor insights |
 | Individual downloads / legacy ZIP | `frontend/src/components/share/DownloadAllButton.tsx` (confirmation + sequential per-file downloads), `frontend/src/services/share.service.ts` (anchor-based downloads), `backend/src/share/share.service.ts` (no automatic archive creation); existing `archive.zip` files remain served by the legacy API. The share file count uses `share.custom.fileCount` without the old ZIP note. |
 | Share and file size limits | `backend/prisma/seed/config.seed.ts` (`share.maxSize` 5 GB, `share.maxFileSize` 512 MB), migration `20261025000000_raise_share_size_limit`, `backend/src/share/share.util.ts` (`resolveShareSizeLimit`), local/S3 upload guards, `frontend/src/components/upload/Dropzone.tsx` and upload pages |
 | Trending today | `backend/src/cache/trending.service.ts`, `GET /api/shares/trending?limit=100`, `frontend/src/components/share/TrendingToday.tsx` (client-side, viewport-triggered load with batched rendering and skeletons), `frontend/src/components/share/TrendingCountries.tsx` (up to ten countries, ten shares each), `frontend/src/pages/trending.tsx`, `frontend/src/pages/_app.tsx` |
@@ -2178,6 +2178,18 @@ needed for the fix.
   fallback/retry, the QR modal, the dirty edit guard (no prompt when clean, a
   prompt after deleting a file), an upload/download/comment/delete flow, and
   `no-store` on `/new` and `/trending` while the backend was stopped.
+
+## Single-media gallery card (2026-10-28, tenth)
+
+- A share whose gallery contains exactly one image or video now renders a
+  centered card capped at 520px with a 1:1 media canvas and
+  `object-fit: contain`, instead of a 250px-tall strip across the whole content
+  column. Multiple media keep the existing 250px cover-flow grid.
+- The loading skeleton uses the same square card for a one-item share, so the
+  gallery does not resize when the media arrives.
+- Verified locally at 1366px and 390px: a single real image rendered 494x494
+  (332x332 on mobile) with no overflow and zero console errors; a single video
+  used the same canvas; a four-image share kept its three-column 250px cards.
 
 ## Known non-issues
 
