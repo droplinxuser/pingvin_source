@@ -2191,6 +2191,40 @@ needed for the fix.
   (332x332 on mobile) with no overflow and zero console errors; a single video
   used the same canvas; a four-image share kept its three-column 250px cards.
 
+### Live verification (2026-10-28, deploy `ca125017`)
+
+- The deployed build was `9cTJRfwv-17yCyTz2-gqg`; `_app` contained commit
+  `ca125017` and the service worker was `/sw.js?v=ca125017`, activated with all
+  44 precache URLs returning 200.
+- Guest, signed-in and 390px dark-mode passes covered home, new, trending,
+  imprint, privacy, sign-in, image/video/missing shares, the short link, upload,
+  account pages, and admin redirects. Every page had one H1, no horizontal
+  overflow, no missing image alt text and zero application console
+  errors/warnings (only the intentional 404 document-status logs).
+- Single media: a real upload rendered a 520x554 card with a 494x494 canvas and
+  `object-fit: contain` on desktop, and a 358x392 card with a 332x332 canvas on
+  mobile. A one-file video share used the same square canvas (494x494); a
+  15-file share kept twelve 299x310 cards at 250px with `cover`. No overflow.
+- Flows: upload reached "Share ready", the downloaded bytes matched the source
+  (53,700 bytes), the preview popup opened, a comment posted and persisted with
+  `commentsVersion=1`, a reverse-share token upload produced a linked share that
+  downloaded and was removed, and an edit that deleted one of two files saved
+  and navigated back with no confirm dialog and one file remaining. All
+  temporary shares and reverse shares were deleted.
+- `/trending` server-rendered the country panel: the HTML contained
+  `initialCountries` and "Top countries today" with 124 share links, and the
+  page made **zero** client requests to `/api/shares/trending/countries`.
+- Cache/security: public shells 60s (Cloudflare `HIT`), signed-in and query
+  variants `no-store`, configs 30s, trending/recent/SEO 60s, countries 300s,
+  comments 24h, sitemap index one hour, robots/manifest one day; static assets
+  immutable. Public files returned 200/206/304 with a stable ETag, no CORS
+  header on JSON APIs, admin APIs 403 for anonymous and non-admin callers, seven
+  security headers on HTML and no `X-Powered-By`.
+- Sitemap: the index pointed at a 15,774-URL chunk containing `/trending`,
+  `/new` and current shares.
+- Performance at 1366px: home LCP ~0.37s, new ~0.52s, trending ~0.88s, share
+  ~1.51s; CLS stayed at or below 0.0027 and no page overflowed.
+
 ## Known non-issues
 
 - Cloudflare does not echo `Cloudflare-CDN-Cache-Control`, but it honors
@@ -2224,6 +2258,17 @@ needed for the fix.
   query. A request without `v` can keep an old copy until the edge TTL expires;
   the application always sends the version, and purging the comments URL clears
   stale unversioned entries.
+- After a share is deleted or expired, Cloudflare can keep serving its last
+  public HTML shell for the remaining 60-second `s-maxage` window. The API and
+  the client payload already report 404, and the next request after the TTL
+  returns the 404 page. Observed when a temporary reverse-share upload was
+  removed during the `ca125017` pass.
+- The live proxy rewrites `Cache-Control` to a long browser TTL for
+  static-looking responses such as thumbnails, `robots.txt` and the sitemap;
+  `CDN-Cache-Control` keeps the app's shorter shared TTL. Thumbnail URLs are
+  versioned with the share update time, share files are immutable, and
+  crawlers revalidate the index/chunks, so the rewrite does not pin stale
+  content.
 - Chrome may log the expected `404` for intentionally missing shares. This is
   a network status log, not a JavaScript exception. A protected share now
   opens its password modal from the SEO hint, so the first visit no longer
