@@ -25,7 +25,7 @@ import useHomeHref from "../../hooks/homeHref.hook";
 import ActionAvatar from "./ActionAvatar";
 import NavbarShareMenu from "./NavbarShareMenu";
 
-const HEADER_HEIGHT = 60;
+const HEADER_HEIGHT = 54;
 
 type NavLink = {
   link?: string;
@@ -38,15 +38,37 @@ type MobileMenuView = "root" | "shares" | "profile";
 
 const useStyles = createStyles((theme) => ({
   root: {
-    zIndex: 1,
+    position: "sticky",
+    top: 0,
+    zIndex: 100,
+    backgroundColor:
+      theme.colorScheme === "dark"
+        ? theme.fn.rgba(theme.colors.dark[7], 0.92)
+        : theme.fn.rgba(theme.white, 0.92),
+    backdropFilter: "blur(12px)",
+    WebkitBackdropFilter: "blur(12px)",
+    borderBottom: `1px solid ${
+      theme.colorScheme === "dark" ? theme.colors.dark[5] : theme.colors.gray[2]
+    }`,
+    transition: "box-shadow 150ms ease, background-color 150ms ease",
+  },
+
+  headerScrolled: {
+    boxShadow: theme.shadows.sm,
   },
 
   mobilePanel: {
-    marginBottom: theme.spacing.md,
+    position: "fixed",
+    top: HEADER_HEIGHT,
+    left: 0,
+    right: 0,
+    zIndex: 99,
+    maxHeight: `calc(100vh - ${HEADER_HEIGHT}px)`,
+    overflowY: "auto",
+    boxShadow: theme.shadows.md,
     borderTopRightRadius: 0,
     borderTopLeftRadius: 0,
-    overflow: "hidden",
-    width: "100%",
+    borderTopWidth: 0,
 
     [theme.fn.largerThan("sm")]: {
       display: "none",
@@ -156,6 +178,14 @@ const Header = () => {
   const [opened, { toggle, close }] = useDisclosure(false);
   const [currentRoute, setCurrentRoute] = useState("");
   const [mobileMenuView, setMobileMenuView] = useState<MobileMenuView>("root");
+  const [isScrolled, setIsScrolled] = useState(false);
+
+  useEffect(() => {
+    const onScroll = () => setIsScrolled(window.scrollY > 2);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   useEffect(() => {
     setCurrentRoute(router.pathname);
@@ -289,7 +319,7 @@ const Header = () => {
       {(user ? authenticatedLinks : unauthenticatedLinks).map((link, i) => {
         if (link.component) {
           return (
-            <Box pl={5} py={15} key={i}>
+            <Box pl={5} py={12} key={i}>
               {link.component}
             </Box>
           );
@@ -371,16 +401,24 @@ const Header = () => {
   };
   return (
     <>
-      <MantineHeader height={HEADER_HEIGHT} mb={0} className={classes.root}>
+      <MantineHeader
+        height={HEADER_HEIGHT}
+        mb={0}
+        className={cx(classes.root, {
+          [classes.headerScrolled]: isScrolled,
+        })}
+      >
         <Container className={classes.header}>
           <Link
             href={homeHref}
             passHref
             aria-label={`${config.get("general.appName")} home`}
           >
-            <Group>
-              <Logo height={35} width={35} />
-              <Text weight={600}>{config.get("general.appName")}</Text>
+            <Group spacing="xs">
+              <Logo height={30} width={30} />
+              <Text weight={600} size="sm">
+                {config.get("general.appName")}
+              </Text>
             </Group>
           </Link>
           <Box
