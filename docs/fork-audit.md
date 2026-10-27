@@ -142,7 +142,13 @@ hand-rolled lock or temp-file block.
   enables it. The optional `VIRUSTOTAL_API_URL` exists only for a local stub or
   proxy. On completion, only non-media/plain-text files are queued; raster
   images, audio, video and plain structured text are skipped while SVG is
-  scanned. The queue is a 1000-job Valkey list
+  scanned. Password-protected ZIP/ZIPX, 7z and RAR4/RAR5 archives are detected
+  before a queue entry is created: the scanner reads only archive headers and
+  central directories, records a `skipped` audit event, and makes no API call
+  or queue entry. Detection is best-effort; malformed or unreadable archives
+  fall back to the normal scan, and a 7z with a compressed header that hides
+  its coder list may also fall through to scanning. The queue is a 1000-job
+  Valkey list
   (`pingvin:virustotal:queue`, process-memory fallback) and every API step
   (hash lookup, upload, analysis poll) waits for a
   `pingvin:virustotal:request` lock with a 173-second TTL, so at most 500
@@ -1656,7 +1662,14 @@ that cache. "Go home" links and the home-page redirect use the upstream
   longer carries a duplicate `route` prop/state.
 - Removed handled S3 upload fallback `console.warn`/`console.error` calls, so a
   failed direct-upload probe or abort does not add browser console noise.
-- Verified locally with Node `26.12.1`: backend build and all 119 unit tests
+- VirusTotal archive detection: `backend/src/virustotal/archiveEncryption.util.ts`
+  checks ZIP central/local headers, 7z coder metadata and RAR4/RAR5 block
+  headers before a scan job is queued. Encrypted archives are recorded as
+  `skipped` with no queue entry or API call. Tests use synthetic ZIP, 7z, RAR4
+  and RAR5 headers; the same detector was also checked against libarchive's
+  encrypted ZIP, 7z, RAR4 and RAR5 samples. A real completed upload of an
+  encrypted ZIP produced the skipped audit event with zero API calls.
+- Verified locally with Node `26.12.1`: backend build and all 122 unit tests
   pass; frontend production build and lint pass. Playwright covered 29 guest,
   member and 390px dark-mode routes, a public share (text/image/PDF, gallery,
   PDF iframe, comments), a password-protected share (wrong/correct token and

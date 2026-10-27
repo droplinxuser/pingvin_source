@@ -31,6 +31,10 @@ import {
   sha256Stream,
   shouldScanFile,
 } from "./virustotal.util";
+import {
+  isArchiveFileName,
+  isEncryptedArchive as detectEncryptedArchive,
+} from "./archiveEncryption.util";
 
 const API_BASE_DEFAULT = "https://www.virustotal.com/api/v3";
 // 499 intervals at 173s fit in 24h, allowing exactly 500 starts/day.
@@ -49,6 +53,9 @@ const MAX_COOLDOWN_MS = 24 * 60 * 60 * 1000;
 const RATE_LIMIT_FALLBACK_MS = 15 * 60 * 1000;
 const VERDICT_TTL_SECONDS = 7 * 24 * 60 * 60;
 const MAX_MEMORY_VERDICTS = 1000;
+// Archive encryption detection only reads headers and central directories;
+// this cap protects against a malformed archive that claims a huge range.
+const MAX_ARCHIVE_RANGE_BYTES = 8 * 1024 * 1024;
 
 const REQUEST_LOCK_KEY = "pingvin:virustotal:request";
 const COOLDOWN_KEY = "pingvin:virustotal:cooldown";
@@ -174,12 +181,28 @@ export class VirusTotalService implements OnModuleInit, OnApplicationShutdown {
   ) {
     for (const file of files) {
       if (!this.running) return;
+
+      const size = Number(file.size) || 0;
+      if (await this.isEncryptedArchive(shareId, file.id, file.name, size)) {
+        this.audit.recordEvent({
+          type: "skipped",
+          stage: "hash",
+          shareId,
+          fileId: file.id,
+          fileName: file.name,
+          size,
+          detail:
+            "Password-protected archive (VirusTotal cannot inspect its contents)",
+        });
+        continue;
+      }
+
       await this.pushJob({
         stage: "hash",
         shareId,
         fileId: file.id,
         name: file.name,
-        size: Number(file.size) || 0,
+        size,
         attempts: 0,
       });
       this.audit.recordEvent({
@@ -187,9 +210,62 @@ export class VirusTotalService implements OnModuleInit, OnApplicationShutdown {
         shareId,
         fileId: file.id,
         fileName: file.name,
-        size: Number(file.size) || 0,
+        size,
       });
     }
+  }
+
+  private async isEncryptedArchive(
+    shareId: string,
+    fileId: string,
+    fileName: string,
+    size: number,
+  ): Promise<boolean> {
+    if (!isArchiveFileName(fileName) || size <= 0) return false;
+    return detectEncryptedArchive(fileName, size, (start, end) =>
+      this.readArchiveRange(shareId, fileId, start, end),
+    );
+  }
+
+  private async readArchiveRange(
+    shareId: string,
+    fileId: string,
+    start: number,
+    end: number,
+  ): Promise<Buffer | undefined> {
+    if (
+      !Number.isSafeInteger(start) ||
+      !Number.isSafeInteger(end) ||
+      start < 0 ||
+      end < start
+    )
+      return undefined;
+
+    let file: Awaited<ReturnType<FileService["get"]>>;
+    try {
+      file = await this.fileService.get(shareId, fileId, { start, end });
+    } catch {
+      return undefined;
+    }
+    if (!file.file) return undefined;
+
+    const chunks: Buffer[] = [];
+    let length = 0;
+    try {
+      for await (const chunk of file.file) {
+        const buffer = Buffer.from(chunk);
+        length += buffer.length;
+        if (length > MAX_ARCHIVE_RANGE_BYTES)
+          throw new Error("archive detection range is too large");
+        chunks.push(buffer);
+      }
+    } catch {
+      return undefined;
+    } finally {
+      file.file.destroy();
+    }
+
+    return Buffer.concat(chunks);
   }
 
   private async pushJob(job: ScanJob) {
