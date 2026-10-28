@@ -352,6 +352,10 @@ const TrendingCountries = ({
       <Tabs
         variant="pills"
         defaultValue={initialCountry}
+        // Only the selected country panel should exist in the DOM. Rendering
+        // every panel put 100 hidden thumbnails and roughly a thousand extra
+        // nodes on the trending page, even though one panel is visible.
+        keepMounted={false}
         className={classes.tabs}
       >
         <Tabs.List className={classes.tabList}>
@@ -402,7 +406,6 @@ const TrendingCountries = ({
                       href={`/share/${item.id}`}
                       className={classes.row}
                       title={label}
-                      aria-label={`${label} — ${formatViews(item.views)}`}
                     >
                       <Box
                         component="span"

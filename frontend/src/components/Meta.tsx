@@ -25,7 +25,6 @@ const Meta = ({
   jsonLd,
   publishedTime,
   modifiedTime,
-  preloadImage,
 }: {
   title?: string;
   description?: string;
@@ -40,8 +39,6 @@ const Meta = ({
   jsonLd?: Record<string, unknown> | Record<string, unknown>[];
   publishedTime?: string;
   modifiedTime?: string;
-  /** Above-the-fold image to fetch before the page JS requests it. */
-  preloadImage?: string;
 }) => {
   const router = useRouter();
   const intl = useIntl();
@@ -80,13 +77,6 @@ const Meta = ({
         <meta name="description" content={metaDescription} />
         <meta name="robots" content={robots} />
         <link rel="canonical" href={canonical} />
-        {preloadImage && (
-          <link
-            rel="preload"
-            as="image"
-            href={absoluteUrl(preloadImage, baseUrl)}
-          />
-        )}
 
         <meta property="og:type" content={type} />
         <meta property="og:site_name" content={siteName} />

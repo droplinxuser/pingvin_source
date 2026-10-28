@@ -36,11 +36,15 @@ const GalleryMediaCard = ({
   entry,
   onOpen,
   single,
+  posterUrl,
+  priority,
 }: {
   shareId: string;
   entry: ShareMediaFile;
   onOpen: (file: FileMetaData) => void;
   single: boolean;
+  posterUrl?: string;
+  priority?: boolean;
 }) => {
   const { file, kind } = entry;
   const t = useTranslate();
@@ -115,6 +119,8 @@ const GalleryMediaCard = ({
             <LazyImage
               src={imageUrl}
               alt={name}
+              loading={priority ? "eager" : undefined}
+              fetchPriority={priority ? "high" : undefined}
               onError={(event) => {
                 event.currentTarget.style.display = "none";
               }}
@@ -136,6 +142,7 @@ const GalleryMediaCard = ({
               )}
               <LazyVideo
                 src={`${url}#t=0.1`}
+                poster={posterUrl}
                 muted
                 playsInline
                 aria-hidden="true"
@@ -185,9 +192,12 @@ const GalleryMediaCard = ({
 const MediaPreviewGallery = ({
   shareId,
   files = [],
+  posterUrl,
 }: {
   shareId: string;
   files?: FileMetaData[];
+  /** Share thumbnail shown as the first video poster / LCP placeholder. */
+  posterUrl?: string;
 }) => {
   const modals = useModals();
   const t = useTranslate();
@@ -241,12 +251,14 @@ const MediaPreviewGallery = ({
         { minWidth: "lg", cols: Math.min(3, galleryItems.length) },
       ]}
     >
-      {visibleItems.map((entry) => (
+      {visibleItems.map((entry, index) => (
         <GalleryMediaCard
           key={entry.file.id}
           shareId={shareId}
           entry={entry}
           single={single}
+          posterUrl={index === 0 ? posterUrl : undefined}
+          priority={index === 0}
           onOpen={(file) =>
             openFilePreview(shareId, file, modals, previewFiles)
           }
@@ -261,7 +273,7 @@ const MediaPreviewGallery = ({
         >
           <Card withBorder radius="md" p="sm">
             <Skeleton height={GALLERY_MEDIA_HEIGHT} radius="sm" />
-            <Skeleton height={12} width="60%" mt="sm" />
+            <Skeleton height={20} width="60%" mt="sm" />
           </Card>
         </Box>
       )}
@@ -269,7 +281,13 @@ const MediaPreviewGallery = ({
   );
 };
 
-export const MediaPreviewGallerySkeleton = ({ count }: { count: number }) => {
+export const MediaPreviewGallerySkeleton = ({
+  count,
+  thumbnailUrl,
+}: {
+  count: number;
+  thumbnailUrl?: string;
+}) => {
   if (count <= 0) return null;
   // Match the first gallery batch so the initial placeholder is not heavier
   // than the content it replaces. The gallery reveals the rest lazily.
@@ -302,7 +320,28 @@ export const MediaPreviewGallerySkeleton = ({ count }: { count: number }) => {
               : undefined
           }
         >
-          {single ? (
+          {thumbnailUrl && index === 0 ? (
+            // The share thumbnail is already in the SEO payload. Rendering it
+            // in the server HTML gives the page a discoverable LCP image
+            // instead of waiting for hydration, the share request and then the
+            // first video frame.
+            <img
+              src={thumbnailUrl}
+              alt=""
+              loading="eager"
+              fetchPriority="high"
+              decoding="async"
+              style={{
+                display: "block",
+                width: "100%",
+                height: single ? "auto" : GALLERY_MEDIA_HEIGHT,
+                ...(single ? { aspectRatio: "1 / 1" } : {}),
+                objectFit: single ? "contain" : "cover",
+                backgroundColor: "#000",
+                borderRadius: "0.25rem",
+              }}
+            />
+          ) : single ? (
             <Skeleton
               radius="sm"
               sx={{ aspectRatio: "1 / 1", height: "auto", width: "100%" }}
@@ -310,7 +349,7 @@ export const MediaPreviewGallerySkeleton = ({ count }: { count: number }) => {
           ) : (
             <Skeleton height={GALLERY_MEDIA_HEIGHT} radius="sm" />
           )}
-          <Skeleton height={12} width="60%" mt="sm" />
+          <Skeleton height={20} width="60%" mt="sm" />
         </Card>
       ))}
     </SimpleGrid>

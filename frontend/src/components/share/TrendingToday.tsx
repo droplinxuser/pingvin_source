@@ -421,7 +421,7 @@ const TrendingToday = ({
         </div>
       ) : (
         <div className={classes.grid} data-testid="trending-grid">
-          {visibleItems.map((item) => {
+          {visibleItems.map((item, index) => {
             const name = item.name || item.id;
             const views = item.views.toLocaleString(intl.locale);
             const thumbnailUrl = getShareThumbnailUrl(item.id, item.updatedAt);
@@ -442,6 +442,8 @@ const TrendingToday = ({
                   className={mediaClassName}
                   src={thumbnailUrl}
                   alt=""
+                  loading={index < 4 ? "eager" : undefined}
+                  fetchPriority={index < 4 ? "high" : undefined}
                   onError={handleShareThumbnailError}
                 />
 

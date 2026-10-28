@@ -4,7 +4,6 @@ import {
   Breadcrumbs,
   Button,
   Center,
-  Group,
   Skeleton,
   Stack,
   Text,
@@ -39,16 +38,13 @@ import useTranslate from "../../../hooks/useTranslate.hook";
 import shareService from "../../../services/share.service";
 import { Share as ShareType, ShareSeo } from "../../../types/share.type";
 import toast from "../../../utils/toast.util";
-import { getBaseName, getShareFileUrl } from "../../../utils/file.util";
+import { getBaseName } from "../../../utils/file.util";
 import { byteToHumanSizeString } from "../../../utils/fileSize.util";
 import {
   setNoStoreHeaders,
   setPublicCacheHeaders,
 } from "../../../utils/httpCache.util";
-import {
-  isLikelyGalleryMedia,
-  supportsWebpPreview,
-} from "../../../utils/mime.util";
+import { isLikelyGalleryMedia } from "../../../utils/mime.util";
 import { getQueryString } from "../../../utils/router.util";
 import { fetchShareSeo } from "../../../utils/seo.server.util";
 import {
@@ -165,18 +161,7 @@ const SharePage = ({
     () => (indexable ? getShareSubject(share ?? seo) : undefined),
     [indexable, seo, share],
   );
-  const preloadImage = useMemo(() => {
-    if (!indexable) return undefined;
-    const firstImage = seo?.files?.find(
-      (file) => file.id && supportsWebpPreview(file.name),
-    );
-    return firstImage?.id
-      ? getShareFileUrl(shareId, firstImage.id, {
-          download: false,
-          webp: true,
-        })
-      : undefined;
-  }, [indexable, seo, shareId]);
+  const galleryThumbnailUrl = indexable ? seo?.thumbnailUrl : undefined;
   // Keep the visible H1/breadcrumb complete; only the meta title is shortened.
   const displayName = shareName || subject || shareId;
   const displayDescription = share?.description || seo?.description;
@@ -319,7 +304,6 @@ const SharePage = ({
       publishedTime={indexable ? seo?.createdAt : undefined}
       modifiedTime={indexable ? seo?.updatedAt : undefined}
       jsonLd={shareJsonLd}
-      preloadImage={preloadImage}
     />
   );
 
@@ -516,7 +500,18 @@ const SharePage = ({
         </Text>
       </Breadcrumbs>
 
-      <Group position="apart" mb="lg">
+      <Box
+        mb="lg"
+        sx={(theme) => ({
+          display: "grid",
+          gridTemplateColumns: "minmax(0, 1fr) auto",
+          alignItems: "start",
+          gap: theme.spacing.md,
+          [theme.fn.smallerThan("sm")]: {
+            gridTemplateColumns: "minmax(0, 1fr)",
+          },
+        })}
+      >
         <Box style={{ maxWidth: "70%" }}>
           <Title
             order={1}
@@ -545,7 +540,11 @@ const SharePage = ({
               <UploaderInfoBadges share={share} info={share.uploaderInfo} />
             </Box>
           ) : (
-            indexable && <Skeleton height={16} width={210} mt={7} />
+            indexable && (
+              <Box mt={5}>
+                <Skeleton height={44} width="100%" />
+              </Box>
+            )
           )}
         </Box>
 
@@ -557,19 +556,29 @@ const SharePage = ({
           setShare={setShare}
           onDeleted={() => router.replace(homeHref)}
         />
-      </Group>
+      </Box>
 
       <LazySection
         placeholder={
-          <MediaPreviewGallerySkeleton count={galleryPlaceholderCount} />
+          <MediaPreviewGallerySkeleton
+            count={galleryPlaceholderCount}
+            thumbnailUrl={galleryThumbnailUrl}
+          />
         }
         rootMargin="600px"
         busy={!share}
       >
         {share ? (
-          <MediaPreviewGallery shareId={shareId} files={share.files} />
+          <MediaPreviewGallery
+            shareId={shareId}
+            files={share.files}
+            posterUrl={galleryThumbnailUrl}
+          />
         ) : (
-          <MediaPreviewGallerySkeleton count={galleryPlaceholderCount} />
+          <MediaPreviewGallerySkeleton
+            count={galleryPlaceholderCount}
+            thumbnailUrl={galleryThumbnailUrl}
+          />
         )}
       </LazySection>
 
