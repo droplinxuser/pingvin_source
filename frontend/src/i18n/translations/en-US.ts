@@ -35,8 +35,14 @@ export default {
   "common.custom.skip-to-content": "Skip to content",
   "common.custom.loading": "Loading",
   "common.custom.retry": "Try again",
+  "common.custom.sort": "Sort",
+  "common.custom.actions": "Actions",
+  "common.custom.unit": "Unit",
+  "common.custom.pagination.previous": "Previous page",
+  "common.custom.pagination.next": "Next page",
   "navbar.custom.primary": "Primary navigation",
   "navbar.custom.open-menu": "Open navigation menu",
+  "navbar.custom.back": "Back",
   "footer.custom.navigation": "Footer navigation",
 
   // Navbar

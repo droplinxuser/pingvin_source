@@ -210,7 +210,7 @@ const Account = () => {
           <FormattedMessage id="account.title" />
         </Title>
         <Paper withBorder p="xl">
-          <Title order={5} mb="xs">
+          <Title order={2} size="h5" mb="xs">
             <FormattedMessage id="account.card.info.title" />
             {user?.isLdap ? (
               <Badge style={{ marginLeft: "1em" }}>LDAP</Badge>
@@ -243,7 +243,7 @@ const Account = () => {
               {user?.avatarUpdatedAt && (
                 <Button
                   variant="subtle"
-                  color="red"
+                  color="red.9"
                   onClick={removeAvatar}
                   disabled={avatarUploading}
                 >
@@ -294,7 +294,7 @@ const Account = () => {
         </Paper>
         {user?.isLdap ? null : (
           <Paper withBorder p="xl" mt="lg">
-            <Title order={5} mb="xs">
+            <Title order={2} size="h5" mb="xs">
               <FormattedMessage id="account.card.password.title" />
             </Title>
             <form
@@ -335,7 +335,7 @@ const Account = () => {
         )}
         {oauth.length > 0 && (
           <Paper withBorder p="xl" mt="lg">
-            <Title order={5} mb="xs">
+            <Title order={2} size="h5" mb="xs">
               <FormattedMessage id="account.card.oauth.title" />
             </Title>
 
@@ -401,7 +401,7 @@ const Account = () => {
           </Paper>
         )}
         <Paper withBorder p="xl" mt="lg">
-          <Title order={5} mb="xs">
+          <Title order={2} size="h5" mb="xs">
             <FormattedMessage id="account.card.security.title" />
           </Title>
 
@@ -445,7 +445,7 @@ const Account = () => {
                       />
 
                       <Group position="right">
-                        <Button color="red" type="submit">
+                        <Button color="red.9" type="submit">
                           <FormattedMessage id="common.button.disable" />
                         </Button>
                       </Group>
@@ -490,13 +490,13 @@ const Account = () => {
           </Tabs>
         </Paper>
         <Paper withBorder p="xl" mt="lg">
-          <Title order={5} mb="xs">
+          <Title order={2} size="h5" mb="xs">
             <FormattedMessage id="account.card.language.title" />
           </Title>
           <LanguagePicker />
         </Paper>
         <Paper withBorder p="xl" mt="lg">
-          <Title order={5} mb="xs">
+          <Title order={2} size="h5" mb="xs">
             <FormattedMessage id="account.card.color.title" />
           </Title>
           <ThemeSwitcher />
@@ -505,7 +505,7 @@ const Account = () => {
           <Stack>
             <Button
               variant="light"
-              color="red"
+              color="red.9"
               onClick={() =>
                 modals.openConfirmModal({
                   title: t("account.modal.delete.title"),

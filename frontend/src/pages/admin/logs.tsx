@@ -158,7 +158,10 @@ const Logs = () => {
       <Group position="apart" mb="xs">
         <Group spacing="xs">
           {storage && (
-            <Badge color={storage === "valkey" ? "blue" : "yellow"}>
+            <Badge
+              variant="dot"
+              color={storage === "valkey" ? "blue.9" : "yellow.9"}
+            >
               {t(`admin.logs.custom.storage.${storage}`)}
             </Badge>
           )}
@@ -248,7 +251,18 @@ const Logs = () => {
 
       {totalPages > 1 && (
         <Center mt="md">
-          <Pagination value={page} onChange={setPage} total={totalPages} />
+          <Pagination
+            value={page}
+            onChange={setPage}
+            total={totalPages}
+            getControlProps={(control) => ({
+              "aria-label": t(
+                control === "previous"
+                  ? "common.custom.pagination.previous"
+                  : "common.custom.pagination.next",
+              ),
+            })}
+          />
         </Center>
       )}
 

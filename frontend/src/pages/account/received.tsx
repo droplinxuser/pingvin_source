@@ -51,7 +51,7 @@ const ReceivedShares = () => {
       {receivedShares.length === 0 ? (
         <Center style={{ height: "70vh" }}>
           <Stack align="center" spacing={10}>
-            <Title order={3}>
+            <Title order={2} size="h5">
               <FormattedMessage id="account.received-shares.title.empty" />
             </Title>
             <Text>

@@ -20,6 +20,7 @@ import FileSizeInput from "../../core/FileSizeInput";
 import TimespanInput from "../../core/TimespanInput";
 import { LOCALES } from "../../../i18n/locales";
 import useTranslate from "../../../hooks/useTranslate.hook";
+import { camelToKebab } from "../../../utils/string.util";
 
 const AdminConfigInput = ({
   configVariable,
@@ -35,6 +36,7 @@ const AdminConfigInput = ({
   optionalConfigVariables?: AdminConfig[];
 }) => {
   const t = useTranslate();
+  const label = t(`admin.config.${camelToKebab(configVariable.key)}`);
   const isCustomCssConfig = configVariable.key === "appearance.customCss";
   const isThemePrimaryColorConfig =
     configVariable.key === "appearance.themePrimaryColor";
@@ -108,6 +110,7 @@ const AdminConfigInput = ({
       {configVariable.type == "string" &&
         (configVariable.obscured ? (
           <PasswordInput
+            aria-label={label}
             autoComplete="new-password"
             style={{
               width: "100%",
@@ -118,6 +121,7 @@ const AdminConfigInput = ({
           />
         ) : isCustomCssConfig ? (
           <Textarea
+            aria-label={label}
             style={{
               width: "100%",
             }}
@@ -130,6 +134,7 @@ const AdminConfigInput = ({
           />
         ) : isDefaultLanguageConfig ? (
           <Select
+            aria-label={label}
             style={{
               width: "100%",
             }}
@@ -143,6 +148,7 @@ const AdminConfigInput = ({
           />
         ) : isThemePrimaryColorConfig ? (
           <Select
+            aria-label={label}
             style={{
               width: "100%",
             }}
@@ -174,6 +180,7 @@ const AdminConfigInput = ({
         ) : isThemePrimaryColorOverrideConfig ? (
           shouldShowPrimaryColorOverride ? (
             <ColorInput
+              aria-label={label}
               style={{
                 width: "100%",
               }}
@@ -201,6 +208,7 @@ const AdminConfigInput = ({
           ) : null
         ) : isThemeRadiusConfig ? (
           <Select
+            aria-label={label}
             style={{
               width: "100%",
             }}
@@ -213,6 +221,7 @@ const AdminConfigInput = ({
           />
         ) : isThemeColorSchemeConfig ? (
           <SegmentedControl
+            aria-label={label}
             style={{
               width: "100%",
             }}
@@ -257,6 +266,7 @@ const AdminConfigInput = ({
           />
         ) : isUploadProgressStyleConfig ? (
           <Select
+            aria-label={label}
             style={{
               width: "100%",
             }}
@@ -288,6 +298,7 @@ const AdminConfigInput = ({
           />
         ) : (
           <TextInput
+            aria-label={label}
             style={{
               width: "100%",
             }}
@@ -300,6 +311,7 @@ const AdminConfigInput = ({
 
       {configVariable.type == "text" && (
         <Textarea
+          aria-label={label}
           style={{
             width: "100%",
           }}
@@ -313,6 +325,7 @@ const AdminConfigInput = ({
       )}
       {configVariable.type == "number" && (
         <NumberInput
+          aria-label={label}
           {...form.getInputProps("numberValue")}
           disabled={!configVariable.allowEdit}
           placeholder={configVariable.defaultValue}
@@ -322,6 +335,7 @@ const AdminConfigInput = ({
       )}
       {configVariable.type == "filesize" && (
         <FileSizeInput
+          aria-label={label}
           {...form.getInputProps("numberValue")}
           disabled={!configVariable.allowEdit}
           value={parseInt(configVariable.value ?? configVariable.defaultValue)}
@@ -336,6 +350,7 @@ const AdminConfigInput = ({
           isEnableUserRecipients) && (
           <>
             <Switch
+              aria-label={label}
               disabled={!configVariable.allowEdit || !isSmtpEnabled}
               {...form.getInputProps("booleanValue", { type: "checkbox" })}
               onChange={(e) => onValueChange(configVariable, e.target.checked)}
@@ -351,6 +366,7 @@ const AdminConfigInput = ({
         ) && (
           <>
             <Switch
+              aria-label={label}
               disabled={!configVariable.allowEdit}
               {...form.getInputProps("booleanValue", { type: "checkbox" })}
               onChange={(e) => onValueChange(configVariable, e.target.checked)}
@@ -359,6 +375,7 @@ const AdminConfigInput = ({
         )}
       {configVariable.type == "timespan" && (
         <TimespanInput
+          aria-label={label}
           value={stringToTimespan(configVariable.value)}
           disabled={!configVariable.allowEdit}
           min={configVariable.key === "share.fileRetentionPeriod" ? -1 : 0}

@@ -1,7 +1,6 @@
 import { Progress } from "@mantine/core";
 import { useRouter } from "next/router";
 import { useCallback, useEffect, useRef, useState } from "react";
-import useTranslate from "../../hooks/useTranslate.hook";
 
 // Keep the bar on screen long enough to be noticed on a cached/fast route,
 // then fade it out immediately after the new page is ready.
@@ -15,7 +14,6 @@ const FADE_OUT_MS = 150;
  */
 const RouteProgress = () => {
   const router = useRouter();
-  const t = useTranslate();
   const [active, setActive] = useState(false);
   const [progress, setProgress] = useState(0);
   const startedAt = useRef(0);
@@ -83,25 +81,29 @@ const RouteProgress = () => {
   }, [active]);
 
   return (
-    <Progress
-      value={progress}
-      size={3}
-      radius={0}
-      striped={active}
-      animate={active}
-      role="progressbar"
-      aria-label={t("common.custom.loading")}
-      sx={{
-        position: "fixed",
-        top: 0,
-        left: 0,
-        right: 0,
-        zIndex: 1000,
-        opacity: active ? 1 : 0,
-        pointerEvents: "none",
-        transition: `opacity ${FADE_OUT_MS}ms ease`,
-      }}
-    />
+    // The bar is a purely visual cue; Next's route announcer already reports
+    // navigation to assistive technology. Keeping the Mantine progressbar in
+    // an aria-hidden wrapper also keeps it out of landmark checks (it is
+    // mounted above <main> so it can stay fixed across every route).
+    <div aria-hidden="true">
+      <Progress
+        value={progress}
+        size={3}
+        radius={0}
+        striped={active}
+        animate={active}
+        sx={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          right: 0,
+          zIndex: 1000,
+          opacity: active ? 1 : 0,
+          pointerEvents: "none",
+          transition: `opacity ${FADE_OUT_MS}ms ease`,
+        }}
+      />
+    </div>
   );
 };
 

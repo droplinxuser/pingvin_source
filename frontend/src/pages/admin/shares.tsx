@@ -99,6 +99,7 @@ const Shares = () => {
       </Group>
 
       <TextInput
+        aria-label={t("admin.shares.custom.search.placeholder")}
         value={search}
         onChange={(event) => setSearch(event.currentTarget.value)}
         placeholder={t("admin.shares.custom.search.placeholder")}
@@ -156,6 +157,13 @@ const Shares = () => {
             value={page}
             onChange={(nextPage) => getShares(nextPage)}
             total={Math.ceil(total / pageSize)}
+            getControlProps={(control) => ({
+              "aria-label": t(
+                control === "previous"
+                  ? "common.custom.pagination.previous"
+                  : "common.custom.pagination.next",
+              ),
+            })}
           />
         </Group>
       )}

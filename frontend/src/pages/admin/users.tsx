@@ -134,6 +134,13 @@ const Users = () => {
             value={page}
             onChange={(nextPage) => getUsers(nextPage)}
             total={Math.ceil(total / pageSize)}
+            getControlProps={(control) => ({
+              "aria-label": t(
+                control === "previous"
+                  ? "common.custom.pagination.previous"
+                  : "common.custom.pagination.next",
+              ),
+            })}
           />
         </Group>
       )}

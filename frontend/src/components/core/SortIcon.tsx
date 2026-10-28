@@ -2,6 +2,7 @@ import { ActionIcon, Group } from "@mantine/core";
 import { Dispatch, SetStateAction } from "react";
 import { FormattedMessage } from "react-intl";
 import { TbChevronDown, TbChevronUp, TbSelector } from "react-icons/tb";
+import useTranslate from "../../hooks/useTranslate.hook";
 
 export type TableSort = {
   property?: string;
@@ -17,9 +18,11 @@ const TableSortIcon = ({
   setSort: Dispatch<SetStateAction<TableSort>>;
   property: string;
 }) => {
+  const t = useTranslate();
   if (sort.property === property) {
     return (
       <ActionIcon
+        aria-label={`${t("common.custom.sort")}: ${property}`}
         onClick={() =>
           setSort({
             property,
@@ -32,7 +35,10 @@ const TableSortIcon = ({
     );
   } else {
     return (
-      <ActionIcon onClick={() => setSort({ property, direction: "asc" })}>
+      <ActionIcon
+        aria-label={`${t("common.custom.sort")}: ${property}`}
+        onClick={() => setSort({ property, direction: "asc" })}
+      >
         <TbSelector />
       </ActionIcon>
     );

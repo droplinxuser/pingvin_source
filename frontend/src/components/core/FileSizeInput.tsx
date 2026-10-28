@@ -1,5 +1,6 @@
 import { NativeSelect, NumberInput } from "@mantine/core";
 import { useState } from "react";
+import useTranslate from "../../hooks/useTranslate.hook";
 
 const multipliers = {
   B: 1,
@@ -34,10 +35,12 @@ const FileSizeInput = ({
   onChange: (number: number) => void;
   [key: string]: any;
 }) => {
+  const t = useTranslate();
   const [unit, setUnit] = useState(getLargestApplicableUnit(value).value);
   const [inputValue, setInputValue] = useState(value / multipliers[unit]);
   const unitSelect = (
     <NativeSelect
+      aria-label={t("common.custom.unit")}
       data={units}
       value={unit}
       rightSectionWidth={28}

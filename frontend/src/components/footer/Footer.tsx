@@ -72,7 +72,7 @@ const useStyles = createStyles((theme) => {
 
     heading: {
       color: muted,
-      fontSize: 10,
+      fontSize: 11,
       fontWeight: 700,
       letterSpacing: 1.1,
       lineHeight: 1,
@@ -88,7 +88,7 @@ const useStyles = createStyles((theme) => {
 
     statLabel: {
       color: muted,
-      fontSize: 10,
+      fontSize: 11,
       letterSpacing: 0.4,
       lineHeight: 1.2,
       textTransform: "uppercase",
@@ -109,6 +109,8 @@ const useStyles = createStyles((theme) => {
     link: {
       color: muted,
       fontSize: theme.fontSizes.xs,
+      // Comfortable touch target for the stacked footer links.
+      padding: "3px 0",
 
       "&:hover": {
         color:
@@ -134,7 +136,7 @@ const useStyles = createStyles((theme) => {
 
     copyright: {
       color: muted,
-      fontSize: 10,
+      fontSize: 11,
       lineHeight: 1.3,
       marginTop: 8,
     },

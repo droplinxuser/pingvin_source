@@ -21,6 +21,7 @@ const LanguagePicker = () => {
   return (
     <Select
       value={selectedLanguage}
+      aria-label={t("account.card.language.title")}
       description={t("account.card.language.description")}
       onChange={(value) => {
         setSelectedLanguage(value ?? "en");

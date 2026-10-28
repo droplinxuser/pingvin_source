@@ -31,18 +31,20 @@ const DiskUsage = () => {
           {byteToHumanSizeString(systemInfo.total)}
         </Text>
       </Group>
-      <Progress
-        value={usedPercentage}
-        size="sm"
-        radius="xl"
-        color={
-          usedPercentage > 90
-            ? "red"
-            : usedPercentage > 70
-              ? "yellow"
-              : undefined
-        }
-      />
+      <div aria-hidden="true">
+        <Progress
+          value={usedPercentage}
+          size="sm"
+          radius="xl"
+          color={
+            usedPercentage > 90
+              ? "red"
+              : usedPercentage > 70
+                ? "yellow"
+                : undefined
+          }
+        />
+      </div>
     </Stack>
   );
 };

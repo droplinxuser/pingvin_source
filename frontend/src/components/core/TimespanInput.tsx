@@ -21,6 +21,7 @@ const TimespanInput = ({
   const version = inputValue == 1 ? "singular" : "plural";
   const unitSelect = (
     <NativeSelect
+      aria-label={t("common.custom.unit")}
       data={[
         {
           value: "minutes",

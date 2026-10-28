@@ -23,7 +23,7 @@ const LogoConfigInput = ({
     <>
       <Group position="apart">
         <Stack style={{ maxWidth: isMobile ? "100%" : "40%" }} spacing={0}>
-          <Title order={6}>
+          <Title order={2} size="h6">
             <FormattedMessage id="admin.config.appearance.logo" />
           </Title>
           <Text color="dimmed" size="sm" mb="xs">
@@ -33,6 +33,12 @@ const LogoConfigInput = ({
         <Stack></Stack>
         <Box style={{ width: isMobile ? "100%" : "50%" }}>
           <FileInput
+            aria-label={t("admin.config.appearance.logo")}
+            sx={(theme) => ({
+              "& .mantine-FileInput-placeholder": {
+                color: theme.colors.gray[7],
+              },
+            })}
             clearable
             icon={<TbUpload size={14} />}
             value={logo}
@@ -45,7 +51,7 @@ const LogoConfigInput = ({
       </Group>
       <Group position="apart">
         <Stack style={{ maxWidth: isMobile ? "100%" : "40%" }} spacing={0}>
-          <Title order={6}>
+          <Title order={2} size="h6">
             <FormattedMessage id="admin.config.appearance.logo-dark" />
           </Title>
           <Text color="dimmed" size="sm" mb="xs">
@@ -55,6 +61,12 @@ const LogoConfigInput = ({
         <Stack></Stack>
         <Box style={{ width: isMobile ? "100%" : "50%" }}>
           <FileInput
+            aria-label={t("admin.config.appearance.logo-dark")}
+            sx={(theme) => ({
+              "& .mantine-FileInput-placeholder": {
+                color: theme.colors.gray[7],
+              },
+            })}
             clearable
             icon={<TbUpload size={14} />}
             value={darkLogo}

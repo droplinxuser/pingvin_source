@@ -453,6 +453,7 @@ const Header = () => {
               {mobileMenuView !== "root" && (
                 <UnstyledButton
                   className={classes.mobileMenuButton}
+                  aria-label={t("navbar.custom.back")}
                   onClick={() => setMobileMenuView("root")}
                 >
                   <span className={classes.mobileMenuButtonContent}>

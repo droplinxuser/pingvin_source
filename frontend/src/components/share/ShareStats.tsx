@@ -98,6 +98,7 @@ const ShareStats = ({ share }: { share: Share }) => {
                     <HoverTip label={location}>
                       <Text
                         size="sm"
+                        role="img"
                         aria-label={location}
                         sx={{ cursor: "help" }}
                       >
@@ -125,6 +126,7 @@ const ShareStats = ({ share }: { share: Share }) => {
                       label={visitor.os || t("share.custom.uploader.unknown")}
                     >
                       <span
+                        role="img"
                         style={{ ...iconStyle, opacity: 0.85 }}
                         aria-label={t("share.custom.uploader.os")}
                       >
@@ -137,6 +139,7 @@ const ShareStats = ({ share }: { share: Share }) => {
                       }
                     >
                       <span
+                        role="img"
                         style={{ ...iconStyle, opacity: 0.85 }}
                         aria-label={t("share.custom.uploader.browser")}
                       >

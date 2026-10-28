@@ -39,17 +39,19 @@ import toast from "../../utils/toast.util";
 const REFRESH_MS = 15_000;
 const EVENTS_PER_PAGE = 4;
 
+// Light badges take their text colour from shade 9; the default shade 6
+// fails WCAG AA on the matching shade-0 background.
 const EVENT_COLORS: Record<VirusTotalEventType, string> = {
-  queued: "gray",
-  uploaded: "blue",
-  clean: "green",
-  suspicious: "yellow",
-  malicious: "red",
-  error: "red",
-  rate_limited: "orange",
-  auth_error: "red",
-  skipped: "gray",
-  dropped: "red",
+  queued: "gray.9",
+  uploaded: "blue.9",
+  clean: "green.9",
+  suspicious: "yellow.9",
+  malicious: "red.9",
+  error: "red.9",
+  rate_limited: "orange.9",
+  auth_error: "red.9",
+  skipped: "gray.9",
+  dropped: "red.9",
 };
 
 const StatCard = ({
@@ -250,7 +252,7 @@ const VirusTotal = () => {
           </Badge>
         )}
         {event.type === "malicious" && (
-          <Badge color={event.removed ? "red" : "orange"} variant="filled">
+          <Badge color={event.removed ? "red.9" : "orange.9"} variant="filled">
             {event.removed
               ? t("admin.virustotal.custom.events.removed")
               : t("admin.virustotal.custom.events.not-removed")}
@@ -300,7 +302,7 @@ const VirusTotal = () => {
   const renderEventCard = (event: VirusTotalEvent) => (
     <Paper key={event.id} withBorder p="sm" radius="md">
       <Group position="apart" align="flex-start" spacing="xs">
-        <Badge color={EVENT_COLORS[event.type]} variant="light">
+        <Badge color={EVENT_COLORS[event.type]} variant="dot">
           {eventLabel(event.type)}
         </Badge>
         <Text size="xs" color="dimmed">
@@ -480,22 +482,31 @@ const VirusTotal = () => {
               minWidth: 0,
             }}
           >
-            <Badge color={status.enabled ? "green" : "gray"}>
+            <Badge variant="dot" color={status.enabled ? "green.9" : "gray.9"}>
               {status.enabled
                 ? t("admin.virustotal.custom.status.enabled")
                 : t("admin.virustotal.custom.status.disabled")}
             </Badge>
-            <Badge color={status.running ? "green" : "orange"}>
+            <Badge
+              variant="dot"
+              color={status.running ? "green.9" : "orange.9"}
+            >
               {status.running
                 ? t("admin.virustotal.custom.status.running")
                 : t("admin.virustotal.custom.status.stopped")}
             </Badge>
-            <Badge color={status.authFailed ? "red" : "green"}>
+            <Badge
+              variant="dot"
+              color={status.authFailed ? "red.9" : "green.9"}
+            >
               {status.authFailed
                 ? t("admin.virustotal.custom.status.auth-failed")
                 : t("admin.virustotal.custom.status.auth-ok")}
             </Badge>
-            <Badge color={status.queueBackend === "valkey" ? "blue" : "yellow"}>
+            <Badge
+              variant="dot"
+              color={status.queueBackend === "valkey" ? "blue.9" : "yellow.9"}
+            >
               {status.queueBackend === "valkey"
                 ? t("admin.virustotal.custom.status.valkey")
                 : t("admin.virustotal.custom.status.memory")}
@@ -666,6 +677,13 @@ const VirusTotal = () => {
                   total={eventsPageCount}
                   value={safeEventsPage}
                   onChange={setEventsPage}
+                  getControlProps={(control) => ({
+                    "aria-label": t(
+                      control === "previous"
+                        ? "common.custom.pagination.previous"
+                        : "common.custom.pagination.next",
+                    ),
+                  })}
                 />
               </Group>
             )}

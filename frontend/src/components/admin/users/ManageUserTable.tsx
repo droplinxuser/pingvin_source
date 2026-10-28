@@ -73,7 +73,11 @@ const ManageUserTable = ({
                 setSort={setSort}
               />
             ))}
-            <th></th>
+            <th>
+              <span className="visually-hidden">
+                {t("common.custom.actions")}
+              </span>
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -94,7 +98,11 @@ const ManageUserTable = ({
                     </Group>
                   </td>
                   <td>{user.email}</td>
-                  <td>{user.isAdmin && <TbCheck />}</td>
+                  <td>
+                    {user.isAdmin && (
+                      <TbCheck aria-label={t("admin.users.table.admin")} />
+                    )}
+                  </td>
                   {showStorageQuota && (
                     <td>
                       {user.storageQuotaLimit
@@ -119,6 +127,7 @@ const ManageUserTable = ({
                             variant="light"
                             color="blue"
                             size={25}
+                            aria-label={t("common.button.edit")}
                             onClick={() =>
                               showUpdateUserModal(
                                 modals,
@@ -135,8 +144,9 @@ const ManageUserTable = ({
                       <HoverTip label={t("common.button.delete")}>
                         <ActionIcon
                           variant="light"
-                          color="red"
+                          color="red.9"
                           size={25}
+                          aria-label={t("common.button.delete")}
                           onClick={() => deleteUser(user)}
                         >
                           <TbTrash />

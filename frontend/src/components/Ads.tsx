@@ -36,6 +36,7 @@ const Ads = ({ gallery = false }: { gallery?: boolean }) => {
     let timeout: ReturnType<typeof setTimeout> | undefined;
     let settleTimer: ReturnType<typeof setTimeout> | undefined;
     let observer: MutationObserver | undefined;
+    let a11yTimer: ReturnType<typeof setInterval> | undefined;
     let scripts: HTMLScriptElement[] = [];
     setCollapsed(false);
 
@@ -57,6 +58,22 @@ const Ads = ({ gallery = false }: { gallery?: boolean }) => {
       });
     };
 
+    // Ad networks inject iframes and full-page anchors without names. Label
+    // those nodes as advertising so screen readers do not announce an unnamed
+    // frame/link. The app itself renders no iframes, so this only touches
+    // injected ad markup.
+    const labelAdNodes = () => {
+      document.querySelectorAll("iframe:not([title])").forEach((frame) => {
+        frame.setAttribute("title", "Advertisement");
+      });
+      document
+        .querySelectorAll("body > div:not(#__next) > a")
+        .forEach((link) => {
+          if (!link.textContent?.trim() && !link.getAttribute("aria-label"))
+            link.setAttribute("aria-label", "Advertisement");
+        });
+    };
+
     const load = () => {
       if (cancelled) return;
       scripts = SCRIPTS.map(({ src, banner }) => {
@@ -67,6 +84,11 @@ const Ads = ({ gallery = false }: { gallery?: boolean }) => {
         (banner ? bannerRef.current : document.body)?.appendChild(script);
         return script;
       });
+      labelAdNodes();
+      // Ad scripts inject their iframe/overlay a moment after the tag loads.
+      // A short interval keeps the audit clean without observing every React
+      // DOM mutation on the page.
+      a11yTimer = setInterval(labelAdNodes, 1000);
     };
 
     // If no ad fills the slot after the first paint, remove the reserved
@@ -96,6 +118,7 @@ const Ads = ({ gallery = false }: { gallery?: boolean }) => {
       if (timeout) clearTimeout(timeout);
       if (settleTimer) clearTimeout(settleTimer);
       observer?.disconnect();
+      if (a11yTimer) clearInterval(a11yTimer);
       scripts.forEach((script) => script.remove());
     };
   }, [isGuest]);
@@ -112,6 +135,7 @@ const Ads = ({ gallery = false }: { gallery?: boolean }) => {
     <Card
       ref={bannerRef}
       data-testid={gallery ? "share-gallery-ad" : undefined}
+      role="complementary"
       aria-label="Advertisement"
       withBorder={gallery}
       radius={gallery ? "md" : undefined}

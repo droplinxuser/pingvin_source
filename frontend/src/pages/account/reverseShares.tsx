@@ -71,7 +71,10 @@ const MyShares = () => {
             <FormattedMessage id="account.reverseShares.title" />
           </Title>
           <HoverTip label={t("account.reverseShares.description")}>
-            <ActionIcon color="blue">
+            <ActionIcon
+              color="blue"
+              aria-label={t("account.reverseShares.description")}
+            >
               <TbInfoCircle />
             </ActionIcon>
           </HoverTip>
@@ -99,7 +102,7 @@ const MyShares = () => {
       {reverseShares.length == 0 ? (
         <Center style={{ height: "70vh" }}>
           <Stack align="center" spacing={10}>
-            <Title order={3}>
+            <Title order={2} size="h5">
               <FormattedMessage id="account.reverseShares.title.empty" />
             </Title>
             <Text
@@ -135,7 +138,11 @@ const MyShares = () => {
                 <th>
                   <FormattedMessage id="account.reverseShares.table.expires" />
                 </th>
-                <th></th>
+                <th>
+                  <span className="visually-hidden">
+                    {t("common.custom.actions")}
+                  </span>
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -179,6 +186,7 @@ const MyShares = () => {
                                     color="victoria"
                                     variant="light"
                                     size={25}
+                                    aria-label={t("common.button.copy-link")}
                                     onClick={() => {
                                       if (window.isSecureContext) {
                                         clipboard.copy(
@@ -225,6 +233,7 @@ const MyShares = () => {
                           color="victoria"
                           variant="light"
                           size={25}
+                          aria-label={t("common.button.copy-link")}
                           onClick={() => {
                             if (window.isSecureContext) {
                               clipboard.copy(
@@ -251,6 +260,7 @@ const MyShares = () => {
                           color="red"
                           variant="light"
                           size={25}
+                          aria-label={t("common.button.delete")}
                           onClick={() => {
                             modals.openConfirmModal({
                               title: t(

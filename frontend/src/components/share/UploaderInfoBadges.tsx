@@ -42,7 +42,15 @@ const ICONS: Record<string, { Icon: IconType; color: string }> = {
 const renderIcon = (name: string | undefined, Fallback: IconType) => {
   const entry = ICONS[name ?? ""];
   const Icon = entry?.Icon ?? Fallback;
-  return <Icon size={ICON_SIZE} color={entry?.color ?? UNKNOWN_ICON_COLOR} />;
+  return (
+    <Icon
+      size={ICON_SIZE}
+      color={entry?.color ?? UNKNOWN_ICON_COLOR}
+      // The surrounding badge carries the translated label; the brand glyph is
+      // decorative and should not become a separate image node.
+      aria-hidden
+    />
+  );
 };
 
 export const getOsIcon = (os?: string) => renderIcon(os, TbDeviceLaptop);
@@ -133,7 +141,9 @@ const UploaderInfoBadges = ({
 
   return (
     <Group spacing={6}>
-      {share.creator && <UserAvatar user={share.creator} size={20} aria-hidden />}
+      {share.creator && (
+        <UserAvatar user={share.creator} size={20} aria-hidden />
+      )}
       <Text size="sm" color="dimmed">
         {creator
           ? t("share.custom.uploader.by", { name: creator })
@@ -146,7 +156,7 @@ const UploaderInfoBadges = ({
           position={compactTooltip ? "top" : "right"}
           offset={compactTooltip ? 8 : offset}
         >
-          <span style={iconStyle} aria-label={label}>
+          <span role="img" style={iconStyle} aria-label={label}>
             {icon}
           </span>
         </HoverTip>

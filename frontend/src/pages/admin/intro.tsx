@@ -24,12 +24,15 @@ const Intro = () => {
             <Logo height={80} width={80} />
           </Center>
           <Center>
-            <Title order={1} size="h2">Welcome to Pingvin Share X</Title>
+            <Title order={1} size="h2">
+              Welcome to Pingvin Share X
+            </Title>
           </Center>
           <Text>
             If you enjoy Pingvin Share X please ⭐️ it on{" "}
             <Anchor
               target="_blank"
+              style={{ textDecoration: "underline" }}
               href="https://github.com/smp46/pingvin-share-x"
             >
               GitHub
@@ -37,7 +40,11 @@ const Intro = () => {
           </Text>
           <Text>
             You can also support development via{" "}
-            <Anchor target="_blank" href="https://github.com/sponsors/smp46">
+            <Anchor
+              target="_blank"
+              style={{ textDecoration: "underline" }}
+              href="https://github.com/sponsors/smp46"
+            >
               GitHub Sponsors ❤️
             </Anchor>{" "}
           </Text>

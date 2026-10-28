@@ -339,7 +339,7 @@ export default function AppShellDemo() {
                               style={{ maxWidth: isMobile ? "100%" : "40%" }}
                               spacing={0}
                             >
-                              <Title order={6}>
+                              <Title order={2} size="h6">
                                 <FormattedMessage
                                   id={`admin.config.${camelToKebab(
                                     configVariable.key,
@@ -397,7 +397,7 @@ export default function AppShellDemo() {
                               style={{ maxWidth: isMobile ? "100%" : "40%" }}
                               spacing={0}
                             >
-                              <Title order={6}>
+                              <Title order={2} size="h6">
                                 <FormattedMessage
                                   id={`admin.config.${camelToKebab(
                                     customCssConfigVariable.key,

@@ -70,7 +70,11 @@ const ManageShareTable = ({
                 <FormattedMessage id="admin.shares.table.deletes" />
               </th>
             )}
-            <th></th>
+            <th>
+              <span className="visually-hidden">
+                {t("common.custom.actions")}
+              </span>
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -132,6 +136,7 @@ const ManageShareTable = ({
                           color="blue"
                           variant="light"
                           size={25}
+                          aria-label={t("common.button.info")}
                           onClick={() => {
                             showShareInformationsModal(
                               modals,
@@ -151,6 +156,7 @@ const ManageShareTable = ({
                           color="victoria"
                           variant="light"
                           size={25}
+                          aria-label={t("common.button.copy-link")}
                           onClick={() => {
                             if (window.isSecureContext) {
                               clipboard.copy(
@@ -173,8 +179,9 @@ const ManageShareTable = ({
                       <HoverTip label={t("common.button.delete")}>
                         <ActionIcon
                           variant="light"
-                          color="red"
+                          color="red.9"
                           size={25}
+                          aria-label={t("common.button.delete")}
                           onClick={() => deleteShare(share)}
                         >
                           <TbTrash />

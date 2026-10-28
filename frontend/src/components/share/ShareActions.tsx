@@ -124,7 +124,7 @@ const ShareActions = ({
     <Group spacing="xs">
       <Button
         variant="light"
-        color="red"
+        color="red.9"
         leftIcon={<TbFlag />}
         aria-label={t("share.custom.report.button")}
         onClick={handleReportClick}

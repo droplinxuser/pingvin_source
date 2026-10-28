@@ -5,6 +5,7 @@ import { FormattedMessage } from "react-intl";
 import useConfig from "../../../hooks/config.hook";
 import Logo from "../../Logo";
 import useHomeHref from "../../../hooks/homeHref.hook";
+import useTranslate from "../../../hooks/useTranslate.hook";
 
 const ConfigurationHeader = ({
   isMobileNavBarOpened,
@@ -15,6 +16,7 @@ const ConfigurationHeader = ({
 }) => {
   const config = useConfig();
   const homeHref = useHomeHref();
+  const t = useTranslate();
   return (
     <Header height={60} p="md">
       <div style={{ display: "flex", alignItems: "center", height: "100%" }}>
@@ -36,6 +38,8 @@ const ConfigurationHeader = ({
             opened={isMobileNavBarOpened}
             onClick={() => setIsMobileNavBarOpened((o) => !o)}
             size="sm"
+            aria-label={t("navbar.custom.open-menu")}
+            aria-expanded={isMobileNavBarOpened}
           />
         </MediaQuery>
       </div>

@@ -9,11 +9,11 @@ const getOAuthUrl = (provider: string) => {
 
 const getOAuthIcon = (provider: string) => {
   return {
-    google: <SiGoogle />,
-    microsoft: <FaMicrosoft />,
-    github: <SiGithub />,
-    discord: <SiDiscord />,
-    oidc: <SiOpenid />,
+    google: <SiGoogle aria-hidden />,
+    microsoft: <FaMicrosoft aria-hidden />,
+    github: <SiGithub aria-hidden />,
+    discord: <SiDiscord aria-hidden />,
+    oidc: <SiOpenid aria-hidden />,
   }[provider];
 };
 
