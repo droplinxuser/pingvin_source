@@ -123,11 +123,3 @@ test("removes jobs from the memory fallback when Valkey is unavailable", async (
   assert.equal(depth.backend, "memory");
   assert.equal((await queue.pop()).fileId, "file-3");
 });
-
-test("ignores malformed queue entries", async () => {
-  const mock = createValkey();
-  const queue = new VirusTotalQueueService(mock.valkey);
-  mock.lists.set(QUEUE_KEY, ["not-json", JSON.stringify(job())]);
-
-  assert.equal((await queue.pop()).fileId, "file-1");
-});

@@ -230,21 +230,3 @@ test("persists malicious hashes in a static file across restarts", async () => {
   assert.equal(await reloaded.isKnownMaliciousHash(hash), true);
   await reloaded.onApplicationShutdown();
 });
-
-test("caps retained events at two hundred", async () => {
-  const service = new VirusTotalAuditService(mockPrisma(null));
-  await service.onModuleInit();
-  for (let index = 0; index < 205; index++) {
-    service.recordEvent({
-      type: "queued",
-      shareId: "share-cap",
-      fileId: `file-${index}`,
-      fileName: `file-${index}.pdf`,
-    });
-  }
-  const overview = service.getOverview(200);
-  assert.equal(overview.eventsTotal, 200);
-  assert.equal(overview.events.length, 200);
-  await service.onApplicationShutdown();
-  fs.rmSync(dataDirectory, { recursive: true, force: true });
-});

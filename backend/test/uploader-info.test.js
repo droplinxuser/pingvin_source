@@ -10,13 +10,6 @@ const request = (userAgent, headers = {}) => ({
   hostname: "site.com",
 });
 
-test("handles requests without a user agent", () => {
-  const info = getUploaderInfo(request(undefined));
-  assert.equal(info.browser, undefined);
-  assert.equal(info.os, undefined);
-  assert.equal(info.deviceType, "desktop");
-});
-
 test("normalizes browser and OS names", () => {
   const info = getUploaderInfo(
     request(

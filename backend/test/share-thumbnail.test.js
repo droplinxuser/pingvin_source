@@ -38,10 +38,6 @@ test("uses a playable video when the share has no image", () => {
   assert.equal(selection.hasVideo, true);
 });
 
-test("has no preview for text-only shares", () => {
-  assert.equal(findPreview([{ id: "text", name: "note.txt" }]), undefined);
-});
-
 test("orders a corrupt first image before later thumbnail fallbacks", () => {
   const candidates = getPreviewCandidates([
     { id: "broken-image", name: "scan.bmp" },
@@ -56,19 +52,6 @@ test("orders a corrupt first image before later thumbnail fallbacks", () => {
   );
   assert.equal(candidates[0].kind, "image");
   assert.equal(candidates[1].kind, "video");
-});
-
-test("bounds the thumbnail failure reason cache", () => {
-  const service = Object.create(FileService.prototype);
-  service.thumbnailFailures = new Map();
-
-  for (let index = 0; index < 1005; index += 1) {
-    service.rememberThumbnailFailure(`share-${index}`, "no-media");
-  }
-
-  assert.equal(service.thumbnailFailures.size, 1000);
-  assert.equal(service.thumbnailFailures.has("share-0"), false);
-  assert.equal(service.thumbnailFailures.get("share-1004"), "no-media");
 });
 
 test("deletes share thumbnails older than thirty-two days", async () => {

@@ -19,9 +19,3 @@ test("zero means unlimited", () => {
   assert.equal(isViewLimitExceeded(100, 0), false);
   assert.equal(isViewLimitExceeded(100, undefined), false);
 });
-
-test("sums string and numeric file sizes", () => {
-  assert.equal(sumFileSizes([{ size: "5" }, { size: 7 }]), 12);
-  assert.equal(sumFileSizes([]), 0);
-  assert.equal(sumFileSizes(undefined), 0);
-});

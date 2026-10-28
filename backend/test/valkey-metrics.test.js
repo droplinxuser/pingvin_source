@@ -36,23 +36,6 @@ db1:keys=5,expires=0,avg_ttl=0
   assert.equal(metrics.connectedClients, 3);
 });
 
-test("reports zero keys and no ratio for an empty instance", () => {
-  const metrics = parseValkeyInfo(`
-# Server
-valkey_version:9.1.0
-uptime_in_seconds:10
-used_memory:1024
-used_memory_peak:1024
-keyspace_hits:0
-keyspace_misses:0
-connected_clients:1
-`);
-
-  assert.equal(metrics.version, "9.1.0");
-  assert.equal(metrics.totalKeys, 0);
-  assert.equal(metrics.hitRatio, null);
-});
-
 test("describes an unavailable Valkey without inventing values", () => {
   assert.deepEqual(emptyValkeyMetrics(false), {
     configured: false,

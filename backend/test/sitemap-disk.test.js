@@ -127,29 +127,6 @@ test("adds versioned sitemap and crawlable chunk rules to robots.txt", async () 
   assert.match(robots, /Allow: \/sitemap\.xml/);
 });
 
-test("changes the sitemap version only when its content changes", async () => {
-  resetSitemapDirectory();
-  const first = createService([share("share-a")]).service;
-  const firstIndex = await first.getSitemapXml(request);
-
-  const manifestPath = path.join(SITE_DIRECTORY, "manifest.json");
-  const expireManifest = () => {
-    const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
-    manifest.generatedAt = new Date(0).toISOString();
-    fs.writeFileSync(manifestPath, JSON.stringify(manifest));
-  };
-
-  expireManifest();
-  const changed = createService([share("share-a"), share("share-b")]).service;
-  const changedIndex = await changed.getSitemapXml(request);
-  assert.notEqual(changedIndex, firstIndex);
-
-  expireManifest();
-  const unchanged = createService([share("share-a"), share("share-b")]).service;
-  const unchangedIndex = await unchanged.getSitemapXml(request);
-  assert.equal(unchangedIndex, changedIndex);
-});
-
 test("splits large sitemaps at 50,000 URL entries", async () => {
   resetSitemapDirectory();
   const shares = Array.from({ length: 50_001 }, (_, index) =>

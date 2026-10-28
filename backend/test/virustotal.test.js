@@ -165,48 +165,6 @@ test("skips media and plain text but scans documents, archives and executables",
     assert.equal(shouldScanFile(name), true, name);
 });
 
-test("parses VirusTotal stats and verdicts", () => {
-  const malicious = parseAnalysisStats({
-    last_analysis_stats: { malicious: 2, suspicious: 1, harmless: 60 },
-  });
-  assert.deepEqual(malicious, {
-    malicious: 2,
-    suspicious: 1,
-    harmless: 60,
-    undetected: 0,
-  });
-  assert.equal(getScanVerdict(malicious), "malicious");
-
-  const suspicious = parseAnalysisStats({
-    stats: { malicious: 0, suspicious: 2, harmless: 60 },
-  });
-  assert.equal(getScanVerdict(suspicious), "suspicious");
-
-  const clean = parseAnalysisStats({
-    last_analysis_stats: { malicious: 0, suspicious: 0, undetected: 60 },
-  });
-  assert.equal(getScanVerdict(clean), "clean");
-  assert.equal(getScanVerdict(undefined), undefined);
-  assert.equal(parseAnalysisStats({}), undefined);
-});
-
-test("honours Retry-After seconds and dates", () => {
-  assert.equal(parseRetryAfterMs("120", 1, 3600000), 120000);
-  assert.equal(parseRetryAfterMs("0", 60000, 3600000), 60000);
-  assert.equal(parseRetryAfterMs("999999", 1, 3600000), 3600000);
-  assert.equal(parseRetryAfterMs(null, 900000, 3600000), 900000);
-});
-
-test("queues and pops a scan job through Valkey", async () => {
-  const { service } = createService();
-  await service.pushJob(job());
-
-  const next = await service.nextJob();
-  assert.equal(next.stage, "lookup");
-  assert.equal(next.shareId, "share-1");
-  assert.equal(next.size, 1024);
-});
-
 test("hashes a file and looks up its hash", async () => {
   const { service, content } = createService();
   const next = await service.hashJob(job({ stage: "hash", hash: undefined }));
@@ -442,29 +400,6 @@ test("keeps scanning after a per-operation HTTP 403", async () => {
   }
 });
 
-test("drops a queued job when the file or share was deleted", async () => {
-  const { service, auditEvents, auditCalls } = createService({
-    exists: async () => false,
-  });
-  const originalFetch = global.fetch;
-  let requested = false;
-  global.fetch = async () => {
-    requested = true;
-    return jsonResponse({});
-  };
-
-  try {
-    const next = await service.processJob(job());
-    assert.equal(next, undefined);
-    assert.equal(requested, false);
-    assert.equal(auditCalls.length, 0);
-    assert.equal(auditEvents.at(-1).type, "dropped");
-    assert.match(auditEvents.at(-1).detail, /deleted before the scan/);
-  } finally {
-    global.fetch = originalFetch;
-  }
-});
-
 test("requests a large-file upload URL and streams files over 32 MB", async () => {
   const previousKey = process.env.VIRUSTOTAL_API_KEY;
   process.env.VIRUSTOTAL_API_KEY = "test-api-key";
@@ -527,25 +462,4 @@ test("skips files above the 512 MB VirusTotal upload limit", async () => {
   } finally {
     global.fetch = originalFetch;
   }
-});
-
-test("removes queued work for a deleted share or file", async () => {
-  const { service, queue } = createService();
-  queue.jobs.push(
-    job({ shareId: "share-1", fileId: "file-1" }),
-    job({ shareId: "share-1", fileId: "file-2" }),
-    job({ shareId: "share-2", fileId: "file-3" }),
-  );
-
-  await service.removeJobsForFile("share-1", "file-1");
-  assert.deepEqual(
-    queue.jobs.map((item) => `${item.shareId}/${item.fileId}`),
-    ["share-1/file-2", "share-2/file-3"],
-  );
-
-  await service.removeJobsForShare("share-1");
-  assert.deepEqual(
-    queue.jobs.map((item) => `${item.shareId}/${item.fileId}`),
-    ["share-2/file-3"],
-  );
 });

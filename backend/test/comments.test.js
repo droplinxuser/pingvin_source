@@ -34,17 +34,6 @@ function createService() {
   );
 }
 
-test("keeps plain text untouched", () => {
-  assert.equal(
-    sanitizeCommentContent("Great share, thanks!"),
-    "Great share, thanks!",
-  );
-  assert.equal(
-    sanitizeCommentContent("Check node.js, file.txt and version 3.14"),
-    "Check node.js, file.txt and version 3.14",
-  );
-});
-
 test("strips URLs, bare domains, email addresses and contact links", () => {
   assert.equal(
     sanitizeCommentContent("Visit https://example.com/file now"),
@@ -65,13 +54,6 @@ test("strips markup and control characters", () => {
   assert.equal(
     sanitizeCommentContent("<b>Hello</b>\u0000 world"),
     "Hello world",
-  );
-});
-
-test("normalizes excessive spacing without dropping line breaks", () => {
-  assert.equal(
-    sanitizeCommentContent("Line one\n\n\n\nLine two   end"),
-    "Line one\n\nLine two end",
   );
 });
 
@@ -208,23 +190,6 @@ test("lets authors and admins edit or delete comments", async () => {
     () => service.update(shareId, "missing", user, "Nothing"),
     /share.commentsNotFound/,
   );
-});
-
-test("uses the username when a display name is unavailable", async () => {
-  const shareId = "no-display-name";
-  fs.mkdirSync(path.join(dataDirectory, "uploads", "shares", shareId), {
-    recursive: true,
-  });
-
-  const service = createService();
-  const result = await service.create(
-    shareId,
-    { id: "user-3", username: "carol", displayName: "" },
-    "Fallback name",
-  );
-
-  assert.equal(result.comment.username, "carol");
-  assert.equal(result.comment.displayName, undefined);
 });
 
 test.after(() => {

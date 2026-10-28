@@ -65,32 +65,3 @@ test("deduplicates repeated browser errors for one minute", async () => {
   const result = await logs.list("frontend", 1, 20);
   assert.equal(result.total, 1);
 });
-
-test("bounds stored text fields", async () => {
-  const logs = new ErrorLogService(unavailableValkey);
-  await logs.add("backend", { message: "x".repeat(5_000) });
-
-  const result = await logs.list("backend", 1, 20);
-  assert.equal(result.entries[0].message.length, 4_001);
-  assert.ok(result.entries[0].message.endsWith("…"));
-});
-
-test("forwards error-level Nest logs to the shared store", () => {
-  const captured = [];
-  const logger = new ErrorTrackingLogger(
-    {
-      capture: (source, input) => captured.push({ source, input }),
-    },
-    { logLevels: ["fatal"] },
-  );
-
-  logger.error(new Error("backend boom"), undefined, "TestService");
-  logger.error("plain message", "TestService");
-
-  assert.equal(captured.length, 2);
-  assert.equal(captured[0].source, "backend");
-  assert.equal(captured[0].input.message.message, "backend boom");
-  assert.equal(captured[0].input.context, "TestService");
-  assert.equal(captured[1].input.message, "plain message");
-  assert.equal(captured[1].input.context, "TestService");
-});

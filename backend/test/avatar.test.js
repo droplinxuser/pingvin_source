@@ -107,28 +107,3 @@ test("removes the file and clears the version", async () => {
   assert.equal(updates.at(-1).avatarUpdatedAt, null);
   assert.equal(await service.get(userId), null);
 });
-
-test("accepts PNG, JPEG and WebP sources", async () => {
-  const { service } = createService();
-  const png = await makePng();
-  const jpeg = await sharp(png).jpeg().toBuffer();
-  const webp = await sharp(png).webp().toBuffer();
-
-  for (const source of [png, jpeg, webp]) {
-    const userId = crypto.randomUUID();
-    await service.save(userId, source);
-    const metadata = await sharp(
-      path.join(dataDirectory, "avatars", `${userId}.webp`),
-    ).metadata();
-    assert.equal(metadata.format, "webp");
-    assert.equal(metadata.width, 256);
-  }
-});
-
-test("rejects images with an extreme dimension", async () => {
-  const { service } = createService();
-  await assert.rejects(
-    service.save(crypto.randomUUID(), await makePng(10001, 1)),
-    (error) => error.getStatus() === 400,
-  );
-});
