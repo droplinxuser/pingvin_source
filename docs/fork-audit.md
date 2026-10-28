@@ -20,7 +20,7 @@ so `git merge upstream/main` stays small.
 | Trending today | `backend/src/cache/trending.service.ts`, `GET /api/shares/trending?limit=100`, `frontend/src/components/share/TrendingToday.tsx` (client-side, viewport-triggered load with batched rendering and skeletons), `frontend/src/components/share/TrendingCountries.tsx` (up to ten countries, ten shares each), `frontend/src/pages/trending.tsx`, `frontend/src/pages/_app.tsx` |
 | New shares | `backend/src/cache/trending.service.ts` (`getRecent`), `GET /api/shares/recent?limit=200`, `frontend/src/pages/new.tsx`, shared `TrendingToday` grid/card (`loadItems`, media badge, 24-card batches), header/footer links, sitemap/robots |
 | Shared UI polish | `frontend/src/components/core/RelativeTime.tsx` (relative timestamps + full-date tooltip), `RouteProgress.tsx` (global navigation bar), `LazyImage.tsx` (lazy images with shimmer placeholder), `LazySection.tsx` / `LazyVideo.tsx`, `frontend/src/utils/filePreview.util.ts` (lazy file-preview modal chunk) |
-| Profile pictures | `backend/prisma/schema.prisma` (`User.avatarUpdatedAt`), migration `20261028010000_add_user_avatar`, `backend/src/user/avatar.service.ts` (5 MB/40 MP/10k-dimension limits, EXIF rotate, 256px centre-crop, metadata-stripped WebP, atomic 0600 write, removal with account deletion), `backend/src/user/user.controller.ts` (`POST`/`DELETE /api/users/me/avatar`, public versioned `GET /api/users/:id/avatar.webp` with ETag/304, a one-day browser/CDN cache and an explicit 401 when unauthenticated uploads are enabled), `backend/src/share/comment.service.ts` (one batched avatar-version lookup per comment page), `frontend/src/components/core/UserAvatar.tsx`, `frontend/src/utils/avatar.util.ts`, `frontend/src/pages/account/index.tsx`; avatars are shown in the header, comments, share uploader badges, received shares, admin users and admin shares |
+| Profile pictures | `backend/prisma/schema.prisma` (`User.avatarUpdatedAt`), migration `20261028010000_add_user_avatar`, `backend/src/user/avatar.service.ts` (5 MB/40 MP/10k-dimension limits, EXIF rotate, 256px centre-crop, metadata-stripped WebP, atomic 0600 write, removal with account deletion), `backend/src/user/user.controller.ts` (`POST`/`DELETE /api/users/me/avatar`, public versioned `GET /api/users/:id/avatar.webp` with ETag/304, a one-day CDN cache and an explicit 401 when unauthenticated uploads are enabled), `backend/src/share/comment.service.ts` (one batched avatar-version lookup per comment page), `frontend/src/components/core/UserAvatar.tsx`, `frontend/src/utils/avatar.util.ts`, `frontend/src/pages/account/index.tsx`; avatars are shown in the header, comments, share uploader badges, received shares, admin users and admin shares |
 | Legal pages | `frontend/src/components/legal/LegalDocument.tsx` (shared imprint/privacy markdown layout, one H1 and canonical JSON-LD) |
 | Upload paste and folder picks | Upstream `frontend/src/hooks/useClipboardPaste.hook.ts`, `utils/file.util.ts` and `utils/folder.util.ts`; the fork adds `share.maxFileSize` validation in `components/upload/Dropzone.tsx`, keeps the folder button, and validates upload-init/complete/abort with `backend/src/file/dto/upload.dto.ts` (safe names, bounded chunks/parts) |
 | Share thumbnails / OG | `backend/src/file/file.service.ts` (share-level 300px WebP, ordered preview fallbacks, background queue, 32-day cleanup), `backend/src/share/preview.util.ts` (shared source selection and `getPreviewCandidates`), `GET /api/shares/:id/thumbnail`, `frontend/src/components/share/TrendingToday.tsx`, `TrendingCountries.tsx`, `Meta.tsx` |
@@ -2227,6 +2227,48 @@ needed for the fix.
 - Performance at 1366px: home LCP ~0.37s, new ~0.52s, trending ~0.88s, share
   ~1.51s; CLS stayed at or below 0.0027 and no page overflowed.
 
+## Profile pictures (2026-10-28, eleventh)
+
+- Users upload a PNG/JPEG/WebP picture that is validated by decoding, rotated
+  by EXIF, centre-cropped to 256px and stored as a metadata-stripped WebP.
+  `User.avatarUpdatedAt` versions the public URL; removals and account deletion
+  delete the file. The account page, header, comments, uploader badge, received
+  shares and admin tables all use `UserAvatar`, with initials as the fallback.
+
+### Live verification (2026-10-28, deploy `319aade4`)
+
+- The deployed build was `ABBpghTIjkx3VRCeEfTVj`, the app bundle contained
+  commit `319aade4`, and the service worker was `/sw.js?v=319aade4`, activated
+  with all 44 precache URLs returning 200.
+- Profile picture: the account upload stored a 256x256 WebP (5,620 bytes from
+  the 300x158 test image), updated the header and 64px account avatar
+  immediately, and returned `image/webp` with `nosniff`, inline disposition,
+  an ETag and 304 revalidation. An uploader avatar appeared on a new share and
+  a comment avatar appeared for the owner and a guest; `commentsVersion` became
+  1. Removing the picture cleared the version, restored the initials fallback
+  and the temporary share/comment were deleted afterwards.
+- Validation: wrong type 400, oversized 413, malformed user id 404, anonymous
+  upload/delete 403 on production (unauthenticated shares are disabled).
+  Locally, with unauthenticated shares enabled, the new explicit check returns
+  401 instead of reaching the handler. PNG, JPEG and WebP sources all produced
+  a 256px WebP locally.
+- Cache headers: the app sends a one-day browser TTL and a one-day
+  `CDN-Cache-Control`/`Cloudflare-CDN-Cache-Control` for versioned avatars; the
+  live proxy rewrites the browser `Cache-Control` to one year for `.webp`, as
+  it does for thumbnails. The CDN kept `s-maxage=86400` and the version URL
+  still broke caches immediately.
+- Guest, signed-in and 390px dark passes covered all public and account routes:
+  one H1, no overflow, no missing alt text and zero application console
+  errors/warnings (only the intentional 404 document statuses). PWA, security
+  headers, public/API cache TTLs and the 15,782-URL sitemap chunk were intact.
+  Performance: home LCP ~0.71s, new ~1.14s, trending ~1.17s, share ~1.55s;
+  CLS <= 0.0027.
+- Immediately after the deployment, a public HTML shell cached from the
+  previous build caused `_next/data/<oldBuildId>/...` 404 console entries on
+  the first guest pass until the edge TTL expired. Repeat guest and member
+  passes served the new build and were clean; this is the normal short
+  deployment cache race, not an application regression.
+
 ## Known non-issues
 
 - Cloudflare does not echo `Cloudflare-CDN-Cache-Control`, but it honors
@@ -2279,11 +2321,11 @@ needed for the fix.
   returns the 404 page. Observed when a temporary reverse-share upload was
   removed during the `ca125017` pass.
 - The live proxy rewrites `Cache-Control` to a long browser TTL for
-  static-looking responses such as thumbnails, `robots.txt` and the sitemap;
-  `CDN-Cache-Control` keeps the app's shorter shared TTL. Thumbnail URLs are
-  versioned with the share update time, share files are immutable, and
-  crawlers revalidate the index/chunks, so the rewrite does not pin stale
-  content.
+  static-looking responses such as thumbnails, avatars, `robots.txt` and the
+  sitemap; `CDN-Cache-Control` keeps the app's shorter shared TTL. Thumbnail
+  and avatar URLs are versioned, share files are immutable, and crawlers
+  revalidate the index/chunks, so the rewrite does not pin stale content on
+  new pages.
 - Chrome may log the expected `404` for intentionally missing shares. This is
   a network status log, not a JavaScript exception. A protected share now
   opens its password modal from the SEO hint, so the first visit no longer
