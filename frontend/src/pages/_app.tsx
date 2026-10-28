@@ -50,6 +50,21 @@ const TrendingToday = dynamic(
 
 const excludeDefaultLayoutRoutes = ["/admin/config/[category]"];
 
+// The configured imprint/privacy documents can be tens of kilobytes of
+// markdown. The two legal pages read their own document through
+// getServerSideProps; every shared page only needs to know whether the footer
+// link should exist, so the full value becomes a tiny presence marker.
+const LEGAL_TEXT_KEYS = new Set([
+  "legal.imprintText",
+  "legal.privacyPolicyText",
+]);
+
+const stripLegalText = (config: Config[]): Config[] =>
+  config.map((variable) => {
+    if (!LEGAL_TEXT_KEYS.has(variable.key)) return variable;
+    return { ...variable, value: variable.value ? "1" : "" };
+  });
+
 // Install before hydration so early client errors are reported too. The guard
 // inside the helper keeps hot reloads from registering duplicate listeners.
 if (typeof window !== "undefined") installGlobalErrorReporter();
@@ -489,7 +504,9 @@ App.getInitialProps = async ({
     }
 
     const { config, fallback } = await configRequest;
-    pageProps.configVariables = config;
+    // Legal pages receive their own markdown as a page prop, so the shared
+    // config only needs a presence marker everywhere.
+    pageProps.configVariables = stripLegalText(config);
     pageProps.isConfigFallback = fallback;
 
     const requestLanguage = i18nUtil.getLanguageFromAcceptHeader(
@@ -512,11 +529,14 @@ App.getInitialProps = async ({
           ? defaultLanguage
           : requestLanguage;
 
-    // Ship only the active language. The full translation catalogue remains in
-    // lazy chunks instead of the main client bundle.
-    pageProps.messages = (
-      await i18nUtil.loadLocale(pageProps.language)
-    ).messages;
+    // The default locale is already part of the client bundle, so sending the
+    // whole catalogue in __NEXT_DATA__ only duplicates ~70 KB on every English
+    // page. Other languages still need their messages for a matching first
+    // render, because their chunk is loaded lazily.
+    pageProps.messages =
+      pageProps.language === LOCALES.ENGLISH.code
+        ? undefined
+        : (await i18nUtil.loadLocale(pageProps.language)).messages;
   }
   return { pageProps };
 };
