@@ -154,7 +154,10 @@ const GalleryMediaCard = ({
                 style={{
                   position: "relative",
                   zIndex: 1,
-                  opacity: videoLoaded ? 1 : 0,
+                  // A poster is a real first paint: show it immediately
+                  // instead of waiting for the video's first frame, which
+                  // would otherwise become a late LCP candidate.
+                  opacity: posterUrl || videoLoaded ? 1 : 0,
                   transition: "opacity 160ms ease",
                 }}
               />

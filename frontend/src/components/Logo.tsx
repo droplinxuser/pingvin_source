@@ -34,6 +34,9 @@ const Logo = ({
       alt={alt ?? `${siteName} logo`}
       height={height}
       width={width}
+      // Preserve the uploaded logo's intrinsic ratio; a fixed square would
+      // stretch non-square branding and fail aspect-ratio audits.
+      style={{ height: "auto" }}
       decoding="async"
       draggable={false}
       onError={() => {
