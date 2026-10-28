@@ -139,6 +139,12 @@ cd "$SRC_DIR/backend"
 # explicitly; the systemd unit gets it from backend/.env on restart.
 DATABASE_URL="$DB_URL" npx prisma migrate deploy
 
+# Rebuild the database file after index/data changes so free pages and
+# fragmentation do not accumulate. The backend is stopped, so VACUUM has
+# exclusive access; maintain-db.js logs and skips on failure.
+echo "==> Compacting SQLite database"
+DATABASE_URL="$DB_URL" node scripts/maintain-db.js
+
 echo "==> Installing systemd units"
 install -m 644 "$SRC_DIR/pingvin-back.service" /etc/systemd/system/pingvin-back.service
 install -m 644 "$SRC_DIR/pingvin-front.service" /etc/systemd/system/pingvin-front.service

@@ -142,7 +142,22 @@ the matching `utils/*.util.ts` files.
 - The database keeps only one row per user avatar version (`avatarUpdatedAt`);
   the image itself is a file in the data directory.
 - No custom feature adds a SQLite table except the avatar version column and
-  the relation/performance indexes in the two recent migrations.
+  the relation/performance indexes in the recent migrations.
+- SQLite maintenance: `Share_creatorId_idx` and `Share_reverseShareId_idx` are
+  partial indexes (`WHERE ... IS NOT NULL`) because anonymous shares leave
+  `creatorId` NULL and normal shares leave `reverseShareId` NULL. This keeps
+  lookups indexed without storing thousands of empty keys. Migration
+  `20261029000000_optimize_share_indexes` applies the change.
+  `backend/scripts/maintain-db.js` runs `VACUUM` while the backend is stopped;
+  `update.sh` calls it after `prisma migrate deploy`. It logs and skips on
+  failure, so a full disk cannot break an update.
+- A database audit found no orphaned rows (`File`, `ShareSecurity`,
+  `ShareRecipient`, `ShareUserRecipient`, `RefreshToken`, `OAuthUser`) and no
+  obsolete tables or columns. The remaining size is almost entirely legitimate
+  share/file metadata (`File` and its primary-key index), so the fork does not
+  delete share content during maintenance. Reclaimable index/fragmentation space
+  is handled by the migration + `VACUUM`; on the 16k-share reference database
+  this reduced the file from 9.49 MB to 8.54 MB with integrity `ok`.
 
 ## HTTP caching
 
