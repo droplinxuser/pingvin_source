@@ -21,7 +21,7 @@ state only; old verification runs are intentionally not kept.
 | Trending today / new shares | `backend/src/cache/trending.service.ts` (`getTrending`, `getTrendingCountries`, `getRecent`), `GET /api/shares/trending`, `/trending/countries`, `/recent`; `frontend/src/components/share/TrendingToday.tsx`, `TrendingCountries.tsx`, `frontend/src/pages/trending.tsx`, `frontend/src/pages/new.tsx` |
 | Shared UI polish | `frontend/src/components/core/RelativeTime.tsx`, `RouteProgress.tsx`, `LazyImage.tsx`, `LazyVideo.tsx`, `LazySection.tsx`, `frontend/src/utils/filePreview.util.ts` |
 | Profile pictures | `backend/prisma/schema.prisma` (`User.avatarUpdatedAt`), migration `20261028010000_add_user_avatar`, `backend/src/user/avatar.service.ts` (5 MB/40 MP limits, EXIF rotate, 256px centre-crop, metadata-stripped WebP, atomic 0600 write), `user.controller.ts` (`POST`/`DELETE /api/users/me/avatar`, public versioned `GET /api/users/:id/avatar.webp` with ETag/304), `frontend/src/components/core/UserAvatar.tsx`, `frontend/src/utils/avatar.util.ts` |
-| Legal pages | `frontend/src/components/legal/LegalDocument.tsx` (one shared imprint/privacy markdown layout) |
+| Legal pages | `frontend/src/components/legal/LegalDocument.tsx` (one shared imprint/privacy markdown layout); the pages load their document through `getServerSideProps` and `_app` only sends a presence marker |
 | Upload paste and folder picks | Upstream `useClipboardPaste.hook.ts`, `file.util.ts`, `folder.util.ts`; the fork keeps only `share.maxFileSize` validation in `Dropzone.tsx`, the folder button and upload DTO bounds |
 | Share thumbnails / OG | `backend/src/file/file.service.ts` (share-level 300px WebP, ordered preview fallbacks, background queue, 32-day cleanup), `backend/src/share/preview.util.ts`, `GET /api/shares/:id/thumbnail`, listing cards and `Meta.tsx` |
 | Cache headers / hotlink protection | `backend/src/utils/cache.util.ts`, `frontend/src/utils/version.util.ts`, `backend/src/utils/referrer.util.ts`, `frontend/src/middleware.ts`, `frontend/next.config.js` |
@@ -33,7 +33,7 @@ state only; old verification runs are intentionally not kept.
 | Valkey metrics and error logs | `backend/src/cache/valkeyMetrics.util.ts`, `backend/src/logs/*`, `GET /api/system/valkey`, `frontend/src/components/admin/ValkeyMetricsCard.tsx`, `frontend/src/pages/admin/logs.tsx`, `frontend/src/utils/errorReporter.util.ts` |
 | Home copy and ads | `frontend/src/pages/index.tsx`, `home.custom.*` keys in `en-US.ts`, `frontend/src/components/Ads.tsx` (guest-only; skipped for signed-in visitors, protected shares and reverse-share upload cookies). Upstream `useHomeHref` owns every "go home" target. |
 | Fork branding / deployment | `frontend/public/img/**`, `frontend/public/favicon.ico`, `frontend/src/pages/manifest.json.tsx`, `pingvin-*.service`, `update.sh` |
-| SEO / crawlers | `frontend/src/components/Meta.tsx`, `SiteStructuredData.tsx`, `frontend/src/hooks/siteMeta.hook.ts`, `frontend/src/pages/robots.txt.tsx`, `sitemap.xml.tsx`, `frontend/src/utils/seo.util.ts`, `seo.server.util.ts`, `backend/src/share/share.service.ts` (`getSeo`), `backend/src/system/system.service.ts` (disk-backed robots/sitemap) |
+| SEO / crawlers | `frontend/src/components/Meta.tsx`, `SiteStructuredData.tsx`, `frontend/src/hooks/siteMeta.hook.ts`, `frontend/src/pages/robots.txt.tsx`, `sitemap.xml.tsx`, `frontend/src/utils/seo.util.ts`, `seo.server.util.ts`, `backend/src/share/share.service.ts` (`getSeo`), `backend/src/system/system.service.ts` (disk-backed robots/sitemap), `frontend/src/pages/_app.tsx` (default-locale message trimming) |
 | WebP / image pipeline | `backend/src/file/file.service.ts` (per-file and share-level previews), `backend/src/file/file.controller.ts` (`webp=300`), `backend/src/config/logo.service.ts`, `frontend/src/utils/file.util.ts`, `frontend/src/components/Logo.tsx`, `frontend/public/img/*.webp` |
 
 Fork-only UI strings live in `frontend/src/i18n/translations/en-US.ts`; other
@@ -49,6 +49,44 @@ Public-share predicates live in `share.util.ts` (`publicShareWhere`,
 `activeShareWhere`, `isPublicShare`) and must be reused by new queries.
 Cross-cutting pagination, country, referrer, storage-quota and MIME logic live in
 the matching `utils/*.util.ts` files.
+
+## SEO, performance and accessibility pass
+
+- `_app.getInitialProps` omits `pageProps.messages` for the default English
+  locale. The English catalogue is already part of the client bundle, so
+  serializing it into `__NEXT_DATA__` only added ~70 KB to every English page.
+  Other locales still receive their merged messages for a matching first render.
+- The legal markdown no longer travels in the shared config. `_app` replaces the
+  imprint/privacy `value` with a `"1"` presence marker (the footer, middleware
+  and sitemap only test existence), while `/imprint` and `/privacy` load their
+  own text through `getServerSideProps` + `fetchConfig`. A new page that needs
+  the full document must use the same server-side read instead of `useConfig`.
+- `/trending` renders only the selected country tab (`keepMounted={false}`);
+  before this, ten panels with 100 hidden thumbnails and about a thousand extra
+  DOM nodes were mounted on every visit.
+- The share page's server skeleton uses `seo.thumbnailUrl` as an eager,
+  `fetchpriority=high` LCP image and the first video poster. The hero uses a
+  stable grid with a reserved uploader row, and the gallery caption skeleton
+  matches the real caption height, so the payload arriving after SSR does not
+  shift the page (CLS was ~0.22, now ~0.01-0.04 locally).
+- The first four listing cards load eagerly and hint high priority; the rest
+  keep `loading="lazy"`. Brand assets generated by
+  `frontend/scripts/generate-brand-assets.mjs` are square 400x400, matching the
+  fixed logo dimensions used by the header and home page.
+- Accessibility: `gray[6]` is darkened to `#5f6773` so Mantine `dimmed` text
+  passes WCAG AA; status badges use the `dot` variant (colored dot, neutral
+  text) or `red.9`/`orange.9`; every icon-only action, pagination control, sort
+  button and mobile menu control has a name; progress indicators are hidden
+  from the accessibility tree; uploader icons use `role="img"`; ad iframes and
+  injected full-page links are labelled; content links in the admin intro are
+  underlined. Page headings use h1 -> h2 (admin config sections included).
+- The footer uses slightly larger muted text and vertical padding on links for
+  comfortable touch targets.
+- Local Lighthouse (mobile, production build): home ~96 performance and 100
+  accessibility/SEO/best-practices; trending/new ~87-96 performance; share
+  pages remain limited by third-party ad scripts (best-practices 61 from their
+  cookies/deprecations), while the app shell itself is error-free. Axe reports
+  zero violations on guest, member and admin pages at 390 px.
 
 ## Merge checklist
 
@@ -289,7 +327,10 @@ referrers and avatars. Keep this suite green before pushing; run the frontend
 production build and lint in the same pass. Playwright smoke checks should cover
 guest, member and mobile views of the public pages, upload/download/comment,
 admin redirects and the share gallery with zero application console errors or
-warnings (the intentional 404 document status is excluded).
+warnings (the intentional 404 document status is excluded). Axe checks at 390 px
+should report zero WCAG A/AA and best-practice violations for the public pages,
+member account pages and every admin page; the temporary local admin promotion
+used for that check must be reverted afterwards.
 
 Live deployments are verified by the site administrator after
 `/var/www/pingvin_source/update.sh`; do not run that script from an agent
