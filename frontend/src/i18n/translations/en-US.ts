@@ -717,7 +717,7 @@ export default {
   "upload.url.placeholder": "https://example.com/file.zip",
   "upload.url.add": "Add to upload",
   "upload.url.hint":
-    "The file is downloaded by your own browser and uploaded from here, so the server never connects to the host and its IP stays hidden. This means the host must allow cross-origin (CORS) downloads — if a link is blocked, download the file and upload it directly. MediaFire and Bunkr links are resolved by the server instead. Only public http(s) URLs work.",
+    "The file is downloaded by your browser, then uploaded from here. The link's host must allow cross-origin (CORS) downloads — if a link is blocked, download the file and upload it directly. MediaFire and Bunkr links are supported. Only public http(s) URLs work.",
   "upload.url.notify.added": "Queued {name} from URL",
   "upload.url.error.invalid": "Enter a valid http(s) URL.",
   "upload.url.error.fetch":
