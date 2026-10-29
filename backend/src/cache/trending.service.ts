@@ -34,6 +34,8 @@ const RESULT_CACHE_MS = 30 * 1000;
 const RECENT_SCAN_LIMIT = 1000;
 const RECENT_MAX_RESULT = 200;
 const RECENT_CACHE_MS = 30 * 1000;
+// File-only cards list a couple of names over the thumbnail area.
+const MAX_CARD_FILE_NAMES = 3;
 // Shares viewed before the cache window expanded have no retained daily score.
 // They are seeded once from SQLite; retries are throttled if the database is
 // unavailable during the first read.
@@ -66,6 +68,9 @@ export type TrendingShare = {
   previewFileId?: string;
   previewKind?: PreviewKind;
   fileCount?: number;
+  // A few file names for the file-only ("new files") cards, which show a list
+  // instead of a thumbnail.
+  fileNames?: string[];
   size?: number;
   createdAt: string;
   updatedAt?: string;
@@ -710,6 +715,9 @@ function buildFileCard(share: {
     description: normalizeDescription(share.description),
     views: share.views,
     fileCount: share.files?.length ?? 0,
+    fileNames: share.files
+      ?.slice(0, MAX_CARD_FILE_NAMES)
+      .map((file) => file.name),
     size: sumFileSizes(share.files),
     createdAt: new Date(share.createdAt).toISOString(),
     updatedAt: new Date(share.updatedAt ?? share.createdAt).toISOString(),

@@ -109,6 +109,8 @@ export type TrendingShare = {
   // Present on media listings; file-only listings and search results omit it.
   previewFileId?: string;
   previewKind?: "image" | "video";
+  // Up to a few file names, used by the file-only listing cards.
+  fileNames?: string[];
   fileCount?: number;
   size?: number;
   createdAt: string;

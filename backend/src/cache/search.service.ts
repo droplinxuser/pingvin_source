@@ -14,7 +14,8 @@ const INDEX_TTL_SECONDS = 5 * 60;
 // Serve the in-process copy for a minute before re-reading Valkey. Long enough
 // to collapse a burst, short enough that an edit shows up quickly.
 const INDEX_FRESH_MS = 60 * 1000;
-const INDEX_CACHE_VERSION = 2;
+const INDEX_CACHE_VERSION = 3;
+const MAX_CARD_FILE_NAMES = 3;
 const MAX_INDEXED_SHARES = 20_000;
 const MAX_RESULTS = 200;
 const MAX_QUERY_LENGTH = 100;
@@ -27,6 +28,7 @@ type SearchEntry = {
   d?: string;
   v: number;
   p?: { id: string; k: "image" | "video"; video?: boolean };
+  fn?: string[];
   fc: number;
   s: number;
   c: string;
@@ -164,6 +166,7 @@ function buildEntry(share: {
           video: media.hasVideo || undefined,
         }
       : undefined,
+    fn: share.files?.slice(0, MAX_CARD_FILE_NAMES).map((file) => file.name),
     fc: share.files?.length ?? 0,
     s: sumFileSizes(share.files),
     c: new Date(share.createdAt).toISOString(),
@@ -202,6 +205,7 @@ function toTrendingShare(entry: SearchEntry): TrendingShare {
     previewFileId: entry.p?.id,
     previewKind: entry.p?.k,
     hasVideo: entry.p?.video === true,
+    fileNames: entry.fn,
     fileCount: entry.fc,
     size: entry.s,
     createdAt: entry.c,

@@ -152,8 +152,9 @@ const useStyles = createStyles((theme) => {
       filter: "blur(2px) brightness(0.5)",
     },
 
-    // File-only shares have no image to blur; show a centered document glyph
-    // instead so the card still reads as a share.
+    // File-only shares have no image to blur; list a few file names instead so
+    // the card still reads as a share. Falls back to a document glyph when the
+    // name list is unavailable.
     fileFallback: {
       position: "absolute",
       inset: 0,
@@ -162,6 +163,38 @@ const useStyles = createStyles((theme) => {
       justifyContent: "center",
       color: "rgba(255, 255, 255, 0.32)",
       pointerEvents: "none",
+    },
+
+    fileList: {
+      position: "absolute",
+      inset: 0,
+      display: "flex",
+      flexDirection: "column",
+      justifyContent: "center",
+      gap: 6,
+      // Leave room for the badges at the top and the share body at the bottom.
+      padding: "42px 12px 76px",
+      overflow: "hidden",
+      pointerEvents: "none",
+      backgroundColor:
+        theme.colorScheme === "dark" ? theme.colors.dark[7] : "#1f2937",
+      color: "white",
+    },
+
+    fileRow: {
+      display: "flex",
+      alignItems: "center",
+      gap: 6,
+      color: "rgba(255, 255, 255, 0.9)",
+      fontSize: theme.fontSizes.xs,
+      lineHeight: 1.2,
+    },
+
+    fileName: {
+      minWidth: 0,
+      whiteSpace: "nowrap",
+      overflow: "hidden",
+      textOverflow: "ellipsis",
     },
 
     scrim: {
@@ -464,6 +497,25 @@ const TrendingToday = ({
                     fetchPriority={index < 4 ? "high" : undefined}
                     onError={handleShareThumbnailError}
                   />
+                ) : item.fileNames?.length ? (
+                  <Box
+                    component="span"
+                    className={classes.fileList}
+                    aria-hidden
+                  >
+                    {item.fileNames.slice(0, 3).map((fileName, fileIndex) => (
+                      <Box
+                        component="span"
+                        className={classes.fileRow}
+                        key={`${fileName}-${fileIndex}`}
+                      >
+                        <TbFile size={14} aria-hidden />
+                        <Box component="span" className={classes.fileName}>
+                          {fileName}
+                        </Box>
+                      </Box>
+                    ))}
+                  </Box>
                 ) : (
                   <Box
                     component="span"
