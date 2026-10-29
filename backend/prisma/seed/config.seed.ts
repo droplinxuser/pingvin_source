@@ -174,6 +174,14 @@ export const configVariables = {
       type: "number",
       defaultValue: "9",
     },
+    // Largest selection (in bytes) served as one streamed ZIP. Shares above
+    // this fall back to per-file downloads instead of a huge uncacheable
+    // stream. Kept in step with the per-file cap.
+    maxZipSize: {
+      type: "filesize",
+      defaultValue: "512000000",
+      secret: false,
+    },
     chunkSize: {
       type: "filesize",
       defaultValue: "10000000",

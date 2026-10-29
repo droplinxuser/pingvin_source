@@ -38,7 +38,6 @@ import useTranslate from "../../../hooks/useTranslate.hook";
 import shareService from "../../../services/share.service";
 import { Share as ShareType, ShareSeo } from "../../../types/share.type";
 import toast from "../../../utils/toast.util";
-import { getBaseName } from "../../../utils/file.util";
 import { byteToHumanSizeString } from "../../../utils/fileSize.util";
 import {
   setNoStoreHeaders,
@@ -50,6 +49,7 @@ import { fetchShareSeo } from "../../../utils/seo.server.util";
 import {
   buildBreadcrumbList,
   buildCollectionPage,
+  buildFileListJsonLd,
   getShareContentKinds,
   getShareFileNames,
   getShareSubject,
@@ -271,23 +271,7 @@ const SharePage = ({
             datePublished: seo.createdAt,
             dateModified: seo.updatedAt,
             image: seo.thumbnailUrl,
-            mainEntity: {
-              "@type": "ItemList",
-              // The SEO payload samples the first 50 files; keep the declared
-              // count equal to the emitted entries.
-              numberOfItems: (seo.files ?? []).length,
-              itemListElement: (seo.files ?? []).map((file, position) => ({
-                "@type": "ListItem",
-                position: position + 1,
-                name: getBaseName(file.name),
-                // A nested item keeps the entry complete for rich-result
-                // consumers without pointing at a non-indexable API URL.
-                item: {
-                  "@type": "DigitalDocument",
-                  name: getBaseName(file.name),
-                },
-              })),
-            },
+            mainEntity: buildFileListJsonLd(seo.files ?? []),
           }),
         ]
       : undefined;

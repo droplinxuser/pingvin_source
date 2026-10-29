@@ -68,6 +68,19 @@ export const getShareFileUrl = (
   return `/api/shares/${shareId}/files/${fileId}${query ? `?${query}` : ""}`;
 };
 
+export const getShareZipUrl = (
+  shareId: string,
+  options: { recipientId?: string; fileIds?: string[] } = {},
+): string => {
+  const params = new URLSearchParams();
+  if (options.recipientId) params.set("recipient", options.recipientId);
+  if (options.fileIds?.length)
+    params.set("files", options.fileIds.join(","));
+
+  const query = params.toString();
+  return `/api/shares/${shareId}/files/zip${query ? `?${query}` : ""}`;
+};
+
 export const filterDuplicateFiles = <T extends File>(
   newFiles: T[],
   existingFilesList: Array<{

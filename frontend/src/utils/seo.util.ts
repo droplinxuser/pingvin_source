@@ -105,6 +105,45 @@ export const buildItemList = (
   })),
 });
 
+export type SeoFileEntry = {
+  id?: string;
+  name: string;
+  size?: string;
+  createdAt?: string;
+};
+
+/**
+ * Richer `ItemList` for a share's file list. Every entry describes the file
+ * through a nested `DigitalDocument` with its identifier, MIME type, byte size
+ * and creation date, so search engines can build richer file/media snippets
+ * without pointing at a non-indexable API URL.
+ */
+export const buildFileListJsonLd = (files: SeoFileEntry[]) => ({
+  "@type": "ItemList",
+  numberOfItems: files.length,
+  itemListElement: files.map((file, index) => {
+    const name = getBaseName(file.name);
+    const bytes = parseInt(file.size ?? "", 10);
+    return {
+      "@type": "ListItem",
+      position: index + 1,
+      name,
+      item: {
+        "@type": "DigitalDocument",
+        name,
+        ...(file.id ? { identifier: file.id } : {}),
+        encodingFormat: getFileMimeType(file.name),
+        ...(Number.isFinite(bytes) && bytes > 0
+          ? { contentSize: `${bytes} B` }
+          : {}),
+        ...(file.createdAt
+          ? { dateCreated: file.createdAt, dateModified: file.createdAt }
+          : {}),
+      },
+    };
+  }),
+});
+
 /**
  * Most shares have no owner-written name. Derive a stable, human-readable
  * label from the folder or first file instead of showing the random share id

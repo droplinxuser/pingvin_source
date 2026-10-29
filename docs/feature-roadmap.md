@@ -41,19 +41,20 @@ workflow** (search, bulk actions, analytics, API) rather than core sharing.
 
 ### P0 — finish the creator workflow (small, high leverage)
 
-1. **Bulk selection in the file list.** Add an optional checkbox column and
-   reuse `DownloadAllButton`'s sequential download loop for the selected set.
-   This is the single most requested gofile/bunkr interaction for multi-file
-   shares and needs no schema change. Keep it behind a "Select" toggle so the
-   default table stays uncluttered.
+1. **(Done.) Bulk selection in the file list.** The share table has an optional
+   "Select" toggle that adds a checkbox column. Selection is shared with the
+   sequential download loop (`DownloadAllButton`), so a selected set can be
+   downloaded as one streamed ZIP when it fits `share.maxZipSize` and falls
+   back to per-file downloads otherwise.
 2. **Share-level download counters in Valkey.** Record `downloads` per share
    and per file in the existing `MetricsService`/`TrendingService` pattern
    (hourly buckets, 30-day TTL), then show totals on the owner's share page.
    Do **not** add SQLite columns; Valkey already owns ephemeral counters and
    the fork's rule is "Valkey first".
-3. **Structured data for file lists.** `ItemList` is already emitted for
-   shares; add `dateModified` and `contentSize` per `DigitalDocument` entry so
-   media/file results can earn richer snippets. Low risk, no storage.
+3. **(Done.) Structured data for file lists.** The share `ItemList` exposes a
+   nested `DigitalDocument` per file with `identifier`, `encodingFormat`,
+   `contentSize`, `dateCreated` and `dateModified`. The backend SEO payload now
+   selects each file's `size` and `createdAt`. Low risk, no storage.
 4. **"Copy link" per file.** Before shipping, decide the hotlink policy: a
    pasted direct URL currently redirects to the share page because the referrer
    check fails. Either allow no-referrer direct GETs for public shares or make
@@ -63,12 +64,13 @@ workflow** (search, bulk actions, analytics, API) rather than core sharing.
 
 ### P1 — parity features that need a design decision
 
-5. **Streaming ZIP download (no archive on disk).** Upstream's archive builder
-   was removed for storage reasons, but a streamed ZIP (archiver piped to the
-   response, with Range disabled) gives users the album download they expect
-   without keeping `archive.zip` around. Reuse the existing per-file guards and
-   size checks; cap the streamed selection to a sane size (for example 2 GB) and
-   keep per-file downloads for larger sets.
+5. **(Done.) Streaming ZIP download (no archive on disk).** `GET
+   /api/shares/:id/files/zip` builds the archive on the fly with `archiver`
+   (local files and S3 both stream live; no `archive.zip` is written). An
+   optional `?files=id,id` selects a subset. Selections larger than
+   `share.maxZipSize` (default 512 MB) are rejected with 413 so the client
+   falls back to per-file downloads; subset responses are `no-store`, full
+   public archives keep the short edge TTL. Range is not offered.
 6. **(Done — server-side fetch, SSRF-guarded.) Remote upload from URL.**
    `POST /api/shares/:id/files/from-url` downloads the http(s) URL on the server
    (`remoteFetch.util.ts`: ports 80/443 only, DNS validated and pinned to a

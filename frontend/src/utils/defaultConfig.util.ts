@@ -63,6 +63,12 @@ export function getDefaultConfig(): Config[] {
       type: "filesize",
     },
     {
+      key: "share.maxZipSize",
+      value: "512000000",
+      defaultValue: "512000000",
+      type: "filesize",
+    },
+    {
       key: "share.chunkSize",
       value: "10000000",
       defaultValue: "10000000",

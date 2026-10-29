@@ -451,11 +451,7 @@ export class S3FileService {
     });
   }
 
-  async getZip(shareId: string) {
-    const files = await this.prisma.file.findMany({
-      where: { shareId },
-    });
-
+  async getZip(shareId: string, files: { id: string; name: string }[]) {
     if (files.length === 0) {
       throw new NotFoundException(`No files found for share ${shareId}`);
     }

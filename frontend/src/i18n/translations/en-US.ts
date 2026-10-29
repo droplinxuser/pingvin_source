@@ -877,7 +877,10 @@ export default {
   "share.custom.download-all.confirm.title": "Download all files?",
   "share.custom.download-all.confirm.description":
     "Your browser will download {count, plural, one {# file} other {# files}} separately. If it asks to allow multiple downloads, choose Allow so every file can be saved.",
+  "share.custom.download-all.confirm.zip-description":
+    "Download {count, plural, one {# file} other {# files}} as a single ZIP archive.",
   "share.custom.download-all.confirm.button": "Download all",
+  "share.custom.download-all.confirm.zip-button": "Download ZIP",
 
   "share.notify.copied-contents": "File contents copied to clipboard",
   "share.notify.copy-too-big-error": "File is too big to copy to clipboard",
@@ -892,6 +895,14 @@ export default {
   "share.custom.files.search-results": "Showing {shown} of {total} files",
   "share.custom.files.search-empty": "No files match “{query}”.",
   "share.custom.files.clear-search": "Clear search",
+  "share.custom.files.select": "Select",
+  "share.custom.files.select-done": "Done",
+  "share.custom.files.select-all": "Select all",
+  "share.custom.files.clear-selection": "Clear selection",
+  "share.custom.files.select-file": "Select {name}",
+  "share.custom.files.selected-count":
+    "{count, plural, =0 {No files selected} one {# file selected} other {# files selected}}",
+  "share.custom.files.download-selected": "Download selected",
 
   // VirusTotal per-file indicator (fork-only)
   "share.custom.virustotal.safe": "Scanned by VirusTotal — no threats found",

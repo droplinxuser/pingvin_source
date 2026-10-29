@@ -4,8 +4,10 @@ import {
   HttpStatus,
   Injectable,
   InternalServerErrorException,
+  Logger,
   NotFoundException,
 } from "@nestjs/common";
+import * as archiver from "archiver";
 import * as crypto from "crypto";
 import { createReadStream } from "fs";
 import * as fs from "fs/promises";
@@ -26,6 +28,7 @@ import { File } from "./file.service";
 
 @Injectable()
 export class LocalFileService {
+  private readonly logger = new Logger(LocalFileService.name);
   // Bytes appended by uploads that have not produced a File row yet. Without
   // this, several parallel files can each pass the share/account quota check
   // while together exceeding it. The maps are bounded and process-local; the
@@ -342,23 +345,47 @@ export class LocalFileService {
     });
   }
 
-  async getZip(shareId: string): Promise<Readable> {
-    return new Promise((resolve, reject) => {
-      const zipStream = createReadStream(
-        `${SHARE_DIRECTORY}/${shareId}/archive.zip`,
-      );
-
-      zipStream.on("error", (err: NodeJS.ErrnoException) => {
-        reject(
-          err.code === "ENOENT"
-            ? new NotFoundException(this.i18n.t("file.notFound"))
-            : new InternalServerErrorException(err),
-        );
-      });
-
-      zipStream.on("open", () => {
-        resolve(zipStream);
-      });
+  /**
+   * Streams the given files into a ZIP archive without ever writing it to disk.
+   * `archiver` reads each file lazily, so memory stays flat even for a large
+   * selection; the caller caps the total size before calling this.
+   */
+  async getZip(
+    shareId: string,
+    files: { id: string; name: string }[],
+  ): Promise<Readable> {
+    const archive = archiver("zip", {
+      zlib: { level: parseInt(this.config.get("share.zipCompressionLevel")) },
     });
+    archive.on("error", (err) => this.logger.error("Archive error", err));
+
+    // A File row can outlive its bytes (partial cleanup/disk repair). Check the
+    // files in parallel and skip the missing ones instead of letting a single
+    // entry fail the whole archive.
+    const present = await Promise.all(
+      files.map(async (file) => {
+        try {
+          await fs.stat(this.getSafeFilePath(shareId, file.id));
+          return file;
+        } catch (error) {
+          this.logger.warn(
+            `Skipping missing file ${file.id} in ZIP for share ${shareId}: ${String(
+              error,
+            )}`,
+          );
+          return null;
+        }
+      }),
+    );
+
+    for (const file of present) {
+      if (file)
+        archive.file(this.getSafeFilePath(shareId, file.id), {
+          name: file.name,
+        });
+    }
+
+    void archive.finalize();
+    return archive;
   }
 }

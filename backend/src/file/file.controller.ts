@@ -4,7 +4,6 @@ import {
   Delete,
   Get,
   HttpStatus,
-  NotFoundException,
   Param,
   Post,
   Query,
@@ -25,6 +24,7 @@ import {
   getImageCacheHeaders,
   getZipCacheHeaders,
   isNotModified,
+  NO_STORE_HEADERS,
 } from "src/utils/cache.util";
 import { getFileMimeType } from "src/utils/mime.util";
 import { isRequestFromApp, redirectToSharePage } from "src/utils/referrer.util";
@@ -167,6 +167,7 @@ export class FileController {
     @Res({ passthrough: true }) res: Response,
     @Param("shareId") shareId: string,
     @Query("recipient") recipientId?: string,
+    @Query("files") files?: string,
   ) {
     const appUrl = this.config.get("general.appUrl");
     if (!isRequestFromApp(req, appUrl)) {
@@ -174,26 +175,33 @@ export class FileController {
       return;
     }
 
-    // A legacy archive.zip is only valid while the share still advertises it.
-    // Otherwise a removed/edited file could keep being served from the old
-    // snapshot. S3 builds the archive live from the current objects.
-    if (
-      (req as FileRequest).shareStorageProvider !== "S3" &&
-      (req as FileRequest).shareIsZipReady !== true
-    ) {
-      throw new NotFoundException();
-    }
+    // An optional comma-separated list streams only the selected files, which
+    // backs the bulk-selection download. Ids that do not belong to the share
+    // are simply not matched by the query.
+    const fileIds = files
+      ? [
+          ...new Set(
+            files.split(",").filter((id) => id && VALID_ID_REGEX.test(id)),
+          ),
+        ]
+      : undefined;
 
     const zipStream = await this.fileService.getZip(
       shareId,
       (req as FileRequest).shareStorageProvider,
+      fileIds,
     );
 
     res.set({
       "Content-Type": "application/zip",
       "Content-Disposition": contentDisposition(`${shareId}.zip`),
     });
-    res.set(getZipCacheHeaders((req as FileRequest).shareIsPublic === true));
+    // The archive is generated on the fly; a selected subset is never cached.
+    res.set(
+      fileIds
+        ? NO_STORE_HEADERS
+        : getZipCacheHeaders((req as FileRequest).shareIsPublic === true),
+    );
 
     void this.fileService.notifyRecipientDownload(
       shareId,

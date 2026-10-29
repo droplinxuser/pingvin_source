@@ -104,7 +104,7 @@ export type ShareSeo = {
   updatedAt?: Date;
   fileCount?: number;
   size?: number;
-  files?: { name: string }[];
+  files?: { id?: string; name: string; size?: string; createdAt?: Date }[];
   thumbnailUrl?: string;
 };
 
@@ -712,7 +712,7 @@ export class ShareService {
         },
         reverseShare: { select: { publicAccess: true } },
         files: {
-          select: { id: true, name: true },
+          select: { id: true, name: true, size: true, createdAt: true },
           orderBy: { name: "asc" },
           // Enough file names to find a preview and still keep the query
           // small for shares with thousands of files.

@@ -1,6 +1,9 @@
 import {
   ActionIcon,
+  Anchor,
   Box,
+  Button,
+  Checkbox,
   Group,
   Paper,
   Skeleton,
@@ -15,6 +18,7 @@ import { useModals } from "@mantine/modals";
 import {
   Dispatch,
   SetStateAction,
+  useCallback,
   useDeferredValue,
   useEffect,
   useMemo,
@@ -22,6 +26,7 @@ import {
   useState,
 } from "react";
 import {
+  TbChecklist,
   TbClipboard,
   TbDownload,
   TbEye,
@@ -54,6 +59,7 @@ import toast from "../../utils/toast.util";
 import TableSortIcon, { TableSort } from "../core/SortIcon";
 import { HoverTip } from "../core/HoverTip";
 import FileName from "../core/FileName";
+import DownloadAllButton from "./DownloadAllButton";
 import VirusTotalBadge from "./VirusTotalBadge";
 
 const ARCHIVE_EXTENSION = /\.(zip|rar|7z|tar|gz|bz2|xz)$/i;
@@ -86,18 +92,24 @@ const getFileVisual = (name: string) => {
   return { icon: <TbFile size={18} />, color: "gray" };
 };
 
-const gridStyle = (theme: MantineTheme) => ({
+// The optional selection checkbox adds a narrow leading column. The grid is
+// shared by the header and every row so the columns never drift apart.
+const gridStyle = (theme: MantineTheme, selectMode: boolean) => ({
   display: "grid",
-  gridTemplateColumns: "34px minmax(0, 1fr) 70px auto",
+  gridTemplateColumns: selectMode
+    ? "22px 34px minmax(0, 1fr) 70px auto"
+    : "34px minmax(0, 1fr) 70px auto",
   alignItems: "center",
   columnGap: theme.spacing.sm,
   [theme.fn.smallerThan("sm")]: {
-    gridTemplateColumns: "34px minmax(0, 1fr) auto",
+    gridTemplateColumns: selectMode
+      ? "22px 34px minmax(0, 1fr) auto"
+      : "34px minmax(0, 1fr) auto",
   },
 });
 
-const rowStyle = (theme: MantineTheme) => ({
-  ...gridStyle(theme),
+const rowStyle = (theme: MantineTheme, selectMode: boolean) => ({
+  ...gridStyle(theme, selectMode),
   transition: "background-color 120ms ease",
   "&:hover": {
     backgroundColor:
@@ -116,10 +128,20 @@ const toolbarStyle = (theme: MantineTheme) => ({
 const FileListHeader = ({
   sort,
   setSort,
+  selectMode = false,
+  allSelected = false,
+  isIndeterminate = false,
+  onToggleAll,
 }: {
   sort?: TableSort;
   setSort?: Dispatch<SetStateAction<TableSort>>;
+  selectMode?: boolean;
+  allSelected?: boolean;
+  isIndeterminate?: boolean;
+  onToggleAll?: () => void;
 }) => {
+  const t = useTranslate();
+
   return (
     <Box
       px="md"
@@ -136,7 +158,16 @@ const FileListHeader = ({
         }`,
       })}
     >
-      <Box sx={gridStyle}>
+      <Box sx={(theme) => gridStyle(theme, selectMode)}>
+        {selectMode && (
+          <Checkbox
+            size="xs"
+            aria-label={t("share.custom.files.select-all")}
+            checked={allSelected}
+            indeterminate={isIndeterminate}
+            onChange={onToggleAll}
+          />
+        )}
         <Box component="span" aria-hidden />
         <Group spacing={4} noWrap>
           <Text size="xs" weight={700} tt="uppercase" color="dimmed">
@@ -196,6 +227,10 @@ const FileList = ({
   // time; an observer below the list reveals the next batch on scroll.
   const [visibleCount, setVisibleCount] = useState(FILE_BATCH_SIZE);
   const [search, setSearch] = useState("");
+  // Bulk selection stays off until the visitor opts in, so the default table
+  // keeps its uncluttered layout.
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const moreRef = useRef<HTMLDivElement>(null);
   // Typing stays responsive even while a very long list is filtered; the
   // deferred value lags one paint behind the controlled input.
@@ -237,6 +272,13 @@ const FileList = ({
     setVisibleCount(FILE_BATCH_SIZE);
   }, [filteredFiles]);
 
+  // A new file set (share changed or a file removed) invalidates any previous
+  // selection.
+  useEffect(() => {
+    setSelectedIds(new Set());
+    setSelectMode(false);
+  }, [files]);
+
   useEffect(() => {
     if (visibleCount >= filteredFiles.length) return;
     const element = moreRef.current;
@@ -260,8 +302,42 @@ const FileList = ({
     return () => observer.disconnect();
   }, [filteredFiles.length, visibleCount]);
 
+  const toggleFile = useCallback((id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const allFilteredSelected =
+    filteredFiles.length > 0 &&
+    filteredFiles.every((file) => selectedIds.has(file.id));
+  const someFilteredSelected = filteredFiles.some((file) =>
+    selectedIds.has(file.id),
+  );
+
+  const toggleSelectAll = useCallback(() => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (filteredFiles.every((file) => next.has(file.id))) {
+        filteredFiles.forEach((file) => next.delete(file.id));
+      } else {
+        filteredFiles.forEach((file) => next.add(file.id));
+      }
+      return next;
+    });
+  }, [filteredFiles]);
+
+  const selectedFiles = useMemo(
+    () => (files ?? []).filter((file) => selectedIds.has(file.id)),
+    [files, selectedIds],
+  );
+
   const visibleFiles = filteredFiles.slice(0, visibleCount);
   const showSearch = (files?.length ?? 0) >= SEARCH_MIN_FILES || !!search;
+  const showToolbar = (files?.length ?? 0) > 1;
 
   return (
     <Paper
@@ -270,34 +346,93 @@ const FileList = ({
       radius="md"
       sx={{ overflow: "hidden" }}
     >
-      {showSearch && (
+      {showToolbar && (
         <Box px="md" py="xs" sx={toolbarStyle}>
-          <TextInput
-            data-testid="share-file-search"
-            icon={<TbSearch size={16} />}
-            size="xs"
-            value={search}
-            aria-label={t("share.custom.files.search")}
-            placeholder={t("share.custom.files.search-placeholder", {
-              count: files?.length ?? 0,
-            })}
-            onChange={(event) => setSearch(event.currentTarget.value)}
-            rightSection={
-              search ? (
-                <ActionIcon
-                  size={18}
-                  radius="xl"
-                  variant="subtle"
-                  color="gray"
-                  aria-label={t("share.custom.files.clear-search")}
-                  onClick={() => setSearch("")}
-                >
-                  <TbX size={12} />
-                </ActionIcon>
-              ) : undefined
-            }
-          />
-          {searchTerm && (
+          <Group position="apart" spacing="xs">
+            <Group spacing="xs" noWrap>
+              <Button
+                size="xs"
+                variant={selectMode ? "light" : "subtle"}
+                color={selectMode ? "cyan.9" : "gray"}
+                leftIcon={<TbChecklist size={14} />}
+                aria-pressed={selectMode}
+                onClick={() =>
+                  setSelectMode((mode) => {
+                    if (mode) setSelectedIds(new Set());
+                    return !mode;
+                  })
+                }
+              >
+                {t(
+                  selectMode
+                    ? "share.custom.files.select-done"
+                    : "share.custom.files.select",
+                )}
+              </Button>
+              {selectMode && (
+                <>
+                  <Text
+                    size="xs"
+                    color="dimmed"
+                    aria-live="polite"
+                    data-testid="share-file-selection-count"
+                  >
+                    {t("share.custom.files.selected-count", {
+                      count: selectedIds.size,
+                    })}
+                  </Text>
+                  <Anchor
+                    component="button"
+                    type="button"
+                    size="xs"
+                    onClick={toggleSelectAll}
+                  >
+                    {allFilteredSelected
+                      ? t("share.custom.files.clear-selection")
+                      : t("share.custom.files.select-all")}
+                  </Anchor>
+                </>
+              )}
+            </Group>
+            {selectMode && (
+              <DownloadAllButton
+                shareId={share.id}
+                recipientId={recipientId}
+                files={selectedFiles}
+                labelId="share.custom.files.download-selected"
+                size="xs"
+              />
+            )}
+          </Group>
+          {showSearch && (
+            <TextInput
+              data-testid="share-file-search"
+              icon={<TbSearch size={16} />}
+              size="xs"
+              mt="xs"
+              value={search}
+              aria-label={t("share.custom.files.search")}
+              placeholder={t("share.custom.files.search-placeholder", {
+                count: files?.length ?? 0,
+              })}
+              onChange={(event) => setSearch(event.currentTarget.value)}
+              rightSection={
+                search ? (
+                  <ActionIcon
+                    size={18}
+                    radius="xl"
+                    variant="subtle"
+                    color="gray"
+                    aria-label={t("share.custom.files.clear-search")}
+                    onClick={() => setSearch("")}
+                  >
+                    <TbX size={12} />
+                  </ActionIcon>
+                ) : undefined
+              }
+            />
+          )}
+          {showSearch && searchTerm && (
             <Text
               size="xs"
               color="dimmed"
@@ -314,7 +449,14 @@ const FileList = ({
         </Box>
       )}
 
-      <FileListHeader sort={sort} setSort={setSort} />
+      <FileListHeader
+        sort={sort}
+        setSort={setSort}
+        selectMode={selectMode}
+        allSelected={allFilteredSelected}
+        isIndeterminate={someFilteredSelected && !allFilteredSelected}
+        onToggleAll={toggleSelectAll}
+      />
 
       <Stack spacing={0}>
         {isLoading
@@ -330,7 +472,7 @@ const FileList = ({
                   px="md"
                   py="sm"
                   sx={(theme) => ({
-                    ...rowStyle(theme),
+                    ...rowStyle(theme, selectMode),
                     borderTop:
                       index === 0
                         ? undefined
@@ -341,6 +483,16 @@ const FileList = ({
                           }`,
                   })}
                 >
+                  {selectMode && (
+                    <Checkbox
+                      size="xs"
+                      aria-label={t("share.custom.files.select-file", {
+                        name: getBaseName(file.name),
+                      })}
+                      checked={selectedIds.has(file.id)}
+                      onChange={() => toggleFile(file.id)}
+                    />
+                  )}
                   <ThemeIcon
                     variant="light"
                     color={visual.color}
@@ -474,7 +626,7 @@ const skeletonRows = (count: number) =>
       px="md"
       py="sm"
       sx={(theme) => ({
-        ...rowStyle(theme),
+        ...rowStyle(theme, false),
         borderTop:
           index === 0
             ? undefined
@@ -507,7 +659,7 @@ const skeletonRows = (count: number) =>
 
 export const FileListSkeleton = ({ count = 5 }: { count?: number }) => (
   <Paper withBorder radius="md" sx={{ overflow: "hidden" }}>
-    {count >= SEARCH_MIN_FILES && (
+    {count > 1 && (
       <Box px="md" py="xs" sx={toolbarStyle}>
         <Skeleton height={30} radius="sm" />
       </Box>

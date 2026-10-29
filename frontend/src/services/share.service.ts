@@ -12,7 +12,7 @@ import {
   UpdateShare,
 } from "../types/share.type";
 import { generateUUID } from "../utils/crypto.util";
-import { getShareFileUrl } from "../utils/file.util";
+import { getShareFileUrl, getShareZipUrl } from "../utils/file.util";
 import {
   type UploadProgressHandler,
   withUploadInactivityTimeout,
@@ -223,6 +223,29 @@ const downloadFile = async (
   // The explicit attribute keeps a blocked/pending download from becoming a
   // navigation that reloads the share page or opens extra tabs.
   link.setAttribute("download", fileName || "");
+  link.rel = "noopener";
+  link.style.display = "none";
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+};
+
+/**
+ * Downloads a whole share, or the given subset, as one streamed ZIP. The
+ * browser follows the server's Content-Disposition filename, so no explicit
+ * download name is set here.
+ */
+const downloadZip = async (
+  shareId: string,
+  recipientId?: string,
+  fileIds?: string[],
+) => {
+  const link = document.createElement("a");
+  link.href = `${window.location.origin}${getShareZipUrl(shareId, {
+    recipientId,
+    fileIds,
+  })}`;
+  link.setAttribute("download", "");
   link.rel = "noopener";
   link.style.display = "none";
   document.body.appendChild(link);
@@ -545,6 +568,7 @@ export default {
   isShareIdAvailable,
   isReverseShareTokenAvailable,
   downloadFile,
+  downloadZip,
   removeFile,
   uploadFile,
   uploadFromUrl,

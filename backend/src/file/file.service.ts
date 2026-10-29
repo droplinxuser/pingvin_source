@@ -4,6 +4,7 @@ import {
   Logger,
   BadRequestException,
   NotFoundException,
+  PayloadTooLargeException,
   OnModuleInit,
 } from "@nestjs/common";
 import { CACHE_MANAGER } from "@nestjs/cache-manager";
@@ -198,7 +199,8 @@ export class FileService implements OnModuleInit {
     await fs.mkdir(directory, { recursive: true });
     const tempPath = `${directory}/${fileId}.remote`;
 
-    const maxFileSize = parseInt(this.configService.get("share.maxFileSize")) || 0;
+    const maxFileSize =
+      parseInt(this.configService.get("share.maxFileSize")) || 0;
 
     let result;
     try {
@@ -220,8 +222,8 @@ export class FileService implements OnModuleInit {
       const finalName = this.sanitizeRemoteFileName(
         name || result.fileName || fileNameFromUrl(result.finalUrl),
       );
-      const chunkSize = parseInt(this.configService.get("share.chunkSize")) ||
-        10_000_000;
+      const chunkSize =
+        parseInt(this.configService.get("share.chunkSize")) || 10_000_000;
       const total = Math.max(1, Math.ceil(result.size / chunkSize));
 
       const handle = await fs.open(tempPath, "r");
@@ -229,7 +231,8 @@ export class FileService implements OnModuleInit {
         for (let index = 0; index < total; index++) {
           const length = Math.min(chunkSize, result.size - index * chunkSize);
           const buffer = Buffer.alloc(Math.max(length, 0));
-          if (length > 0) await handle.read(buffer, 0, length, index * chunkSize);
+          if (length > 0)
+            await handle.read(buffer, 0, length, index * chunkSize);
           await this.create(
             buffer.toString("base64"),
             { index, total },
@@ -1187,7 +1190,38 @@ export class FileService implements OnModuleInit {
     ]);
   }
 
-  async getZip(shareId: string, storageProvider?: string): Promise<Readable> {
+  /**
+   * Streams a ZIP built on the fly from the share's current files. The archive
+   * is never written to disk. A selection larger than `share.maxZipSize` is
+   * rejected so one request cannot tie up the server or produce an uncacheable
+   * stream; the client falls back to per-file downloads for larger sets.
+   */
+  async getZip(
+    shareId: string,
+    storageProvider?: string,
+    fileIds?: string[],
+  ): Promise<Readable> {
+    const files = await this.prisma.file.findMany({
+      where: { shareId, ...(fileIds ? { id: { in: fileIds } } : {}) },
+      select: { id: true, name: true, size: true },
+      orderBy: { name: "asc" },
+    });
+    if (files.length === 0)
+      throw new NotFoundException(this.i18n.t("file.notFound"));
+
+    const maxZipSize = parseInt(
+      this.configService.get("share.maxZipSize") || "0",
+      10,
+    );
+    if (maxZipSize > 0) {
+      const total = files.reduce(
+        (sum, file) => sum + (parseInt(file.size, 10) || 0),
+        0,
+      );
+      if (total > maxZipSize)
+        throw new PayloadTooLargeException(this.i18n.t("file.zipTooLarge"));
+    }
+
     const provider =
       storageProvider ??
       (
@@ -1197,7 +1231,7 @@ export class FileService implements OnModuleInit {
         })
       )?.storageProvider;
     const storageService = this.getStorageService(provider);
-    return await storageService.getZip(shareId);
+    return await storageService.getZip(shareId, files);
   }
 
   async notifyRecipientDownload(
