@@ -231,7 +231,9 @@ const CreateUploadModalBody = ({
                 </Stack>
               </Accordion.Panel>
             </Accordion.Item>
-            {options.enableEmailRecepients && (
+            {/* Email recipients and security are member-only; a guest upload
+                only gets the link and a name/description. */}
+            {options.isUserSignedIn && options.enableEmailRecepients && (
               <Accordion.Item value="recipients" sx={{ borderBottom: "none" }}>
                 <Accordion.Control>
                   <FormattedMessage id="upload.modal.accordion.email.title" />
@@ -305,38 +307,40 @@ const CreateUploadModalBody = ({
               </Accordion.Item>
             )}
 
-            <Accordion.Item value="security" sx={{ borderBottom: "none" }}>
-              <Accordion.Control>
-                <FormattedMessage id="upload.modal.accordion.security.title" />
-              </Accordion.Control>
-              <Accordion.Panel>
-                <Stack align="stretch">
-                  {!form.values.restrictToRecipients && (
-                    <PasswordInput
+            {options.isUserSignedIn && (
+              <Accordion.Item value="security" sx={{ borderBottom: "none" }}>
+                <Accordion.Control>
+                  <FormattedMessage id="upload.modal.accordion.security.title" />
+                </Accordion.Control>
+                <Accordion.Panel>
+                  <Stack align="stretch">
+                    {!form.values.restrictToRecipients && (
+                      <PasswordInput
+                        variant="filled"
+                        placeholder={t(
+                          "upload.modal.accordion.security.password.placeholder",
+                        )}
+                        label={t(
+                          "upload.modal.accordion.security.password.label",
+                        )}
+                        autoComplete="new-password"
+                        {...form.getInputProps("password")}
+                      />
+                    )}
+                    <NumberInput
+                      min={1}
+                      type="number"
                       variant="filled"
                       placeholder={t(
-                        "upload.modal.accordion.security.password.placeholder",
+                        "upload.modal.accordion.security.max-views.placeholder",
                       )}
-                      label={t(
-                        "upload.modal.accordion.security.password.label",
-                      )}
-                      autoComplete="new-password"
-                      {...form.getInputProps("password")}
+                      label={t("upload.modal.accordion.security.max-views.label")}
+                      {...form.getInputProps("maxViews")}
                     />
-                  )}
-                  <NumberInput
-                    min={1}
-                    type="number"
-                    variant="filled"
-                    placeholder={t(
-                      "upload.modal.accordion.security.max-views.placeholder",
-                    )}
-                    label={t("upload.modal.accordion.security.max-views.label")}
-                    {...form.getInputProps("maxViews")}
-                  />
-                </Stack>
-              </Accordion.Panel>
-            </Accordion.Item>
+                  </Stack>
+                </Accordion.Panel>
+              </Accordion.Item>
+            )}
           </Accordion>
           <Button type="submit" data-autofocus>
             <FormattedMessage id="common.button.share" />
