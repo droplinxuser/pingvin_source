@@ -6,7 +6,6 @@ import {
   Skeleton,
   Stack,
   Text,
-  ThemeIcon,
   Title,
   UnstyledButton,
 } from "@mantine/core";
@@ -15,6 +14,7 @@ import { ReactNode, useEffect, useRef, useState } from "react";
 import { FormattedMessage, useIntl } from "react-intl";
 import {
   TbCalendar,
+  TbChevronRight,
   TbDatabase,
   TbEye,
   TbFile,
@@ -30,12 +30,10 @@ import RelativeTime from "../core/RelativeTime";
 const ROW_BATCH_SIZE = 20;
 
 const useStyles = createStyles((theme) => {
-  const border =
-    theme.colorScheme === "dark" ? theme.colors.dark[5] : theme.colors.gray[2];
-  const hoverBg =
-    theme.colorScheme === "dark" ? theme.colors.dark[7] : theme.colors.gray[0];
-  const dimmed =
-    theme.colorScheme === "dark" ? theme.colors.dark[2] : theme.colors.gray[6];
+  const dark = theme.colorScheme === "dark";
+  const border = dark ? theme.colors.dark[5] : theme.colors.gray[2];
+  const dimmed = dark ? theme.colors.dark[2] : theme.colors.gray[6];
+  const accent = theme.colors[theme.primaryColor][dark ? 4 : 6];
 
   return {
     root: {
@@ -58,34 +56,39 @@ const useStyles = createStyles((theme) => {
     list: {
       display: "flex",
       flexDirection: "column",
-      gap: theme.spacing.sm,
+      gap: theme.spacing.md,
     },
 
-    // Row content is vertically centered so the icon, title block and metadata
-    // line up instead of hugging the top edge.
+    // Card-like rows: a soft surface that lifts on hover, with the icon,
+    // title block and metadata vertically centered.
     row: {
+      position: "relative",
       display: "flex",
       alignItems: "center",
       gap: theme.spacing.md,
       width: "100%",
-      padding: `${theme.spacing.lg}px ${theme.spacing.lg}px`,
+      padding: `${theme.spacing.md}px ${theme.spacing.md}px ${theme.spacing.md}px ${theme.spacing.md}px`,
       border: `1px solid ${border}`,
-      borderRadius: theme.radius.md,
-      backgroundColor: theme.colorScheme === "dark" ? theme.colors.dark[8] : theme.white,
+      borderRadius: theme.radius.lg,
+      backgroundColor: dark ? theme.colors.dark[7] : theme.white,
+      boxShadow: dark
+        ? "0 1px 2px rgba(0, 0, 0, 0.4)"
+        : "0 1px 2px rgba(16, 24, 40, 0.04)",
       textAlign: "left",
-      transition: "border-color 120ms ease, background-color 120ms ease",
+      transition:
+        "transform 120ms ease, border-color 120ms ease, box-shadow 120ms ease",
 
       "&:hover": {
-        borderColor:
-          theme.colors[theme.primaryColor][
-            theme.colorScheme === "dark" ? 5 : 4
-          ],
-        backgroundColor: hoverBg,
+        transform: "translateY(-1px)",
+        borderColor: theme.colors[theme.primaryColor][dark ? 5 : 4],
+        boxShadow: dark
+          ? "0 8px 20px rgba(0, 0, 0, 0.5)"
+          : "0 8px 20px rgba(16, 24, 40, 0.08)",
       },
 
       "&:focus-visible": {
         outline: `2px solid ${
-          theme.colors[theme.primaryColor][theme.colorScheme === "dark" ? 5 : 4]
+          theme.colors[theme.primaryColor][dark ? 5 : 4]
         }`,
         outlineOffset: 2,
       },
@@ -96,8 +99,27 @@ const useStyles = createStyles((theme) => {
       },
     },
 
-    icon: {
+    // Rounded gradient tile behind the file glyph.
+    iconTile: {
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
       flexShrink: 0,
+      width: 46,
+      height: 46,
+      borderRadius: theme.radius.md,
+      color: accent,
+      background: dark
+        ? `linear-gradient(135deg, ${theme.colors.dark[6]} 0%, ${theme.colors.dark[5]} 100%)`
+        : `linear-gradient(135deg, ${theme.colors[theme.primaryColor][0]} 0%, ${theme.colors.gray[1]} 100%)`,
+
+      "& svg": {
+        transition: "transform 120ms ease",
+      },
+
+      ".mantine-UnstyledButton-root:hover & svg": {
+        transform: "scale(1.08)",
+      },
     },
 
     main: {
@@ -105,11 +127,11 @@ const useStyles = createStyles((theme) => {
       minWidth: 0,
       display: "flex",
       flexDirection: "column",
-      gap: theme.spacing.sm,
+      gap: 4,
     },
 
     name: {
-      fontSize: theme.fontSizes.lg,
+      fontSize: theme.fontSizes.md,
       fontWeight: 700,
       lineHeight: 1.35,
       overflowWrap: "anywhere",
@@ -122,11 +144,11 @@ const useStyles = createStyles((theme) => {
       overflowWrap: "anywhere",
     },
 
-    // Up to a handful of file names, each on its own line with a clear gap.
     files: {
       display: "flex",
       flexDirection: "column",
       gap: 6,
+      marginTop: 2,
     },
 
     fileLine: {
@@ -151,24 +173,37 @@ const useStyles = createStyles((theme) => {
       flexWrap: "wrap",
       alignItems: "center",
       justifyContent: "flex-end",
-      columnGap: theme.spacing.lg,
+      columnGap: theme.spacing.md,
       rowGap: theme.spacing.sm,
       color: dimmed,
-      fontSize: theme.fontSizes.sm,
+      fontSize: theme.fontSizes.xs,
       lineHeight: 1.2,
       whiteSpace: "nowrap",
 
       [theme.fn.smallerThan("sm")]: {
         justifyContent: "flex-start",
         width: "100%",
-        paddingLeft: 38,
+        paddingLeft: 54,
       },
     },
 
     metaItem: {
       display: "inline-flex",
       alignItems: "center",
-      gap: 6,
+      gap: 5,
+      padding: "3px 9px",
+      borderRadius: theme.radius.xl,
+      backgroundColor: dark ? theme.colors.dark[6] : theme.colors.gray[0],
+    },
+
+    chevron: {
+      flexShrink: 0,
+      color: dark ? theme.colors.dark[3] : theme.colors.gray[4],
+      display: "flex",
+
+      [theme.fn.smallerThan("sm")]: {
+        display: "none",
+      },
     },
   };
 });
@@ -300,10 +335,10 @@ const ShareList = ({
     <div className={classes.list} aria-hidden>
       {Array.from({ length: count }, (_, index) => (
         <Box key={index} className={classes.row} sx={{ pointerEvents: "none" }}>
-          <Skeleton height={28} width={28} radius="md" className={classes.icon} />
-          <Stack spacing={10} className={classes.main}>
-            <Skeleton height={18} width="50%" radius="sm" />
-            <Skeleton height={13} width="78%" radius="sm" />
+          <Skeleton height={46} width={46} radius="md" />
+          <Stack spacing={8} sx={{ flex: 1 }}>
+            <Skeleton height={15} width="45%" radius="sm" />
+            <Skeleton height={12} width="65%" radius="sm" />
           </Stack>
         </Box>
       ))}
@@ -343,15 +378,9 @@ const ShareList = ({
                 className={classes.row}
                 title={name}
               >
-                <ThemeIcon
-                  className={classes.icon}
-                  variant="light"
-                  size={34}
-                  radius="md"
-                  aria-hidden
-                >
-                  <TbFile size={20} />
-                </ThemeIcon>
+                <Box component="span" className={classes.iconTile} aria-hidden>
+                  <TbFile size={22} />
+                </Box>
 
                 <Box component="span" className={classes.main}>
                   <Text component="span" className={classes.name} lineClamp={2}>
@@ -397,19 +426,19 @@ const ShareList = ({
                 <Box component="span" className={classes.meta}>
                   {!!item.fileCount && (
                     <Box component="span" className={classes.metaItem}>
-                      <TbFiles size={16} aria-hidden />
+                      <TbFiles size={14} aria-hidden />
                       {t("trending.custom.files", { count: item.fileCount })}
                     </Box>
                   )}
                   {!!item.size && (
                     <Box component="span" className={classes.metaItem}>
-                      <TbDatabase size={16} aria-hidden />
+                      <TbDatabase size={14} aria-hidden />
                       {byteToHumanSizeString(item.size)}
                     </Box>
                   )}
                   {!!item.createdAt && (
                     <Box component="span" className={classes.metaItem}>
-                      <TbCalendar size={16} aria-hidden />
+                      <TbCalendar size={14} aria-hidden />
                       <FormattedMessage
                         id="trending.custom.uploaded"
                         values={{
@@ -423,9 +452,13 @@ const ShareList = ({
                     className={classes.metaItem}
                     aria-label={t("trending.custom.views", { count: item.views })}
                   >
-                    <TbEye size={16} aria-hidden />
+                    <TbEye size={14} aria-hidden />
                     {views}
                   </Box>
+                </Box>
+
+                <Box component="span" className={classes.chevron} aria-hidden>
+                  <TbChevronRight size={18} />
                 </Box>
               </UnstyledButton>
             );

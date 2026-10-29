@@ -35,7 +35,7 @@ const RECENT_SCAN_LIMIT = 1000;
 const RECENT_MAX_RESULT = 200;
 const RECENT_CACHE_MS = 30 * 1000;
 // File-only cards list a couple of names over the thumbnail area.
-const MAX_CARD_FILE_NAMES = 6;
+const MAX_CARD_FILE_NAMES = 3;
 // Shares viewed before the cache window expanded have no retained daily score.
 // They are seeded once from SQLite; retries are throttled if the database is
 // unavailable during the first read.
