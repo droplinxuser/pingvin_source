@@ -86,9 +86,16 @@ const UploadFromUrlButton = ({
       onFiles([file]);
       toast.success(t("upload.url.notify.added", { name: file.name }));
       close();
-    } catch {
-      // A CORS failure or a non-2xx response lands here.
-      toast.error(t("upload.url.error.fetch"));
+    } catch (error) {
+      // A cross-origin (CORS) failure rejects with a TypeError before the body
+      // can be read; anything else is a bad/unavailable link.
+      toast.error(
+        t(
+          error instanceof TypeError
+            ? "upload.url.error.cors"
+            : "upload.url.error.fetch",
+        ),
+      );
     } finally {
       setLoading(false);
     }

@@ -717,11 +717,13 @@ export default {
   "upload.url.placeholder": "https://example.com/file.zip",
   "upload.url.add": "Add to upload",
   "upload.url.hint":
-    "Direct links are downloaded by your own browser, so the server never connects to the host and its IP stays hidden. MediaFire and Bunkr links are resolved by the server with SSRF protections. Only public http(s) URLs work.",
+    "The file is downloaded by your own browser and uploaded from here, so the server never connects to the host and its IP stays hidden. This means the host must allow cross-origin (CORS) downloads — if a link is blocked, download the file and upload it directly. MediaFire and Bunkr links are resolved by the server instead. Only public http(s) URLs work.",
   "upload.url.notify.added": "Queued {name} from URL",
   "upload.url.error.invalid": "Enter a valid http(s) URL.",
   "upload.url.error.fetch":
-    "Couldn't download this URL in your browser. The host may block cross-origin downloads (CORS) or the link may be invalid.",
+    "Couldn't download this URL. The link may be invalid or temporarily unavailable.",
+  "upload.url.error.cors":
+    "This host doesn't allow browser downloads (CORS), so the file can't be fetched here. Use a direct link from a host that allows it, download the file and upload it directly, or paste a MediaFire/Bunkr link.",
 
   // FileList.tsx
   "upload.filelist.name": "Name",
