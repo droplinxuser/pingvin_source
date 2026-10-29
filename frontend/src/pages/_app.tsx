@@ -17,7 +17,7 @@ import type { AppProps } from "next/app";
 import dynamic from "next/dynamic";
 import Head from "next/head";
 import { useRouter } from "next/router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { FormattedMessage, IntlProvider } from "react-intl";
 import Header from "../components/header/Header";
 import { ConfigContext } from "../hooks/config.hook";
@@ -217,27 +217,32 @@ function App({ Component, pageProps }: AppProps) {
       ? themeColorSchemeRaw
       : "system";
 
-  const adminTheme: MantineThemeOverride = {
-    ...(effectivePrimaryHex
-      ? {
-          colors: {
-            adminPrimary: createMantineScaleFromHex(effectivePrimaryHex),
-          },
-        }
-      : {}),
-    primaryColor: themePrimaryColor,
-    defaultRadius: themeRadius,
-  };
+  // The admin color scale walks every channel ten times. Rebuilding it on
+  // each render (notifications, modals and user restoration all re-render App)
+  // is wasted work; only a theme config or color-scheme change needs a new one.
+  const mergedTheme = useMemo<MantineThemeOverride>(() => {
+    const adminTheme: MantineThemeOverride = {
+      ...(effectivePrimaryHex
+        ? {
+            colors: {
+              adminPrimary: createMantineScaleFromHex(effectivePrimaryHex),
+            },
+          }
+        : {}),
+      primaryColor: themePrimaryColor,
+      defaultRadius: themeRadius,
+    };
 
-  const mergedTheme: MantineThemeOverride = {
-    ...globalStyle,
-    ...adminTheme,
-    colorScheme,
-    colors: {
-      ...(globalStyle.colors ?? {}),
-      ...(adminTheme.colors ?? {}),
-    },
-  };
+    return {
+      ...globalStyle,
+      ...adminTheme,
+      colorScheme,
+      colors: {
+        ...(globalStyle.colors ?? {}),
+        ...(adminTheme.colors ?? {}),
+      },
+    };
+  }, [colorScheme, effectivePrimaryHex, themePrimaryColor, themeRadius]);
 
   // Version the service worker URL so browsers fetch the new worker even if
   // Cloudflare or the browser has cached /sw.js from a previous deployment.
