@@ -39,6 +39,12 @@ import {
   detectFileHost,
   resolveFileHost,
 } from "src/utils/fileHosts.util";
+import {
+  MediaDownloadError,
+  detectMediaHost,
+  downloadMediaWithYtDlp,
+  isYtDlpAvailable,
+} from "src/utils/mediaHosts.util";
 import { removeVirusTotalResult } from "src/virustotal/virustotalReport.util";
 import { SAFE_FILE_NAME } from "./dto/upload.dto";
 import { DATA_DIRECTORY, SHARE_DIRECTORY } from "src/constants";
@@ -216,28 +222,13 @@ export class FileService implements OnModuleInit {
       const finalName = this.sanitizeRemoteFileName(
         name || result.fileName || fileNameFromUrl(result.finalUrl),
       );
-      const chunkSize =
-        parseInt(this.configService.get("share.chunkSize")) || 10_000_000;
-      const total = Math.max(1, Math.ceil(result.size / chunkSize));
-
-      const handle = await fs.open(tempPath, "r");
-      try {
-        for (let index = 0; index < total; index++) {
-          const length = Math.min(chunkSize, result.size - index * chunkSize);
-          const buffer = Buffer.alloc(Math.max(length, 0));
-          if (length > 0)
-            await handle.read(buffer, 0, length, index * chunkSize);
-          await this.create(
-            buffer.toString("base64"),
-            { index, total },
-            { id: fileId, name: finalName },
-            shareId,
-          );
-        }
-      } finally {
-        await handle.close();
-      }
-
+      await this.storeChunkedFile(
+        shareId,
+        fileId,
+        tempPath,
+        result.size,
+        finalName,
+      );
       return { id: fileId, name: finalName };
     } finally {
       await fs.rm(tempPath, { force: true }).catch(() => undefined);
@@ -252,7 +243,12 @@ export class FileService implements OnModuleInit {
    * URL still goes through the SSRF-guarded downloader.
    */
   async importFromUrl(shareId: string, url: string, name?: string) {
-    if (!detectFileHost(url))
+    // A host is imported either by a page resolver (file hosts) or by the
+    // yt-dlp media extractor. Anything else stays browser-only: the server
+    // never fetches an arbitrary URL, which keeps its SSRF surface minimal.
+    const fileHost = detectFileHost(url);
+    const mediaHost = fileHost ? null : detectMediaHost(url);
+    if (!fileHost && !mediaHost)
       throw new BadRequestException(
         this.i18n.t("file.remoteHostResolveFailed"),
       );
@@ -266,6 +262,8 @@ export class FileService implements OnModuleInit {
     });
     if (share?.uploadLocked)
       throw new BadRequestException(this.i18n.t("file.alreadyCompleted"));
+
+    if (mediaHost) return this.importMediaFromUrl(shareId, url, name);
 
     let targets: { url: string; name?: string }[];
     try {
@@ -290,6 +288,103 @@ export class FileService implements OnModuleInit {
       }
     }
     return { files };
+  }
+
+  /**
+   * Imports a single media item (video/audio) from an allowlisted platform via
+   * yt-dlp. yt-dlp writes the file into a per-file temp directory next to the
+   * share; the bytes are then fed through the same chunk pipeline as every
+   * other upload, so quota, size limits and the scan hooks all still apply.
+   */
+  private async importMediaFromUrl(
+    shareId: string,
+    url: string,
+    name?: string,
+  ) {
+    if (!this.configService.get("share.enableMediaImport"))
+      throw new BadRequestException(this.i18n.t("file.mediaImportDisabled"));
+    if (!(await isYtDlpAvailable()))
+      throw new BadRequestException(this.i18n.t("file.mediaImportUnavailable"));
+
+    const maxFileSize =
+      parseInt(this.configService.get("share.maxFileSize")) || 0;
+    const fileId = crypto.randomUUID();
+    const directory = `${SHARE_DIRECTORY}/${shareId}`;
+    await fs.mkdir(directory, { recursive: true });
+    const tempDir = `${directory}/${fileId}.media`;
+
+    try {
+      // Only the extractor failure is remapped; errors from the chunk pipeline
+      // (share size, quota) keep their specific message.
+      const download = await downloadMediaWithYtDlp(url, tempDir, {
+        maxBytes: maxFileSize > 0 ? maxFileSize : undefined,
+      }).catch((error) => {
+        throw this.toMediaException(error, maxFileSize);
+      });
+      // The extractor's title-derived name is more useful than the page slug.
+      const finalName = this.sanitizeRemoteFileName(
+        download.name || name || "media",
+      );
+      await this.storeChunkedFile(
+        shareId,
+        fileId,
+        download.path,
+        download.size,
+        finalName,
+      );
+      return { id: fileId, name: finalName };
+    } finally {
+      await fs.rm(tempDir, { recursive: true, force: true }).catch(() => {});
+    }
+  }
+
+  /** Splits a local file into chunks and feeds them through `create()`. */
+  private async storeChunkedFile(
+    shareId: string,
+    fileId: string,
+    sourcePath: string,
+    size: number,
+    finalName: string,
+  ) {
+    const chunkSize =
+      parseInt(this.configService.get("share.chunkSize")) || 10_000_000;
+    const total = Math.max(1, Math.ceil(size / chunkSize));
+
+    const handle = await fs.open(sourcePath, "r");
+    try {
+      for (let index = 0; index < total; index++) {
+        const length = Math.min(chunkSize, size - index * chunkSize);
+        const buffer = Buffer.alloc(Math.max(length, 0));
+        if (length > 0)
+          await handle.read(buffer, 0, length, index * chunkSize);
+        await this.create(
+          buffer.toString("base64"),
+          { index, total },
+          { id: fileId, name: finalName },
+          shareId,
+        );
+      }
+    } finally {
+      await handle.close();
+    }
+  }
+
+  private toMediaException(error: unknown, maxFileSize: number) {
+    const maxSize = byteToHumanSizeString(maxFileSize);
+    if (error instanceof MediaDownloadError) {
+      if (error.reason === "too_large")
+        return new BadRequestException(
+          this.i18n.t("file.remoteFetchTooLarge", { args: { maxSize } }),
+        );
+      if (error.reason === "timeout")
+        return new BadRequestException(this.i18n.t("file.mediaImportTimeout"));
+      if (error.reason === "unavailable")
+        return new BadRequestException(
+          this.i18n.t("file.mediaImportUnavailable"),
+        );
+      this.logger.debug(`Media import failed: ${error.message}`);
+    }
+    return new BadRequestException(this.i18n.t("file.mediaImportFailed"));
   }
 
   private toFileHostException(error: unknown) {

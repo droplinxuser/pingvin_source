@@ -10,6 +10,8 @@ const {
   googleDriveFileId,
   oneDriveShareId,
   resolveOneDrive,
+  resolvePixeldrain,
+  resolveTmpFiles,
   FileHostError,
 } = require("../dist/src/utils/fileHosts.util.js");
 
@@ -184,5 +186,39 @@ test("OneDrive share URLs are base64url-encoded into the content API", () => {
   assert.equal(
     files[0].url,
     `https://api.onedrive.com/v1.0/shares/u!${id}/root/content`,
+  );
+});
+
+test("Pixeldrain links resolve to the public download API", () => {
+  assert.equal(
+    detectFileHost("https://pixeldrain.com/u/abcd1234"),
+    "pixeldrain",
+  );
+  const files = resolvePixeldrain("https://pixeldrain.com/u/abcd1234");
+  assert.equal(files.length, 1);
+  assert.equal(
+    files[0].url,
+    "https://pixeldrain.com/api/file/abcd1234?download",
+  );
+  // An already-direct API link is passed through unchanged.
+  const direct = resolvePixeldrain(
+    "https://pixeldrain.com/api/file/xyz?download",
+  );
+  assert.equal(direct[0].url, "https://pixeldrain.com/api/file/xyz?download");
+  assert.throws(
+    () => resolvePixeldrain("https://pixeldrain.com/l/abc"),
+    (error) => error instanceof FileHostError && error.code === "folder",
+  );
+});
+
+test("tmpfiles.org links resolve to the /dl/ download path", () => {
+  assert.equal(detectFileHost("https://tmpfiles.org/12345/x.zip"), "tmpfiles");
+  const files = resolveTmpFiles("https://tmpfiles.org/12345/report.pdf");
+  assert.equal(files.length, 1);
+  assert.equal(files[0].url, "https://tmpfiles.org/dl/12345/report.pdf");
+  assert.equal(files[0].name, "report.pdf");
+  assert.throws(
+    () => resolveTmpFiles("https://tmpfiles.org/notanid"),
+    (error) => error instanceof FileHostError && error.code === "unsupported",
   );
 });

@@ -6,7 +6,7 @@ import useTranslate from "../../hooks/useTranslate.hook";
 import { FileUpload } from "../../types/File.type";
 import { classifyFileHost } from "../../utils/fileHost.util";
 import toast from "../../utils/toast.util";
-import { fetchRemoteAsFile } from "../../utils/upload.util";
+import { fetchRemoteAsFile, RemoteNotAFileError } from "../../utils/upload.util";
 
 const resolveRemoteName = (url: URL): string => {
   const segment = url.pathname.split("/").filter(Boolean).pop();
@@ -22,10 +22,11 @@ const resolveRemoteName = (url: URL): string => {
 
 /**
  * Queues a file from a URL. Direct URLs are downloaded by the visitor's browser
- * and added as a real file. Supported file-host pages (MediaFire, Bunkr,
- * Dropbox, Google Drive, OneDrive, pCloud) cannot be read cross-origin, so
- * those are resolved server side with SSRF protections. Known hosts we cannot
- * resolve are reported instead of being silently fetched.
+ * and added as a real file. Known hosts (file hosts such as MediaFire, Bunkr,
+ * Dropbox, Google Drive, OneDrive, pCloud, Pixeldrain and tmpfiles, plus media
+ * platforms such as YouTube and Vimeo) cannot be read cross-origin, so those
+ * are resolved or extracted server side with SSRF protections. Known hosts we
+ * cannot resolve are reported instead of being silently fetched.
  */
 const UploadFromUrlButton = ({
   onFiles,
@@ -96,12 +97,15 @@ const UploadFromUrlButton = ({
       close();
     } catch (error) {
       // A cross-origin (CORS) failure rejects with a TypeError before the body
-      // can be read; anything else is a bad/unavailable link.
+      // can be read; an HTML response means the URL is a page, not a file;
+      // anything else is a bad/unavailable link.
       toast.error(
         t(
-          error instanceof TypeError
-            ? "upload.url.error.cors"
-            : "upload.url.error.fetch",
+          error instanceof RemoteNotAFileError
+            ? "upload.url.error.notAFile"
+            : error instanceof TypeError
+              ? "upload.url.error.cors"
+              : "upload.url.error.fetch",
         ),
       );
     } finally {

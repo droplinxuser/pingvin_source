@@ -145,6 +145,14 @@ export const configVariables = {
       defaultValue: "false",
       secret: false,
     },
+    // Allow importing videos/audio from allowlisted platforms with yt-dlp.
+    // Requires the yt-dlp binary on the server; off means the endpoint reports
+    // that media import is disabled.
+    enableMediaImport: {
+      type: "boolean",
+      defaultValue: "true",
+      secret: false,
+    },
     autoOpenShareModal: {
       type: "boolean",
       defaultValue: "false",

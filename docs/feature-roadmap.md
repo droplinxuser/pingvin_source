@@ -28,7 +28,7 @@ remaining gap is the **public API**.
 | Search inside a share | No | Yes (album search) | Yes (client-side) |
 | Search across public content | No | Yes | Yes (Valkey index, `/search`) |
 | Bulk download | Folder download | Album download | Streamed ZIP (up to `share.maxZipSize`) with per-file fallback |
-| Upload from URL | Yes | Yes | Yes (server-resolved for known file hosts, browser-fetched otherwise) |
+| Upload from URL | Yes | Yes | Yes (server-resolved file hosts, yt-dlp media import for allowlisted platforms, browser-fetched otherwise) |
 | Public API | Yes (token) | Community/unofficial | No |
 | Per-file analytics | Basic | Views/downloads | Share views + rolling download counters (public) |
 | Malware scanning | No | No | ClamAV + VirusTotal, background queue |

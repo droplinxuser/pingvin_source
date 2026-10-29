@@ -1,9 +1,9 @@
 export type FileUpload = File & {
   uploadingProgress: number;
-  // Set only for supported file-host pages (MediaFire, Bunkr) that cannot be
-  // read cross-origin: the backend resolves and downloads them. Every other
-  // URL is fetched by the visitor's browser before upload, so the server IP is
-  // never exposed to the remote host.
+  // Set for known hosts (file hosts and allowlisted media platforms) that
+  // cannot be read cross-origin: the backend resolves or extracts them. Every
+  // other URL is fetched by the visitor's browser before upload, so the server
+  // IP is never exposed to the remote host.
   remoteUrl?: string;
   remoteViaServer?: boolean;
 };

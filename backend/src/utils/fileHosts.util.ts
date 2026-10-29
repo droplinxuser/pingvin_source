@@ -19,7 +19,9 @@ export type FileHostName =
   | "filemail"
   | "icedrive"
   | "sync"
-  | "protondrive";
+  | "protondrive"
+  | "pixeldrain"
+  | "tmpfiles";
 
 export class FileHostError extends Error {
   constructor(
@@ -88,6 +90,10 @@ const EXACT_HOSTS: Record<string, FileHostName> = {
   "proton.me": "protondrive",
   "www.proton.me": "protondrive",
   "drive.proton.me": "protondrive",
+  "pixeldrain.com": "pixeldrain",
+  "www.pixeldrain.com": "pixeldrain",
+  "tmpfiles.org": "tmpfiles",
+  "www.tmpfiles.org": "tmpfiles",
 };
 
 const BUNKR_SUFFIX = /(^|\.)bunkr(r)?\.[a-z]{2,}$/;
@@ -118,6 +124,8 @@ const SUPPORTED: ReadonlySet<FileHostName> = new Set<FileHostName>([
   "gdrive",
   "onedrive",
   "pcloud",
+  "pixeldrain",
+  "tmpfiles",
 ]);
 
 /**
@@ -141,6 +149,10 @@ export async function resolveFileHost(rawUrl: string): Promise<ResolvedFile[]> {
       return resolveOneDrive(rawUrl);
     case "pcloud":
       return resolvePCloud(rawUrl);
+    case "pixeldrain":
+      return resolvePixeldrain(rawUrl);
+    case "tmpfiles":
+      return resolveTmpFiles(rawUrl);
     case "gofile":
       throw new FileHostError("gofile");
     case null:
@@ -432,4 +444,39 @@ async function resolvePCloud(rawUrl: string): Promise<ResolvedFile[]> {
     });
   }
   return files;
+}
+
+/**
+ * Pixeldrain: `/u/<id>` (and `/file/<id>`) map to the public download API. The
+ * `/api/file/<id>` form is already a direct link and is passed through. `/l/`
+ * is a folder (list) link.
+ */
+export function resolvePixeldrain(rawUrl: string): ResolvedFile[] {
+  const url = new URL(rawUrl);
+  if (/^\/api\/file\/[A-Za-z0-9]+/.test(url.pathname))
+    return [{ url: url.toString(), name: fileNameFromPath(url.pathname) }];
+  if (/^\/l\//.test(url.pathname))
+    throw new FileHostError(
+      "folder",
+      "pixeldrain: list links are not supported",
+    );
+  const id = url.pathname.match(/^\/(?:u|d|file)\/([A-Za-z0-9]+)/)?.[1];
+  if (!id) throw new FileHostError("unsupported", "pixeldrain: no file id");
+  return [{ url: `https://pixeldrain.com/api/file/${id}?download` }];
+}
+
+/**
+ * tmpfiles.org: `/<id>/<name>` is an HTML page whose `/dl/` path is the direct
+ * file, so the page URL is rewritten to the download URL.
+ */
+export function resolveTmpFiles(rawUrl: string): ResolvedFile[] {
+  const url = new URL(rawUrl);
+  const match = url.pathname.match(/^\/(\d+)\/(.+)$/);
+  if (!match) throw new FileHostError("unsupported", "tmpfiles: no file id");
+  return [
+    {
+      url: `https://tmpfiles.org/dl/${match[1]}/${match[2]}`,
+      name: fileNameFromPath(match[2]),
+    },
+  ];
 }

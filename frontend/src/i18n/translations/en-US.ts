@@ -717,15 +717,17 @@ export default {
   "upload.url.placeholder": "https://example.com/file.zip",
   "upload.url.add": "Add to upload",
   "upload.url.hint":
-    "The file is downloaded by your browser, then uploaded from here. The link's host must allow cross-origin (CORS) downloads — if a link is blocked, download the file and upload it directly. MediaFire, Bunkr, Dropbox, Google Drive, OneDrive and pCloud links are resolved for you. Only public http(s) URLs work.",
+    "Direct links are downloaded by your browser, then uploaded from here, so the host must allow cross-origin (CORS) downloads. MediaFire, Bunkr, Dropbox, Google Drive, OneDrive, pCloud, Pixeldrain and tmpfiles links are resolved for you, and video/media links (YouTube, Vimeo, TikTok and more) are downloaded on the server. Only public http(s) URLs work.",
   "upload.url.notify.added": "Queued {name} from URL",
   "upload.url.error.invalid": "Enter a valid http(s) URL.",
   "upload.url.error.fetch":
     "Couldn't download this URL. The link may be invalid or temporarily unavailable.",
+  "upload.url.error.notAFile":
+    "That link is a web page, not a file. Paste a direct download link instead.",
   "upload.url.error.cors":
-    "This host doesn't allow browser downloads (CORS), so the file can't be fetched here. Use a direct link from a host that allows it, download the file and upload it directly, or paste a supported file-host link.",
+    "This host doesn't allow browser downloads (CORS), so the file can't be fetched here. Use a direct link from a host that allows it, download the file and upload it directly, or paste a supported file-host or video link.",
   "upload.url.error.hostUnsupported":
-    "That file host isn't supported yet. Paste a direct file link, or a link from MediaFire, Bunkr, Dropbox, Google Drive, OneDrive or pCloud.",
+    "That file host isn't supported yet. Paste a direct file link, a link from MediaFire, Bunkr, Dropbox, Google Drive, OneDrive, pCloud, Pixeldrain or tmpfiles, or a video/media link.",
 
   // FileList.tsx
   "upload.filelist.name": "Name",
