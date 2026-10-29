@@ -35,6 +35,18 @@ export class SystemController {
     return await this.systemService.getValkeyMetrics();
   }
 
+  @Get("dependencies")
+  @UseGuards(JwtGuard, AdministratorGuard)
+  async getDependencies() {
+    return await this.systemService.getDependencies();
+  }
+
+  @Get("database")
+  @UseGuards(JwtGuard, AdministratorGuard)
+  async getDatabaseMetrics() {
+    return await this.systemService.getDatabaseMetrics();
+  }
+
   @Get("referrers")
   @UseGuards(JwtGuard, AdministratorGuard)
   async getReferrers(

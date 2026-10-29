@@ -4,7 +4,7 @@ import { createHash } from "crypto";
 import { promises as fs } from "fs";
 import { Request } from "express";
 import * as path from "path";
-import { DATA_DIRECTORY } from "src/constants";
+import { CLAMAV_HOST, CLAMAV_PORT, DATA_DIRECTORY } from "src/constants";
 import { MetricsService, PageViewMetrics, ReferrerPage } from "src/cache/metrics.service";
 import {
   ValkeyMetrics,
@@ -16,6 +16,17 @@ import { PrismaService } from "src/prisma/prisma.service";
 import { publicShareWhere } from "src/share/share.util";
 import { SystemInfoDTO } from "./dto/systemInfo.dto";
 import { ConfigService } from "src/config/config.service";
+import {
+  DependencyCheck,
+  checkBinary,
+  checkTcp,
+  getFfmpegCandidates,
+} from "src/utils/dependencies.util";
+import {
+  DatabaseMetrics,
+  buildDatabaseMetrics,
+  emptyDatabaseMetrics,
+} from "src/utils/sqlite.util";
 
 const SYSTEM_STATS_CACHE_TTL = 60 * 1000;
 const SITEMAP_REFRESH_MS = 10 * 60 * 1000;
@@ -42,6 +53,28 @@ const absoluteUrl = (path: string, baseUrl: string): string => {
     return path;
   }
 };
+
+/** `sharp` is a bundled dependency; report the native library version. */
+function probeSharp(): Omit<DependencyCheck, "key" | "type"> {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const sharp = require("sharp") as { versions?: { sharp?: string } };
+    return { available: true, version: sharp.versions?.sharp };
+  } catch (error) {
+    return { available: false, detail: (error as Error).message };
+  }
+}
+
+/** Size of a file in bytes, or null when it does not exist. */
+async function statFileSize(file: string | null): Promise<number | null> {
+  if (!file) return null;
+  try {
+    const stat = await fs.stat(file);
+    return stat.isFile() ? stat.size : null;
+  } catch {
+    return null;
+  }
+}
 
 type BaseSystemStats = {
   userCount: number;
@@ -572,6 +605,136 @@ export class SystemService {
     return info
       ? parseValkeyInfo(info)
       : emptyValkeyMetrics(this.valkey.configured);
+  }
+
+  /**
+   * Probes the external tools the backend shells out to, so the admin page can
+   * flag anything missing after a server move. Every probe is bounded and
+   * never throws; unavailable tools simply report `available: false`.
+   */
+  async getDependencies(): Promise<DependencyCheck[]> {
+    const [ffmpeg, ytDlp, clamav, database, valkeyPong] = await Promise.all([
+      this.probeFfmpeg(),
+      checkBinary("yt-dlp", ["--version"]),
+      checkTcp(CLAMAV_HOST, CLAMAV_PORT),
+      this.probeDatabase(),
+      this.valkey.configured
+        ? this.valkey.run((client) => client.ping())
+        : Promise.resolve(undefined),
+    ]);
+
+    const mediaImportEnabled =
+      this.configService.get("share.enableMediaImport") === true;
+
+    return [
+      {
+        key: "node",
+        type: "required",
+        available: true,
+        version: process.version.replace(/^v/, ""),
+      },
+      { key: "sharp", type: "required", ...probeSharp() },
+      { key: "ffmpeg", type: "required", ...ffmpeg },
+      { key: "database", type: "required", ...database },
+      {
+        key: "valkey",
+        type: "optional",
+        enabled: this.valkey.configured,
+        available: !!valkeyPong,
+      },
+      {
+        key: "ytdlp",
+        type: "optional",
+        enabled: mediaImportEnabled,
+        available: mediaImportEnabled && ytDlp.available,
+        version: ytDlp.version,
+      },
+      { key: "clamav", type: "optional", enabled: true, available: clamav },
+    ];
+  }
+
+  /** SQLite page/file metrics for the admin storage panel. */
+  async getDatabaseMetrics(): Promise<DatabaseMetrics> {
+    try {
+      const list = await this.prisma.$queryRawUnsafe<
+        { name?: string; file?: string }[]
+      >("PRAGMA database_list");
+      const file =
+        (list.find((row) => row.name === "main") ?? list[0])?.file ?? null;
+
+      const [pageSize, pageCount, freePages, journalMode, version] =
+        await Promise.all([
+          this.pragmaNumber("PRAGMA page_size", "page_size"),
+          this.pragmaNumber("PRAGMA page_count", "page_count"),
+          this.pragmaNumber("PRAGMA freelist_count", "freelist_count"),
+          this.pragmaText("PRAGMA journal_mode", "journal_mode"),
+          this.pragmaText("SELECT sqlite_version() AS version", "version"),
+        ]);
+
+      const [sizeBytes, walSizeBytes, shmSizeBytes] = await Promise.all([
+        statFileSize(file),
+        statFileSize(file ? `${file}-wal` : null),
+        statFileSize(file ? `${file}-shm` : null),
+      ]);
+
+      return buildDatabaseMetrics({
+        file,
+        sizeBytes,
+        walSizeBytes,
+        shmSizeBytes,
+        pageSize,
+        pageCount,
+        freePages,
+        journalMode,
+        version,
+      });
+    } catch (error) {
+      return emptyDatabaseMetrics((error as Error).message);
+    }
+  }
+
+  private async pragmaNumber(sql: string, key: string): Promise<number | null> {
+    const row = await this.pragmaRow(sql);
+    const value = row?.[key];
+    if (value == null) return null;
+    const num = Number(value);
+    return Number.isFinite(num) ? num : null;
+  }
+
+  private async pragmaText(sql: string, key: string): Promise<string | null> {
+    const row = await this.pragmaRow(sql);
+    const value = row?.[key];
+    return value == null ? null : String(value);
+  }
+
+  private async pragmaRow(
+    sql: string,
+  ): Promise<Record<string, unknown> | undefined> {
+    try {
+      const rows =
+        await this.prisma.$queryRawUnsafe<Record<string, unknown>[]>(sql);
+      return rows?.[0];
+    } catch {
+      return undefined;
+    }
+  }
+
+  private async probeFfmpeg(): Promise<Omit<DependencyCheck, "key" | "type">> {
+    for (const candidate of getFfmpegCandidates()) {
+      const probe = await checkBinary(candidate, ["-version"]);
+      if (probe.available)
+        return { available: true, version: probe.version, detail: candidate };
+    }
+    return { available: false };
+  }
+
+  private async probeDatabase(): Promise<Omit<DependencyCheck, "key" | "type">> {
+    try {
+      await this.prisma.$queryRaw`SELECT 1`;
+      return { available: true };
+    } catch (error) {
+      return { available: false, detail: (error as Error).message };
+    }
   }
 
   async getSystemInfo(): Promise<SystemInfoDTO | null> {

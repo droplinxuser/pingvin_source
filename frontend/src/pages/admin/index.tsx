@@ -22,6 +22,8 @@ import {
 import { FormattedMessage } from "react-intl";
 import Meta from "../../components/Meta";
 import ValkeyMetricsCard from "../../components/admin/ValkeyMetricsCard";
+import ServerDependenciesCard from "../../components/admin/ServerDependenciesCard";
+import DatabaseMetricsCard from "../../components/admin/DatabaseMetricsCard";
 import useTranslate from "../../hooks/useTranslate.hook";
 import configService from "../../services/config.service";
 
@@ -135,6 +137,10 @@ const Admin = () => {
         </Paper>
 
         <ValkeyMetricsCard />
+
+        <ServerDependenciesCard />
+
+        <DatabaseMetricsCard />
 
         <Center mt="auto" pt="sm">
           <Text size="xs" color="dimmed">

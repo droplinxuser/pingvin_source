@@ -460,6 +460,64 @@ export default {
     "Valkey is not configured. The app is using in-process memory and SQLite only.",
   // END /admin valkey metrics
 
+  // /admin server dependencies
+  "admin.dependencies.custom.title": "Server dependencies",
+  "admin.dependencies.custom.subtitle":
+    "External tools and services the backend relies on.",
+  "admin.dependencies.custom.refresh": "Re-check server dependencies",
+  "admin.dependencies.custom.load-error":
+    "Could not load the server dependency status.",
+  "admin.dependencies.custom.summary.ok": "All required dependencies present",
+  "admin.dependencies.custom.summary.missing": "{count} required missing",
+  "admin.dependencies.custom.status.available": "Available",
+  "admin.dependencies.custom.status.missing": "Missing",
+  "admin.dependencies.custom.status.unavailable": "Unavailable",
+  "admin.dependencies.custom.status.disabled": "Not enabled",
+  "admin.dependencies.custom.type.required": "Required",
+  "admin.dependencies.custom.type.optional": "Optional",
+  "admin.dependencies.custom.item.node": "Node.js",
+  "admin.dependencies.custom.item.node.description":
+    "Runtime for the backend.",
+  "admin.dependencies.custom.item.sharp": "sharp",
+  "admin.dependencies.custom.item.sharp.description":
+    "Image resizing and WebP conversion.",
+  "admin.dependencies.custom.item.ffmpeg": "ffmpeg",
+  "admin.dependencies.custom.item.ffmpeg.description":
+    "Video thumbnails and gallery previews.",
+  "admin.dependencies.custom.item.database": "SQLite database",
+  "admin.dependencies.custom.item.database.description":
+    "Stores shares, files and users.",
+  "admin.dependencies.custom.item.valkey": "Valkey / Redis",
+  "admin.dependencies.custom.item.valkey.description":
+    "Optional shared cache and rate-limit store.",
+  "admin.dependencies.custom.item.ytdlp": "yt-dlp",
+  "admin.dependencies.custom.item.ytdlp.description":
+    "Optional video/audio import from supported sites.",
+  "admin.dependencies.custom.item.clamav": "ClamAV",
+  "admin.dependencies.custom.item.clamav.description":
+    "Optional malware scanning of uploads.",
+  // END /admin server dependencies
+
+  // /admin SQLite metrics
+  "admin.database.custom.title": "SQLite database",
+  "admin.database.custom.subtitle": "Storage size and page health.",
+  "admin.database.custom.refresh": "Refresh database metrics",
+  "admin.database.custom.load-error": "Could not load database metrics.",
+  "admin.database.custom.not-configured": "Database metrics are unavailable.",
+  "admin.database.custom.version": "SQLite {version}",
+  "admin.database.custom.version-label": "SQLite version",
+  "admin.database.custom.size": "Database size",
+  "admin.database.custom.wal-detail": "WAL {size}",
+  "admin.database.custom.pages": "Pages",
+  "admin.database.custom.page-detail": "{pageSize} B per page",
+  "admin.database.custom.free-pages": "Free pages",
+  "admin.database.custom.reclaimable": "{percent} reclaimable",
+  "admin.database.custom.journal": "Journal mode",
+  "admin.database.custom.fragmentation-hint":
+    "Free pages are {percent} of the database; the update maintenance (VACUUM) reclaims that space.",
+  "admin.database.custom.file": "File: {file}",
+  // END /admin SQLite metrics
+
   // /admin/logs
   "admin.logs.custom.title": "Error logs",
   "admin.logs.custom.subtitle":

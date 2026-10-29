@@ -45,6 +45,7 @@ import {
   downloadMediaWithYtDlp,
   isYtDlpAvailable,
 } from "src/utils/mediaHosts.util";
+import { getFfmpegCandidates } from "src/utils/dependencies.util";
 import { removeVirusTotalResult } from "src/virustotal/virustotalReport.util";
 import { SAFE_FILE_NAME } from "./dto/upload.dto";
 import { DATA_DIRECTORY, SHARE_DIRECTORY } from "src/constants";
@@ -1446,29 +1447,6 @@ function getVideoFormatHint(fileName?: string): string | undefined {
   if (extension === "wmv") return "asf";
   if (extension === "3gp") return "3gp";
   return undefined;
-}
-
-let ffmpegCandidates: string[] | undefined;
-
-function getFfmpegCandidates(): string[] {
-  if (ffmpegCandidates) return ffmpegCandidates;
-
-  const candidates: string[] = [];
-  if (process.env.FFMPEG_PATH) candidates.push(process.env.FFMPEG_PATH);
-
-  try {
-    // The static binary is optional so a minimal install can still run; in
-    // that case the system `ffmpeg` on PATH is used instead.
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const staticBinary = require("ffmpeg-static") as string | undefined;
-    if (staticBinary) candidates.push(staticBinary);
-  } catch {
-    // Optional dependency not installed.
-  }
-
-  candidates.push("ffmpeg");
-  ffmpegCandidates = candidates;
-  return candidates;
 }
 
 function runProcess(
