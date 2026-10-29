@@ -46,6 +46,9 @@ export class ShareDTO {
   uploaderInfo?: UploaderInfo;
 
   @Expose()
+  downloads?: { total: number; files: Record<string, number> };
+
+  @Expose()
   commentsVersion?: number;
 
   from(partial: Partial<ShareDTO>) {

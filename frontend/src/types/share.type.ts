@@ -14,6 +14,7 @@ export type Share = {
   maxViews?: number;
   isZipReady?: boolean;
   uploaderInfo?: UploaderInfo;
+  downloads?: ShareDownloadStats;
   commentsVersion?: number;
 };
 

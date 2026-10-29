@@ -8,6 +8,11 @@ const DOWNLOAD_KEY_PREFIX = "pingvin:downloads:day:";
 const WINDOW_DAYS = 30;
 const BUCKET_TTL_SECONDS = (WINDOW_DAYS + 1) * 24 * 60 * 60;
 const TOTAL_FIELD = "total";
+// The share payload is read on every view, so a short in-process cache removes
+// the 30-bucket read from the hot path. It is dropped on every new download so
+// the owner sees their own action immediately.
+const READ_CACHE_MS = 20 * 1000;
+const READ_CACHE_MAX = 2000;
 // Bound the in-process fallback so a long Valkey outage cannot grow memory.
 const MEMORY_SHARE_LIMIT = 5000;
 
@@ -27,6 +32,10 @@ type DayBucket = { total: number; files: Map<string, number> };
 @Injectable()
 export class DownloadService {
   private readonly memory = new Map<string, Map<number, DayBucket>>();
+  private readonly readCache = new Map<
+    string,
+    { at: number; value: ShareDownloadStats }
+  >();
 
   constructor(private readonly valkey: ValkeyService) {}
 
@@ -45,33 +54,46 @@ export class DownloadService {
       await multi.exec();
       return true;
     });
-    if (stored) return;
 
-    const byShare = this.memory.get(shareId) ?? new Map<number, DayBucket>();
-    const bucket = byShare.get(day) ?? { total: 0, files: new Map() };
-    bucket.total++;
-    for (const fileId of fileIds)
-      bucket.files.set(fileId, (bucket.files.get(fileId) ?? 0) + 1);
-    byShare.set(day, bucket);
+    if (!stored) {
+      const byShare = this.memory.get(shareId) ?? new Map<number, DayBucket>();
+      const bucket = byShare.get(day) ?? { total: 0, files: new Map() };
+      bucket.total++;
+      for (const fileId of fileIds)
+        bucket.files.set(fileId, (bucket.files.get(fileId) ?? 0) + 1);
+      byShare.set(day, bucket);
 
-    const oldest = day - WINDOW_DAYS;
-    for (const trackedDay of byShare.keys())
-      if (trackedDay <= oldest) byShare.delete(trackedDay);
+      const oldest = day - WINDOW_DAYS;
+      for (const trackedDay of byShare.keys())
+        if (trackedDay <= oldest) byShare.delete(trackedDay);
 
-    this.memory.set(shareId, byShare);
-    if (this.memory.size > MEMORY_SHARE_LIMIT) {
-      const oldestShare = this.memory.keys().next().value;
-      if (oldestShare) this.memory.delete(oldestShare);
+      this.memory.set(shareId, byShare);
+      if (this.memory.size > MEMORY_SHARE_LIMIT) {
+        const oldestShare = this.memory.keys().next().value;
+        if (oldestShare) this.memory.delete(oldestShare);
+      }
     }
+
+    // Drop the cached read so the next fetch reflects this download.
+    this.readCache.delete(shareId);
   }
 
   /** Rolling download totals for a share and each of its files. */
   async getShareDownloads(shareId: string): Promise<ShareDownloadStats> {
+    const cached = this.readCache.get(shareId);
+    if (cached && Date.now() - cached.at < READ_CACHE_MS) return cached.value;
+
     const remote = await this.valkey.run((client) =>
       this.readValkey(client, shareId),
     );
-    if (remote) return remote;
-    return this.readMemory(shareId);
+    const value = remote ?? this.readMemory(shareId);
+
+    if (this.readCache.size >= READ_CACHE_MAX) {
+      const oldest = this.readCache.keys().next().value;
+      if (oldest) this.readCache.delete(oldest);
+    }
+    this.readCache.set(shareId, { at: Date.now(), value });
+    return value;
   }
 
   private async readValkey(

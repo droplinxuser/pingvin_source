@@ -241,10 +241,14 @@ export class ShareController {
       void this.trending
         .recordView({ ...share, views }, getRequestCountry(request))
         .catch(() => {});
+    // Download counters are public (they ride the share payload) and cached
+    // for a few seconds in DownloadService so this stays off the hot path.
+    const downloads = await this.downloadService.getShareDownloads(id);
     return new ShareDTO().from({
       ...share,
       views,
       uploaderInfo,
+      downloads,
     });
   }
 
@@ -400,18 +404,9 @@ export class ShareController {
   @Get(":id/from-owner")
   @UseGuards(IdValidation, RegisteredShareOwnerGuard)
   async getFromOwner(@Param("id") id: string) {
-    return new ShareDTO().from(await this.shareService.get(id));
-  }
-
-  /**
-   * Owner-only download counters (rolling 30-day window, Valkey-backed). Kept
-   * off the public share payload so analytics never leak to visitors.
-   */
-  @Get(":id/downloads")
-  @SkipThrottle({ visitor: true })
-  @UseGuards(IdValidation, RegisteredShareOwnerGuard)
-  async getDownloads(@Param("id") id: string) {
-    return await this.downloadService.getShareDownloads(id);
+    const share = await this.shareService.get(id);
+    const downloads = await this.downloadService.getShareDownloads(id);
+    return new ShareDTO().from({ ...share, downloads });
   }
 
   @Get(":id/metaData")

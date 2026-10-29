@@ -30,7 +30,7 @@ remaining gap is the **public API**.
 | Bulk download | Folder download | Album download | Streamed ZIP (up to `share.maxZipSize`) with per-file fallback |
 | Upload from URL | Yes | Yes | Yes (server-resolved for known file hosts, browser-fetched otherwise) |
 | Public API | Yes (token) | Community/unofficial | No |
-| Per-file analytics | Basic | Views/downloads | Share views + rolling download counters (owner-only) |
+| Per-file analytics | Basic | Views/downloads | Share views + rolling download counters (public) |
 | Malware scanning | No | No | ClamAV + VirusTotal, background queue |
 | Abuse reporting | Minimal | Minimal | Report modal + email routing |
 | SEO / social cards | Weak | Weak | Canonicals, OG/Twitter, JSON-LD, sitemaps |
@@ -49,10 +49,11 @@ remaining gap is the **public API**.
    back to per-file downloads otherwise.
 2. **(Done.) Share-level download counters in Valkey.** Downloads are counted
    per share and per file in a Valkey-backed rolling 30-day window
-   (`DownloadService`: one small per-share, per-day hash with a TTL and a
-   bounded in-process fallback; no SQLite columns). Owners see the totals on
-   the share page through the owner-only `GET /shares/:id/downloads` endpoint;
-   the public share payload stays free of analytics.
+   (`DownloadService`: one small per-share, per-day hash with a TTL, a short
+   read cache and a bounded in-process fallback; no SQLite columns). The totals
+   ride the public share payload (`ShareDTO.downloads`) and are shown to every
+   visitor on the share page — a share total in `ShareStats`, per-file counts
+   in the file list.
 3. **(Done.) Structured data for file lists.** The share `ItemList` exposes a
    nested `DigitalDocument` per file with `identifier`, `encodingFormat`,
    `contentSize`, `dateCreated` and `dateModified`. The backend SEO payload now

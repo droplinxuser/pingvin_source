@@ -7,7 +7,6 @@ import {
   MyReverseShare,
   MyShare,
   Share,
-  ShareDownloadStats,
   TrendingCountry,
   TrendingShare,
   UpdateShare,
@@ -134,11 +133,6 @@ const get = async (id: string): Promise<Share> => {
 const getFromOwner = async (id: string): Promise<Share> => {
   if (!isValidId(id)) throw new Error("Invalid ID");
   return (await api.get(`shares/${id}/from-owner`)).data;
-};
-
-const getDownloads = async (id: string): Promise<ShareDownloadStats> => {
-  if (!isValidId(id)) throw new Error("Invalid ID");
-  return (await api.get(`shares/${id}/downloads`)).data;
 };
 
 const getTrending = cachedShareList(
@@ -560,7 +554,6 @@ export default {
   getShareToken,
   get,
   getFromOwner,
-  getDownloads,
   update,
   remove,
   report,

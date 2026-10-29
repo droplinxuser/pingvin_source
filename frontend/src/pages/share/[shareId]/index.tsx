@@ -35,14 +35,9 @@ import showErrorModal from "../../../components/share/showErrorModal";
 import useHomeHref from "../../../hooks/homeHref.hook";
 import useSiteMeta from "../../../hooks/siteMeta.hook";
 import useTranslate from "../../../hooks/useTranslate.hook";
-import useUser from "../../../hooks/user.hook";
 import shareService from "../../../services/share.service";
 import { FileMetaData } from "../../../types/File.type";
-import {
-  Share as ShareType,
-  ShareDownloadStats,
-  ShareSeo,
-} from "../../../types/share.type";
+import { Share as ShareType, ShareSeo } from "../../../types/share.type";
 import toast from "../../../utils/toast.util";
 import { byteToHumanSizeString } from "../../../utils/fileSize.util";
 import {
@@ -139,13 +134,11 @@ const SharePage = ({
   const modals = useModals();
   const router = useRouter();
   const homeHref = useHomeHref();
-  const { user } = useUser();
   const t = useTranslate();
   const intl = useIntl();
   const { siteName, baseUrl } = useSiteMeta();
 
   const [share, setShare] = useState<ShareType>();
-  const [downloadStats, setDownloadStats] = useState<ShareDownloadStats>();
   const [isRestricted, setIsRestricted] = useState(false);
   const [pageError, setPageError] = useState<{
     title: string;
@@ -164,7 +157,6 @@ const SharePage = ({
   // is downloaded as soon as the share (and any password gate) is ready.
   const autoFileId = getQueryString(router.query.file);
   const autoDownloadedRef = useRef(false);
-  const isOwner = !!share && !!user && share.creator?.id === user.id;
 
   const indexable = seo?.indexable === true;
   const shareName = share?.name || seo?.name;
@@ -466,24 +458,6 @@ const SharePage = ({
     );
   }, [share, autoFileId, recipientId, router, shareId]);
 
-  // Owners see their share's download counters. They are deliberately kept off
-  // the public share payload so analytics never leak to visitors.
-  useEffect(() => {
-    if (!isOwner) return;
-    let active = true;
-    shareService
-      .getDownloads(shareId)
-      .then((stats) => {
-        if (active) setDownloadStats(stats);
-      })
-      .catch(() => {
-        // Analytics are optional; never surface an error for them.
-      });
-    return () => {
-      active = false;
-    };
-  }, [isOwner, shareId]);
-
   if (isRestricted) {
     return (
       <>
@@ -631,7 +605,7 @@ const SharePage = ({
           isLoading={!share}
           recipientId={recipientId}
           skeletonCount={fileSkeletonCount}
-          downloadCounts={isOwner ? downloadStats?.files : undefined}
+          downloadCounts={share?.downloads?.files}
         />
       </LazySection>
 
@@ -656,7 +630,7 @@ const SharePage = ({
         busy={!share}
       >
         {share ? (
-          <ShareStats share={share} downloads={downloadStats?.total} />
+          <ShareStats share={share} downloads={share.downloads?.total} />
         ) : (
           <ShareStatsSkeleton />
         )}
