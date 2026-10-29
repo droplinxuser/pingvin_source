@@ -15,7 +15,7 @@ import { useDisclosure } from "@mantine/hooks";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { ReactNode, useEffect, useState } from "react";
-import { TbChevronLeft } from "react-icons/tb";
+import { TbChevronLeft, TbFile, TbPhoto } from "react-icons/tb";
 import useConfig from "../../hooks/config.hook";
 import useUser from "../../hooks/user.hook";
 import useTranslate from "../../hooks/useTranslate.hook";
@@ -23,6 +23,7 @@ import authService from "../../services/auth.service";
 import Logo from "../Logo";
 import useHomeHref from "../../hooks/homeHref.hook";
 import ActionAvatar from "./ActionAvatar";
+import NavbarIconLink from "./NavbarIconLink";
 import NavbarSearch from "./NavbarSearch";
 import NavbarShareMenu from "./NavbarShareMenu";
 
@@ -203,6 +204,25 @@ const Header = () => {
     setMobileMenuView("root");
   }, [close, router.pathname]);
 
+  // Icon-only discovery entries, matching the share menu. The mobile menu
+  // keeps text links (built below), so these are desktop-only.
+  const newMediaIcon = (label: string): NavLink => ({
+    label,
+    component: (
+      <NavbarIconLink href="/new-media" label={label}>
+        <TbPhoto size={18} />
+      </NavbarIconLink>
+    ),
+  });
+  const newFilesIcon = (label: string): NavLink => ({
+    label,
+    component: (
+      <NavbarIconLink href="/new-files" label={label}>
+        <TbFile size={18} />
+      </NavbarIconLink>
+    ),
+  });
+
   const authenticatedLinks: NavLink[] = [
     ...(user?.allowShare !== false
       ? [
@@ -212,14 +232,8 @@ const Header = () => {
           },
         ]
       : []),
-    {
-      link: "/new-media",
-      label: t("navbar.newMedia"),
-    },
-    {
-      link: "/new-files",
-      label: t("navbar.newFiles"),
-    },
+    newMediaIcon(t("navbar.newMedia")),
+    newFilesIcon(t("navbar.newFiles")),
     {
       component: <NavbarShareMenu />,
     },
@@ -228,44 +242,33 @@ const Header = () => {
     },
   ];
 
-  let unauthenticatedLinks: NavLink[] = [];
+  const buildUnauthenticatedLinks = (icons: boolean): NavLink[] => {
+    const links: NavLink[] = [];
+    if (config.get("general.showHomePage"))
+      links.push({ link: "/", label: t("navbar.home") });
 
-  if (config.get("general.showHomePage"))
-    unauthenticatedLinks.push({
-      link: "/",
-      label: t("navbar.home"),
-    });
+    if (config.get("security.allowUnauthenticatedShares"))
+      links.push({ link: "/upload", label: t("navbar.upload") });
 
-  if (config.get("security.allowUnauthenticatedShares")) {
-    unauthenticatedLinks.push({
-      link: "/upload",
-      label: t("navbar.upload"),
-    });
-  }
+    if (icons) {
+      links.push(newMediaIcon(t("navbar.newMedia")));
+      links.push(newFilesIcon(t("navbar.newFiles")));
+    } else {
+      links.push({ link: "/new-media", label: t("navbar.newMedia") });
+      links.push({ link: "/new-files", label: t("navbar.newFiles") });
+    }
 
-  unauthenticatedLinks.push({
-    link: "/new-media",
-    label: t("navbar.newMedia"),
-  });
+    if (!shouldHideAuthButtons)
+      links.push({ link: "/auth/signIn", label: t("navbar.signin") });
 
-  unauthenticatedLinks.push({
-    link: "/new-files",
-    label: t("navbar.newFiles"),
-  });
+    if (config.get("security.allowRegistration") && !shouldHideAuthButtons)
+      links.push({ link: "/auth/signUp", label: t("navbar.signup") });
 
-  if (!shouldHideAuthButtons) {
-    unauthenticatedLinks.push({
-      link: "/auth/signIn",
-      label: t("navbar.signin"),
-    });
-  }
+    return links;
+  };
 
-  if (config.get("security.allowRegistration") && !shouldHideAuthButtons) {
-    unauthenticatedLinks.push({
-      link: "/auth/signUp",
-      label: t("navbar.signup"),
-    });
-  }
+  const unauthenticatedDesktopLinks = buildUnauthenticatedLinks(true);
+  const unauthenticatedLinks = buildUnauthenticatedLinks(false);
 
   const mobileRootLinks: NavLink[] = user
     ? [
@@ -339,7 +342,7 @@ const Header = () => {
   const { classes, cx } = useStyles();
   const desktopItems = (
     <>
-      {(user ? authenticatedLinks : unauthenticatedLinks).map((link, i) => {
+      {(user ? authenticatedLinks : unauthenticatedDesktopLinks).map((link, i) => {
         if (link.component) {
           return (
             <Box pl={5} py={12} key={i}>

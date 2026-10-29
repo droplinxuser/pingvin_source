@@ -239,8 +239,9 @@ const uploadFromUrl = async (
   shareId: string,
   url: string,
   name?: string,
-): Promise<FileUploadResponse> => {
+): Promise<{ files: FileUploadResponse[] }> => {
   if (!isValidId(shareId)) throw new Error("Invalid Share ID");
+  // The backend may import more than one file (e.g. a Bunkr album page).
   return (
     await api.post(`shares/${shareId}/files/from-url`, {
       url,

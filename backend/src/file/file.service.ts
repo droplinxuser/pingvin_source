@@ -32,6 +32,11 @@ import {
   RemoteFetchError,
   downloadRemoteToFile,
 } from "src/utils/remoteFetch.util";
+import {
+  FileHostError,
+  detectFileHost,
+  resolveFileHost,
+} from "src/utils/fileHosts.util";
 import { SAFE_FILE_NAME } from "./dto/upload.dto";
 import { DATA_DIRECTORY, SHARE_DIRECTORY } from "src/constants";
 // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -228,6 +233,45 @@ export class FileService implements OnModuleInit {
     } finally {
       await fs.rm(tempPath, { force: true }).catch(() => undefined);
     }
+  }
+
+  /**
+   * Imports files from a URL. Supported file hosts (Bunkr, MediaFire) are
+   * resolved to their direct download URLs first; anything else is treated as a
+   * direct file. Every direct URL still goes through the SSRF-guarded fetch.
+   */
+  async importFromUrl(shareId: string, url: string, name?: string) {
+    let targets: { url: string; name?: string }[];
+    if (detectFileHost(url)) {
+      try {
+        targets = await resolveFileHost(url);
+      } catch (error) {
+        throw this.toFileHostException(error);
+      }
+    } else {
+      targets = [{ url }];
+    }
+
+    const files = [];
+    for (const target of targets) {
+      // A resolved host name (real filename) wins over the client-derived one.
+      files.push(
+        await this.createFromUrl(shareId, target.url, target.name ?? name),
+      );
+    }
+    return { files };
+  }
+
+  private toFileHostException(error: unknown) {
+    if (error instanceof FileHostError) {
+      if (error.code === "gofile")
+        return new BadRequestException(this.i18n.t("file.remoteGofileUnsupported"));
+      if (error.code === "folder")
+        return new BadRequestException(this.i18n.t("file.remoteHostFolderUnsupported"));
+      return new BadRequestException(this.i18n.t("file.remoteHostResolveFailed"));
+    }
+    this.logger.debug(`File-host resolve failed: ${error}`);
+    return new BadRequestException(this.i18n.t("file.remoteHostResolveFailed"));
   }
 
   private toRemoteFetchException(error: unknown, maxFileSize: number) {

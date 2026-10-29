@@ -22,5 +22,8 @@
   "remoteFetchBlocked": "That URL points to a private or unsupported address and cannot be used.",
   "remoteFetchTooLarge": "The file at that URL is larger than the maximum file size of {maxSize}.",
   "remoteFetchTimeout": "Timed out while downloading the file from that URL.",
-  "remoteFetchTooManyRedirects": "That URL redirects too many times."
+  "remoteFetchTooManyRedirects": "That URL redirects too many times.",
+  "remoteHostResolveFailed": "Could not find a downloadable file at that page.",
+  "remoteHostFolderUnsupported": "Folder links are not supported yet; paste an individual file link.",
+  "remoteGofileUnsupported": "Gofile now blocks server-side downloads; paste a direct file link instead."
 }

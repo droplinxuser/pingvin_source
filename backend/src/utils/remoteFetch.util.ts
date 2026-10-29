@@ -3,7 +3,7 @@ import { createWriteStream } from "fs";
 import * as http from "http";
 import * as https from "https";
 import { isIP } from "net";
-import { Transform } from "stream";
+import { Transform, Writable } from "stream";
 import { pipeline } from "stream/promises";
 import { URL } from "url";
 
@@ -12,7 +12,8 @@ import { URL } from "url";
  * only http/https on ports 80/443, DNS results are validated and pinned to a
  * public address, redirects are re-validated and capped, and the body is bounded
  * by size and time. The visitor's browser cannot fetch arbitrary hosts (CORS),
- * so the server performs the fetch instead, guarded here.
+ * so the server performs the fetch instead, guarded here. `fetchRemoteText` uses
+ * the same guards for small HTML/JSON documents (used by file-host resolvers).
  */
 export type RemoteFetchReason =
   | "invalid"
@@ -40,12 +41,19 @@ export type RemoteDownloadResult = {
   finalUrl: string;
 };
 
+export type RemoteTextResult = {
+  text: string;
+  contentType?: string;
+  finalUrl: string;
+};
+
 const ALLOWED_PROTOCOLS = new Set(["http:", "https:"]);
 // URL.port is "" for the protocol default. Restricting the port blocks the
 // server from being used to probe non-web services on a public host.
 const ALLOWED_PORTS = new Set(["", "80", "443"]);
 const MAX_REDIRECTS = 3;
-const USER_AGENT = "PingvinShare/1.0 (remote-file-fetch)";
+const USER_AGENT =
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36";
 
 const BLOCKED_V4_RANGES = [
   "0.0.0.0/8",
@@ -190,16 +198,22 @@ type SingleRequestResult = {
   size?: number;
   contentType?: string;
   fileName?: string;
+  text?: string;
+};
+
+type RequestOptions = {
+  maxBytes?: number;
+  timeoutMs: number;
+  connectTimeoutMs: number;
+  headers?: Record<string, string>;
+  // When set, the body is streamed to this path; otherwise it is collected as
+  // UTF-8 text (bounded by maxBytes).
+  destPath?: string;
 };
 
 function requestOnce(
   url: URL,
-  destPath: string,
-  options: {
-    maxBytes?: number;
-    timeoutMs: number;
-    connectTimeoutMs: number;
-  },
+  options: RequestOptions,
 ): Promise<SingleRequestResult> {
   return new Promise<SingleRequestResult>((resolve, reject) => {
     const lib = url.protocol === "https:" ? https : http;
@@ -222,7 +236,12 @@ function requestOnce(
 
     const requestOptions = {
       method: "GET",
-      headers: { "User-Agent": USER_AGENT, Accept: "*/*" },
+      headers: {
+        "User-Agent": USER_AGENT,
+        Accept: "*/*",
+        "Accept-Language": "en-US,en;q=0.9",
+        ...options.headers,
+      },
       // Node's LookupFunction has overloads TypeScript does not infer here.
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       lookup: safeLookup as any,
@@ -255,29 +274,56 @@ function requestOnce(
       }
 
       let received = 0;
-      // Count and cap inside the stream instead of adding a `data` listener,
-      // which would conflict with pipeline's flowing-mode management.
-      const limiter = new Transform({
-        transform(chunk: Buffer, _encoding, callback) {
-          received += chunk.length;
-          if (options.maxBytes && received > options.maxBytes) {
+      const overCap = (chunkLength: number) => {
+        received += chunkLength;
+        return !!options.maxBytes && received > options.maxBytes;
+      };
+
+      if (options.destPath) {
+        // Count and cap inside the stream instead of adding a `data` listener,
+        // which would conflict with pipeline's flowing-mode management.
+        const limiter = new Transform({
+          transform(chunk: Buffer, _encoding, callback) {
+            if (overCap(chunk.length)) {
+              callback(new RemoteFetchError("too_large"));
+              return;
+            }
+            callback(null, chunk);
+          },
+        });
+        pipeline(res, limiter, createWriteStream(options.destPath))
+          .then(() => {
+            if (settled) return;
+            ok({
+              size: received,
+              contentType: res.headers["content-type"],
+              fileName: parseContentDisposition(
+                res.headers["content-disposition"],
+              ),
+            });
+          })
+          .catch((error) => fail(error));
+        return;
+      }
+
+      const chunks: Buffer[] = [];
+      const collector = new Writable({
+        write(chunk: Buffer, _encoding, callback) {
+          if (overCap(chunk.length)) {
             callback(new RemoteFetchError("too_large"));
             return;
           }
-          callback(null, chunk);
+          chunks.push(Buffer.from(chunk));
+          callback();
         },
       });
-
-      const out = createWriteStream(destPath);
-      pipeline(res, limiter, out)
+      pipeline(res, collector)
         .then(() => {
           if (settled) return;
           ok({
             size: received,
             contentType: res.headers["content-type"],
-            fileName: parseContentDisposition(
-              res.headers["content-disposition"],
-            ),
+            text: Buffer.concat(chunks).toString("utf8"),
           });
         })
         .catch((error) => fail(error));
@@ -295,6 +341,27 @@ function requestOnce(
   });
 }
 
+async function followRedirects(
+  rawUrl: string,
+  options: RequestOptions,
+): Promise<{ result: SingleRequestResult; finalUrl: string }> {
+  let url = validateUrl(rawUrl);
+  for (let redirects = 0; ; redirects++) {
+    const result = await requestOnce(url, options);
+    if (result.location === undefined)
+      return { result, finalUrl: url.toString() };
+    if (redirects >= MAX_REDIRECTS)
+      throw new RemoteFetchError("too_many_redirects");
+    let next: URL;
+    try {
+      next = new URL(result.location, url);
+    } catch {
+      throw new RemoteFetchError("invalid");
+    }
+    url = validateUrl(next.toString());
+  }
+}
+
 export async function downloadRemoteToFile(
   rawUrl: string,
   destPath: string,
@@ -302,35 +369,45 @@ export async function downloadRemoteToFile(
     maxBytes?: number;
     timeoutMs?: number;
     connectTimeoutMs?: number;
+    headers?: Record<string, string>;
   } = {},
 ): Promise<RemoteDownloadResult> {
-  let url = validateUrl(rawUrl);
-  const resolved = {
+  const { result, finalUrl } = await followRedirects(rawUrl, {
     maxBytes: options.maxBytes,
     timeoutMs: options.timeoutMs ?? 5 * 60 * 1000,
     connectTimeoutMs: options.connectTimeoutMs ?? 15 * 1000,
+    headers: options.headers,
+    destPath,
+  });
+
+  return {
+    size: result.size ?? 0,
+    contentType: result.contentType,
+    fileName: result.fileName,
+    finalUrl,
   };
+}
 
-  for (let redirects = 0; ; redirects++) {
-    const result = await requestOnce(url, destPath, resolved);
-    if (result.location !== undefined) {
-      if (redirects >= MAX_REDIRECTS)
-        throw new RemoteFetchError("too_many_redirects");
-      let next: URL;
-      try {
-        next = new URL(result.location, url);
-      } catch {
-        throw new RemoteFetchError("invalid");
-      }
-      url = validateUrl(next.toString());
-      continue;
-    }
+/** Fetches a small HTML/JSON document (bounded) with the same SSRF guards. */
+export async function fetchRemoteText(
+  rawUrl: string,
+  options: {
+    maxBytes?: number;
+    timeoutMs?: number;
+    connectTimeoutMs?: number;
+    headers?: Record<string, string>;
+  } = {},
+): Promise<RemoteTextResult> {
+  const { result, finalUrl } = await followRedirects(rawUrl, {
+    maxBytes: options.maxBytes ?? 2 * 1024 * 1024,
+    timeoutMs: options.timeoutMs ?? 20 * 1000,
+    connectTimeoutMs: options.connectTimeoutMs ?? 15 * 1000,
+    headers: options.headers,
+  });
 
-    return {
-      size: result.size ?? 0,
-      contentType: result.contentType,
-      fileName: result.fileName,
-      finalUrl: url.toString(),
-    };
-  }
+  return {
+    text: result.text ?? "",
+    contentType: result.contentType,
+    finalUrl,
+  };
 }

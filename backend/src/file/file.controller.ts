@@ -123,7 +123,7 @@ export class FileController {
     @Body() body: UploadFromUrlDTO,
     @Param("shareId") shareId: string,
   ) {
-    return await this.fileService.createFromUrl(shareId, body.url, body.name);
+    return await this.fileService.importFromUrl(shareId, body.url, body.name);
   }
 
   @Post()
