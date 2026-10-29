@@ -139,6 +139,21 @@ export async function middleware(request: NextRequest) {
   }
 
   const response = NextResponse.next();
+
+  // Client-navigation data (`/_next/data/*`) is versioned by build ID and must
+  // never be stored by a shared cache: after a deploy (or a transient empty
+  // payload) a cached entry blanks the page until a hard reload. Next runs this
+  // middleware for data requests with the *page* path, so detect them by the
+  // header the router sends rather than by the resolved pathname.
+  if (
+    request.headers.get("x-nextjs-data") === "1" ||
+    request.headers.get("x-middleware-prefetch") === "1" ||
+    request.nextUrl.pathname.startsWith("/_next/data/")
+  ) {
+    setCacheHeaders(response, "no-store");
+    return response;
+  }
+
   const configuredDefaultLanguage = getConfig(
     "general.defaultLanguage",
   ) as string;

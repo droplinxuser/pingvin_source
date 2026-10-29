@@ -250,7 +250,11 @@ Origin responses set `Cache-Control`, `CDN-Cache-Control` and
   URLs; `CDN-Cache-Control` remains the edge authority.
 - Auth, account, admin, upload, edit, error and missing-share pages are
   `no-store`. `_next/data` client-navigation responses are explicitly
-  `no-store`.
+  `no-store`: Next runs the middleware for those requests with the *page* path,
+  so the middleware detects the router's data request (`x-nextjs-data` /
+  `x-middleware-prefetch`) and forces `no-store`. Otherwise the CDN could cache
+  a build-ID data payload and blank the page after a deploy until a hard
+  reload. Also keep a Cloudflare Cache Rule that bypasses `/_next/data/*`.
 - Cloudflare does not cache HTML/JSON by default. Scope a Cache Rule to the
   public HTML routes, config/stats, trending/recent/countries/SEO/thumbnail,
   sitemap/robots and public files; bypass requests carrying an `access_token`
