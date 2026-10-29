@@ -24,7 +24,6 @@ import { EmailService } from "src/email/email.service";
 import { I18nService } from "nestjs-i18n";
 import { TrendingService } from "src/cache/trending.service";
 import { SearchService } from "src/cache/search.service";
-import { DownloadService } from "src/cache/download.service";
 import { VirusTotalQueueService } from "src/virustotal/virustotalQueue.service";
 import { invalidateShareDataCache } from "src/utils/cache.util";
 import { getFileMimeType } from "src/utils/mime.util";
@@ -96,7 +95,6 @@ export class FileService implements OnModuleInit {
     private readonly i18n: I18nService,
     private readonly trending: TrendingService,
     private readonly search: SearchService,
-    private readonly downloads: DownloadService,
     private readonly virusTotalQueue: VirusTotalQueueService,
     @Inject(CACHE_MANAGER) private cache: Cache,
   ) {}
@@ -1233,23 +1231,7 @@ export class FileService implements OnModuleInit {
         })
       )?.storageProvider;
     const storageService = this.getStorageService(provider);
-
-    // Count the archive once per request and attribute it to every file it
-    // contains. A rejected (too large / empty) selection never reaches here.
-    this.recordDownload(
-      shareId,
-      files.map((file) => file.id),
-    );
-
     return await storageService.getZip(shareId, files);
-  }
-
-  /**
-   * Fire-and-forget download counter. Uses a bounded fallback when Valkey is
-   * down, so a failure must never affect the download itself.
-   */
-  recordDownload(shareId: string, fileIds: string[]) {
-    void this.downloads.recordDownload(shareId, fileIds).catch(() => {});
   }
 
   async notifyRecipientDownload(

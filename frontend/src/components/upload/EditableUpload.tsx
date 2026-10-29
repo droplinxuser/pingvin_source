@@ -99,18 +99,18 @@ const EditableUpload = ({
   }, [existingFiles, uploadingFiles]);
 
   const uploadFiles = async (files: FileUpload[]) => {
-    const fileUploadPromises = files.map(async (file, fileIndex) =>
+    const fileUploadPromises = files.map(async (file) =>
       // Limit the number of concurrent uploads to 3
       promiseLimit(async () => {
         let fileId: string | undefined;
 
+        // Match by object reference so removing a queued file mid-upload
+        // cannot shift progress onto another row.
         const setFileProgress = (progress: number) => {
-          setUploadingFiles((files) =>
-            files.map((file, callbackIndex) => {
-              if (fileIndex == callbackIndex) {
-                file.uploadingProgress = progress;
-              }
-              return file;
+          setUploadingFiles((current) =>
+            current.map((candidate) => {
+              if (candidate === file) candidate.uploadingProgress = progress;
+              return candidate;
             }),
           );
         };

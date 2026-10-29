@@ -228,6 +228,25 @@ const downloadFile = async (
   document.body.appendChild(link);
   link.click();
   link.remove();
+  void recordDownload(shareId, [fileId]);
+};
+
+/**
+ * Download-count beacon. The bytes are usually served from the Cloudflare edge
+ * (and the browser's HTTP cache), so the origin never sees most downloads. This
+ * small no-store request is sent on each download click and keeps the counters
+ * accurate, mirroring how share views stay accurate. It is best-effort: a
+ * failure must never surface to the visitor.
+ */
+const recordDownload = async (shareId: string, fileIds?: string[]) => {
+  if (!isValidId(shareId)) return;
+  try {
+    await api.post(`shares/${shareId}/download`, {
+      fileIds: fileIds?.length ? fileIds : undefined,
+    });
+  } catch {
+    // Counting is best-effort.
+  }
 };
 
 /**
@@ -251,6 +270,7 @@ const downloadZip = async (
   document.body.appendChild(link);
   link.click();
   link.remove();
+  void recordDownload(shareId, fileIds);
 };
 
 const removeFile = async (shareId: string, fileId: string) => {
@@ -262,14 +282,19 @@ const uploadFromUrl = async (
   shareId: string,
   url: string,
   name?: string,
+  signal?: AbortSignal,
 ): Promise<{ files: FileUploadResponse[] }> => {
   if (!isValidId(shareId)) throw new Error("Invalid Share ID");
   // The backend may import more than one file (e.g. a Bunkr album page).
   return (
-    await api.post(`shares/${shareId}/files/from-url`, {
-      url,
-      name: name || undefined,
-    })
+    await api.post(
+      `shares/${shareId}/files/from-url`,
+      {
+        url,
+        name: name || undefined,
+      },
+      { signal },
+    )
   ).data;
 };
 
@@ -290,6 +315,7 @@ const uploadFileDirectS3 = async (
   chunkIndex: number,
   totalChunks: number,
   onUploadProgress?: UploadProgressHandler,
+  signal?: AbortSignal,
 ): Promise<FileUploadResponse> => {
   const fileId = file.id || generateUUID();
   const sessionKey = `${shareId}:${file.name}`;
@@ -331,6 +357,7 @@ const uploadFileDirectS3 = async (
           onUploadProgress: handleUploadProgress,
         }),
       onUploadProgress,
+      signal,
     );
 
     const etag = response.headers["etag"];
@@ -388,6 +415,7 @@ const uploadFileProxied = async (
   chunkIndex: number,
   totalChunks: number,
   onUploadProgress?: UploadProgressHandler,
+  signal?: AbortSignal,
 ): Promise<FileUploadResponse> => {
   const response = await withUploadInactivityTimeout(
     (signal, handleUploadProgress) =>
@@ -403,6 +431,7 @@ const uploadFileProxied = async (
         onUploadProgress: handleUploadProgress,
       }),
     onUploadProgress,
+    signal,
   );
   return response.data;
 };
@@ -417,6 +446,7 @@ const uploadFile = async (
   chunkIndex: number,
   totalChunks: number,
   onUploadProgress?: UploadProgressHandler,
+  signal?: AbortSignal,
 ): Promise<FileUploadResponse> => {
   if (!isValidId(shareId))
     throw new Error(
@@ -435,6 +465,7 @@ const uploadFile = async (
       chunkIndex,
       totalChunks,
       onUploadProgress,
+      signal,
     );
   }
 
@@ -446,6 +477,7 @@ const uploadFile = async (
       chunkIndex,
       totalChunks,
       onUploadProgress,
+      signal,
     );
   }
 
@@ -475,6 +507,7 @@ const uploadFile = async (
           chunkIndex,
           totalChunks,
           onUploadProgress,
+          signal,
         );
       } else {
         s3UploadSupportedShares[shareId] = false;
@@ -493,6 +526,7 @@ const uploadFile = async (
     chunkIndex,
     totalChunks,
     onUploadProgress,
+    signal,
   );
 };
 

@@ -69,6 +69,21 @@ import { ShareTokenSecurity } from "./guard/shareTokenSecurity.guard";
 import { IdValidation } from "./guard/shareIdValidation.guard";
 import { ShareService } from "./share.service";
 import { CompletedShareDTO } from "./dto/shareComplete.dto";
+
+// A ZIP can attribute one download to many files; cap the list so a beacon
+// cannot turn into an unbounded Valkey write.
+const MAX_DOWNLOAD_FILE_IDS = 500;
+const DOWNLOAD_FILE_ID_REGEX = /^[a-zA-Z0-9-]*={0,2}$/;
+
+function normalizeDownloadFileIds(fileIds: unknown): string[] {
+  if (!Array.isArray(fileIds)) return [];
+  const valid = fileIds.filter(
+    (id): id is string =>
+      typeof id === "string" && DOWNLOAD_FILE_ID_REGEX.test(id),
+  );
+  return [...new Set(valid)].slice(0, MAX_DOWNLOAD_FILE_IDS);
+}
+
 @Controller("shares")
 export class ShareController {
   constructor(
@@ -250,6 +265,31 @@ export class ShareController {
       uploaderInfo,
       downloads,
     });
+  }
+
+  /**
+   * Download-count beacon. Files are served from the Cloudflare edge, so the
+   * origin never sees most downloads; the client sends this small no-store
+   * request on each download (and once per file for a ZIP). This keeps the
+   * counters accurate without giving up edge caching, mirroring how share
+   * views stay accurate. Guarded like the share so only visitors who may
+   * access it can count a download.
+   */
+  @Post(":id/download")
+  @Throttle({
+    default: { limit: 300, ttl: 60 * 1000 },
+    visitor: { limit: 120, ttl: 60 * 1000 },
+  })
+  @UseGuards(IdValidation, ShareSecurityGuard)
+  async recordDownload(
+    @Param("id") id: string,
+    @Body() body: { fileIds?: unknown },
+  ) {
+    await this.downloadService.recordDownload(
+      id,
+      normalizeDownloadFileIds(body?.fileIds),
+    );
+    return { counted: true };
   }
 
   @Throttle({

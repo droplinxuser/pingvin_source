@@ -59,6 +59,8 @@ const Upload = ({
 
   const filesRef = useRef<FileUpload[]>(files);
   filesRef.current = files;
+  // One controller per in-flight file so the list can cancel an upload.
+  const uploadAbortsRef = useRef(new Map<FileUpload, AbortController>());
 
   useConfirmLeave({
     message: t("upload.notify.confirm-leave"),
@@ -94,18 +96,21 @@ const Upload = ({
       return;
     }
 
-    const fileUploadPromises = files.map(async (file, fileIndex) =>
+    const fileUploadPromises = files.map(async (file) =>
       // Limit the number of concurrent uploads to 3
       promiseLimit(async () => {
         let fileId;
+        const controller = new AbortController();
+        const { signal } = controller;
+        uploadAbortsRef.current.set(file, controller);
 
+        // Match the progress target by object reference so removing or
+        // cancelling a file mid-upload cannot shift progress onto another row.
         const setFileProgress = (progress: number) => {
-          setFiles((files) =>
-            files.map((file, callbackIndex) => {
-              if (fileIndex == callbackIndex) {
-                file.uploadingProgress = progress;
-              }
-              return file;
+          setFiles((current) =>
+            current.map((candidate) => {
+              if (candidate === file) candidate.uploadingProgress = progress;
+              return candidate;
             }),
           );
         };
@@ -120,9 +125,11 @@ const Upload = ({
               createdShare.id,
               file.remoteUrl,
               getNormalizedFileName(file),
+              signal,
             );
             setFileProgress(100);
           } catch (e) {
+            if (signal.aborted) return;
             toast.axiosError(e);
             setFileProgress(-1);
           }
@@ -136,6 +143,7 @@ const Upload = ({
 
         let retries = 0;
         for (let chunkIndex = 0; chunkIndex < chunks; chunkIndex++) {
+          if (signal.aborted) return;
           const from = chunkIndex * chunkSize.current;
           const to = from + chunkSize.current;
           const blob = file.slice(from, to);
@@ -163,6 +171,7 @@ const Upload = ({
                     setFileProgress(Math.min(overallPercent, 99.9));
                   }
                 },
+                signal,
               )
               .then((response) => {
                 fileId = response.id;
@@ -171,8 +180,9 @@ const Upload = ({
             retries = 0;
             setFileProgress(((chunkIndex + 1) / chunks) * 100);
           } catch (e) {
-            // A rejected chunk used to restart the file forever. Stop after a
-            // small budget and leave the file marked as failed instead.
+            // A cancelled upload stops; a rejected chunk is retried within a
+            // small budget and then marked failed instead.
+            if (signal.aborted) return;
             if (++retries > MAX_UPLOAD_RETRIES) {
               setFileProgress(-1);
               break;
@@ -199,6 +209,16 @@ const Upload = ({
 
     Promise.all(fileUploadPromises);
   };
+
+  const cancelUpload = useCallback((file: FileUpload) => {
+    uploadAbortsRef.current.get(file)?.abort();
+    uploadAbortsRef.current.delete(file);
+    setFiles((current) => {
+      const next = current.filter((candidate) => candidate !== file);
+      filesRef.current = next;
+      return next;
+    });
+  }, []);
 
   const showCreateUploadModalCallback = async (files: FileUpload[]) => {
     // Both modals pull in yup, moment and the QR renderer. Load them only when
@@ -307,6 +327,17 @@ const Upload = ({
     }
   }, [files]);
 
+  // Clear the "uploading" state once nothing is queued or in flight (for
+  // example after every file was cancelled or failed). The block above only
+  // covers the success path.
+  useEffect(() => {
+    if (!isUploading) return;
+    const busy = files.some(
+      (file) => file.uploadingProgress >= 0 && file.uploadingProgress < 100,
+    );
+    if (!busy) setisUploading(false);
+  }, [files, isUploading]);
+
   if (user && user.allowShare === false && !isReverseShare) {
     return (
       <>
@@ -358,7 +389,11 @@ const Upload = ({
         isUploading={isUploading}
       />
       {files.length > 0 && (
-        <FileList<FileUpload> files={files} setFiles={setFiles} />
+        <FileList<FileUpload>
+          files={files}
+          setFiles={setFiles}
+          onCancel={cancelUpload}
+        />
       )}
     </>
   );

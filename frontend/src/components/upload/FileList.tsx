@@ -1,8 +1,8 @@
 import { ActionIcon, Table, Group } from "@mantine/core";
 import { useModals } from "@mantine/modals";
-import { TbTrash, TbEdit } from "react-icons/tb";
+import { TbTrash, TbEdit, TbX } from "react-icons/tb";
 import { GrUndo } from "react-icons/gr";
-import { FileListItem } from "../../types/File.type";
+import { FileListItem, FileUpload } from "../../types/File.type";
 import { byteToHumanSizeString } from "../../utils/fileSize.util";
 import { getNormalizedFileName } from "../../utils/file.util";
 import { isShareTextFile } from "../../utils/mime.util";
@@ -18,17 +18,22 @@ const FileListRow = ({
   onRemove,
   onRestore,
   onEdit,
+  onCancel,
 }: {
   file: FileListItem;
   onRemove?: () => void;
   onRestore?: () => void;
   onEdit?: () => void;
+  onCancel?: () => void;
 }) => {
   {
     const uploadable = "uploadingProgress" in file;
     const uploading = uploadable && file.uploadingProgress !== 0;
+    // In-flight (not done, not failed): offer a cancel that aborts the upload.
+    const inProgress =
+      uploadable && file.uploadingProgress > 0 && file.uploadingProgress < 100;
     const removable = uploadable
-      ? file.uploadingProgress === 0
+      ? file.uploadingProgress <= 0
       : onRemove && !file.deleted;
     const restorable = onRestore && !uploadable && !!file.deleted;
     const deleted = !uploadable && !!file.deleted;
@@ -67,11 +72,22 @@ const FileListRow = ({
               </HoverTip>
             )}
             {removable && (
-              <HoverTip label={t("common.button.delete")}>
+              <HoverTip
+                label={
+                  uploadable
+                    ? t("upload.filelist.remove")
+                    : t("common.button.delete")
+                }
+              >
                 <ActionIcon
                   color="red"
                   variant="light"
                   size={25}
+                  aria-label={
+                    uploadable
+                      ? t("upload.filelist.remove")
+                      : t("common.button.delete")
+                  }
                   onClick={onRemove}
                 >
                   <TbTrash />
@@ -80,6 +96,19 @@ const FileListRow = ({
             )}
             {uploading && (
               <UploadProgressIndicator progress={file.uploadingProgress} />
+            )}
+            {inProgress && onCancel && (
+              <HoverTip label={t("upload.filelist.cancel")}>
+                <ActionIcon
+                  color="red"
+                  variant="light"
+                  size={25}
+                  aria-label={t("upload.filelist.cancel")}
+                  onClick={onCancel}
+                >
+                  <TbX />
+                </ActionIcon>
+              </HoverTip>
             )}
             {restorable && (
               <HoverTip label={t("common.button.undo")}>
@@ -103,9 +132,11 @@ const FileListRow = ({
 const FileList = <T extends FileListItem = FileListItem>({
   files,
   setFiles,
+  onCancel,
 }: {
   files: T[];
   setFiles: (files: T[]) => void;
+  onCancel?: (file: FileUpload) => void;
 }) => {
   const modals = useModals();
   const remove = (index: number) => {
@@ -146,6 +177,11 @@ const FileList = <T extends FileListItem = FileListItem>({
       onRemove={() => remove(i)}
       onRestore={() => restore(i)}
       onEdit={() => edit(i)}
+      onCancel={
+        onCancel && "uploadingProgress" in file
+          ? () => onCancel(file as FileUpload)
+          : undefined
+      }
     />
   ));
 

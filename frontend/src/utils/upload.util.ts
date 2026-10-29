@@ -32,8 +32,9 @@ export const fetchRemoteAsFile = async (
 // Keeps the name safe for the backend's upload validation (no path segments or
 // control characters).
 const sanitizeName = (name: string): string => {
+  const base = (name.split(/[\\/]/).pop() ?? "").trim();
   // eslint-disable-next-line no-control-regex
-  const trimmed = (name.split(/[\\/]/).pop() ?? "").replace(/[\u0000-\u001f\u007f]/g, "").trim();
+  const trimmed = base.replace(/[\u0000-\u001f\u007f]/g, "");
   return (trimmed || "download").slice(0, 1024);
 };
 
@@ -49,7 +50,6 @@ const nameFromHeaders = (headers: Headers): string | undefined => {
   }
 };
 
-
 type UploadRequest<T> = (
   signal: AbortSignal,
   onUploadProgress: UploadProgressHandler,
@@ -58,6 +58,7 @@ type UploadRequest<T> = (
 export const withUploadInactivityTimeout = async <T>(
   request: UploadRequest<T>,
   onUploadProgress?: UploadProgressHandler,
+  externalSignal?: AbortSignal,
 ): Promise<T> => {
   const controller = new AbortController();
   let inactivityTimeout: ReturnType<typeof setTimeout> | undefined;
@@ -70,6 +71,15 @@ export const withUploadInactivityTimeout = async <T>(
     );
   };
 
+  // A caller (the upload list) can abort the whole request, e.g. when the user
+  // cancels an in-progress file.
+  const onExternalAbort = () => controller.abort();
+  if (externalSignal) {
+    if (externalSignal.aborted) controller.abort();
+    else
+      externalSignal.addEventListener("abort", onExternalAbort, { once: true });
+  }
+
   resetInactivityTimeout();
 
   try {
@@ -79,5 +89,6 @@ export const withUploadInactivityTimeout = async <T>(
     });
   } finally {
     clearTimeout(inactivityTimeout);
+    externalSignal?.removeEventListener("abort", onExternalAbort);
   }
 };

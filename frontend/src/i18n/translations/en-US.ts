@@ -732,6 +732,8 @@ export default {
   "upload.filelist.size": "Size",
   "upload.filelist.estimating": "Estimating...",
   "upload.filelist.remaining": "{time} remaining",
+  "upload.filelist.remove": "Remove file",
+  "upload.filelist.cancel": "Cancel upload",
 
   // showCreateUploadModal.tsx
   "upload.modal.title": "Create Share",
