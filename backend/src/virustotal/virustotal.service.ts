@@ -35,6 +35,7 @@ import {
   isArchiveFileName,
   isEncryptedArchive as detectEncryptedArchive,
 } from "./archiveEncryption.util";
+import { writeVirusTotalResult } from "./virustotalReport.util";
 
 const API_BASE_DEFAULT = "https://www.virustotal.com/api/v3";
 // 499 intervals at 173s fit in 24h, allowing exactly 500 starts/day.
@@ -383,6 +384,7 @@ export class VirusTotalService implements OnModuleInit, OnApplicationShutdown {
         return undefined;
       }
       if (cached) {
+        await this.recordReport(hashedJob, cached);
         this.audit.recordEvent({
           type: cached,
           ...this.jobEvent(hashedJob),
@@ -1056,6 +1058,7 @@ export class VirusTotalService implements OnModuleInit, OnApplicationShutdown {
     if (verdict === "malicious") {
       await this.handleMalicious(job, { stats });
     } else {
+      await this.recordReport(job, verdict, stats);
       this.audit.recordEvent({
         type: verdict,
         ...this.jobEvent(job),
@@ -1069,6 +1072,38 @@ export class VirusTotalService implements OnModuleInit, OnApplicationShutdown {
       }
     }
     return true;
+  }
+
+  /**
+   * Persists a "safe" verdict next to the share files so the share page can
+   * show a scanned/clean indicator. Malicious files are removed instead, so
+   * they never get a report entry.
+   */
+  private async recordReport(
+    job: ScanJob,
+    verdict: ScanVerdict,
+    stats?: AnalysisStats,
+  ) {
+    if (verdict !== "clean" && verdict !== "suspicious") return;
+    const engines = stats
+      ? stats.malicious + stats.suspicious + stats.harmless + stats.undetected
+      : undefined;
+    try {
+      await writeVirusTotalResult(job.shareId, job.fileId, {
+        verdict,
+        malicious: stats?.malicious,
+        suspicious: stats?.suspicious,
+        harmless: stats?.harmless,
+        undetected: stats?.undetected,
+        engines,
+        hash: job.hash,
+        scannedAt: new Date().toISOString(),
+      });
+    } catch (error) {
+      this.logger.debug(
+        `Could not store the VirusTotal result for ${job.shareId}/${job.fileId}: ${errorMessage(error)}`,
+      );
+    }
   }
 
   private async handleMalicious(

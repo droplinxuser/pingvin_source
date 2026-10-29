@@ -37,6 +37,7 @@ import {
   detectFileHost,
   resolveFileHost,
 } from "src/utils/fileHosts.util";
+import { removeVirusTotalResult } from "src/virustotal/virustotalReport.util";
 import { SAFE_FILE_NAME } from "./dto/upload.dto";
 import { DATA_DIRECTORY, SHARE_DIRECTORY } from "src/constants";
 // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -1125,6 +1126,7 @@ export class FileService implements OnModuleInit {
       invalidateShareDataCache(this.cache, shareId),
       this.trending.invalidate(shareId),
       this.search.invalidate(),
+      removeVirusTotalResult(shareId, fileId),
     ]);
   }
 

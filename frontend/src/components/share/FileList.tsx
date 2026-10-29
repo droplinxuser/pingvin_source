@@ -54,6 +54,7 @@ import toast from "../../utils/toast.util";
 import TableSortIcon, { TableSort } from "../core/SortIcon";
 import { HoverTip } from "../core/HoverTip";
 import FileName from "../core/FileName";
+import VirusTotalBadge from "./VirusTotalBadge";
 
 const ARCHIVE_EXTENSION = /\.(zip|rar|7z|tar|gz|bz2|xz)$/i;
 const FILE_BATCH_SIZE = 50;
@@ -372,6 +373,9 @@ const FileList = ({
                     {size}
                   </Text>
                   <Group spacing={4} noWrap sx={{ justifySelf: "end" }}>
+                    {file.virustotal && (
+                      <VirusTotalBadge report={file.virustotal} />
+                    )}
                     {isShareTextFile(file.name) && (
                       <HoverTip label={t("share.copy-text-contents")}>
                         <ActionIcon

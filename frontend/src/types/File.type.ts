@@ -7,10 +7,22 @@ export type FileUpload = File & {
 
 export type FileUploadResponse = { id: string; name: string };
 
+export type VirusTotalFileReport = {
+  verdict: "clean" | "suspicious";
+  malicious?: number;
+  suspicious?: number;
+  harmless?: number;
+  undetected?: number;
+  engines?: number;
+  hash?: string;
+  scannedAt: string;
+};
+
 export type FileMetaData = {
   id: string;
   name: string;
   size: string;
+  virustotal?: VirusTotalFileReport;
 };
 
 export type FileListItem = FileUpload | (FileMetaData & { deleted?: boolean });

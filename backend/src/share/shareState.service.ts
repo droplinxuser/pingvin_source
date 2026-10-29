@@ -33,6 +33,7 @@ import {
   shareGuardCacheKey,
 } from "src/utils/cache.util";
 import { readCommentVersion } from "./comment.service";
+import { readVirusTotalReport } from "src/virustotal/virustotalReport.util";
 import { getShareExpiration, isMemberShare, sumFileSizes } from "./share.util";
 
 // Collapse bursts of share views into one metadata write per share. The
@@ -195,11 +196,22 @@ export class ShareStateService implements OnApplicationShutdown {
       await this.persistExpiration(share.id, share.expiration);
     }
 
-    const { security, ...shareData } = share;
-    const commentsVersion = await commentsVersionRead;
+    const { security, files, ...shareData } = share;
+    const [commentsVersion, virusTotal] = await Promise.all([
+      commentsVersionRead,
+      readVirusTotalReport(id),
+    ]);
+    // Attach the flat-file scan verdict to each file so the share page can show
+    // a "safe" indicator without a database column.
+    const filesWithReport = files.map((file) =>
+      virusTotal[file.id]
+        ? { ...file, virustotal: virusTotal[file.id] }
+        : file,
+    );
     const result = {
       ...shareData,
-      size: sumFileSizes(share.files),
+      files: filesWithReport,
+      size: sumFileSizes(files),
       hasPassword: !!security?.password,
       maxViews: security?.maxViews,
       commentsVersion,

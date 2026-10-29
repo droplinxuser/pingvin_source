@@ -883,6 +883,15 @@ export default {
   "share.custom.files.search-empty": "No files match “{query}”.",
   "share.custom.files.clear-search": "Clear search",
 
+  // VirusTotal per-file indicator (fork-only)
+  "share.custom.virustotal.safe": "Scanned by VirusTotal — no threats found",
+  "share.custom.virustotal.suspicious":
+    "Scanned by VirusTotal — flagged as suspicious",
+  "share.custom.virustotal.summary":
+    "{malicious} malicious · {suspicious} suspicious · {undetected} undetected",
+  "share.custom.virustotal.hash": "Hash {hash}",
+  "share.custom.virustotal.scanned": "Scanned {date}",
+
   "share.modal.file-preview.original_file": "View original file",
   "share.modal.file-preview.custom.previous": "Previous file",
   "share.modal.file-preview.custom.next": "Next file",
