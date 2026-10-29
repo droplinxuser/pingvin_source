@@ -94,6 +94,7 @@ function buildFileService({ files, totalSize, maxZipSize, storageProvider }) {
     { t: (k) => k },
     {},
     {},
+    { recordDownload: async () => {} },
     {},
     {},
   );

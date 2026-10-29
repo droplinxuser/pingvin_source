@@ -7,6 +7,7 @@ import {
   MyReverseShare,
   MyShare,
   Share,
+  ShareDownloadStats,
   TrendingCountry,
   TrendingShare,
   UpdateShare,
@@ -62,7 +63,8 @@ const cachedShareList = (
 };
 
 let trendingCountriesCache:
-  { at: number; items: TrendingCountry[] } | undefined;
+  | { at: number; items: TrendingCountry[] }
+  | undefined;
 
 const list = async (
   page = 1,
@@ -134,6 +136,11 @@ const getFromOwner = async (id: string): Promise<Share> => {
   return (await api.get(`shares/${id}/from-owner`)).data;
 };
 
+const getDownloads = async (id: string): Promise<ShareDownloadStats> => {
+  if (!isValidId(id)) throw new Error("Invalid ID");
+  return (await api.get(`shares/${id}/downloads`)).data;
+};
+
 const getTrending = cachedShareList(
   "shares/trending",
   12,
@@ -165,9 +172,8 @@ const searchShares = async (
 ): Promise<TrendingShare[]> => {
   const term = query.trim();
   if (!term) return [];
-  const items = (
-    await api.get("shares/search", { params: { q: term, limit } })
-  ).data as TrendingShare[];
+  const items = (await api.get("shares/search", { params: { q: term, limit } }))
+    .data as TrendingShare[];
   return items;
 };
 
@@ -554,6 +560,7 @@ export default {
   getShareToken,
   get,
   getFromOwner,
+  getDownloads,
   update,
   remove,
   report,

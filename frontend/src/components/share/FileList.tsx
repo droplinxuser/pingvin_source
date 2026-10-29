@@ -34,6 +34,7 @@ import {
   TbFileText,
   TbFileTypePdf,
   TbFileZip,
+  TbLink,
   TbMusic,
   TbPhoto,
   TbSearch,
@@ -47,7 +48,7 @@ import shareService from "../../services/share.service";
 import { FileMetaData } from "../../types/File.type";
 import { Share } from "../../types/share.type";
 import { byteToHumanSizeString } from "../../utils/fileSize.util";
-import { getBaseName } from "../../utils/file.util";
+import { getBaseName, getShareFileLink } from "../../utils/file.util";
 import { openFilePreview } from "../../utils/filePreview.util";
 import {
   doesFileSupportPreview,
@@ -209,12 +210,16 @@ const FileList = ({
   isLoading,
   recipientId,
   skeletonCount = 5,
+  downloadCounts,
 }: {
   files?: FileMetaData[];
   share: Share;
   isLoading: boolean;
   recipientId?: string;
   skeletonCount?: number;
+  // Owner-only per-file download counts (rolling 30 days). Undefined for
+  // visitors so the public table never shows analytics.
+  downloadCounts?: Record<string, number>;
 }) => {
   const clipboard = useClipboard();
   const modals = useModals();
@@ -503,6 +508,17 @@ const FileList = ({
                   </ThemeIcon>
                   <Box sx={{ minWidth: 0 }}>
                     <FileName name={file.name} />
+                    {downloadCounts && (downloadCounts[file.id] ?? 0) > 0 && (
+                      <Text
+                        size="xs"
+                        color="dimmed"
+                        data-testid="share-file-download-count"
+                      >
+                        {t("share.custom.files.download-count", {
+                          count: downloadCounts[file.id],
+                        })}
+                      </Text>
+                    )}
                     <Text
                       size="xs"
                       color="dimmed"
@@ -574,6 +590,31 @@ const FileList = ({
                         </ActionIcon>
                       </HoverTip>
                     )}
+                    <HoverTip label={t("share.custom.files.copy-link")}>
+                      <ActionIcon
+                        color="grape"
+                        variant="light"
+                        size={28}
+                        aria-label={t("share.custom.files.copy-link")}
+                        onClick={() => {
+                          if (!window.isSecureContext) {
+                            toast.error(
+                              t("share.notify.copy-not-supported-error"),
+                            );
+                            return;
+                          }
+                          clipboard.copy(
+                            `${window.location.origin}${getShareFileLink(
+                              share.id,
+                              file.id,
+                            )}`,
+                          );
+                          toast.success(t("share.notify.copied-link"));
+                        }}
+                      >
+                        <TbLink size={16} />
+                      </ActionIcon>
+                    </HoverTip>
                     <HoverTip label={t("common.button.download")}>
                       <ActionIcon
                         color="cyan"

@@ -9,8 +9,9 @@ growth hack of an ad-funded host.
 The short version: DropMB already wins on the things that make people leave
 gofile and bunkr (no forced wait, no fake download page, no account required,
 expiring links, comments, reverse shares, password/view limits, malware
-scanning, galleries and SEO). The remaining gaps are mostly **creator
-workflow** (search, bulk actions, analytics, API) rather than core sharing.
+scanning, galleries and SEO). The creator-workflow items (search, bulk
+selection, streamed downloads, download analytics) are now in place; the main
+remaining gap is the **public API**.
 
 ## Current comparison
 
@@ -19,17 +20,17 @@ workflow** (search, bulk actions, analytics, API) rather than core sharing.
 | Share without an account | Yes | No (uploader account) | Yes (configurable) |
 | Storage limit | Advertised unlimited | Album quotas / paid tiers | 5 GB per share, 512 MB per file |
 | Link lifetime | Inactivity based | Long-lived albums | Rolling 100 days, auto-extended on view |
-| Direct file links | Yes | Yes | Behind share-page hotlink check |
+| Direct file links | Yes | Yes | Yes (short `/d/:shareId/:fileId` link, hotlink check kept) |
 | Password / visitor limit | Password | Password | Password, view limit, recipient-only |
 | Receive files from others | Limited | No | Reverse shares (stronger) |
 | Gallery / inline streaming | Basic preview | Core experience | Image/video gallery, PDF/text/audio preview |
 | Comments | No | Limited | Yes, plain-text, moderated by owner/admin |
-| Search inside a share | No | Yes (album search) | Yes, from this session (client-side) |
+| Search inside a share | No | Yes (album search) | Yes (client-side) |
 | Search across public content | No | Yes | Yes (Valkey index, `/search`) |
-| Bulk download | Folder download | Album download | Download all (browser sequence) |
+| Bulk download | Folder download | Album download | Streamed ZIP (up to `share.maxZipSize`) with per-file fallback |
 | Upload from URL | Yes | Yes | Yes (server-resolved for known file hosts, browser-fetched otherwise) |
 | Public API | Yes (token) | Community/unofficial | No |
-| Per-file analytics | Basic | Views/downloads | Share views only |
+| Per-file analytics | Basic | Views/downloads | Share views + rolling download counters (owner-only) |
 | Malware scanning | No | No | ClamAV + VirusTotal, background queue |
 | Abuse reporting | Minimal | Minimal | Report modal + email routing |
 | SEO / social cards | Weak | Weak | Canonicals, OG/Twitter, JSON-LD, sitemaps |
@@ -39,28 +40,27 @@ workflow** (search, bulk actions, analytics, API) rather than core sharing.
 
 ## Recommended sequence
 
-### P0 — finish the creator workflow (small, high leverage)
+### P0 — finish the creator workflow (complete)
 
 1. **(Done.) Bulk selection in the file list.** The share table has an optional
    "Select" toggle that adds a checkbox column. Selection is shared with the
    sequential download loop (`DownloadAllButton`), so a selected set can be
    downloaded as one streamed ZIP when it fits `share.maxZipSize` and falls
    back to per-file downloads otherwise.
-2. **Share-level download counters in Valkey.** Record `downloads` per share
-   and per file in the existing `MetricsService`/`TrendingService` pattern
-   (hourly buckets, 30-day TTL), then show totals on the owner's share page.
-   Do **not** add SQLite columns; Valkey already owns ephemeral counters and
-   the fork's rule is "Valkey first".
+2. **(Done.) Share-level download counters in Valkey.** Downloads are counted
+   per share and per file in a Valkey-backed rolling 30-day window
+   (`DownloadService`: one small per-share, per-day hash with a TTL and a
+   bounded in-process fallback; no SQLite columns). Owners see the totals on
+   the share page through the owner-only `GET /shares/:id/downloads` endpoint;
+   the public share payload stays free of analytics.
 3. **(Done.) Structured data for file lists.** The share `ItemList` exposes a
    nested `DigitalDocument` per file with `identifier`, `encodingFormat`,
    `contentSize`, `dateCreated` and `dateModified`. The backend SEO payload now
    selects each file's `size` and `createdAt`. Low risk, no storage.
-4. **"Copy link" per file.** Before shipping, decide the hotlink policy: a
-   pasted direct URL currently redirects to the share page because the referrer
-   check fails. Either allow no-referrer direct GETs for public shares or make
-   the copied URL a short `/d/:shareId/:fileId` route that issues the same
-   share-token cookie flow. The second option preserves protection and is the
-   better long-term shape.
+4. **(Done.) "Copy link" per file.** Each file row copies a short
+   `/d/:shareId/:fileId` link. The alias forwards to the share page with a
+   one-shot `?file=` hint, so the normal password/recipient/view checks run
+   before the download and the referrer/hotlink protection is left untouched.
 
 ### P1 — parity features that need a design decision
 
@@ -140,7 +140,8 @@ workflow** (search, bulk actions, analytics, API) rather than core sharing.
 ## Implementation guardrails
 
 - Keep ephemeral counters in Valkey (`metrics.service.ts`,
-  `trending.service.ts`); SQLite stays for durable share/file/user rows.
+  `trending.service.ts`, `download.service.ts`); SQLite stays for durable
+  share/file/user rows.
 - Put every new public listing behind `publicShareWhere()`/`isPublicShare()`
   so protected and removed shares never leak into search, sitemaps or feeds.
 - Reuse `getEdgeCacheHeaders()`, `NO_STORE_HEADERS` and the existing cache

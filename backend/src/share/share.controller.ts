@@ -34,6 +34,7 @@ import {
   TrendingShare,
 } from "src/cache/trending.service";
 import { SearchService } from "src/cache/search.service";
+import { DownloadService } from "src/cache/download.service";
 import {
   NO_STORE_HEADERS,
   getEdgeCacheHeaders,
@@ -78,6 +79,7 @@ export class ShareController {
     private searchService: SearchService,
     private commentService: CommentService,
     private fileService: FileService,
+    private downloadService: DownloadService,
   ) {}
 
   @Get("all")
@@ -399,6 +401,17 @@ export class ShareController {
   @UseGuards(IdValidation, RegisteredShareOwnerGuard)
   async getFromOwner(@Param("id") id: string) {
     return new ShareDTO().from(await this.shareService.get(id));
+  }
+
+  /**
+   * Owner-only download counters (rolling 30-day window, Valkey-backed). Kept
+   * off the public share payload so analytics never leak to visitors.
+   */
+  @Get(":id/downloads")
+  @SkipThrottle({ visitor: true })
+  @UseGuards(IdValidation, RegisteredShareOwnerGuard)
+  async getDownloads(@Param("id") id: string) {
+    return await this.downloadService.getShareDownloads(id);
   }
 
   @Get(":id/metaData")

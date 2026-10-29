@@ -74,12 +74,19 @@ export const getShareZipUrl = (
 ): string => {
   const params = new URLSearchParams();
   if (options.recipientId) params.set("recipient", options.recipientId);
-  if (options.fileIds?.length)
-    params.set("files", options.fileIds.join(","));
+  if (options.fileIds?.length) params.set("files", options.fileIds.join(","));
 
   const query = params.toString();
   return `/api/shares/${shareId}/files/zip${query ? `?${query}` : ""}`;
 };
+
+/**
+ * Short, shareable browser link for a single file. It points at the `/d/`
+ * alias, which runs the share's password/recipient/view checks on the share
+ * page before downloading, so a pasted link keeps every protection.
+ */
+export const getShareFileLink = (shareId: string, fileId: string): string =>
+  `/d/${shareId}/${fileId}`;
 
 export const filterDuplicateFiles = <T extends File>(
   newFiles: T[],

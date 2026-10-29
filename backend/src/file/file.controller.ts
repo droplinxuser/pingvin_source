@@ -284,6 +284,7 @@ export class FileController {
       // preview must not pay for another metadata query.
       if (isDownload) {
         const fileName = await this.fileService.getFileName(shareId, fileId);
+        void this.fileService.recordDownload(shareId, [fileId]);
         void this.fileService.notifyRecipientDownload(
           shareId,
           fileName,
@@ -359,6 +360,7 @@ export class FileController {
     res.set(headers);
 
     if (isDownload && !file.range) {
+      void this.fileService.recordDownload(shareId, [fileId]);
       void this.fileService.notifyRecipientDownload(
         shareId,
         file.metaData.name,

@@ -801,6 +801,7 @@ export default {
     "{count, plural, =1 {# file} other {# files}} · {size}",
   "share.custom.stats.title": "Recent visitors",
   "share.custom.stats.views": "Total views",
+  "share.custom.stats.downloads": "Downloads",
   "share.custom.stats.empty": "No visits recorded yet.",
   "share.custom.stats.unknown-location": "Unknown location",
   "share.custom.stats.direct": "Direct visit",
@@ -903,6 +904,10 @@ export default {
   "share.custom.files.selected-count":
     "{count, plural, =0 {No files selected} one {# file selected} other {# files selected}}",
   "share.custom.files.download-selected": "Download selected",
+  "share.custom.files.copy-link": "Copy link",
+  "share.custom.files.download-count":
+    "{count, plural, one {# download} other {# downloads}}",
+  "share.notify.copied-link": "File link copied to clipboard",
 
   // VirusTotal per-file indicator (fork-only)
   "share.custom.virustotal.safe": "Scanned by VirusTotal — no threats found",

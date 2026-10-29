@@ -18,7 +18,13 @@ import RelativeTime from "../core/RelativeTime";
 import { countryCodeToFlag, getCountryName } from "../../utils/country.util";
 import { getBrowserIcon, getOsIcon, iconStyle } from "./UploaderInfoBadges";
 
-const ShareStats = ({ share }: { share: Share }) => {
+const ShareStats = ({
+  share,
+  downloads,
+}: {
+  share: Share;
+  downloads?: number;
+}) => {
   const t = useTranslate();
   const intl = useIntl();
   const visitors = [...(share.uploaderInfo?.visitors ?? [])].reverse();
@@ -50,13 +56,30 @@ const ShareStats = ({ share }: { share: Share }) => {
             {t("share.custom.stats.title")}
           </Text>
         </Group>
-        <Group spacing={6} align="baseline" noWrap>
-          <Text size="xs" color="dimmed" weight={600} tt="uppercase">
-            {t("share.custom.stats.views")}
-          </Text>
-          <Text size={20} weight={800} lh={1}>
-            {views.toLocaleString(intl.locale)}
-          </Text>
+        <Group spacing="lg" align="center">
+          <Group spacing={6} align="baseline" noWrap>
+            <Text size="xs" color="dimmed" weight={600} tt="uppercase">
+              {t("share.custom.stats.views")}
+            </Text>
+            <Text size={20} weight={800} lh={1}>
+              {views.toLocaleString(intl.locale)}
+            </Text>
+          </Group>
+          {downloads !== undefined && (
+            <Group spacing={6} align="baseline" noWrap>
+              <Text size="xs" color="dimmed" weight={600} tt="uppercase">
+                {t("share.custom.stats.downloads")}
+              </Text>
+              <Text
+                size={20}
+                weight={800}
+                lh={1}
+                data-testid="share-downloads-total"
+              >
+                {downloads.toLocaleString(intl.locale)}
+              </Text>
+            </Group>
+          )}
         </Group>
       </Group>
 

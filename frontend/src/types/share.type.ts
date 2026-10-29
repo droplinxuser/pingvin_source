@@ -101,6 +101,11 @@ export type ShareSeo = {
   thumbnailUrl?: string;
 };
 
+export type ShareDownloadStats = {
+  total: number;
+  files: Record<string, number>;
+};
+
 export type TrendingShare = {
   id: string;
   name?: string;

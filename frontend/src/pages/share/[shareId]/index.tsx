@@ -13,7 +13,7 @@ import { useModals } from "@mantine/modals";
 import { GetServerSidePropsContext } from "next";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { ReactNode, useEffect, useMemo, useState } from "react";
+import { ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { FormattedMessage, useIntl } from "react-intl";
 import Meta from "../../../components/Meta";
 import LazySection from "../../../components/core/LazySection";
@@ -35,8 +35,14 @@ import showErrorModal from "../../../components/share/showErrorModal";
 import useHomeHref from "../../../hooks/homeHref.hook";
 import useSiteMeta from "../../../hooks/siteMeta.hook";
 import useTranslate from "../../../hooks/useTranslate.hook";
+import useUser from "../../../hooks/user.hook";
 import shareService from "../../../services/share.service";
-import { Share as ShareType, ShareSeo } from "../../../types/share.type";
+import { FileMetaData } from "../../../types/File.type";
+import {
+  Share as ShareType,
+  ShareDownloadStats,
+  ShareSeo,
+} from "../../../types/share.type";
 import toast from "../../../utils/toast.util";
 import { byteToHumanSizeString } from "../../../utils/fileSize.util";
 import {
@@ -133,11 +139,13 @@ const SharePage = ({
   const modals = useModals();
   const router = useRouter();
   const homeHref = useHomeHref();
+  const { user } = useUser();
   const t = useTranslate();
   const intl = useIntl();
   const { siteName, baseUrl } = useSiteMeta();
 
   const [share, setShare] = useState<ShareType>();
+  const [downloadStats, setDownloadStats] = useState<ShareDownloadStats>();
   const [isRestricted, setIsRestricted] = useState(false);
   const [pageError, setPageError] = useState<{
     title: string;
@@ -152,6 +160,11 @@ const SharePage = ({
   );
 
   const recipientId = getQueryString(router.query.recipient);
+  // A one-shot hint from the short /d/:share/:file link. When present the file
+  // is downloaded as soon as the share (and any password gate) is ready.
+  const autoFileId = getQueryString(router.query.file);
+  const autoDownloadedRef = useRef(false);
+  const isOwner = !!share && !!user && share.creator?.id === user.id;
 
   const indexable = seo?.indexable === true;
   const shareName = share?.name || seo?.name;
@@ -432,6 +445,45 @@ const SharePage = ({
     getFiles();
   }, []);
 
+  // Download the file a short /d/ link pointed at, once the share (and any
+  // password/recipient gate) is unlocked. The query is then dropped so a
+  // refresh never re-downloads.
+  useEffect(() => {
+    if (autoDownloadedRef.current || !share || !autoFileId) return;
+    const file = (share.files as FileMetaData[] | undefined)?.find(
+      (item) => item.id === autoFileId,
+    );
+    if (!file) return;
+    autoDownloadedRef.current = true;
+    void shareService.downloadFile(share.id, file.id, recipientId, file.name);
+    const params = new URLSearchParams();
+    if (recipientId) params.set("recipient", recipientId);
+    const suffix = params.toString();
+    void router.replace(
+      `/share/${shareId}${suffix ? `?${suffix}` : ""}`,
+      undefined,
+      { shallow: true },
+    );
+  }, [share, autoFileId, recipientId, router, shareId]);
+
+  // Owners see their share's download counters. They are deliberately kept off
+  // the public share payload so analytics never leak to visitors.
+  useEffect(() => {
+    if (!isOwner) return;
+    let active = true;
+    shareService
+      .getDownloads(shareId)
+      .then((stats) => {
+        if (active) setDownloadStats(stats);
+      })
+      .catch(() => {
+        // Analytics are optional; never surface an error for them.
+      });
+    return () => {
+      active = false;
+    };
+  }, [isOwner, shareId]);
+
   if (isRestricted) {
     return (
       <>
@@ -579,6 +631,7 @@ const SharePage = ({
           isLoading={!share}
           recipientId={recipientId}
           skeletonCount={fileSkeletonCount}
+          downloadCounts={isOwner ? downloadStats?.files : undefined}
         />
       </LazySection>
 
@@ -602,7 +655,11 @@ const SharePage = ({
         rootMargin="400px"
         busy={!share}
       >
-        {share ? <ShareStats share={share} /> : <ShareStatsSkeleton />}
+        {share ? (
+          <ShareStats share={share} downloads={downloadStats?.total} />
+        ) : (
+          <ShareStatsSkeleton />
+        )}
       </LazySection>
     </article>
   );
