@@ -180,7 +180,12 @@ export class FileService implements OnModuleInit {
    * the bytes are fed through the normal chunked `create` path, so quota,
    * size limits, in-flight accounting and the local/S3 storage split all apply.
    */
-  async createFromUrl(shareId: string, url: string, name?: string) {
+  async createFromUrl(
+    shareId: string,
+    url: string,
+    name?: string,
+    options: { rejectHtml?: boolean } = {},
+  ) {
     const share = await this.prisma.share.findFirst({
       where: { id: shareId },
       select: { uploadLocked: true },
@@ -206,6 +211,12 @@ export class FileService implements OnModuleInit {
     }
 
     try {
+      // A file host that answers with an HTML page (login wall, virus-scan
+      // confirmation, expired link) did not give us the file; reject it rather
+      // than storing the page as the downloaded "file".
+      if (options.rejectHtml && /text\/html/i.test(result.contentType ?? ""))
+        throw new FileHostError("resolve", "file host returned an HTML page");
+
       const finalName = this.sanitizeRemoteFileName(
         name || result.fileName || fileNameFromUrl(result.finalUrl),
       );
@@ -245,7 +256,9 @@ export class FileService implements OnModuleInit {
    */
   async importFromUrl(shareId: string, url: string, name?: string) {
     if (!detectFileHost(url))
-      throw new BadRequestException(this.i18n.t("file.remoteHostResolveFailed"));
+      throw new BadRequestException(
+        this.i18n.t("file.remoteHostResolveFailed"),
+      );
 
     let targets: { url: string; name?: string }[];
     try {
@@ -257,9 +270,17 @@ export class FileService implements OnModuleInit {
     const files = [];
     for (const target of targets) {
       // A resolved host name (real filename) wins over the client-derived one.
-      files.push(
-        await this.createFromUrl(shareId, target.url, target.name ?? name),
-      );
+      try {
+        files.push(
+          await this.createFromUrl(shareId, target.url, target.name ?? name, {
+            rejectHtml: true,
+          }),
+        );
+      } catch (error) {
+        if (error instanceof FileHostError)
+          throw this.toFileHostException(error);
+        throw error;
+      }
     }
     return { files };
   }
@@ -267,10 +288,20 @@ export class FileService implements OnModuleInit {
   private toFileHostException(error: unknown) {
     if (error instanceof FileHostError) {
       if (error.code === "gofile")
-        return new BadRequestException(this.i18n.t("file.remoteGofileUnsupported"));
+        return new BadRequestException(
+          this.i18n.t("file.remoteGofileUnsupported"),
+        );
       if (error.code === "folder")
-        return new BadRequestException(this.i18n.t("file.remoteHostFolderUnsupported"));
-      return new BadRequestException(this.i18n.t("file.remoteHostResolveFailed"));
+        return new BadRequestException(
+          this.i18n.t("file.remoteHostFolderUnsupported"),
+        );
+      if (error.code === "unsupported")
+        return new BadRequestException(
+          this.i18n.t("file.remoteHostUnsupported"),
+        );
+      return new BadRequestException(
+        this.i18n.t("file.remoteHostResolveFailed"),
+      );
     }
     this.logger.debug(`File-host resolve failed: ${error}`);
     return new BadRequestException(this.i18n.t("file.remoteHostResolveFailed"));

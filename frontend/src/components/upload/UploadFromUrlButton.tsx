@@ -4,7 +4,7 @@ import { TbLink } from "react-icons/tb";
 import { FormattedMessage } from "react-intl";
 import useTranslate from "../../hooks/useTranslate.hook";
 import { FileUpload } from "../../types/File.type";
-import { isFileHostUrl } from "../../utils/fileHost.util";
+import { classifyFileHost } from "../../utils/fileHost.util";
 import toast from "../../utils/toast.util";
 import { fetchRemoteAsFile } from "../../utils/upload.util";
 
@@ -22,10 +22,10 @@ const resolveRemoteName = (url: URL): string => {
 
 /**
  * Queues a file from a URL. Direct URLs are downloaded by the visitor's browser
- * and added as a real file, so the remote host only ever sees the visitor's IP
- * (the server IP is never exposed). Supported file-host pages (MediaFire,
- * Bunkr) cannot be read cross-origin, so those are resolved server side with
- * SSRF protections.
+ * and added as a real file. Supported file-host pages (MediaFire, Bunkr,
+ * Dropbox, Google Drive, OneDrive, pCloud) cannot be read cross-origin, so
+ * those are resolved server side with SSRF protections. Known hosts we cannot
+ * resolve are reported instead of being silently fetched.
  */
 const UploadFromUrlButton = ({
   onFiles,
@@ -61,8 +61,16 @@ const UploadFromUrlButton = ({
       return;
     }
 
+    const host = classifyFileHost(url.toString());
+
+    // A known host we cannot resolve: say so instead of silently failing.
+    if (host === "unsupported") {
+      toast.error(t("upload.url.error.hostUnsupported"));
+      return;
+    }
+
     // Supported file-host pages are resolved and fetched by the backend.
-    if (isFileHostUrl(url.toString())) {
+    if (host === "server") {
       const name = resolveRemoteName(url);
       const file = new File([], name) as FileUpload;
       file.uploadingProgress = 0;

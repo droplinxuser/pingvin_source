@@ -25,5 +25,6 @@
   "remoteFetchTooManyRedirects": "That URL redirects too many times.",
   "remoteHostResolveFailed": "Could not find a downloadable file at that page.",
   "remoteHostFolderUnsupported": "Folder links are not supported yet; paste an individual file link.",
+  "remoteHostUnsupported": "That file host is not supported yet; paste a direct file link instead.",
   "remoteGofileUnsupported": "Gofile now blocks server-side downloads; paste a direct file link instead."
 }

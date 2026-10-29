@@ -4,7 +4,12 @@ const assert = require("node:assert/strict");
 const {
   detectFileHost,
   parseMediaFireHtml,
+  resolveDropbox,
   resolveFileHost,
+  resolveGoogleDrive,
+  googleDriveFileId,
+  oneDriveShareId,
+  resolveOneDrive,
   FileHostError,
 } = require("../dist/src/utils/fileHosts.util.js");
 
@@ -58,9 +63,9 @@ test("rejects a MediaFire page without a download link", () => {
 });
 
 test("rejects a scrambled URL that points off MediaFire", () => {
-  const scrambled = Buffer.from("https://evil.example.com/payload.bin").toString(
-    "base64",
-  );
+  const scrambled = Buffer.from(
+    "https://evil.example.com/payload.bin",
+  ).toString("base64");
   assert.throws(
     () =>
       parseMediaFireHtml(`<a data-scrambled-url="${scrambled}">Download</a>`),
@@ -72,5 +77,112 @@ test("Gofile is reported as unsupported instead of circumventing it", async () =
   await assert.rejects(
     () => resolveFileHost("https://gofile.io/d/mA8mGDxd"),
     (error) => error instanceof FileHostError && error.code === "gofile",
+  );
+});
+
+test("detects the additional file hosts and their share domains", () => {
+  assert.equal(
+    detectFileHost("https://www.dropbox.com/s/abc/file.zip"),
+    "dropbox",
+  );
+  assert.equal(detectFileHost("https://db.tt/abc"), "dropbox");
+  assert.equal(
+    detectFileHost("https://drive.google.com/file/d/xyz/view"),
+    "gdrive",
+  );
+  assert.equal(
+    detectFileHost("https://docs.google.com/document/d/xyz"),
+    "gdrive",
+  );
+  assert.equal(detectFileHost("https://1drv.ms/u/s!abc"), "onedrive");
+  assert.equal(
+    detectFileHost("https://contoso-my.sharepoint.com/personal/u/file"),
+    "onedrive",
+  );
+  assert.equal(
+    detectFileHost("https://e.pcloud.link/publink/show?code=abc"),
+    "pcloud",
+  );
+  assert.equal(detectFileHost("https://pc12.pcloud.com/x"), "pcloud");
+  // Known but not resolvable without an account: still detected, not a direct URL.
+  assert.equal(detectFileHost("https://mega.nz/file/abc#key"), "mega");
+  assert.equal(detectFileHost("https://app.box.com/s/abc"), "box");
+  assert.equal(detectFileHost("https://we.tl/t-abc"), "wetransfer");
+  assert.equal(detectFileHost("https://www.fromsmash.com/abc"), "smash");
+});
+
+test("resolvable hosts without an account return unsupported", async () => {
+  for (const url of [
+    "https://mega.nz/file/abc#key",
+    "https://app.box.com/s/abc",
+    "https://we.tl/t-abc",
+    "https://www.swisstransfer.com/d/abc",
+    "https://fromsmash.com/abc",
+    "https://www.filemail.com/d/abc",
+    "https://www.icedrive.net/s/abc",
+    "https://www.sync.com/s/abc",
+    "https://drive.proton.me/urls/abc",
+  ]) {
+    await assert.rejects(
+      () => resolveFileHost(url),
+      (error) => error instanceof FileHostError && error.code === "unsupported",
+      url,
+    );
+  }
+});
+
+test("Dropbox links download directly and folders are rejected", () => {
+  const files = resolveDropbox("https://www.dropbox.com/s/abc/clip.mp4?dl=0");
+  assert.equal(files.length, 1);
+  assert.equal(new URL(files[0].url).searchParams.get("dl"), "1");
+  assert.equal(files[0].name, "clip.mp4");
+  assert.throws(
+    () => resolveDropbox("https://www.dropbox.com/sh/abc/folder"),
+    (error) => error instanceof FileHostError && error.code === "folder",
+  );
+});
+
+test("Google Drive file ids are extracted from share URL shapes", () => {
+  assert.equal(
+    googleDriveFileId(
+      "https://drive.google.com/file/d/FILEID123/view?usp=sharing",
+    ),
+    "FILEID123",
+  );
+  assert.equal(
+    googleDriveFileId(
+      "https://drive.google.com/uc?export=download&id=FILEID456",
+    ),
+    "FILEID456",
+  );
+  assert.equal(
+    googleDriveFileId("https://drive.google.com/drive/folders/abc"),
+    undefined,
+  );
+});
+
+test("Google Drive resolves to the public download endpoint", () => {
+  const files = resolveGoogleDrive(
+    "https://drive.google.com/file/d/FILEID123/view",
+  );
+  assert.equal(files.length, 1);
+  assert.match(files[0].url, /drive\.usercontent\.google\.com\/download\?/);
+  assert.match(files[0].url, /id=FILEID123/);
+  assert.throws(
+    () => resolveGoogleDrive("https://drive.google.com/drive/folders/abc"),
+    (error) => error instanceof FileHostError && error.code === "folder",
+  );
+});
+
+test("OneDrive share URLs are base64url-encoded into the content API", () => {
+  const share = "https://1drv.ms/u/s!abcDEF";
+  const id = oneDriveShareId(share);
+  assert.doesNotMatch(id, /[+/=]/);
+  assert.equal(Buffer.from(id, "base64").toString("utf8"), share);
+  const files = resolveOneDrive(share);
+  assert.equal(files.length, 1);
+  assert.equal(
+    files[0].url,
+    `https://api.onedrive.com/v1.0/shares/u!${id}/root/content`,
   );
 });

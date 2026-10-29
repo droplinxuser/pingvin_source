@@ -2,11 +2,28 @@ import { fetchRemoteText } from "./remoteFetch.util";
 
 export type ResolvedFile = { url: string; name?: string };
 
-export type FileHostName = "gofile" | "bunkr" | "mediafire";
+export type FileHostName =
+  | "gofile"
+  | "bunkr"
+  | "mediafire"
+  | "dropbox"
+  | "gdrive"
+  | "onedrive"
+  | "pcloud"
+  | "mega"
+  | "box"
+  | "wetransfer"
+  | "transfernow"
+  | "swisstransfer"
+  | "smash"
+  | "filemail"
+  | "icedrive"
+  | "sync"
+  | "protondrive";
 
 export class FileHostError extends Error {
   constructor(
-    public readonly code: "gofile" | "resolve" | "folder",
+    public readonly code: "gofile" | "resolve" | "folder" | "unsupported",
     message?: string,
   ) {
     super(message ?? code);
@@ -14,8 +31,6 @@ export class FileHostError extends Error {
   }
 }
 
-const GOFILE_HOSTS = new Set(["gofile.io", "www.gofile.io"]);
-const MEDIAFIRE_HOSTS = new Set(["mediafire.com", "www.mediafire.com"]);
 // Bunkr rotates domains often; match the common suffixes plus a fixed list.
 const BUNKR_HOSTS = new Set([
   "bunkr.cr",
@@ -34,6 +49,51 @@ const BUNKR_HOSTS = new Set([
   "bunkr.albums",
 ]);
 
+// Exact hostnames (and their www. variants) mapped to a service key.
+const EXACT_HOSTS: Record<string, FileHostName> = {
+  "gofile.io": "gofile",
+  "www.gofile.io": "gofile",
+  "mediafire.com": "mediafire",
+  "www.mediafire.com": "mediafire",
+  "dropbox.com": "dropbox",
+  "www.dropbox.com": "dropbox",
+  "db.tt": "dropbox",
+  "drive.google.com": "gdrive",
+  "docs.google.com": "gdrive",
+  "1drv.ms": "onedrive",
+  "onedrive.live.com": "onedrive",
+  "pcloud.com": "pcloud",
+  "www.pcloud.com": "pcloud",
+  "e.pcloud.link": "pcloud",
+  "mega.nz": "mega",
+  "mega.io": "mega",
+  "box.com": "box",
+  "www.box.com": "box",
+  "app.box.com": "box",
+  "wetransfer.com": "wetransfer",
+  "www.wetransfer.com": "wetransfer",
+  "we.tl": "wetransfer",
+  "transfernow.net": "transfernow",
+  "www.transfernow.net": "transfernow",
+  "swisstransfer.com": "swisstransfer",
+  "www.swisstransfer.com": "swisstransfer",
+  "fromsmash.com": "smash",
+  "www.fromsmash.com": "smash",
+  "filemail.com": "filemail",
+  "www.filemail.com": "filemail",
+  "icedrive.net": "icedrive",
+  "www.icedrive.net": "icedrive",
+  "sync.com": "sync",
+  "www.sync.com": "sync",
+  "proton.me": "protondrive",
+  "www.proton.me": "protondrive",
+  "drive.proton.me": "protondrive",
+};
+
+const BUNKR_SUFFIX = /(^|\.)bunkr(r)?\.[a-z]{2,}$/;
+const SHAREPOINT_SUFFIX = /\.sharepoint\.com$/;
+const PCLOUD_SERVER = /^pc\d+\.pcloud\.com$/;
+
 export function detectFileHost(rawUrl: string): FileHostName | null {
   let url: URL;
   try {
@@ -42,28 +102,56 @@ export function detectFileHost(rawUrl: string): FileHostName | null {
     return null;
   }
   const host = url.hostname.toLowerCase();
-  if (GOFILE_HOSTS.has(host)) return "gofile";
-  if (MEDIAFIRE_HOSTS.has(host)) return "mediafire";
-  if (
-    BUNKR_HOSTS.has(host) ||
-    /(^|\.)bunkr\.[a-z]{2,}$/.test(host) ||
-    /(^|\.)bunkrr\.[a-z]{2,}$/.test(host)
-  )
-    return "bunkr";
-  return null;
+  if (BUNKR_HOSTS.has(host) || BUNKR_SUFFIX.test(host)) return "bunkr";
+  if (SHAREPOINT_SUFFIX.test(host)) return "onedrive";
+  if (PCLOUD_SERVER.test(host)) return "pcloud";
+  return EXACT_HOSTS[host] ?? null;
 }
+
+// Hosts whose public page can be resolved to a direct download without an
+// account. Everything else that is "detected" is reported as unsupported with
+// a clear reason instead of being silently tried.
+const SUPPORTED: ReadonlySet<FileHostName> = new Set<FileHostName>([
+  "bunkr",
+  "mediafire",
+  "dropbox",
+  "gdrive",
+  "onedrive",
+  "pcloud",
+]);
 
 /**
  * Resolves a supported file-host page URL to one or more direct, publicly
- * fetchable URLs. Only public page HTML is parsed (no account circumvention).
- * The caller still runs every direct URL through the SSRF-guarded downloader.
+ * fetchable URLs. Only public page HTML/JSON is parsed (no account
+ * circumvention, no bot-protection bypass). The caller still runs every direct
+ * URL through the SSRF-guarded downloader.
  */
 export async function resolveFileHost(rawUrl: string): Promise<ResolvedFile[]> {
   const host = detectFileHost(rawUrl);
-  if (host === "bunkr") return resolveBunkr(rawUrl);
-  if (host === "mediafire") return resolveMediaFire(rawUrl);
-  if (host === "gofile") throw new FileHostError("gofile");
-  return [{ url: rawUrl }];
+  switch (host) {
+    case "bunkr":
+      return resolveBunkr(rawUrl);
+    case "mediafire":
+      return resolveMediaFire(rawUrl);
+    case "dropbox":
+      return resolveDropbox(rawUrl);
+    case "gdrive":
+      return resolveGoogleDrive(rawUrl);
+    case "onedrive":
+      return resolveOneDrive(rawUrl);
+    case "pcloud":
+      return resolvePCloud(rawUrl);
+    case "gofile":
+      throw new FileHostError("gofile");
+    case null:
+      return [{ url: rawUrl }];
+    default:
+      throw new FileHostError("unsupported", `unsupported host: ${host}`);
+  }
+}
+
+export function isSupportedFileHost(host: FileHostName): boolean {
+  return SUPPORTED.has(host);
 }
 
 function decodeJsonString(value: string): string {
@@ -82,6 +170,16 @@ function titleFromHtml(html: string): string | undefined {
     .replace(/^Download\s+/i, "")
     .trim();
   return title || undefined;
+}
+
+function fileNameFromPath(pathname: string): string | undefined {
+  const last = pathname.split("/").filter(Boolean).pop();
+  if (!last) return undefined;
+  try {
+    return decodeURIComponent(last);
+  } catch {
+    return last;
+  }
 }
 
 async function resolveBunkr(rawUrl: string): Promise<ResolvedFile[]> {
@@ -122,7 +220,8 @@ async function resolveBunkr(rawUrl: string): Promise<ResolvedFile[]> {
     url.searchParams.set("ex", String(signed.ex));
     files.push({
       url: url.toString(),
-      name: fallbackName ?? decodeURIComponent(url.pathname.split("/").pop() ?? ""),
+      name:
+        fallbackName ?? decodeURIComponent(url.pathname.split("/").pop() ?? ""),
     });
   }
   return files;
@@ -156,7 +255,7 @@ export function parseMediaFireHtml(html: string): ResolvedFile[] {
   // it to MediaFire's own download domain before the server fetches it. The
   // SSRF guards still apply, but this keeps the server from being steered to an
   // arbitrary public host by a tampered page.
-  if (!safeDownloadHost(direct))
+  if (!safeMediaFireHost(direct))
     throw new FileHostError("resolve", "mediafire: unexpected download host");
 
   const name = decodeURIComponent(
@@ -166,7 +265,7 @@ export function parseMediaFireHtml(html: string): ResolvedFile[] {
 }
 
 /** The hostname when `raw` is a MediaFire download URL, otherwise undefined. */
-function safeDownloadHost(raw?: string): string | undefined {
+function safeMediaFireHost(raw?: string): string | undefined {
   if (!raw || !/^https?:\/\//i.test(raw)) return undefined;
   try {
     const host = new URL(raw).hostname.toLowerCase();
@@ -187,4 +286,150 @@ async function resolveMediaFire(rawUrl: string): Promise<ResolvedFile[]> {
     maxBytes: 4 * 1024 * 1024,
   });
   return parseMediaFireHtml(text);
+}
+
+/**
+ * Dropbox share links become a direct download by adding `dl=1`. Dropbox then
+ * redirects to its CDN, which the SSRF-guarded downloader follows. Folder
+ * links are not supported.
+ */
+export function resolveDropbox(rawUrl: string): ResolvedFile[] {
+  const url = new URL(rawUrl);
+  // `/sh/…` and `/home/…?preview=…` are folder links, which need the Dropbox
+  // API; individual files under `/s/…` or `/scl/fi/…` download with `dl=1`.
+  if (/(^|\/)(folder|sh|home)(\/|$)/i.test(url.pathname))
+    throw new FileHostError(
+      "folder",
+      "dropbox: folder links are not supported",
+    );
+  url.searchParams.set("dl", "1");
+  return [{ url: url.toString(), name: fileNameFromPath(url.pathname) }];
+}
+
+/** Pulls the file id out of the common Google Drive share URL shapes. */
+export function googleDriveFileId(rawUrl: string): string | undefined {
+  let url: URL;
+  try {
+    url = new URL(rawUrl);
+  } catch {
+    return undefined;
+  }
+  const fromPath =
+    url.pathname.match(/\/file\/d\/([^/]+)/)?.[1] ??
+    url.pathname.match(/\/d\/([^/]+)/)?.[1];
+  if (fromPath) return fromPath;
+  const id = url.searchParams.get("id");
+  return id || undefined;
+}
+
+/**
+ * Google Drive: build the public download URL from the file id. Large files
+ * behind a virus-scan confirmation page cannot be downloaded without cookies,
+ * so the caller rejects an HTML response body.
+ */
+export function resolveGoogleDrive(rawUrl: string): ResolvedFile[] {
+  const url = new URL(rawUrl);
+  if (/\/folders\//.test(url.pathname))
+    throw new FileHostError("folder", "gdrive: folder links are not supported");
+  const id = googleDriveFileId(rawUrl);
+  if (!id) throw new FileHostError("unsupported", "gdrive: no file id");
+  return [
+    {
+      url: `https://drive.usercontent.google.com/download?export=download&id=${encodeURIComponent(
+        id,
+      )}&confirm=t`,
+    },
+  ];
+}
+
+/**
+ * OneDrive / SharePoint: the share URL is base64url-encoded into the
+ * `shares/u!<id>/root/content` API, which redirects to the file.
+ */
+export function oneDriveShareId(rawUrl: string): string {
+  return Buffer.from(rawUrl, "utf8")
+    .toString("base64")
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
+}
+
+export function resolveOneDrive(rawUrl: string): ResolvedFile[] {
+  return [
+    {
+      url: `https://api.onedrive.com/v1.0/shares/u!${oneDriveShareId(
+        rawUrl,
+      )}/root/content`,
+    },
+  ];
+}
+
+type PCloudNode = {
+  fileid?: number;
+  name?: string;
+  isfolder?: boolean;
+  contents?: PCloudNode[];
+  metadata?: PCloudNode;
+};
+
+/** Walks a pCloud public-link tree and returns every downloadable file. */
+function collectPCloudFiles(root: PCloudNode | undefined): PCloudNode[] {
+  if (!root) return [];
+  const node = root.metadata ?? root;
+  if (node.isfolder && Array.isArray(node.contents))
+    return node.contents.flatMap((child) => collectPCloudFiles(child));
+  if (node.fileid) return [node];
+  return [];
+}
+
+/**
+ * pCloud public links (`e.pcloud.link/publink/show?code=…`): list the public
+ * link, then ask for a per-file download host. Pure JSON API, no HTML parsing.
+ */
+async function resolvePCloud(rawUrl: string): Promise<ResolvedFile[]> {
+  const url = new URL(rawUrl);
+  const code = url.searchParams.get("code");
+  if (!code) throw new FileHostError("unsupported", "pcloud: no link code");
+
+  const list = await fetchRemoteText(
+    `https://api.pcloud.com/showpublink?code=${encodeURIComponent(code)}`,
+    { headers: { Accept: "application/json" }, maxBytes: 1024 * 1024 },
+  );
+  let data: { result?: number; metadata?: PCloudNode; error?: string };
+  try {
+    data = JSON.parse(list.text);
+  } catch {
+    throw new FileHostError("resolve", "pcloud: invalid response");
+  }
+  if (data.result !== 0)
+    throw new FileHostError("resolve", `pcloud: ${data.error ?? "error"}`);
+
+  const nodes = collectPCloudFiles(data);
+  if (nodes.length === 0)
+    throw new FileHostError("resolve", "pcloud: no files in the link");
+
+  const files: ResolvedFile[] = [];
+  for (const node of nodes) {
+    const { text } = await fetchRemoteText(
+      `https://api.pcloud.com/getpublinkdownload?code=${encodeURIComponent(
+        code,
+      )}&fileid=${node.fileid}`,
+      { headers: { Accept: "application/json" }, maxBytes: 64 * 1024 },
+    );
+    const download = JSON.parse(text) as {
+      result?: number;
+      hosts?: string[];
+      path?: string;
+    };
+    if (download.result !== 0 || !download.hosts?.length || !download.path)
+      throw new FileHostError(
+        "resolve",
+        "pcloud: could not build a download link",
+      );
+    files.push({
+      url: `https://${download.hosts[0]}${download.path}`,
+      name: node.name,
+    });
+  }
+  return files;
 }
