@@ -14,7 +14,7 @@ const INDEX_TTL_SECONDS = 5 * 60;
 // Serve the in-process copy for a minute before re-reading Valkey. Long enough
 // to collapse a burst, short enough that an edit shows up quickly.
 const INDEX_FRESH_MS = 60 * 1000;
-const INDEX_CACHE_VERSION = 3;
+const INDEX_CACHE_VERSION = 4;
 const MAX_CARD_FILE_NAMES = 3;
 const MAX_INDEXED_SHARES = 20_000;
 const MAX_RESULTS = 200;
@@ -33,10 +33,13 @@ type SearchEntry = {
   s: number;
   c: string;
   u: string;
-  w: string;
 };
 
-type Indexed = { at: number; items: SearchEntry[] };
+// `items` is the serialized payload; `haystacks` is derived once per load and
+// kept only in process memory. Storing the lowercase search text in Valkey
+// duplicated the name and description for every entry, so it is rebuilt on
+// read instead of paying that footprint in the cache.
+type Indexed = { at: number; items: SearchEntry[]; haystacks: string[] };
 
 /**
  * Searches the text of every public share. The index is stored in Valkey as a
@@ -46,7 +49,7 @@ type Indexed = { at: number; items: SearchEntry[] };
 @Injectable()
 export class SearchService {
   private index?: Indexed;
-  private pending?: Promise<SearchEntry[]>;
+  private pending?: Promise<Indexed>;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -58,11 +61,11 @@ export class SearchService {
     if (!term) return [];
 
     const tokens = term.split(/\s+/).filter(Boolean);
-    const items = await this.getIndex();
+    const { items, haystacks } = await this.getIndex();
 
     const max = Math.min(Math.max(limit, 1), MAX_RESULTS);
-    const matches = items.filter((entry) =>
-      tokens.every((token) => entry.w.includes(token)),
+    const matches = items.filter((_, index) =>
+      tokens.every((token) => haystacks[index].includes(token)),
     );
 
     matches.sort(
@@ -81,9 +84,9 @@ export class SearchService {
     await this.valkey.run((client) => client.del(INDEX_KEY));
   }
 
-  private async getIndex(): Promise<SearchEntry[]> {
+  private async getIndex(): Promise<Indexed> {
     if (this.index && Date.now() - this.index.at < INDEX_FRESH_MS)
-      return this.index.items;
+      return this.index;
 
     if (!this.pending)
       this.pending = this.loadIndex().finally(() => {
@@ -92,13 +95,14 @@ export class SearchService {
     return this.pending;
   }
 
-  private async loadIndex(): Promise<SearchEntry[]> {
+  private async loadIndex(): Promise<Indexed> {
     const cached = await this.valkey.run((client) => client.get(INDEX_KEY));
     if (cached) {
       const parsed = parseIndex(cached);
       if (parsed) {
-        this.index = { at: Date.now(), items: parsed };
-        return parsed;
+        const index = indexFrom(parsed);
+        this.index = index;
+        return index;
       }
     }
 
@@ -123,10 +127,11 @@ export class SearchService {
       .catch(() => undefined);
 
     // A failed read must not replace a usable index with an empty one.
-    if (!shares) return this.index?.items ?? [];
+    if (!shares) return this.index ?? indexFrom([]);
 
     const items = shares.map(buildEntry);
-    this.index = { at: Date.now(), items };
+    const index = indexFrom(items);
+    this.index = index;
     await this.valkey.run((client) =>
       client.set(
         INDEX_KEY,
@@ -134,8 +139,20 @@ export class SearchService {
         { EX: INDEX_TTL_SECONDS },
       ),
     );
-    return items;
+    return index;
   }
+}
+
+/** Derives the per-entry lowercase search text once per index load. */
+function indexFrom(items: SearchEntry[]): Indexed {
+  return {
+    at: Date.now(),
+    items,
+    haystacks: items.map(
+      (entry) =>
+        `${entry.n ?? ""}\n${entry.d ?? ""}\n${entry.id}`.toLowerCase(),
+    ),
+  };
 }
 
 function buildEntry(share: {
@@ -171,7 +188,6 @@ function buildEntry(share: {
     s: sumFileSizes(share.files),
     c: new Date(share.createdAt).toISOString(),
     u: new Date(share.updatedAt ?? share.createdAt).toISOString(),
-    w: `${name ?? ""}\n${description ?? ""}\n${share.id}`.toLowerCase(),
   };
 }
 

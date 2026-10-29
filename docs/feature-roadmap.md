@@ -25,9 +25,9 @@ workflow** (search, bulk actions, analytics, API) rather than core sharing.
 | Gallery / inline streaming | Basic preview | Core experience | Image/video gallery, PDF/text/audio preview |
 | Comments | No | Limited | Yes, plain-text, moderated by owner/admin |
 | Search inside a share | No | Yes (album search) | Yes, from this session (client-side) |
-| Search across public content | No | Yes | No |
+| Search across public content | No | Yes | Yes (Valkey index, `/search`) |
 | Bulk download | Folder download | Album download | Download all (browser sequence) |
-| Upload from URL | Yes | Yes | No |
+| Upload from URL | Yes | Yes | Yes (server-resolved for known file hosts, browser-fetched otherwise) |
 | Public API | Yes (token) | Community/unofficial | No |
 | Per-file analytics | Basic | Views/downloads | Share views only |
 | Malware scanning | No | No | ClamAV + VirusTotal, background queue |

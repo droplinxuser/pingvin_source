@@ -762,3 +762,26 @@ test("invalidating a share clears the recent listing cache", async () => {
   await service.getRecent(100);
   assert.equal(calls.length, 2);
 });
+
+test("serves the media and file listings from one scan", async () => {
+  const { prisma, calls } = recentPrisma([
+    recentShare({ id: "video", files: ["clip.mp4"] }),
+    recentShare({ id: "document", files: ["notes.txt"] }),
+    recentShare({ id: "image", files: ["photo.jpg"] }),
+  ]);
+  const service = createService(createMockValkey(() => []), prisma);
+
+  const media = await service.getRecent(100);
+  const documents = await service.getRecentFiles(100);
+
+  assert.deepEqual(
+    media.map((item) => item.id),
+    ["video", "image"],
+  );
+  assert.deepEqual(
+    documents.map((item) => item.id),
+    ["document"],
+  );
+  // Both listings share the same 30-second scan instead of querying twice.
+  assert.equal(calls.length, 1);
+});

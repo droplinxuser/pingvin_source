@@ -14,10 +14,10 @@ the suggested order for future features.
 |---|---|
 | Environment loading / production config | `backend/src/constants.ts`, `backend/src/config/config.service.ts`, `backend/src/main.ts`, `backend/.env.example` |
 | Rolling expiration (member 100 days / guest 10 days) | `backend/src/share/share.util.ts` (`SHARE_EXPIRATION`, `GUEST_SHARE_EXPIRATION`, `getShareExpiration`, `isMemberShare`), `share.service.ts` (create), `shareState.service.ts` (renew on visit), migrations `20261016000000` / `20261016000001`, share create/edit modals |
-| Public-content search | `backend/src/cache/search.service.ts` (Valkey-backed index, no SQLite table/FTS), `GET /api/shares/search`, `frontend/src/components/header/NavbarSearch.tsx` (desktop form beside the logo, mobile icon on the right), `frontend/src/pages/search.tsx` |
+| Public-content search | `backend/src/cache/search.service.ts` (Valkey-backed index, no SQLite table/FTS), `GET /api/shares/search`, `frontend/src/components/header/NavbarSearch.tsx` (desktop form beside the logo, mobile icon on the right), `frontend/src/pages/search.tsx`. The stored index keeps only display fields; the lowercase search text is derived in process memory on load, so the Valkey value does not duplicate every name and description. |
 | Header discovery icons | `frontend/src/components/header/NavbarIconLink.tsx` renders the desktop "New media"/"New files" entries as icon links (matching `NavbarShareMenu`); the mobile menu keeps text links |
 | Member-only create options | In the create-share modal (`frontend/src/components/upload/modals/showCreateUploadModal.tsx`) the **Email recipients** and **Security options** accordions render only when `isUserSignedIn` is true; a guest upload gets just the link and name/description. |
-| New-media / new-files / search listings | `backend/src/cache/trending.service.ts` (`getRecent` media-only, `getRecentFiles` no-media), `GET /api/shares/recent-files`, `GET /api/shares/search`, `frontend/src/pages/new-media.tsx` and `search.tsx` (square preview cards via `TrendingToday.tsx`; on search, file-only cards use `fileOnlyLayout="centered"` — no file names, title + description centered), `new-files.tsx` (polished row/list layout via `frontend/src/components/share/ShareList.tsx`), `/new` 308-redirects to `/new-media` |
+| New-media / new-files / search listings | `backend/src/cache/trending.service.ts` (`getRecent` media-only, `getRecentFiles` no-media, both derived from one shared newest-shares SQLite scan), `GET /api/shares/recent-files`, `GET /api/shares/search`, `frontend/src/pages/new-media.tsx` and `search.tsx` (square preview cards via `TrendingToday.tsx`; on search, file-only cards use `fileOnlyLayout="centered"` — no file names, title + description centered), `new-files.tsx` (polished row/list layout via `frontend/src/components/share/ShareList.tsx`), `/new` 308-redirects to `/new-media` |
 | Upload from URL (browser-fetched) | Direct URLs are downloaded by the visitor's browser (`frontend/src/utils/upload.util.ts` `fetchRemoteAsFile`), so the remote host never sees the server IP; the file is then uploaded through the normal chunked path. This requires the host to allow CORS. `frontend/src/components/upload/UploadFromUrlButton.tsx` queues a real `File`, wired in `Dropzone.tsx` and the upload/edit flows |
 | File-host import (Bunkr, MediaFire) | `backend/src/utils/fileHosts.util.ts` resolves a page URL to direct download URLs (`detectFileHost`/`resolveFileHost`); Bunkr reads `jsCDN` + `signUrl` from the page and signs the CDN link through an allowlisted `*.cdn.cr` host, MediaFire extracts the `download####.mediafire.com` link (base64 `data-scrambled-url` or plain). These pages cannot be read cross-origin, so the server resolves and downloads them (`FileService.importFromUrl`), guarded by `backend/src/utils/remoteFetch.util.ts` (http/https only, ports 80/443, DNS validated and pinned, IP-literal check, redirect cap, size/time caps). `POST /api/shares/:id/files/from-url` now **only accepts allowlisted hosts** (`detectFileHost`), so the server never fetches an arbitrary URL. Gofile is intentionally rejected (`FileHostError` code `gofile`). Tests: `backend/test/file-hosts.test.js`, `backend/test/remote-fetch.test.js` |
 | Cloudflare edge caching | Public search results and share images live at the edge for an hour: `GET /api/shares/search` and `/api/shares/:id/thumbnail` send `s-maxage=3600` (`backend/src/utils/cache.util.ts` `getImageCacheHeaders`, `share.controller.ts`), the inline WebP preview in `file.controller.ts` uses the same image headers, and the search page shell is still `no-store` (query-dependent). Trending/recent listings keep a 60 s edge TTL. |
@@ -191,6 +191,11 @@ the matching `utils/*.util.ts` files.
   (`VIEW_WRITE_DELAY_MS`); limited shares use one conditional
   `UPDATE ... RETURNING` so the limit check and increment cannot race. Pending
   counts are flushed on shutdown.
+- The `/new-media` and `/new-files` listings are derived from one shared
+  newest-shares scan (30-second in-process cache), so opening both pages in the
+  same window costs one indexed SQLite read instead of two. The public search
+  index stores only display fields in Valkey and rebuilds the lowercase search
+  text in memory on load, avoiding a second copy of every name and description.
 - A data-cache miss resets the rolling expiration in the response; the
   corresponding SQLite write is throttled to once per six hours per share and
   process.
@@ -362,7 +367,8 @@ Origin responses set `Cache-Control`, `CDN-Cache-Control` and
 The current suite covers: view limits and batched counters, visitor identity,
 Valkey/fallback throttling, uploader metadata, HTTP cache matching, storage
 quota, missing local files, page-view metrics, admin metrics, error logs,
-trending/recent/country ranking and cache behavior, share thumbnails, sitemap
+trending/recent/country ranking and cache behavior, public search index
+storage/matching/versioning, share thumbnails, sitemap
 index/chunks/robots, comments, archive-encryption detection, VirusTotal
 audit/queue/filter/removal/notification flows, reverse-share guard wiring,
 referrers and avatars. Keep this suite green before pushing; run the frontend

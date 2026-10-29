@@ -91,6 +91,16 @@ type TrendingMeta = Omit<TrendingShare, "views"> & {
   previewVersion?: number;
 };
 
+// The home "/new-media" and "/new-files" listings are derived from one
+// newest-shares scan: the media cards keep shares with an image/video preview
+// and the file-only cards keep the rest. This lets both listings share a single
+// SQLite read instead of scanning the same rows twice per cache window.
+type RecentScan = {
+  at: number;
+  media: TrendingShare[];
+  files: TrendingShare[];
+};
+
 type TrendingSource = {
   id: string;
   name?: string | null;
@@ -110,12 +120,10 @@ type TrendingSource = {
 export class TrendingService {
   private cached?: { at: number; items: TrendingShare[] };
   private countriesCached?: { at: number; value: TrendingCountry[] };
-  private recentCached?: { at: number; items: TrendingShare[] };
-  private recentFilesCached?: { at: number; items: TrendingShare[] };
+  private recentScanCached?: RecentScan;
   private pendingRanking?: Promise<TrendingShare[] | undefined>;
   private pendingCountries?: Promise<TrendingCountry[] | undefined>;
-  private pendingRecent?: Promise<TrendingShare[]>;
-  private pendingRecentFiles?: Promise<TrendingShare[]>;
+  private pendingRecentScan?: Promise<RecentScan>;
   private seedCheckedAt = 0;
 
   constructor(
@@ -251,7 +259,8 @@ export class TrendingService {
 
   /**
    * Newest public shares that contain no image or video preview. The UI and
-   * cache policy match `getRecent`; only the media predicate is inverted.
+   * cache policy match `getRecent`; only the media predicate is inverted, and
+   * both share the same scan.
    */
   async getRecentFiles(limit = RECENT_MAX_RESULT): Promise<TrendingShare[]> {
     return this.getRecentList(true, limit);
@@ -266,31 +275,31 @@ export class TrendingService {
         ? Math.floor(limit)
         : RECENT_MAX_RESULT;
     const resultLimit = Math.min(requested, RECENT_MAX_RESULT);
-    const cache = filesOnly ? this.recentFilesCached : this.recentCached;
 
-    if (cache && Date.now() - cache.at < RECENT_CACHE_MS)
-      return cache.items.slice(0, resultLimit);
-
-    // The home page, /new-media, /new-files and client navigations can miss the
-    // same 30-second window together. One query fill serves all of them.
-    if (filesOnly) {
-      if (!this.pendingRecentFiles)
-        this.pendingRecentFiles = this.loadRecent(true).finally(() => {
-          this.pendingRecentFiles = undefined;
-        });
-      const items = await this.pendingRecentFiles;
-      return items.slice(0, resultLimit);
-    }
-
-    if (!this.pendingRecent)
-      this.pendingRecent = this.loadRecent(false).finally(() => {
-        this.pendingRecent = undefined;
-      });
-    const items = await this.pendingRecent;
+    const scan = await this.getRecentScan();
+    const items = filesOnly ? scan.files : scan.media;
     return items.slice(0, resultLimit);
   }
 
-  private async loadRecent(filesOnly: boolean): Promise<TrendingShare[]> {
+  /**
+   * The home page, /new-media, /new-files and client navigations can miss the
+   * same 30-second window together. One scan fill serves all of them.
+   */
+  private async getRecentScan(): Promise<RecentScan> {
+    if (
+      this.recentScanCached &&
+      Date.now() - this.recentScanCached.at < RECENT_CACHE_MS
+    )
+      return this.recentScanCached;
+
+    if (!this.pendingRecentScan)
+      this.pendingRecentScan = this.loadRecentScan().finally(() => {
+        this.pendingRecentScan = undefined;
+      });
+    return this.pendingRecentScan;
+  }
+
+  private async loadRecentScan(): Promise<RecentScan> {
     const shares = await this.prisma.share
       .findMany({
         where: publicShareWhere(),
@@ -318,28 +327,36 @@ export class TrendingService {
         take: RECENT_SCAN_LIMIT,
       })
       .catch(() => undefined);
-    if (!shares) return [];
+    // A failed read must not be cached: `at: 0` makes the next request retry.
+    if (!shares) return { at: 0, media: [], files: [] };
 
-    const items: TrendingShare[] = [];
+    const media: TrendingShare[] = [];
+    const files: TrendingShare[] = [];
     for (const share of shares) {
       if (!isPublicShare(share)) continue;
-      const media = findPreview(share.files);
-      if (filesOnly ? !!media : !media) continue;
-
-      items.push(
-        media
-          ? toTrendingShare(
-              buildMeta(share, media.preview, media.hasVideo),
+      const preview = findPreview(share.files);
+      if (preview) {
+        if (media.length < RECENT_MAX_RESULT)
+          media.push(
+            toTrendingShare(
+              buildMeta(share, preview.preview, preview.hasVideo),
               share.views,
-            )
-          : buildFileCard(share),
-      );
-      if (items.length >= RECENT_MAX_RESULT) break;
+            ),
+          );
+      } else if (files.length < RECENT_MAX_RESULT) {
+        files.push(buildFileCard(share));
+      }
+
+      if (
+        media.length >= RECENT_MAX_RESULT &&
+        files.length >= RECENT_MAX_RESULT
+      )
+        break;
     }
 
-    if (filesOnly) this.recentFilesCached = { at: Date.now(), items };
-    else this.recentCached = { at: Date.now(), items };
-    return items;
+    const scan: RecentScan = { at: Date.now(), media, files };
+    this.recentScanCached = scan;
+    return scan;
   }
 
   /**
@@ -351,8 +368,7 @@ export class TrendingService {
     if (ids.length === 0) return;
     this.cached = undefined;
     this.countriesCached = undefined;
-    this.recentCached = undefined;
-    this.recentFilesCached = undefined;
+    this.recentScanCached = undefined;
 
     await this.valkey.run(async (client) => {
       const multi = client.multi();
