@@ -95,6 +95,15 @@ const useStyles = createStyles((theme) => ({
     },
   },
 
+  // The mobile search icon + burger live here. On desktop both are hidden, so
+  // the wrapper must not stay as an empty flex child (that would leave a gap
+  // after the avatar under `space-between`).
+  rightControls: {
+    [theme.fn.largerThan("sm")]: {
+      display: "none",
+    },
+  },
+
   link: {
     display: "block",
     lineHeight: 1,
@@ -445,7 +454,7 @@ const Header = () => {
           >
             <Group>{desktopItems}</Group>
           </Box>
-          <Group spacing="xs" noWrap>
+          <Group spacing="xs" noWrap className={classes.rightControls}>
             <NavbarSearch part="mobile" />
             <Burger
               opened={opened}
