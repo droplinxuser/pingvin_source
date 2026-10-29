@@ -14,7 +14,6 @@ import { I18nService } from "nestjs-i18n";
 import { PrismaService } from "src/prisma/prisma.service";
 import { MetricsService } from "src/cache/metrics.service";
 import { TrendingService } from "src/cache/trending.service";
-import { parseRelativeDateToAbsolute } from "src/utils/date.util";
 import { KeyedLock } from "src/utils/keyedLock.util";
 import {
   MAX_VISITORS,
@@ -34,7 +33,7 @@ import {
   shareGuardCacheKey,
 } from "src/utils/cache.util";
 import { readCommentVersion } from "./comment.service";
-import { SHARE_EXPIRATION, sumFileSizes } from "./share.util";
+import { getShareExpiration, isMemberShare, sumFileSizes } from "./share.util";
 
 // Collapse bursts of share views into one metadata write per share. The
 // returned visitor list is updated immediately; only the disk write is delayed.
@@ -190,7 +189,9 @@ export class ShareStateService implements OnApplicationShutdown {
       throw new NotFoundException(this.i18n.t("share.notFound"));
     }
     if (hasExpiration) {
-      share.expiration = parseRelativeDateToAbsolute(SHARE_EXPIRATION);
+      // The rolling window follows the share's owner: member shares keep 100
+      // days, guest uploads expire after 10 days without a visit.
+      share.expiration = getShareExpiration(isMemberShare(share));
       await this.persistExpiration(share.id, share.expiration);
     }
 

@@ -29,18 +29,18 @@ export async function getServerSideProps({
   return { props: { initialItems: initialItems ?? [] } };
 }
 
-const NewShares = ({
+const NewMedia = ({
   initialItems = [],
 }: {
   initialItems?: TrendingShare[];
 }) => {
   const t = useTranslate();
   const { siteName, baseUrl } = useSiteMeta();
-  const description = t("seo.custom.new.description");
+  const description = t("seo.custom.newMedia.description");
   const jsonLd = buildCollectionPage({
-    name: t("new.custom.title"),
+    name: t("newMedia.custom.title"),
     description,
-    path: "/new",
+    path: "/new-media",
     siteName,
     baseUrl,
     mainEntity: buildItemList(
@@ -56,9 +56,9 @@ const NewShares = ({
   return (
     <>
       <Meta
-        title={t("new.custom.title")}
+        title={t("newMedia.custom.title")}
         description={description}
-        canonicalPath="/new"
+        canonicalPath="/new-media"
         jsonLd={jsonLd}
       />
       <TrendingToday
@@ -68,13 +68,13 @@ const NewShares = ({
         initialItems={initialItems}
         loadItems={shareService.getRecent}
         showMediaTypeBadge
-        title={t("new.custom.title")}
-        description={t("new.custom.description")}
-        loadingText={t("new.custom.loading")}
-        emptyText={t("new.custom.empty")}
+        title={t("newMedia.custom.title")}
+        description={t("newMedia.custom.description")}
+        loadingText={t("newMedia.custom.loading")}
+        emptyText={t("newMedia.custom.empty")}
       />
     </>
   );
 };
 
-export default NewShares;
+export default NewMedia;

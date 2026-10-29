@@ -69,16 +69,19 @@ workflow** (search, bulk actions, analytics, API) rather than core sharing.
    without keeping `archive.zip` around. Reuse the existing per-file guards and
    size checks; cap the streamed selection to a sane size (for example 2 GB) and
    keep per-file downloads for larger sets.
-6. **Remote upload from URL.** Gofile's most useful migration tool. Treat it
-   as a server-side fetch: allow only http/https, block private/link-local IPs
-   after DNS resolution, cap redirects, bytes and time, and run it through the
-   same upload/quota/VirusTotal pipeline. This is a security-sensitive feature;
-   do not ship a naive `fetch(url)`.
-7. **Global public search.** Add `/search` for public, indexable, non-protected
-   shares. SQLite `LIKE` over `Share.name`/`description` with a `LIMIT` is
-   enough at the current size and avoids an FTS table; cache the result in
-   Valkey for a minute and set the same edge headers as `/trending`. Exclude
-   protected and recipient-only shares in `publicShareWhere()`.
+6. **(Done — client-side fetch.) Remote upload from URL.** Implemented in the
+   visitor's own browser (`UploadFromUrlButton.tsx`): the browser fetches the
+   http(s) URL and feeds the resulting blob through the existing chunked upload
+   pipeline. The server never resolves or downloads the remote URL, so there is
+   no SSRF surface and the origin IP is never exposed. CORS-blocked hosts report
+   a friendly error. A server-side fetch with DNS/IP guards (or a WireGuard
+   egress proxy) remains the fallback if broader host support is ever needed.
+7. **(Done.) Global public search.** `/search` plus `GET /api/shares/search`
+   over every public share. The index is stored in Valkey (versioned JSON,
+   rebuilt from SQLite on a miss) with no SQLite table/FTS; results carry the
+   same edge headers as `/trending` (60 seconds, `no-store` when empty).
+   Protected, recipient-only and private reverse shares are excluded through
+   `publicShareWhere()`.
 8. **API tokens and a small public API.** Gofile's developer ecosystem is its
    moat. A read-only API (share metadata, file list, download URL) plus
    `POST /shares` with scoped tokens would attract integrations without

@@ -1,7 +1,31 @@
 import { Prisma, ShareSecurity } from "@prisma/client";
+import { parseRelativeDateToAbsolute } from "src/utils/date.util";
 
-// Every share gets a rolling expiration which is reset on each visit.
+// Every share gets a rolling expiration which is reset on each visit. Member
+// shares (an authenticated creator) keep the long window; anonymous/guest
+// uploads expire much sooner.
 export const SHARE_EXPIRATION = "100-days";
+export const GUEST_SHARE_EXPIRATION = "10-days";
+
+type ShareCreatorSource = {
+  creatorId?: string | null;
+  creator?: unknown | null;
+};
+
+/**
+ * A share belongs to a member when an authenticated user created it. Guest
+ * uploads (including anonymous reverse-share uploads) have no creator row.
+ */
+export function isMemberShare(share?: ShareCreatorSource | null): boolean {
+  return !!share && !!(share.creatorId ?? share.creator);
+}
+
+/** Rolling expiration window for a member or guest share. */
+export function getShareExpiration(isMember: boolean): Date {
+  return parseRelativeDateToAbsolute(
+    isMember ? SHARE_EXPIRATION : GUEST_SHARE_EXPIRATION,
+  );
+}
 
 type ShareVisibility = {
   security?: Pick<

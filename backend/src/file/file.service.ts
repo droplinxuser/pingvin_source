@@ -21,6 +21,7 @@ import { PrismaService } from "../prisma/prisma.service";
 import { EmailService } from "src/email/email.service";
 import { I18nService } from "nestjs-i18n";
 import { TrendingService } from "src/cache/trending.service";
+import { SearchService } from "src/cache/search.service";
 import { VirusTotalQueueService } from "src/virustotal/virustotalQueue.service";
 import { invalidateShareDataCache } from "src/utils/cache.util";
 import { getFileMimeType } from "src/utils/mime.util";
@@ -79,6 +80,7 @@ export class FileService implements OnModuleInit {
     private emailService: EmailService,
     private readonly i18n: I18nService,
     private readonly trending: TrendingService,
+    private readonly search: SearchService,
     private readonly virusTotalQueue: VirusTotalQueueService,
     @Inject(CACHE_MANAGER) private cache: Cache,
   ) {}
@@ -981,6 +983,7 @@ export class FileService implements OnModuleInit {
       this.removeLocalZip(shareId),
       invalidateShareDataCache(this.cache, shareId),
       this.trending.invalidate(shareId),
+      this.search.invalidate(),
     ]);
   }
 
@@ -1005,6 +1008,7 @@ export class FileService implements OnModuleInit {
       this.removeShareThumbnail(shareId),
       invalidateShareDataCache(this.cache, shareId),
       this.trending.invalidate(shareId),
+      this.search.invalidate(),
     ]);
   }
 

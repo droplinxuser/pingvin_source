@@ -155,7 +155,21 @@ const getTrendingCountries = async (): Promise<TrendingCountry[]> => {
   return items;
 };
 
-const getRecent = cachedShareList("shares/recent", 100, 30_000);
+const getRecent = cachedShareList("shares/recent", 200, 30_000);
+
+const getRecentFiles = cachedShareList("shares/recent-files", 200, 30_000);
+
+const searchShares = async (
+  query: string,
+  limit = 200,
+): Promise<TrendingShare[]> => {
+  const term = query.trim();
+  if (!term) return [];
+  const items = (
+    await api.get("shares/search", { params: { q: term, limit } })
+  ).data as TrendingShare[];
+  return items;
+};
 
 const remove = async (id: string) => {
   if (!isValidId(id)) throw new Error("Invalid ID");
@@ -509,6 +523,8 @@ export default {
   getTrending,
   getTrendingCountries,
   getRecent,
+  getRecentFiles,
+  searchShares,
   getMyShares,
   getReceivedShares,
   isShareIdAvailable,

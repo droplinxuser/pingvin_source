@@ -7,7 +7,8 @@ export function isPublicPageRoute(pathname: string) {
   return (
     pathname === "/" ||
     pathname === "/trending" ||
-    pathname === "/new" ||
+    pathname === "/new-media" ||
+    pathname === "/new-files" ||
     /^\/share\/[^/]+\/?$/.test(pathname) ||
     pathname === "/imprint" ||
     pathname === "/privacy"

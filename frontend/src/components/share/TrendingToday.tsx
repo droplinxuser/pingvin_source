@@ -16,6 +16,7 @@ import {
   TbCalendar,
   TbDatabase,
   TbEye,
+  TbFile,
   TbFiles,
   TbPhoto,
   TbPlayerPlay,
@@ -149,6 +150,18 @@ const useStyles = createStyles((theme) => {
 
     mediaSoftest: {
       filter: "blur(2px) brightness(0.5)",
+    },
+
+    // File-only shares have no image to blur; show a centered document glyph
+    // instead so the card still reads as a share.
+    fileFallback: {
+      position: "absolute",
+      inset: 0,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      color: "rgba(255, 255, 255, 0.32)",
+      pointerEvents: "none",
     },
 
     scrim: {
@@ -424,11 +437,15 @@ const TrendingToday = ({
           {visibleItems.map((item, index) => {
             const name = item.name || item.id;
             const views = item.views.toLocaleString(intl.locale);
-            const thumbnailUrl = getShareThumbnailUrl(item.id, item.updatedAt);
+            const hasMedia = !!item.previewFileId;
+            const thumbnailUrl = hasMedia
+              ? getShareThumbnailUrl(item.id, item.updatedAt)
+              : undefined;
             const description = item.description?.trim();
             const hasVideo =
               item.previewKind === "video" || item.hasVideo === true;
-            const showMediaBadge = hasVideo || showMediaTypeBadge;
+            const showMediaBadge =
+              hasMedia && (hasVideo || showMediaTypeBadge);
 
             return (
               <UnstyledButton
@@ -438,14 +455,24 @@ const TrendingToday = ({
                 className={classes.card}
                 title={name}
               >
-                <LazyImage
-                  className={mediaClassName}
-                  src={thumbnailUrl}
-                  alt=""
-                  loading={index < 4 ? "eager" : undefined}
-                  fetchPriority={index < 4 ? "high" : undefined}
-                  onError={handleShareThumbnailError}
-                />
+                {hasMedia ? (
+                  <LazyImage
+                    className={mediaClassName}
+                    src={thumbnailUrl}
+                    alt=""
+                    loading={index < 4 ? "eager" : undefined}
+                    fetchPriority={index < 4 ? "high" : undefined}
+                    onError={handleShareThumbnailError}
+                  />
+                ) : (
+                  <Box
+                    component="span"
+                    className={classes.fileFallback}
+                    aria-hidden
+                  >
+                    <TbFile size={44} />
+                  </Box>
+                )}
 
                 <Box component="span" className={classes.scrim} aria-hidden />
 

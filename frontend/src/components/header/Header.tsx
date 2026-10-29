@@ -23,6 +23,7 @@ import authService from "../../services/auth.service";
 import Logo from "../Logo";
 import useHomeHref from "../../hooks/homeHref.hook";
 import ActionAvatar from "./ActionAvatar";
+import NavbarSearch from "./NavbarSearch";
 import NavbarShareMenu from "./NavbarShareMenu";
 
 const HEADER_HEIGHT = 54;
@@ -203,8 +204,12 @@ const Header = () => {
         ]
       : []),
     {
-      link: "/new",
-      label: t("navbar.new"),
+      link: "/new-media",
+      label: t("navbar.newMedia"),
+    },
+    {
+      link: "/new-files",
+      label: t("navbar.newFiles"),
     },
     {
       component: <NavbarShareMenu />,
@@ -230,8 +235,13 @@ const Header = () => {
   }
 
   unauthenticatedLinks.push({
-    link: "/new",
-    label: t("navbar.new"),
+    link: "/new-media",
+    label: t("navbar.newMedia"),
+  });
+
+  unauthenticatedLinks.push({
+    link: "/new-files",
+    label: t("navbar.newFiles"),
   });
 
   if (!shouldHideAuthButtons) {
@@ -259,8 +269,12 @@ const Header = () => {
             ]
           : []),
         {
-          link: "/new",
-          label: t("navbar.new"),
+          link: "/new-media",
+          label: t("navbar.newMedia"),
+        },
+        {
+          link: "/new-files",
+          label: t("navbar.newFiles"),
         },
         {
           label: t("common.button.shares"),
@@ -428,15 +442,18 @@ const Header = () => {
           >
             <Group>{desktopItems}</Group>
           </Box>
-          <Burger
-            opened={opened}
-            onClick={toggle}
-            className={classes.burger}
-            size="sm"
-            aria-label={t("navbar.custom.open-menu")}
-            aria-expanded={opened}
-            aria-controls="mobile-navigation"
-          />
+          <Group spacing="xs" noWrap>
+            <NavbarSearch />
+            <Burger
+              opened={opened}
+              onClick={toggle}
+              className={classes.burger}
+              size="sm"
+              aria-label={t("navbar.custom.open-menu")}
+              aria-expanded={opened}
+              aria-controls="mobile-navigation"
+            />
+          </Group>
         </Container>
       </MantineHeader>
       <Transition transition="scale-y" duration={20} mounted={opened}>

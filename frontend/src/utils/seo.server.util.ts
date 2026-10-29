@@ -78,7 +78,7 @@ export function resolveSiteUrl(
  */
 export async function fetchShareList(
   apiUrl: string,
-  path: "trending" | "recent",
+  path: "trending" | "recent" | "recent-files",
   limit: number,
 ): Promise<TrendingShare[] | null> {
   try {

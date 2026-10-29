@@ -6,6 +6,7 @@ import { Keyv } from "keyv";
 import { ConfigModule } from "src/config/config.module";
 import { ConfigService } from "src/config/config.service";
 import { MetricsService } from "./metrics.service";
+import { SearchService } from "./search.service";
 import { TrendingService } from "./trending.service";
 import { ValkeyService } from "./valkey.service";
 
@@ -58,7 +59,13 @@ let lastCacheErrorLog = 0;
       },
     }),
   ],
-  providers: [ValkeyService, MetricsService, TrendingService],
-  exports: [CacheModule, ValkeyService, MetricsService, TrendingService],
+  providers: [ValkeyService, MetricsService, TrendingService, SearchService],
+  exports: [
+    CacheModule,
+    ValkeyService,
+    MetricsService,
+    TrendingService,
+    SearchService,
+  ],
 })
 export class AppCacheModule {}

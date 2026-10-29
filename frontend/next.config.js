@@ -83,6 +83,13 @@ module.exports = withPWA({
         destination: "/share/:shareId",
         permanent: true,
       },
+      // The newest media shares moved to /new-media (the media-only listing);
+      // keep the old path working for existing bookmarks and incoming links.
+      {
+        source: "/new",
+        destination: "/new-media",
+        permanent: true,
+      },
     ];
   },
   async headers() {

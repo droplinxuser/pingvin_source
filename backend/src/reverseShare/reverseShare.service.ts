@@ -11,6 +11,7 @@ import { I18nService } from "nestjs-i18n";
 import { ConfigService } from "src/config/config.service";
 import { FileService } from "src/file/file.service";
 import { TrendingService } from "src/cache/trending.service";
+import { SearchService } from "src/cache/search.service";
 import { PrismaService } from "src/prisma/prisma.service";
 import { VirusTotalQueueService } from "src/virustotal/virustotalQueue.service";
 import { parseRelativeDateToAbsolute } from "src/utils/date.util";
@@ -26,6 +27,7 @@ export class ReverseShareService {
     private fileService: FileService,
     private readonly i18n: I18nService,
     private readonly trending: TrendingService,
+    private readonly search: SearchService,
     private readonly virusTotalQueue: VirusTotalQueueService,
     @Inject(CACHE_MANAGER) private cache: Cache,
   ) {}
@@ -261,6 +263,7 @@ export class ReverseShareService {
         this.virusTotalQueue.removeForShare(shareId),
       ),
       this.trending.invalidate(shareIds),
+      this.search.invalidate(),
     ]);
   }
 }

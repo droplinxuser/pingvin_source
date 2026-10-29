@@ -24,7 +24,6 @@ import { PrismaService } from "src/prisma/prisma.service";
 import { ReverseShareService } from "src/reverseShare/reverseShare.service";
 import { SystemService } from "src/system/system.service";
 import { VirusTotalService } from "src/virustotal/virustotal.service";
-import { parseRelativeDateToAbsolute } from "src/utils/date.util";
 import { byteToHumanSizeString } from "src/utils/fileSize.util";
 import { getUserActiveStorageUsage } from "src/utils/storageQuota.util";
 import {
@@ -40,13 +39,14 @@ import { ReportShareDTO } from "./dto/reportShare.dto";
 import { UpdateShareDTO } from "./dto/updateShare.dto";
 import { GuardShare, ShareStateService } from "./shareState.service";
 import {
-  SHARE_EXPIRATION,
   activeShareWhere,
+  getShareExpiration,
   isPublicShare,
   isViewLimitExceeded,
   resolveShareSizeLimit,
   sumFileSizes,
 } from "./share.util";
+import { SearchService } from "src/cache/search.service";
 import { tableOrderBy } from "src/utils/pagination.util";
 
 type ShareSecurityFields = Pick<
@@ -127,6 +127,7 @@ export class ShareService {
     private readonly i18n: I18nService,
     private shareState: ShareStateService,
     private virusTotalService: VirusTotalService,
+    private searchService: SearchService,
     @Inject(CACHE_MANAGER) private readonly cache: Cache,
   ) {}
 
@@ -230,8 +231,9 @@ export class ShareService {
     }
 
     // Expiration is automatic and immutable: every share starts with a rolling
-    // expiration of 100 days, which is extended on every visit of the share page.
-    const expirationDate = parseRelativeDateToAbsolute(SHARE_EXPIRATION);
+    // window which is extended on every visit of the share page. Member shares
+    // keep 100 days; anonymous/guest uploads expire after 10 days.
+    const expirationDate = getShareExpiration(!!user);
 
     // Consume the reverse-share use atomically before writing anything. The
     // previous check-then-decrement-on-complete flow allowed parallel creates
@@ -452,6 +454,7 @@ export class ShareService {
     });
 
     await this.shareState.invalidateData(id);
+    void this.searchService.invalidate();
 
     // Build the listing/OG thumbnail in the background. The browser may
     // request it immediately, in which case the endpoint joins this build.
@@ -825,6 +828,7 @@ export class ShareService {
     await this.prisma.share.delete({ where: { id: shareId } });
     // A concurrent read can repopulate the cache between the steps above.
     await this.shareState.invalidateData(shareId);
+    void this.searchService.invalidate();
   }
 
   async expire(shareId: string, knownShare?: Pick<Share, "creatorId">) {
@@ -846,6 +850,7 @@ export class ShareService {
       data: { expiration: moment().toDate() },
     });
     await this.shareState.invalidateData(shareId);
+    void this.searchService.invalidate();
     await Promise.all([
       this.virusTotalService.removeJobsForShare(shareId),
       this.fileService.removeShareThumbnail(shareId),
@@ -889,6 +894,7 @@ export class ShareService {
       include: SHARE_INCLUDE,
     });
     await this.shareState.invalidateData(shareId);
+    void this.searchService.invalidate();
 
     return this.transformShare(updatedShare);
   }

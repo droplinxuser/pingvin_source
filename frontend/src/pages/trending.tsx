@@ -25,7 +25,7 @@ export async function getServerSideProps({
 }: GetServerSidePropsContext) {
   const apiURL = process.env.API_URL || "http://localhost:8080";
   const [initialItems, initialCountries] = await Promise.all([
-    fetchShareList(apiURL, "trending", 100),
+    fetchShareList(apiURL, "trending", 200),
     fetchTrendingCountries(apiURL),
   ]);
   // Never let the CDN cache a failed backend response or an empty
@@ -81,7 +81,7 @@ const Trending = ({
       />
       <TrendingToday
         embedded
-        limit={100}
+        limit={200}
         previewBlur={2}
         initialItems={initialItems}
       >

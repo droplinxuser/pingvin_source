@@ -11,7 +11,8 @@ const buildFallbackSitemap = (
   const urls = [
     absoluteUrl("/", baseUrl),
     absoluteUrl("/trending", baseUrl),
-    absoluteUrl("/new", baseUrl),
+    absoluteUrl("/new-media", baseUrl),
+    absoluteUrl("/new-files", baseUrl),
   ];
   const legalEnabled = getConfigValue(config, "legal.enabled") === "true";
   const imprintText = getConfigValue(config, "legal.imprintText");

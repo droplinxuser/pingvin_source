@@ -70,7 +70,7 @@ test("writes a versioned sitemap index and chunks to disk", async () => {
 
   const chunk = await service.getSitemapFile(request, "sitemap-1.xml");
   assert.match(chunk, /<urlset /);
-  assert.equal((chunk.match(/<url>/g) ?? []).length, 5);
+  assert.equal((chunk.match(/<url>/g) ?? []).length, 6);
 
   assert.equal(queries(), 1);
   assert.deepEqual(fs.readdirSync(SITE_DIRECTORY).sort(), [
@@ -141,10 +141,10 @@ test("splits large sitemaps at 50,000 URL entries", async () => {
 
   assert.equal(manifest.files.length, 2);
   assert.equal(manifest.files[0].entries, 50_000);
-  assert.equal(manifest.files[1].entries, 4);
+  assert.equal(manifest.files[1].entries, 5);
 
   const first = await service.getSitemapFile(request, "sitemap-1.xml");
   const second = await service.getSitemapFile(request, "sitemap-2.xml");
   assert.equal((first.match(/<url>/g) ?? []).length, 50_000);
-  assert.equal((second.match(/<url>/g) ?? []).length, 4);
+  assert.equal((second.match(/<url>/g) ?? []).length, 5);
 });

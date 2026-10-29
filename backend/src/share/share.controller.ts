@@ -33,6 +33,7 @@ import {
   TrendingService,
   TrendingShare,
 } from "src/cache/trending.service";
+import { SearchService } from "src/cache/search.service";
 import {
   NO_STORE_HEADERS,
   getDownloadCacheHeaders,
@@ -74,6 +75,7 @@ export class ShareController {
     private jwtService: JwtService,
     private config: ConfigService,
     private trending: TrendingService,
+    private searchService: SearchService,
     private commentService: CommentService,
     private fileService: FileService,
   ) {}
@@ -171,6 +173,44 @@ export class ShareController {
       Number.isFinite(parsedLimit) ? parsedLimit : undefined,
     );
     response.set(getEdgeCacheHeaders(60));
+    void this.fileService.warmShareThumbnails(items.map((item) => item.id));
+    return items;
+  }
+
+  // Newest public shares without an image/video preview ("files"). Same card
+  // shape and cache policy as the media listing so both pages share the UI.
+  @Get("recent-files")
+  @SkipThrottle({ default: true, visitor: true })
+  async getRecentFiles(
+    @Query("limit") limit: string,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<TrendingShare[]> {
+    const parsedLimit = Number.parseInt(limit ?? "", 10);
+    const items = await this.trending.getRecentFiles(
+      Number.isFinite(parsedLimit) ? parsedLimit : undefined,
+    );
+    response.set(getEdgeCacheHeaders(60));
+    void this.fileService.warmShareThumbnails(items.map((item) => item.id));
+    return items;
+  }
+
+  // Search across every public share. The index lives in Valkey; results are
+  // edge-cached for a minute. A missing/blank query returns an empty list.
+  @Get("search")
+  @Throttle({ default: { limit: 60, ttl: 60 * 1000 } })
+  @SkipThrottle({ visitor: true })
+  async search(
+    @Query("q") q: string,
+    @Query("limit") limit: string,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<TrendingShare[]> {
+    const parsedLimit = Number.parseInt(limit ?? "", 10);
+    const items = await this.searchService.search(
+      typeof q === "string" ? q : "",
+      Number.isFinite(parsedLimit) ? parsedLimit : undefined,
+    );
+    // Never let a transient empty result be pinned at the edge.
+    response.set(items.length ? getEdgeCacheHeaders(60) : NO_STORE_HEADERS);
     void this.fileService.warmShareThumbnails(items.map((item) => item.id));
     return items;
   }

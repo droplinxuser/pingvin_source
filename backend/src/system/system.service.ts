@@ -241,7 +241,8 @@ export class SystemService {
       "Allow: /$",
       "Allow: /share/",
       "Allow: /trending",
-      "Allow: /new",
+      "Allow: /new-media",
+      "Allow: /new-files",
       // The sitemap index and its versioned chunk files must stay crawlable
       // even though the generic /api tree and query strings are disallowed.
       "Allow: /sitemap.xml",
@@ -355,7 +356,8 @@ export class SystemService {
 
     entries.push(urlEntry(absoluteUrl("/", baseUrl)));
     entries.push(urlEntry(absoluteUrl("/trending", baseUrl)));
-    entries.push(urlEntry(absoluteUrl("/new", baseUrl)));
+    entries.push(urlEntry(absoluteUrl("/new-media", baseUrl)));
+    entries.push(urlEntry(absoluteUrl("/new-files", baseUrl)));
 
     const legalEnabled = this.configService.get("legal.enabled") === true;
     const imprintText = this.configService.get("legal.imprintText") as string;

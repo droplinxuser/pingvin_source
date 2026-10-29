@@ -106,8 +106,9 @@ export type TrendingShare = {
   name?: string;
   description?: string;
   views: number;
-  previewFileId: string;
-  previewKind: "image" | "video";
+  // Present on media listings; file-only listings and search results omit it.
+  previewFileId?: string;
+  previewKind?: "image" | "video";
   fileCount?: number;
   size?: number;
   createdAt: string;

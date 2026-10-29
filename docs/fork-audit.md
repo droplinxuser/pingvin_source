@@ -13,7 +13,10 @@ the suggested order for future features.
 | Area | Main files |
 |---|---|
 | Environment loading / production config | `backend/src/constants.ts`, `backend/src/config/config.service.ts`, `backend/src/main.ts`, `backend/.env.example` |
-| Rolling 100-day expiration | `backend/src/share/share.util.ts` (`SHARE_EXPIRATION`), migrations `20261016000000` / `20261016000001`, share create/edit modals |
+| Rolling expiration (member 100 days / guest 10 days) | `backend/src/share/share.util.ts` (`SHARE_EXPIRATION`, `GUEST_SHARE_EXPIRATION`, `getShareExpiration`, `isMemberShare`), `share.service.ts` (create), `shareState.service.ts` (renew on visit), migrations `20261016000000` / `20261016000001`, share create/edit modals |
+| Public-content search | `backend/src/cache/search.service.ts` (Valkey-backed index, no SQLite table/FTS), `GET /api/shares/search`, `frontend/src/components/header/NavbarSearch.tsx`, `frontend/src/pages/search.tsx` |
+| New-media / new-files listings | `backend/src/cache/trending.service.ts` (`getRecent` media-only, `getRecentFiles` no-media), `GET /api/shares/recent-files`, `frontend/src/pages/new-media.tsx`, `new-files.tsx` (`/new` 308-redirects to `/new-media`), `TrendingToday.tsx` file-glyph fallback |
+| Upload from URL (client-fetched) | `frontend/src/components/upload/UploadFromUrlButton.tsx` (visitor's browser fetches the URL; the server never contacts the remote host), wired in `Dropzone.tsx` |
 | Admin pagination, search and sorting | `backend/src/share/share.service.ts`, `backend/src/user/user.service.ts` (quota columns paged in SQL), `frontend/src/pages/admin/*`, `frontend/src/components/core/SortIcon.tsx` |
 | Share reports | `backend/src/share/dto/reportShare.dto.ts`, `backend/src/email/email.service.ts`, `frontend/src/components/share/showReportShareModal.tsx` |
 | Uploader metadata / visitors | `backend/src/utils/uploaderInfo.util.ts`, `ShareDTO.uploaderInfo`, `frontend/src/components/share/UploaderInfoBadges.tsx`, `ShareStats.tsx`; view counts stay in `Share.views`, written in five-second batches for unlimited shares and atomically for limited ones (`shareState.service.ts`). Geo labels are clamped before storage. The recent-visitor list is shown to every visitor. |
@@ -21,7 +24,7 @@ the suggested order for future features.
 | Inline media gallery | `frontend/src/components/share/MediaPreviewGallery.tsx` (up to 100 image/video cards, 12-card lazy batches, single-media square card, full-size previous/next modal), `frontend/src/components/core/LazySection.tsx` |
 | Individual downloads / legacy ZIP | `frontend/src/components/share/DownloadAllButton.tsx`, `frontend/src/services/share.service.ts`; `backend/src/share/share.service.ts` no longer creates archives. Existing `archive.zip` files remain served by the legacy API. |
 | Share and file size limits | `backend/prisma/seed/config.seed.ts` (`share.maxSize` 5 GB, `share.maxFileSize` 512 MB), migration `20261025000000_raise_share_size_limit`, `backend/src/share/share.util.ts` (`resolveShareSizeLimit`), local/S3 upload guards, upload UI |
-| Trending today / new shares | `backend/src/cache/trending.service.ts` (`getTrending`, `getTrendingCountries`, `getRecent`), `GET /api/shares/trending`, `/trending/countries`, `/recent`; `frontend/src/components/share/TrendingToday.tsx`, `TrendingCountries.tsx`, `frontend/src/pages/trending.tsx`, `frontend/src/pages/new.tsx` |
+| Trending today / new shares | `backend/src/cache/trending.service.ts` (`getTrending`, `getTrendingCountries`, `getRecent`, `getRecentFiles`), `GET /api/shares/trending`, `/trending/countries`, `/recent`, `/recent-files`; `frontend/src/components/share/TrendingToday.tsx`, `TrendingCountries.tsx`, `frontend/src/pages/trending.tsx`, `new-media.tsx`, `new-files.tsx`. Trending and both new listings cap at 200; cards reveal in lazy 24-card batches with skeletons (infinite scroll). |
 | Shared UI polish | `frontend/src/components/core/RelativeTime.tsx`, `RouteProgress.tsx`, `LazyImage.tsx`, `LazyVideo.tsx`, `LazySection.tsx`, `frontend/src/utils/filePreview.util.ts`; `frontend/src/components/share/FileList.tsx` adds client-side file search for shares with 12+ files (`SEARCH_MIN_FILES`), filtering the rendered batches and the preview navigation without a backend request |
 | Profile pictures | `backend/prisma/schema.prisma` (`User.avatarUpdatedAt`), migration `20261028010000_add_user_avatar`, `backend/src/user/avatar.service.ts` (5 MB/40 MP limits, EXIF rotate, 256px centre-crop, metadata-stripped WebP, atomic 0600 write), `user.controller.ts` (`POST`/`DELETE /api/users/me/avatar`, public versioned `GET /api/users/:id/avatar.webp` with ETag/304), `frontend/src/components/core/UserAvatar.tsx`, `frontend/src/utils/avatar.util.ts` |
 | Legal pages | `frontend/src/components/legal/LegalDocument.tsx` (one shared imprint/privacy markdown layout); the pages load their document through `getServerSideProps` and `_app` only sends a presence marker |
@@ -120,7 +123,8 @@ the matching `utils/*.util.ts` files.
    - lint: `npm run lint` in both packages (backend warnings are upstream-only)
 5. Smoke-test locally: home, sign-in, upload, share page, comments, gallery,
    admin shares/users/referrers/VirusTotal/Valkey/logs pages, missing share
-   (404), trending widget, `/trending` and `/new`, file download headers, report
+   (404), trending widget, `/trending`, `/new-media`, `/new-files`, `/search`,
+   file download headers, report
    modal, footer metrics, profile pictures, manifest, robots and the versioned
    sitemap index/chunk. Repeat with Valkey stopped to confirm fallbacks (the
    trending widget and referrer/Valkey cards degrade gracefully).
@@ -218,14 +222,17 @@ the matching `utils/*.util.ts` files.
 Origin responses set `Cache-Control`, `CDN-Cache-Control` and
 `Cloudflare-CDN-Cache-Control` consistently (`utils/cache.util.ts`).
 
-- Public HTML shells (`/`, `/trending`, `/new`, `/share/*`, legal pages) are
+- Public HTML shells (`/`, `/trending`, `/new-media`, `/new-files`, `/share/*`,
+  legal pages) are
   `public, s-maxage=60, stale-while-revalidate=30, stale-if-error=300` only when
   the URL has no query string, the language is the default and the theme is
   unset or light. Authenticated, non-default-language, `?lang=`, `?recipient=`
   and other query variants stay `no-store`. Pages never put account data in
   `__NEXT_DATA__`; `_app` restores the user client-side.
-- Config and OAuth availability: 30 seconds. Stats, trending, recent and share
-  SEO: 60 seconds. Trending countries: 300 seconds. Comments: 24 hours with an
+- Config and OAuth availability: 30 seconds. Stats, trending, recent,
+  recent-files, public search results and share SEO: 60 seconds. An empty search
+  result is `no-store` so a transient miss is never pinned at the edge. Trending
+  countries: 300 seconds. Comments: 24 hours with an
   app version query. Sitemap index: 1 hour. Sitemap chunks, robots and manifest:
   1 day (60-second fallback when the backend artifact is unavailable).
   `/_next/static` and Workbox bundles are immutable for a year.

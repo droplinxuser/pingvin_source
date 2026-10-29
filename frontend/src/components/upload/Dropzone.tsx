@@ -16,6 +16,7 @@ import { FileUpload } from "../../types/File.type";
 import { byteToHumanSizeString } from "../../utils/fileSize.util";
 import { getFilesFromEvent } from "../../utils/file.util";
 import toast from "../../utils/toast.util";
+import UploadFromUrlButton from "./UploadFromUrlButton";
 
 const useStyles = createStyles((theme) => ({
   wrapper: {
@@ -205,25 +206,31 @@ const Dropzone = ({
         </div>
       </MantineDropzone>
       <Center>
-        {isFolderUploadSupported && (
-          <Button
-            className={classes.control}
-            variant={dark ? "filled" : "light"}
-            size="sm"
-            radius="xl"
+        <Group className={classes.control} spacing="sm" position="center">
+          {isFolderUploadSupported && (
+            <Button
+              variant={dark ? "filled" : "light"}
+              size="sm"
+              radius="xl"
+              disabled={isUploading}
+              onClick={() => folderInputRef.current?.click()}
+            >
+              <TbFolder style={{ marginRight: 6 }} />
+              <FormattedMessage
+                id={
+                  currentFilesSize > 0
+                    ? "upload.button.folder.append"
+                    : "upload.button.folder"
+                }
+              />
+            </Button>
+          )}
+          <UploadFromUrlButton
+            onFiles={handleFiles}
+            maxFileSize={maxFileSize}
             disabled={isUploading}
-            onClick={() => folderInputRef.current?.click()}
-          >
-            <TbFolder style={{ marginRight: 6 }} />
-            <FormattedMessage
-              id={
-                currentFilesSize > 0
-                  ? "upload.button.folder.append"
-                  : "upload.button.folder"
-              }
-            />
-          </Button>
-        )}
+          />
+        </Group>
       </Center>
     </div>
   );

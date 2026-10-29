@@ -223,7 +223,7 @@ test("seeds the current bucket from SQLite once for missed views", async () => {
   assert.equal(lookups, 1);
 });
 
-test("returns twelve by default and caps the full list at one hundred", async () => {
+test("returns twelve by default and caps the full list at two hundred", async () => {
   const ranked = Array.from({ length: 120 }, (_, index) => ({
     value: `s${index}`,
     score: 200 - index,
@@ -247,8 +247,8 @@ test("returns twelve by default and caps the full list at one hundred", async ()
   assert.equal(expanded.at(-1).id, "s47");
 
   const capped = await service.getTrending(1000);
-  assert.equal(capped.length, 100);
-  assert.equal(capped.at(-1).id, "s99");
+  assert.equal(capped.length, 120);
+  assert.equal(capped.at(-1).id, "s119");
 });
 
 test("records only recent public shares with image or video media", async () => {

@@ -25,6 +25,12 @@ export default {
     "Discover the most-viewed public shares from the last 30 days. Preview and download images, videos, audio and documents.",
   "seo.custom.new.description":
     "Browse the newest public shares with image and video previews. Open a share to preview and download its files.",
+  "seo.custom.newMedia.description":
+    "Browse the newest public shares with image and video previews. Open a share to preview and download its files.",
+  "seo.custom.newFiles.description":
+    "Browse the newest public file shares — documents, archives, audio and more. Open a share to preview and download its files.",
+  "seo.custom.search.description":
+    "Search every public share on {siteName} by name or description.",
   "seo.custom.privacy.description":
     "Read how {siteName} handles data, cookies and uploaded files.",
   "seo.custom.imprint.description":
@@ -48,6 +54,8 @@ export default {
   // Navbar
   "navbar.upload": "Upload",
   "navbar.new": "New",
+  "navbar.newMedia": "New media",
+  "navbar.newFiles": "New files",
   "navbar.signin": "Sign in",
   "navbar.home": "Home",
   "navbar.signup": "Sign up",
@@ -102,13 +110,32 @@ export default {
     "Most-viewed shares from {country} in the last 24 hours",
   // END trending
 
-  // New shares
-  "new.custom.title": "New shares",
-  "new.custom.description":
-    "The latest public shares with an image or video preview.",
-  "new.custom.loading": "Loading new shares…",
-  "new.custom.empty": "No public media shares have been uploaded yet.",
-  // END new shares
+  // New media shares (images / videos only)
+  "newMedia.custom.title": "New media",
+  "newMedia.custom.description":
+    "The latest public shares that contain an image or video.",
+  "newMedia.custom.loading": "Loading new media…",
+  "newMedia.custom.empty": "No public media shares have been uploaded yet.",
+
+  // New file shares (everything without an image / video)
+  "newFiles.custom.title": "New files",
+  "newFiles.custom.description":
+    "The latest public shares without an image or video preview.",
+  "newFiles.custom.loading": "Loading new files…",
+  "newFiles.custom.empty": "No public file shares have been uploaded yet.",
+
+  // Public search
+  "search.custom.title": "Search",
+  "search.custom.description":
+    "Search every public share by name or description.",
+  "search.custom.placeholder": "Search public shares",
+  "search.custom.action": "Search",
+  "search.custom.open": "Search public shares",
+  "search.custom.loading": "Searching…",
+  "search.custom.empty": "No public shares match your search.",
+  "search.custom.prompt": "Type a query to search public shares.",
+  "search.custom.results": "Results for “{query}”",
+  // END new/search
 
   // /
   "home.title": "A <h>self-hosted</h> file sharing platform.",
@@ -679,6 +706,20 @@ export default {
   "upload.button.folder": "Upload folder",
   "upload.button.folder.append": "Append folder",
   "upload.button.add": "Add to upload",
+
+  // Upload from URL (fork-only; fetched in the visitor's own browser)
+  "upload.url.button": "From URL",
+  "upload.url.title": "Add a file from a URL",
+  "upload.url.placeholder": "https://example.com/file.zip",
+  "upload.url.fetch": "Fetch file",
+  "upload.url.hint":
+    "The file is downloaded directly in your browser, so the server never contacts the remote host. Some sites block this with CORS and cannot be used.",
+  "upload.url.notify.added": "Added {name} from URL",
+  "upload.url.error.invalid": "Enter a valid http(s) URL.",
+  "upload.url.error.fetch":
+    "Could not fetch that URL. The site may block cross-origin downloads (CORS) or be unreachable.",
+  "upload.url.error.too-big":
+    "That file is larger than the maximum file size of {maxSize}.",
 
   // FileList.tsx
   "upload.filelist.name": "Name",
