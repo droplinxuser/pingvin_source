@@ -88,6 +88,13 @@ npm run build
 
 echo "==> Installing and building the frontend"
 cd "$SRC_DIR/frontend"
+# Stop the frontend before rebuilding it. While `npm ci` and `next build`
+# replace node_modules and .next, a running instance keeps serving HTML that
+# references chunks which no longer exist on disk; those transient 404/400
+# responses were being cached at the CDN as immutable, which broke client
+# hydration (for example the upload dialog) until the cache was purged.
+# Stopping first means the edge sees a connection error, which is never cached.
+systemctl stop pingvin-front.service 2>/dev/null || true
 npm ci --no-audit --no-fund
 # Rebuild WebP logos/icons and the OG image from the restored branding (or the
 # tracked defaults) after dependencies are installed.
@@ -99,6 +106,13 @@ npm run build
 rm -rf .next/standalone/public .next/standalone/.next/static
 cp -r public .next/standalone/public
 cp -r .next/static .next/standalone/.next/static
+
+# Bring the frontend back up as soon as the new build is in place, so a broken
+# build surfaces now instead of at the very end of the update. It comes back
+# before the backend migration below; the backend briefly runs its previous
+# build, which only affects live API calls, never the static assets.
+echo "==> Starting the frontend"
+systemctl start pingvin-front.service 2>/dev/null || true
 
 echo "==> Preparing data directory and backend/.env"
 mkdir -p "$DATA_DIR"
@@ -161,8 +175,10 @@ for _ in $(seq 1 30); do
   sleep 1
 done
 
-echo "==> Restarting the frontend"
-systemctl restart pingvin-front.service
+echo "==> Ensuring the frontend is running"
+# It was started right after its build above; restart only if that failed.
+systemctl is-active --quiet pingvin-front.service ||
+  systemctl restart pingvin-front.service
 
 echo "==> Update finished"
 for unit in pingvin-back.service pingvin-front.service; do
