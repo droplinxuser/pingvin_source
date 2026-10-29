@@ -5,6 +5,9 @@
 so `git merge upstream/main` stays small. This file describes the **current**
 state only; old verification runs are intentionally not kept.
 
+See `docs/feature-roadmap.md` for the comparison with gofile.io / bunkr.cr and
+the suggested order for future features.
+
 ## Custom areas
 
 | Area | Main files |
@@ -19,7 +22,7 @@ state only; old verification runs are intentionally not kept.
 | Individual downloads / legacy ZIP | `frontend/src/components/share/DownloadAllButton.tsx`, `frontend/src/services/share.service.ts`; `backend/src/share/share.service.ts` no longer creates archives. Existing `archive.zip` files remain served by the legacy API. |
 | Share and file size limits | `backend/prisma/seed/config.seed.ts` (`share.maxSize` 5 GB, `share.maxFileSize` 512 MB), migration `20261025000000_raise_share_size_limit`, `backend/src/share/share.util.ts` (`resolveShareSizeLimit`), local/S3 upload guards, upload UI |
 | Trending today / new shares | `backend/src/cache/trending.service.ts` (`getTrending`, `getTrendingCountries`, `getRecent`), `GET /api/shares/trending`, `/trending/countries`, `/recent`; `frontend/src/components/share/TrendingToday.tsx`, `TrendingCountries.tsx`, `frontend/src/pages/trending.tsx`, `frontend/src/pages/new.tsx` |
-| Shared UI polish | `frontend/src/components/core/RelativeTime.tsx`, `RouteProgress.tsx`, `LazyImage.tsx`, `LazyVideo.tsx`, `LazySection.tsx`, `frontend/src/utils/filePreview.util.ts` |
+| Shared UI polish | `frontend/src/components/core/RelativeTime.tsx`, `RouteProgress.tsx`, `LazyImage.tsx`, `LazyVideo.tsx`, `LazySection.tsx`, `frontend/src/utils/filePreview.util.ts`; `frontend/src/components/share/FileList.tsx` adds client-side file search for shares with 12+ files (`SEARCH_MIN_FILES`), filtering the rendered batches and the preview navigation without a backend request |
 | Profile pictures | `backend/prisma/schema.prisma` (`User.avatarUpdatedAt`), migration `20261028010000_add_user_avatar`, `backend/src/user/avatar.service.ts` (5 MB/40 MP limits, EXIF rotate, 256px centre-crop, metadata-stripped WebP, atomic 0600 write), `user.controller.ts` (`POST`/`DELETE /api/users/me/avatar`, public versioned `GET /api/users/:id/avatar.webp` with ETag/304), `frontend/src/components/core/UserAvatar.tsx`, `frontend/src/utils/avatar.util.ts` |
 | Legal pages | `frontend/src/components/legal/LegalDocument.tsx` (one shared imprint/privacy markdown layout); the pages load their document through `getServerSideProps` and `_app` only sends a presence marker |
 | Upload paste and folder picks | Upstream `useClipboardPaste.hook.ts`, `file.util.ts`, `folder.util.ts`; the fork keeps only `share.maxFileSize` validation in `Dropzone.tsx`, the folder button and upload DTO bounds |
@@ -82,6 +85,16 @@ the matching `utils/*.util.ts` files.
   underlined. Page headings use h1 -> h2 (admin config sections included).
 - The footer uses slightly larger muted text and vertical padding on links for
   comfortable touch targets.
+- Large shares (>12 files) get a compact search field above the file table.
+  Filtering is client-side and uses `useDeferredValue`, so typing stays
+  responsive while a few thousand rows are compared. The table header, empty
+  state, result count (`aria-live`) and skeleton variant reserve the same space
+  to avoid layout shift. The file list skeleton mirrors the search bar when the
+  known file count is large.
+- `_app` memoizes the assembled Mantine theme. The admin primary colour scale
+  is built from ten blended hex values, and rebuilding it on every notification,
+  modal or session restore was unnecessary; only a theme config or colour
+  scheme change recreates it.
 - Local Lighthouse (mobile, production build): home ~96 performance and 100
   accessibility/SEO/best-practices; trending/new ~87-96 performance; share
   pages remain limited by third-party ad scripts (best-practices 61 from their
