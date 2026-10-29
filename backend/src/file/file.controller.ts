@@ -30,6 +30,7 @@ import { isRequestFromApp, redirectToSharePage } from "src/utils/referrer.util";
 import {
   UploadAbortDTO,
   UploadCompleteDTO,
+  UploadFromUrlDTO,
   UploadInitDTO,
 } from "./dto/upload.dto";
 import { FileService } from "./file.service";
@@ -106,6 +107,23 @@ export class FileController {
       body.name,
       body.uploadId,
     );
+  }
+
+  // Server-side fetch of a remote file. The visitor's browser cannot fetch
+  // arbitrary hosts (CORS), so the backend downloads it with SSRF guards and
+  // stores it through the normal chunk pipeline. Owner-only and rate-limited
+  // because it consumes server bandwidth and disk.
+  @Post("from-url")
+  @Throttle({
+    default: { limit: 30, ttl: 60 * 1000 },
+    visitor: { limit: 15, ttl: 60 * 1000 },
+  })
+  @UseGuards(IdValidation, StrictShareOwnerGuard)
+  async fromUrl(
+    @Body() body: UploadFromUrlDTO,
+    @Param("shareId") shareId: string,
+  ) {
+    return await this.fileService.createFromUrl(shareId, body.url, body.name);
   }
 
   @Post()

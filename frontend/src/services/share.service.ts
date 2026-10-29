@@ -235,6 +235,20 @@ const removeFile = async (shareId: string, fileId: string) => {
   await api.delete(`shares/${shareId}/files/${fileId}`);
 };
 
+const uploadFromUrl = async (
+  shareId: string,
+  url: string,
+  name?: string,
+): Promise<FileUploadResponse> => {
+  if (!isValidId(shareId)) throw new Error("Invalid Share ID");
+  return (
+    await api.post(`shares/${shareId}/files/from-url`, {
+      url,
+      name: name || undefined,
+    })
+  ).data;
+};
+
 interface S3UploadSession {
   uploadId: string;
   urls: string[];
@@ -532,6 +546,7 @@ export default {
   downloadFile,
   removeFile,
   uploadFile,
+  uploadFromUrl,
   setReverseShare,
   createReverseShare,
   getMyReverseShares,

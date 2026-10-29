@@ -711,15 +711,11 @@ export default {
   "upload.url.button": "From URL",
   "upload.url.title": "Add a file from a URL",
   "upload.url.placeholder": "https://example.com/file.zip",
-  "upload.url.fetch": "Fetch file",
+  "upload.url.add": "Add to upload",
   "upload.url.hint":
-    "The file is downloaded directly in your browser, so the server never contacts the remote host. Some sites block this with CORS and cannot be used.",
-  "upload.url.notify.added": "Added {name} from URL",
+    "The file is downloaded by the server when you upload, so hosts without cross-origin (CORS) support work too. Only public http(s) URLs on ports 80/443 are allowed.",
+  "upload.url.notify.added": "Queued {name} from URL",
   "upload.url.error.invalid": "Enter a valid http(s) URL.",
-  "upload.url.error.fetch":
-    "Could not fetch that URL. The site may block cross-origin downloads (CORS) or be unreachable.",
-  "upload.url.error.too-big":
-    "That file is larger than the maximum file size of {maxSize}.",
 
   // FileList.tsx
   "upload.filelist.name": "Name",

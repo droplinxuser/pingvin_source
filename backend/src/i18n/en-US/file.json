@@ -17,5 +17,10 @@
   "s3SessionNotFound": "Multipart upload session not found.",
   "s3UploadFailed": "Multipart upload failed. The upload has been aborted.",
   "s3SizeError": "Could not retrieve file size",
-  "s3NotSupported": "Pre-signed operations are only supported for S3 storage."
+  "s3NotSupported": "Pre-signed operations are only supported for S3 storage.",
+  "remoteFetchFailed": "Could not download the file from that URL.",
+  "remoteFetchBlocked": "That URL points to a private or unsupported address and cannot be used.",
+  "remoteFetchTooLarge": "The file at that URL is larger than the maximum file size of {maxSize}.",
+  "remoteFetchTimeout": "Timed out while downloading the file from that URL.",
+  "remoteFetchTooManyRedirects": "That URL redirects too many times."
 }

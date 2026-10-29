@@ -117,6 +117,22 @@ const EditableUpload = ({
 
         setFileProgress(1);
 
+        // URL entries are fetched by the backend (no browser CORS limits).
+        if (file.remoteUrl) {
+          try {
+            await shareService.uploadFromUrl(
+              shareId,
+              file.remoteUrl,
+              getNormalizedFileName(file),
+            );
+            setFileProgress(100);
+          } catch (e) {
+            toast.axiosError(e);
+            setFileProgress(-1);
+          }
+          return;
+        }
+
         let chunks = Math.ceil(file.size / chunkSize.current);
 
         // If the file is 0 bytes, we still need to upload 1 chunk

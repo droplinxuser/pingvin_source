@@ -14,9 +14,9 @@ the suggested order for future features.
 |---|---|
 | Environment loading / production config | `backend/src/constants.ts`, `backend/src/config/config.service.ts`, `backend/src/main.ts`, `backend/.env.example` |
 | Rolling expiration (member 100 days / guest 10 days) | `backend/src/share/share.util.ts` (`SHARE_EXPIRATION`, `GUEST_SHARE_EXPIRATION`, `getShareExpiration`, `isMemberShare`), `share.service.ts` (create), `shareState.service.ts` (renew on visit), migrations `20261016000000` / `20261016000001`, share create/edit modals |
-| Public-content search | `backend/src/cache/search.service.ts` (Valkey-backed index, no SQLite table/FTS), `GET /api/shares/search`, `frontend/src/components/header/NavbarSearch.tsx`, `frontend/src/pages/search.tsx` |
+| Public-content search | `backend/src/cache/search.service.ts` (Valkey-backed index, no SQLite table/FTS), `GET /api/shares/search`, `frontend/src/components/header/NavbarSearch.tsx` (desktop form beside the logo, mobile icon on the right), `frontend/src/pages/search.tsx` |
 | New-media / new-files listings | `backend/src/cache/trending.service.ts` (`getRecent` media-only, `getRecentFiles` no-media), `GET /api/shares/recent-files`, `frontend/src/pages/new-media.tsx`, `new-files.tsx` (`/new` 308-redirects to `/new-media`), `TrendingToday.tsx` file-glyph fallback |
-| Upload from URL (client-fetched) | `frontend/src/components/upload/UploadFromUrlButton.tsx` (visitor's browser fetches the URL; the server never contacts the remote host), wired in `Dropzone.tsx` |
+| Upload from URL (server-fetched, SSRF-guarded) | `backend/src/utils/remoteFetch.util.ts` (http/https only, ports 80/443, DNS validated and pinned, IP-literal check, redirect cap, size/time caps), `FileService.createFromUrl` feeds the bytes through the normal chunk pipeline, `POST /api/shares/:id/files/from-url`, `frontend/src/components/upload/UploadFromUrlButton.tsx` queues a `remoteUrl` entry, wired in `Dropzone.tsx` and the upload/edit flows |
 | Admin pagination, search and sorting | `backend/src/share/share.service.ts`, `backend/src/user/user.service.ts` (quota columns paged in SQL), `frontend/src/pages/admin/*`, `frontend/src/components/core/SortIcon.tsx` |
 | Share reports | `backend/src/share/dto/reportShare.dto.ts`, `backend/src/email/email.service.ts`, `frontend/src/components/share/showReportShareModal.tsx` |
 | Uploader metadata / visitors | `backend/src/utils/uploaderInfo.util.ts`, `ShareDTO.uploaderInfo`, `frontend/src/components/share/UploaderInfoBadges.tsx`, `ShareStats.tsx`; view counts stay in `Share.views`, written in five-second batches for unlimited shares and atomically for limited ones (`shareState.service.ts`). Geo labels are clamped before storage. The recent-visitor list is shown to every visitor. |
@@ -48,9 +48,11 @@ strings must use new `*.custom.*` keys so other languages show the English
 fallback rather than the upstream copy.
 
 Shared fork-only backend helpers live in `backend/src/utils/`:
-`keyedLock.util.ts` serializes per-share read-modify-write tasks, and
+`keyedLock.util.ts` serializes per-share read-modify-write tasks,
 `fileWrite.util.ts` writes JSON/state files through a unique temporary file plus
-atomic rename. Reuse them instead of adding another lock or temp-file block.
+atomic rename, and `remoteFetch.util.ts` is the only allowed outbound downloader
+(SSRF-guarded; `backend/test/remote-fetch.test.js` covers the address blocks).
+Reuse them instead of adding another lock, temp-file block or raw `fetch(url)`.
 Public-share predicates live in `share.util.ts` (`publicShareWhere`,
 `activeShareWhere`, `isPublicShare`) and must be reused by new queries.
 Cross-cutting pagination, country, referrer, storage-quota and MIME logic live in
@@ -272,6 +274,14 @@ Origin responses set `Cache-Control`, `CDN-Cache-Control` and
   the service caps chunk count against `maxFileSize`/`chunkSize`. Active
   documents (HTML/SVG/XML/JS/CSS) are forced to attachment/octet-stream on
   inline reads.
+- Remote URL upload is owner-only and rate-limited (`POST
+  /api/shares/:id/files/from-url`). It downloads server-side with `remoteFetch
+  .util.ts`: http/https on ports 80/443 only, DNS results validated and pinned
+  to a public address (and IP-literal hostnames rejected before connecting, so
+  Node's lookup-skip cannot bypass the check), a short redirect chain that is
+  re-validated per hop, and body/time caps. Bytes then flow through the same
+  chunk pipeline, so quota, share/file limits and the VirusTotal/ClamAV hooks
+  all still apply.
 - Local uploads reserve in-flight bytes per share and per user. Completion
   re-checks the aggregate share size and the user quota. Completed shares reject
   further uploads. Expired shares cannot be revived through the owner path.

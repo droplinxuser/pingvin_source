@@ -68,6 +68,19 @@ export class UploadCompleteDTO {
   parts: UploadPartDTO[];
 }
 
+export class UploadFromUrlDTO {
+  @IsString()
+  @MaxLength(2048)
+  url: string;
+
+  // The name is sanitized again in the service, so folder-like paths from the
+  // browser are accepted here and reduced to a safe single file name.
+  @IsOptional()
+  @IsString()
+  @MaxLength(1024)
+  name?: string;
+}
+
 export class UploadAbortDTO {
   @IsString()
   @MaxLength(1024)

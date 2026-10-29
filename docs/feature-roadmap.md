@@ -69,13 +69,13 @@ workflow** (search, bulk actions, analytics, API) rather than core sharing.
    without keeping `archive.zip` around. Reuse the existing per-file guards and
    size checks; cap the streamed selection to a sane size (for example 2 GB) and
    keep per-file downloads for larger sets.
-6. **(Done — client-side fetch.) Remote upload from URL.** Implemented in the
-   visitor's own browser (`UploadFromUrlButton.tsx`): the browser fetches the
-   http(s) URL and feeds the resulting blob through the existing chunked upload
-   pipeline. The server never resolves or downloads the remote URL, so there is
-   no SSRF surface and the origin IP is never exposed. CORS-blocked hosts report
-   a friendly error. A server-side fetch with DNS/IP guards (or a WireGuard
-   egress proxy) remains the fallback if broader host support is ever needed.
+6. **(Done — server-side fetch, SSRF-guarded.) Remote upload from URL.**
+   `POST /api/shares/:id/files/from-url` downloads the http(s) URL on the server
+   (`remoteFetch.util.ts`: ports 80/443 only, DNS validated and pinned to a
+   public address, IP-literal hostnames rejected before connecting, redirects
+   re-validated and capped, body/time caps) and feeds the bytes through the
+   normal chunk pipeline, so hosts without CORS work and quota/scanning still
+   apply. The owner-only, rate-limited endpoint never ships a naive `fetch(url)`.
 7. **(Done.) Global public search.** `/search` plus `GET /api/shares/search`
    over every public share. The index is stored in Valkey (versioned JSON,
    rebuilt from SQLite on a miss) with no SQLite table/FTS; results carry the

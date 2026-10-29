@@ -12,6 +12,7 @@ import { LocalFileService } from "./local.service";
 import { S3FileService } from "./s3.service";
 import { ConfigService } from "src/config/config.service";
 import { spawn } from "child_process";
+import * as crypto from "crypto";
 import { Dirent, createWriteStream } from "fs";
 import { promises as fs } from "fs";
 import { join } from "path";
@@ -25,7 +26,13 @@ import { SearchService } from "src/cache/search.service";
 import { VirusTotalQueueService } from "src/virustotal/virustotalQueue.service";
 import { invalidateShareDataCache } from "src/utils/cache.util";
 import { getFileMimeType } from "src/utils/mime.util";
+import { byteToHumanSizeString } from "src/utils/fileSize.util";
 import { getPreviewCandidates, PreviewFile } from "src/share/preview.util";
+import {
+  RemoteFetchError,
+  downloadRemoteToFile,
+} from "src/utils/remoteFetch.util";
+import { SAFE_FILE_NAME } from "./dto/upload.dto";
 import { DATA_DIRECTORY, SHARE_DIRECTORY } from "src/constants";
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const sharp = require("sharp");
@@ -159,6 +166,96 @@ export class FileService implements OnModuleInit {
     // that was removed or an older version of the share after an upload.
     await this.removeLocalZip(shareId);
     return result;
+  }
+
+  /**
+   * Downloads a remote http(s) URL and stores it as a file in the share. The
+   * download runs server-side with SSRF protections (see remoteFetch.util) and
+   * the bytes are fed through the normal chunked `create` path, so quota,
+   * size limits, in-flight accounting and the local/S3 storage split all apply.
+   */
+  async createFromUrl(shareId: string, url: string, name?: string) {
+    const share = await this.prisma.share.findFirst({
+      where: { id: shareId },
+      select: { uploadLocked: true },
+    });
+    if (share?.uploadLocked)
+      throw new BadRequestException(this.i18n.t("file.alreadyCompleted"));
+
+    const fileId = crypto.randomUUID();
+    const directory = `${SHARE_DIRECTORY}/${shareId}`;
+    await fs.mkdir(directory, { recursive: true });
+    const tempPath = `${directory}/${fileId}.remote`;
+
+    const maxFileSize = parseInt(this.configService.get("share.maxFileSize")) || 0;
+
+    let result;
+    try {
+      result = await downloadRemoteToFile(url, tempPath, {
+        maxBytes: maxFileSize > 0 ? maxFileSize : undefined,
+      });
+    } catch (error) {
+      await fs.rm(tempPath, { force: true }).catch(() => undefined);
+      throw this.toRemoteFetchException(error, maxFileSize);
+    }
+
+    try {
+      const finalName = this.sanitizeRemoteFileName(
+        name || result.fileName || fileNameFromUrl(result.finalUrl),
+      );
+      const chunkSize = parseInt(this.configService.get("share.chunkSize")) ||
+        10_000_000;
+      const total = Math.max(1, Math.ceil(result.size / chunkSize));
+
+      const handle = await fs.open(tempPath, "r");
+      try {
+        for (let index = 0; index < total; index++) {
+          const length = Math.min(chunkSize, result.size - index * chunkSize);
+          const buffer = Buffer.alloc(Math.max(length, 0));
+          if (length > 0) await handle.read(buffer, 0, length, index * chunkSize);
+          await this.create(
+            buffer.toString("base64"),
+            { index, total },
+            { id: fileId, name: finalName },
+            shareId,
+          );
+        }
+      } finally {
+        await handle.close();
+      }
+
+      return { id: fileId, name: finalName };
+    } finally {
+      await fs.rm(tempPath, { force: true }).catch(() => undefined);
+    }
+  }
+
+  private toRemoteFetchException(error: unknown, maxFileSize: number) {
+    const reason = error instanceof RemoteFetchError ? error.reason : undefined;
+    const maxSize = byteToHumanSizeString(maxFileSize);
+    if (reason === "too_large")
+      return new BadRequestException(
+        this.i18n.t("file.remoteFetchTooLarge", { args: { maxSize } }),
+      );
+    if (reason === "timeout")
+      return new BadRequestException(this.i18n.t("file.remoteFetchTimeout"));
+    if (reason === "too_many_redirects")
+      return new BadRequestException(
+        this.i18n.t("file.remoteFetchTooManyRedirects"),
+      );
+    if (reason === "blocked" || reason === "invalid")
+      return new BadRequestException(this.i18n.t("file.remoteFetchBlocked"));
+    this.logger.debug(`Remote fetch failed: ${error}`);
+    return new BadRequestException(this.i18n.t("file.remoteFetchFailed"));
+  }
+
+  private sanitizeRemoteFileName(name: string): string {
+    const trimmed = name.split(/[\\/]/).pop()?.trim() || "";
+    // eslint-disable-next-line no-control-regex
+    const safe = trimmed.replace(/[\u0000-\u001f\u007f]/g, "").slice(0, 1024);
+    if (safe && SAFE_FILE_NAME.test(safe)) return safe;
+    const fallback = safe.replace(/[\\/:*?"<>|]/g, "_") || "download";
+    return fallback.slice(0, 1024);
   }
 
   /** Removes the legacy local ZIP snapshot for a share, if one exists. */
@@ -1116,6 +1213,16 @@ export interface File {
   file?: Readable;
   range?: { start: number; end: number };
   isRangeNotSatisfiable?: boolean;
+}
+
+function fileNameFromUrl(url: string): string {
+  try {
+    const segment = new URL(url).pathname.split("/").filter(Boolean).pop();
+    if (segment) return decodeURIComponent(segment);
+  } catch {
+    // Fall through to a generic name.
+  }
+  return "download";
 }
 
 function getVideoFormatHint(fileName?: string): string | undefined {

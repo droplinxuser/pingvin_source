@@ -423,18 +423,21 @@ const Header = () => {
         })}
       >
         <Container className={classes.header}>
-          <Link
-            href={homeHref}
-            passHref
-            aria-label={`${config.get("general.appName")} home`}
-          >
-            <Group spacing="xs">
-              <Logo height={30} width={30} />
-              <Text weight={600} size="sm">
-                {config.get("general.appName")}
-              </Text>
-            </Group>
-          </Link>
+          <Group spacing="lg" noWrap>
+            <Link
+              href={homeHref}
+              passHref
+              aria-label={`${config.get("general.appName")} home`}
+            >
+              <Group spacing="xs">
+                <Logo height={30} width={30} />
+                <Text weight={600} size="sm">
+                  {config.get("general.appName")}
+                </Text>
+              </Group>
+            </Link>
+            <NavbarSearch part="desktop" />
+          </Group>
           <Box
             component="nav"
             aria-label={t("navbar.custom.primary")}
@@ -443,7 +446,7 @@ const Header = () => {
             <Group>{desktopItems}</Group>
           </Box>
           <Group spacing="xs" noWrap>
-            <NavbarSearch />
+            <NavbarSearch part="mobile" />
             <Burger
               opened={opened}
               onClick={toggle}

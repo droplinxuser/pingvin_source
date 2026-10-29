@@ -112,6 +112,23 @@ const Upload = ({
 
         setFileProgress(1);
 
+        // URL entries are fetched by the backend after the share exists, so the
+        // browser never contacts the remote host (and CORS does not apply).
+        if (file.remoteUrl) {
+          try {
+            await shareService.uploadFromUrl(
+              createdShare.id,
+              file.remoteUrl,
+              getNormalizedFileName(file),
+            );
+            setFileProgress(100);
+          } catch (e) {
+            toast.axiosError(e);
+            setFileProgress(-1);
+          }
+          return;
+        }
+
         let chunks = Math.ceil(file.size / chunkSize.current);
 
         // If the file is 0 bytes, we still need to upload 1 chunk
