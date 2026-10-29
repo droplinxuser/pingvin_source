@@ -1,6 +1,6 @@
 import { GetServerSidePropsContext } from "next";
 import Meta from "../components/Meta";
-import RecentFilesList from "../components/share/RecentFilesList";
+import ShareList from "../components/share/ShareList";
 import useSiteMeta from "../hooks/siteMeta.hook";
 import useTranslate from "../hooks/useTranslate.hook";
 import shareService from "../services/share.service";
@@ -57,10 +57,12 @@ const NewFiles = ({
         canonicalPath="/new-files"
         jsonLd={jsonLd}
       />
-      <RecentFilesList
+      <ShareList
         limit={200}
         initialItems={initialItems}
         loadItems={shareService.getRecentFiles}
+        showDescription={false}
+        testId="recent-files-list"
         title={t("newFiles.custom.title")}
         description={t("newFiles.custom.description")}
         loadingText={t("newFiles.custom.loading")}

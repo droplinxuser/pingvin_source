@@ -21,12 +21,11 @@ import {
   TbFiles,
 } from "react-icons/tb";
 import useTranslate from "../../hooks/useTranslate.hook";
-import shareService from "../../services/share.service";
 import { TrendingShare } from "../../types/share.type";
 import { byteToHumanSizeString } from "../../utils/fileSize.util";
 import RelativeTime from "../core/RelativeTime";
 
-// Long listings (the newest 200 shares) are revealed in batches as the visitor
+// Long listings (up to 200 shares) are revealed in batches as the visitor
 // scrolls, so the browser never builds hundreds of rows at once.
 const ROW_BATCH_SIZE = 20;
 
@@ -35,6 +34,8 @@ const useStyles = createStyles((theme) => {
     theme.colorScheme === "dark" ? theme.colors.dark[5] : theme.colors.gray[2];
   const hoverBg =
     theme.colorScheme === "dark" ? theme.colors.dark[7] : theme.colors.gray[0];
+  const dimmed =
+    theme.colorScheme === "dark" ? theme.colors.dark[2] : theme.colors.gray[6];
 
   return {
     root: {
@@ -48,20 +49,8 @@ const useStyles = createStyles((theme) => {
       lineHeight: 1.2,
     },
 
-    headingLink: {
-      color: "inherit",
-      textDecoration: "none",
-
-      "&:hover": {
-        textDecoration: "underline",
-      },
-    },
-
     subheading: {
-      color:
-        theme.colorScheme === "dark"
-          ? theme.colors.dark[2]
-          : theme.colors.gray[6],
+      color: dimmed,
       fontSize: theme.fontSizes.xs,
       lineHeight: 1.2,
     },
@@ -72,18 +61,17 @@ const useStyles = createStyles((theme) => {
       gap: theme.spacing.sm,
     },
 
+    // Row content is vertically centered so the icon, title block and metadata
+    // line up instead of hugging the top edge.
     row: {
       display: "flex",
-      alignItems: "flex-start",
+      alignItems: "center",
       gap: theme.spacing.md,
       width: "100%",
-      padding: `${theme.spacing.md}px ${theme.spacing.md}px`,
+      padding: `${theme.spacing.lg}px ${theme.spacing.lg}px`,
       border: `1px solid ${border}`,
       borderRadius: theme.radius.md,
-      backgroundColor:
-        theme.colorScheme === "dark"
-          ? theme.colors.dark[8]
-          : theme.white,
+      backgroundColor: theme.colorScheme === "dark" ? theme.colors.dark[8] : theme.white,
       textAlign: "left",
       transition: "border-color 120ms ease, background-color 120ms ease",
 
@@ -103,36 +91,59 @@ const useStyles = createStyles((theme) => {
       },
 
       [theme.fn.smallerThan("sm")]: {
+        alignItems: "flex-start",
         flexWrap: "wrap",
       },
     },
 
     icon: {
       flexShrink: 0,
-      marginTop: 2,
     },
 
     main: {
       flex: 1,
       minWidth: 0,
+      display: "flex",
+      flexDirection: "column",
+      gap: theme.spacing.sm,
     },
 
     name: {
-      fontSize: theme.fontSizes.md,
+      fontSize: theme.fontSizes.lg,
       fontWeight: 700,
       lineHeight: 1.35,
       overflowWrap: "anywhere",
     },
 
     description: {
-      marginTop: 4,
-      color:
-        theme.colorScheme === "dark"
-          ? theme.colors.dark[2]
-          : theme.colors.gray[6],
+      color: dimmed,
       fontSize: theme.fontSizes.sm,
-      lineHeight: 1.45,
+      lineHeight: 1.5,
       overflowWrap: "anywhere",
+    },
+
+    // Up to a handful of file names, each on its own line with a clear gap.
+    files: {
+      display: "flex",
+      flexDirection: "column",
+      gap: 6,
+    },
+
+    fileLine: {
+      display: "flex",
+      alignItems: "center",
+      gap: 8,
+      minWidth: 0,
+      color: dimmed,
+      fontSize: theme.fontSizes.sm,
+      lineHeight: 1.3,
+    },
+
+    fileName: {
+      minWidth: 0,
+      whiteSpace: "nowrap",
+      overflow: "hidden",
+      textOverflow: "ellipsis",
     },
 
     meta: {
@@ -140,40 +151,40 @@ const useStyles = createStyles((theme) => {
       flexWrap: "wrap",
       alignItems: "center",
       justifyContent: "flex-end",
-      columnGap: theme.spacing.md,
-      rowGap: 6,
-      marginTop: 4,
-      color:
-        theme.colorScheme === "dark"
-          ? theme.colors.dark[2]
-          : theme.colors.gray[6],
-      fontSize: theme.fontSizes.xs,
+      columnGap: theme.spacing.lg,
+      rowGap: theme.spacing.sm,
+      color: dimmed,
+      fontSize: theme.fontSizes.sm,
       lineHeight: 1.2,
       whiteSpace: "nowrap",
 
       [theme.fn.smallerThan("sm")]: {
         justifyContent: "flex-start",
         width: "100%",
-        paddingLeft: 34,
+        paddingLeft: 38,
       },
     },
 
     metaItem: {
       display: "inline-flex",
       alignItems: "center",
-      gap: 4,
+      gap: 6,
     },
   };
 });
 
-const RecentFilesList = ({
+const ShareList = ({
   initialItems,
   limit = 200,
   title: titleOverride,
   description: descriptionOverride,
   loadingText: loadingOverride,
   emptyText: emptyOverride,
-  loadItems = shareService.getRecentFiles,
+  loadItems,
+  showDescription = true,
+  showFileNames = false,
+  fileNameLimit = 6,
+  testId = "share-list",
 }: {
   initialItems?: TrendingShare[];
   limit?: number;
@@ -181,7 +192,11 @@ const RecentFilesList = ({
   description?: string;
   loadingText?: string;
   emptyText?: string;
-  loadItems?: (limit: number) => Promise<TrendingShare[]>;
+  loadItems: (limit: number) => Promise<TrendingShare[]>;
+  showDescription?: boolean;
+  showFileNames?: boolean;
+  fileNameLimit?: number;
+  testId?: string;
 }) => {
   const { classes } = useStyles();
   const t = useTranslate();
@@ -190,6 +205,7 @@ const RecentFilesList = ({
   const description = descriptionOverride ?? t("newFiles.custom.description");
   const loadingText = loadingOverride ?? t("newFiles.custom.loading");
   const emptyText = emptyOverride ?? t("newFiles.custom.empty");
+  const titleId = `${testId}-title`;
 
   const [items, setItems] = useState<TrendingShare[]>(initialItems ?? []);
   const [isLoading, setIsLoading] = useState(!initialItems?.length);
@@ -235,8 +251,8 @@ const RecentFilesList = ({
     let cancelled = false;
     setIsLoading(true);
     loadItems(limit)
-      .then((trending) => {
-        if (!cancelled) setItems(trending);
+      .then((loaded) => {
+        if (!cancelled) setItems(loaded);
       })
       .catch(() => {})
       .finally(() => {
@@ -280,14 +296,14 @@ const RecentFilesList = ({
 
   const visibleItems = items.slice(0, visibleCount);
 
-  const renderPlaceholders = (count: number) => (
+  const placeholder = (count: number): ReactNode => (
     <div className={classes.list} aria-hidden>
       {Array.from({ length: count }, (_, index) => (
         <Box key={index} className={classes.row} sx={{ pointerEvents: "none" }}>
-          <Skeleton height={20} width={20} radius="xl" className={classes.icon} />
-          <Stack spacing={8} className={classes.main}>
-            <Skeleton height={16} width="55%" radius="sm" />
-            <Skeleton height={12} width="80%" radius="sm" />
+          <Skeleton height={28} width={28} radius="md" className={classes.icon} />
+          <Stack spacing={10} className={classes.main}>
+            <Skeleton height={18} width="50%" radius="sm" />
+            <Skeleton height={13} width="78%" radius="sm" />
           </Stack>
         </Box>
       ))}
@@ -297,7 +313,7 @@ const RecentFilesList = ({
   const content = (
     <>
       <Group position="apart" align="baseline" mb="md">
-        <Title order={1} id="recent-files-title" className={classes.heading}>
+        <Title order={1} id={titleId} className={classes.heading}>
           {title}
         </Title>
         <Text className={classes.subheading}>
@@ -310,13 +326,14 @@ const RecentFilesList = ({
           {emptyText}
         </Text>
       ) : showPlaceholder ? (
-        renderPlaceholders(Math.min(limit, ROW_BATCH_SIZE))
+        placeholder(Math.min(limit, ROW_BATCH_SIZE))
       ) : (
-        <div className={classes.list} data-testid="recent-files-list">
+        <div className={classes.list} data-testid={testId}>
           {visibleItems.map((item) => {
             const name = item.name || item.id;
             const views = item.views.toLocaleString(intl.locale);
             const itemDescription = item.description?.trim();
+            const fileNames = item.fileNames ?? [];
 
             return (
               <UnstyledButton
@@ -329,44 +346,70 @@ const RecentFilesList = ({
                 <ThemeIcon
                   className={classes.icon}
                   variant="light"
-                  size={28}
+                  size={34}
                   radius="md"
                   aria-hidden
                 >
-                  <TbFile size={17} />
+                  <TbFile size={20} />
                 </ThemeIcon>
 
                 <Box component="span" className={classes.main}>
                   <Text component="span" className={classes.name} lineClamp={2}>
                     {name}
                   </Text>
-                  {itemDescription && (
+
+                  {showDescription && itemDescription && (
                     <Text
                       component="span"
                       className={classes.description}
-                      lineClamp={3}
+                      lineClamp={2}
                     >
                       {itemDescription}
                     </Text>
+                  )}
+
+                  {showFileNames && fileNames.length > 0 && (
+                    <Box component="span" className={classes.files}>
+                      {fileNames.slice(0, fileNameLimit).map((fileName, i) => (
+                        <Box
+                          component="span"
+                          className={classes.fileLine}
+                          key={`${fileName}-${i}`}
+                        >
+                          <TbFile size={15} aria-hidden />
+                          <Box component="span" className={classes.fileName}>
+                            {fileName}
+                          </Box>
+                        </Box>
+                      ))}
+                      {(item.fileCount ?? 0) > fileNames.length && (
+                        <Box component="span" className={classes.fileLine}>
+                          <TbFiles size={15} aria-hidden />
+                          {t("shareList.custom.more-files", {
+                            count: (item.fileCount ?? 0) - fileNames.length,
+                          })}
+                        </Box>
+                      )}
+                    </Box>
                   )}
                 </Box>
 
                 <Box component="span" className={classes.meta}>
                   {!!item.fileCount && (
                     <Box component="span" className={classes.metaItem}>
-                      <TbFiles size={14} aria-hidden />
+                      <TbFiles size={16} aria-hidden />
                       {t("trending.custom.files", { count: item.fileCount })}
                     </Box>
                   )}
                   {!!item.size && (
                     <Box component="span" className={classes.metaItem}>
-                      <TbDatabase size={14} aria-hidden />
+                      <TbDatabase size={16} aria-hidden />
                       {byteToHumanSizeString(item.size)}
                     </Box>
                   )}
                   {!!item.createdAt && (
                     <Box component="span" className={classes.metaItem}>
-                      <TbCalendar size={14} aria-hidden />
+                      <TbCalendar size={16} aria-hidden />
                       <FormattedMessage
                         id="trending.custom.uploaded"
                         values={{
@@ -380,7 +423,7 @@ const RecentFilesList = ({
                     className={classes.metaItem}
                     aria-label={t("trending.custom.views", { count: item.views })}
                   >
-                    <TbEye size={14} aria-hidden />
+                    <TbEye size={16} aria-hidden />
                     {views}
                   </Box>
                 </Box>
@@ -392,17 +435,17 @@ const RecentFilesList = ({
 
       {!showPlaceholder && visibleCount < items.length && (
         <Box ref={moreRef} mt="md">
-          {renderPlaceholders(Math.min(items.length - visibleCount, 4))}
+          {placeholder(Math.min(items.length - visibleCount, 4))}
         </Box>
       )}
     </>
   );
 
   return (
-    <section ref={sectionRef} aria-labelledby="recent-files-title">
+    <section ref={sectionRef} aria-labelledby={titleId}>
       <Container className={classes.root}>{content}</Container>
     </section>
   );
 };
 
-export default RecentFilesList;
+export default ShareList;

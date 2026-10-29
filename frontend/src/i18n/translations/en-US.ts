@@ -124,6 +124,10 @@ export default {
   "newFiles.custom.loading": "Loading new files…",
   "newFiles.custom.empty": "No public file shares have been uploaded yet.",
 
+  // Shared row/list layout (new-files rows, search results)
+  "shareList.custom.more-files":
+    "{count, plural, one {+# more file} other {+# more files}}",
+
   // Public search
   "search.custom.title": "Search",
   "search.custom.description":

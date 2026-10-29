@@ -4,7 +4,7 @@ import { useRouter } from "next/router";
 import { FormEvent, useEffect, useState } from "react";
 import { TbSearch } from "react-icons/tb";
 import Meta from "../components/Meta";
-import TrendingToday from "../components/share/TrendingToday";
+import ShareList from "../components/share/ShareList";
 import useTranslate from "../hooks/useTranslate.hook";
 import shareService from "../services/share.service";
 import { TrendingShare } from "../types/share.type";
@@ -84,12 +84,14 @@ const Search = ({
           </Group>
         </form>
       </Container>
-      <TrendingToday
-        embedded
+      <ShareList
         limit={200}
-        previewBlur={2}
         initialItems={initialItems}
         loadItems={(limit) => shareService.searchShares(query, limit)}
+        showDescription
+        showFileNames
+        fileNameLimit={6}
+        testId="search-results-list"
         title={
           query
             ? t("search.custom.results", { query })
