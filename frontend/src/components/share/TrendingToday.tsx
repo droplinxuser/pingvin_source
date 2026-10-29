@@ -217,8 +217,9 @@ const useStyles = createStyles((theme) => {
       justifyContent: "center",
       textAlign: "center",
       gap: 8,
-      // Leave room for the badges at the top.
-      padding: "44px 16px 16px",
+      // Leave room for the badges at the top and the metadata footer at the
+      // bottom, so the centered title/description never overlap them.
+      padding: "44px 16px 52px",
     },
 
     centeredName: {
@@ -235,19 +236,6 @@ const useStyles = createStyles((theme) => {
       fontSize: theme.fontSizes.xs,
       lineHeight: 1.45,
       overflowWrap: "anywhere",
-    },
-
-    centeredMeta: {
-      display: "flex",
-      flexWrap: "wrap",
-      alignItems: "center",
-      justifyContent: "center",
-      columnGap: theme.spacing.sm,
-      rowGap: 4,
-      marginTop: 2,
-      color: "rgba(255, 255, 255, 0.72)",
-      fontSize: theme.fontSizes.xs,
-      lineHeight: 1.2,
     },
 
     scrim: {
@@ -652,27 +640,33 @@ const TrendingToday = ({
                 </Box>
 
                 {centeredFileCard ? (
-                  <Box component="span" className={classes.centeredBody}>
-                    <Text
-                      component="span"
-                      className={classes.centeredName}
-                      lineClamp={3}
-                    >
-                      {name}
-                    </Text>
-                    {description && (
+                  <>
+                    <Box component="span" className={classes.centeredBody}>
                       <Text
                         component="span"
-                        className={classes.centeredDescription}
+                        className={classes.centeredName}
                         lineClamp={3}
                       >
-                        {description}
+                        {name}
                       </Text>
-                    )}
-                    <Box component="span" className={classes.centeredMeta}>
-                      {metaItems}
+                      {description && (
+                        <Text
+                          component="span"
+                          className={classes.centeredDescription}
+                          lineClamp={3}
+                        >
+                          {description}
+                        </Text>
+                      )}
                     </Box>
-                  </Box>
+                    {/* Metadata stays in the same bottom position as a media
+                        card; only the title and description are centered. */}
+                    <Box component="span" className={classes.body}>
+                      <Box component="span" className={classes.meta}>
+                        {metaItems}
+                      </Box>
+                    </Box>
+                  </>
                 ) : (
                   <Box component="span" className={classes.body}>
                     <Text component="span" className={classes.name} lineClamp={2}>
