@@ -15,7 +15,7 @@ import { useDisclosure } from "@mantine/hooks";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { ReactNode, useEffect, useState } from "react";
-import { TbChevronLeft, TbFile, TbPhoto } from "react-icons/tb";
+import { TbChevronLeft } from "react-icons/tb";
 import useConfig from "../../hooks/config.hook";
 import useUser from "../../hooks/user.hook";
 import useTranslate from "../../hooks/useTranslate.hook";
@@ -23,7 +23,6 @@ import authService from "../../services/auth.service";
 import Logo from "../Logo";
 import useHomeHref from "../../hooks/homeHref.hook";
 import ActionAvatar from "./ActionAvatar";
-import NavbarIconLink from "./NavbarIconLink";
 import NavbarSearch from "./NavbarSearch";
 import NavbarShareMenu from "./NavbarShareMenu";
 
@@ -170,6 +169,14 @@ const useStyles = createStyles((theme) => ({
         theme.colors[theme.primaryColor][theme.colorScheme === "dark" ? 3 : 7],
     },
   },
+
+  // The logo still identifies the site, so drop the wordmark on narrower
+  // desktops to keep the all-text navigation from crowding the search box.
+  appName: {
+    [theme.fn.smallerThan("lg")]: {
+      display: "none",
+    },
+  },
 }));
 
 const Header = () => {
@@ -204,25 +211,8 @@ const Header = () => {
     setMobileMenuView("root");
   }, [close, router.pathname]);
 
-  // Icon-only discovery entries, matching the share menu. The mobile menu
-  // keeps text links (built below), so these are desktop-only.
-  const newMediaIcon = (label: string): NavLink => ({
-    label,
-    component: (
-      <NavbarIconLink href="/new-media" label={label}>
-        <TbPhoto size={18} />
-      </NavbarIconLink>
-    ),
-  });
-  const newFilesIcon = (label: string): NavLink => ({
-    label,
-    component: (
-      <NavbarIconLink href="/new-files" label={label}>
-        <TbFile size={18} />
-      </NavbarIconLink>
-    ),
-  });
-
+  // Every desktop entry uses the same text pill: text for destinations, icons
+  // only for controls (the share dropdown and the avatar).
   const authenticatedLinks: NavLink[] = [
     ...(user?.allowShare !== false
       ? [
@@ -232,8 +222,8 @@ const Header = () => {
           },
         ]
       : []),
-    newMediaIcon(t("navbar.newMedia")),
-    newFilesIcon(t("navbar.newFiles")),
+    { link: "/new-media", label: t("navbar.newMedia") },
+    { link: "/new-files", label: t("navbar.newFiles") },
     {
       component: <NavbarShareMenu />,
     },
@@ -242,7 +232,7 @@ const Header = () => {
     },
   ];
 
-  const buildUnauthenticatedLinks = (icons: boolean): NavLink[] => {
+  const buildUnauthenticatedLinks = (): NavLink[] => {
     const links: NavLink[] = [];
     if (config.get("general.showHomePage"))
       links.push({ link: "/", label: t("navbar.home") });
@@ -250,13 +240,8 @@ const Header = () => {
     if (config.get("security.allowUnauthenticatedShares"))
       links.push({ link: "/upload", label: t("navbar.upload") });
 
-    if (icons) {
-      links.push(newMediaIcon(t("navbar.newMedia")));
-      links.push(newFilesIcon(t("navbar.newFiles")));
-    } else {
-      links.push({ link: "/new-media", label: t("navbar.newMedia") });
-      links.push({ link: "/new-files", label: t("navbar.newFiles") });
-    }
+    links.push({ link: "/new-media", label: t("navbar.newMedia") });
+    links.push({ link: "/new-files", label: t("navbar.newFiles") });
 
     if (!shouldHideAuthButtons)
       links.push({ link: "/auth/signIn", label: t("navbar.signin") });
@@ -267,8 +252,7 @@ const Header = () => {
     return links;
   };
 
-  const unauthenticatedDesktopLinks = buildUnauthenticatedLinks(true);
-  const unauthenticatedLinks = buildUnauthenticatedLinks(false);
+  const unauthenticatedLinks = buildUnauthenticatedLinks();
 
   const mobileRootLinks: NavLink[] = user
     ? [
@@ -342,7 +326,7 @@ const Header = () => {
   const { classes, cx } = useStyles();
   const desktopItems = (
     <>
-      {(user ? authenticatedLinks : unauthenticatedDesktopLinks).map((link, i) => {
+      {(user ? authenticatedLinks : unauthenticatedLinks).map((link, i) => {
         if (link.component) {
           return (
             <Box pl={5} py={12} key={i}>
@@ -443,7 +427,7 @@ const Header = () => {
             >
               <Group spacing="xs">
                 <Logo height={30} width={30} />
-                <Text weight={600} size="sm">
+                <Text weight={600} size="sm" className={classes.appName}>
                   {config.get("general.appName")}
                 </Text>
               </Group>
@@ -455,7 +439,7 @@ const Header = () => {
             aria-label={t("navbar.custom.primary")}
             className={classes.links}
           >
-            <Group>{desktopItems}</Group>
+            <Group spacing="xs">{desktopItems}</Group>
           </Box>
           <Group spacing="xs" noWrap className={classes.rightControls}>
             <NavbarSearch part="mobile" />
