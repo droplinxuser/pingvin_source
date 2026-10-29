@@ -67,7 +67,10 @@ const useStyles = createStyles((theme) => {
       alignItems: "center",
       gap: theme.spacing.md,
       width: "100%",
-      padding: `${theme.spacing.md}px ${theme.spacing.md}px ${theme.spacing.md}px ${theme.spacing.md}px`,
+      // `theme.spacing.*` already includes its unit; appending `px` made the
+      // value invalid and the padding was dropped, leaving the icon flush with
+      // the card edge.
+      padding: theme.spacing.md,
       border: `1px solid ${border}`,
       borderRadius: theme.radius.lg,
       backgroundColor: dark ? theme.colors.dark[7] : theme.white,
@@ -183,7 +186,8 @@ const useStyles = createStyles((theme) => {
       [theme.fn.smallerThan("sm")]: {
         justifyContent: "flex-start",
         width: "100%",
-        paddingLeft: 54,
+        // Align the wrapped metadata under the title (tile 46 + row gap 16).
+        paddingLeft: 62,
       },
     },
 

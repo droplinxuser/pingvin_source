@@ -91,6 +91,7 @@ const Search = ({
         initialItems={initialItems}
         loadItems={(limit) => shareService.searchShares(query, limit)}
         showMediaTypeBadge
+        fileOnlyLayout="centered"
         title={
           query
             ? t("search.custom.results", { query })

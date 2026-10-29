@@ -197,6 +197,59 @@ const useStyles = createStyles((theme) => {
       textOverflow: "ellipsis",
     },
 
+    // File-only cards on the search page: a flat surface with the title and
+    // description centered, instead of the file-name list.
+    fileCentered: {
+      position: "absolute",
+      inset: 0,
+      pointerEvents: "none",
+      backgroundColor:
+        theme.colorScheme === "dark" ? theme.colors.dark[7] : "#1f2937",
+    },
+
+    centeredBody: {
+      position: "absolute",
+      inset: 0,
+      zIndex: 1,
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
+      justifyContent: "center",
+      textAlign: "center",
+      gap: 8,
+      // Leave room for the badges at the top.
+      padding: "44px 16px 16px",
+    },
+
+    centeredName: {
+      color: "white",
+      fontSize: theme.fontSizes.md,
+      fontWeight: 800,
+      lineHeight: 1.3,
+      overflowWrap: "anywhere",
+      textShadow: "0 1px 4px rgba(0, 0, 0, 0.6)",
+    },
+
+    centeredDescription: {
+      color: "rgba(255, 255, 255, 0.8)",
+      fontSize: theme.fontSizes.xs,
+      lineHeight: 1.45,
+      overflowWrap: "anywhere",
+    },
+
+    centeredMeta: {
+      display: "flex",
+      flexWrap: "wrap",
+      alignItems: "center",
+      justifyContent: "center",
+      columnGap: theme.spacing.sm,
+      rowGap: 4,
+      marginTop: 2,
+      color: "rgba(255, 255, 255, 0.72)",
+      fontSize: theme.fontSizes.xs,
+      lineHeight: 1.2,
+    },
+
     scrim: {
       position: "absolute",
       inset: 0,
@@ -292,6 +345,7 @@ const TrendingToday = ({
   emptyText: emptyOverride,
   loadItems = shareService.getTrending,
   showMediaTypeBadge = false,
+  fileOnlyLayout = "files",
 }: {
   initialItems?: TrendingShare[];
   embedded?: boolean;
@@ -304,6 +358,10 @@ const TrendingToday = ({
   emptyText?: string;
   loadItems?: (limit: number) => Promise<TrendingShare[]>;
   showMediaTypeBadge?: boolean;
+  // How a file-only card (no image/video preview) renders its preview area:
+  // "files" lists a few file names, "centered" shows a flat surface so the
+  // title and description can sit in the middle of the card.
+  fileOnlyLayout?: "files" | "centered";
 }) => {
   const { classes } = useStyles();
   const t = useTranslate();
@@ -479,6 +537,37 @@ const TrendingToday = ({
               item.previewKind === "video" || item.hasVideo === true;
             const showMediaBadge =
               hasMedia && (hasVideo || showMediaTypeBadge);
+            const centeredFileCard =
+              fileOnlyLayout === "centered" && !hasMedia;
+            const metaItems = (
+              <>
+                {!!item.fileCount && (
+                  <Box component="span" className={classes.metaItem}>
+                    <TbFiles size={14} aria-hidden />
+                    {t("trending.custom.files", {
+                      count: item.fileCount,
+                    })}
+                  </Box>
+                )}
+                {!!item.size && (
+                  <Box component="span" className={classes.metaItem}>
+                    <TbDatabase size={14} aria-hidden />
+                    {byteToHumanSizeString(item.size)}
+                  </Box>
+                )}
+                {!!item.createdAt && (
+                  <Box component="span" className={classes.metaItem}>
+                    <TbCalendar size={14} aria-hidden />
+                    <FormattedMessage
+                      id="trending.custom.uploaded"
+                      values={{
+                        date: <RelativeTime date={item.createdAt} />,
+                      }}
+                    />
+                  </Box>
+                )}
+              </>
+            );
 
             return (
               <UnstyledButton
@@ -496,6 +585,12 @@ const TrendingToday = ({
                     loading={index < 4 ? "eager" : undefined}
                     fetchPriority={index < 4 ? "high" : undefined}
                     onError={handleShareThumbnailError}
+                  />
+                ) : centeredFileCard ? (
+                  <Box
+                    component="span"
+                    className={classes.fileCentered}
+                    aria-hidden
                   />
                 ) : item.fileNames?.length ? (
                   <Box
@@ -556,47 +651,47 @@ const TrendingToday = ({
                   </Box>
                 </Box>
 
-                <Box component="span" className={classes.body}>
-                  <Text component="span" className={classes.name} lineClamp={2}>
-                    {name}
-                  </Text>
-                  {description && (
+                {centeredFileCard ? (
+                  <Box component="span" className={classes.centeredBody}>
                     <Text
                       component="span"
-                      className={classes.description}
-                      lineClamp={2}
+                      className={classes.centeredName}
+                      lineClamp={3}
                     >
-                      {description}
+                      {name}
                     </Text>
-                  )}
-                  <Box component="span" className={classes.meta}>
-                    {!!item.fileCount && (
-                      <Box component="span" className={classes.metaItem}>
-                        <TbFiles size={14} aria-hidden />
-                        {t("trending.custom.files", {
-                          count: item.fileCount,
-                        })}
-                      </Box>
+                    {description && (
+                      <Text
+                        component="span"
+                        className={classes.centeredDescription}
+                        lineClamp={3}
+                      >
+                        {description}
+                      </Text>
                     )}
-                    {!!item.size && (
-                      <Box component="span" className={classes.metaItem}>
-                        <TbDatabase size={14} aria-hidden />
-                        {byteToHumanSizeString(item.size)}
-                      </Box>
-                    )}
-                    {!!item.createdAt && (
-                      <Box component="span" className={classes.metaItem}>
-                        <TbCalendar size={14} aria-hidden />
-                        <FormattedMessage
-                          id="trending.custom.uploaded"
-                          values={{
-                            date: <RelativeTime date={item.createdAt} />,
-                          }}
-                        />
-                      </Box>
-                    )}
+                    <Box component="span" className={classes.centeredMeta}>
+                      {metaItems}
+                    </Box>
                   </Box>
-                </Box>
+                ) : (
+                  <Box component="span" className={classes.body}>
+                    <Text component="span" className={classes.name} lineClamp={2}>
+                      {name}
+                    </Text>
+                    {description && (
+                      <Text
+                        component="span"
+                        className={classes.description}
+                        lineClamp={2}
+                      >
+                        {description}
+                      </Text>
+                    )}
+                    <Box component="span" className={classes.meta}>
+                      {metaItems}
+                    </Box>
+                  </Box>
+                )}
               </UnstyledButton>
             );
           })}
