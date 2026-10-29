@@ -840,6 +840,11 @@ export default {
   "share.modal.file-link": "File link",
   "share.table.name": "Name",
   "share.table.size": "Size",
+  "share.custom.files.search": "Search files",
+  "share.custom.files.search-placeholder": "Search {count} files…",
+  "share.custom.files.search-results": "Showing {shown} of {total} files",
+  "share.custom.files.search-empty": "No files match “{query}”.",
+  "share.custom.files.clear-search": "Clear search",
 
   "share.modal.file-preview.original_file": "View original file",
   "share.modal.file-preview.custom.previous": "Previous file",

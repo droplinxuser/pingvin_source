@@ -6,6 +6,7 @@ import {
   Skeleton,
   Stack,
   Text,
+  TextInput,
   ThemeIcon,
   MantineTheme,
 } from "@mantine/core";
@@ -14,6 +15,7 @@ import { useModals } from "@mantine/modals";
 import {
   Dispatch,
   SetStateAction,
+  useDeferredValue,
   useEffect,
   useMemo,
   useRef,
@@ -29,7 +31,9 @@ import {
   TbFileZip,
   TbMusic,
   TbPhoto,
+  TbSearch,
   TbVideo,
+  TbX,
 } from "react-icons/tb";
 import { FormattedMessage } from "react-intl";
 import useTranslate from "../../hooks/useTranslate.hook";
@@ -53,6 +57,16 @@ import FileName from "../core/FileName";
 
 const ARCHIVE_EXTENSION = /\.(zip|rar|7z|tar|gz|bz2|xz)$/i;
 const FILE_BATCH_SIZE = 50;
+// A search field only earns its space once the list is long enough to scan.
+const SEARCH_MIN_FILES = 12;
+
+// Accents and case should not decide whether a file is found, so compare a
+// normalized form while keeping the original name for display.
+const normalizeSearchText = (value: string) =>
+  value
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
 
 const getFileVisual = (name: string) => {
   const kind = getGalleryMediaKind(name);
@@ -90,6 +104,12 @@ const rowStyle = (theme: MantineTheme) => ({
         ? theme.colors.dark[6]
         : theme.colors.gray[0],
   },
+});
+
+const toolbarStyle = (theme: MantineTheme) => ({
+  borderBottom: `1px solid ${
+    theme.colorScheme === "dark" ? theme.colors.dark[5] : theme.colors.gray[2]
+  }`,
 });
 
 const FileListHeader = ({
@@ -174,7 +194,11 @@ const FileList = ({
   // Large folder shares can contain thousands of rows. Render one batch at a
   // time; an observer below the list reveals the next batch on scroll.
   const [visibleCount, setVisibleCount] = useState(FILE_BATCH_SIZE);
+  const [search, setSearch] = useState("");
   const moreRef = useRef<HTMLDivElement>(null);
+  // Typing stays responsive even while a very long list is filtered; the
+  // deferred value lags one paint behind the controlled input.
+  const deferredSearch = useDeferredValue(search);
 
   const sortedFiles = useMemo(() => {
     if (!files) return [];
@@ -190,24 +214,35 @@ const FileList = ({
     });
   }, [files, sort]);
 
+  const searchTerm = normalizeSearchText(deferredSearch.trim());
+  const filteredFiles = useMemo(
+    () =>
+      searchTerm
+        ? sortedFiles.filter((file) =>
+            normalizeSearchText(file.name).includes(searchTerm),
+          )
+        : sortedFiles,
+    [sortedFiles, searchTerm],
+  );
+
   // The preview arrows follow the current table order, so opening a file from
   // the list navigates the same way the rows are presented.
   const mediaFiles = useMemo(
-    () => sortedFiles.filter((file) => !!getGalleryMediaKind(file.name)),
-    [sortedFiles],
+    () => filteredFiles.filter((file) => !!getGalleryMediaKind(file.name)),
+    [filteredFiles],
   );
 
   useEffect(() => {
     setVisibleCount(FILE_BATCH_SIZE);
-  }, [sortedFiles]);
+  }, [filteredFiles]);
 
   useEffect(() => {
-    if (visibleCount >= sortedFiles.length) return;
+    if (visibleCount >= filteredFiles.length) return;
     const element = moreRef.current;
     if (!element) return;
 
     if (typeof IntersectionObserver === "undefined") {
-      setVisibleCount(sortedFiles.length);
+      setVisibleCount(filteredFiles.length);
       return;
     }
 
@@ -215,16 +250,17 @@ const FileList = ({
       (entries) => {
         if (!entries[0]?.isIntersecting) return;
         setVisibleCount((count) =>
-          Math.min(count + FILE_BATCH_SIZE, sortedFiles.length),
+          Math.min(count + FILE_BATCH_SIZE, filteredFiles.length),
         );
       },
       { rootMargin: "400px 0px" },
     );
     observer.observe(element);
     return () => observer.disconnect();
-  }, [sortedFiles.length, visibleCount]);
+  }, [filteredFiles.length, visibleCount]);
 
-  const visibleFiles = sortedFiles.slice(0, visibleCount);
+  const visibleFiles = filteredFiles.slice(0, visibleCount);
+  const showSearch = (files?.length ?? 0) >= SEARCH_MIN_FILES || !!search;
 
   return (
     <Paper
@@ -233,6 +269,50 @@ const FileList = ({
       radius="md"
       sx={{ overflow: "hidden" }}
     >
+      {showSearch && (
+        <Box px="md" py="xs" sx={toolbarStyle}>
+          <TextInput
+            data-testid="share-file-search"
+            icon={<TbSearch size={16} />}
+            size="xs"
+            value={search}
+            aria-label={t("share.custom.files.search")}
+            placeholder={t("share.custom.files.search-placeholder", {
+              count: files?.length ?? 0,
+            })}
+            onChange={(event) => setSearch(event.currentTarget.value)}
+            rightSection={
+              search ? (
+                <ActionIcon
+                  size={18}
+                  radius="xl"
+                  variant="subtle"
+                  color="gray"
+                  aria-label={t("share.custom.files.clear-search")}
+                  onClick={() => setSearch("")}
+                >
+                  <TbX size={12} />
+                </ActionIcon>
+              ) : undefined
+            }
+          />
+          {searchTerm && (
+            <Text
+              size="xs"
+              color="dimmed"
+              mt={4}
+              aria-live="polite"
+              data-testid="share-file-search-count"
+            >
+              {t("share.custom.files.search-results", {
+                shown: filteredFiles.length,
+                total: sortedFiles.length,
+              })}
+            </Text>
+          )}
+        </Box>
+      )}
+
       <FileListHeader sort={sort} setSort={setSort} />
 
       <Stack spacing={0}>
@@ -360,7 +440,14 @@ const FileList = ({
                 </Box>
               );
             })}
-        {!isLoading && visibleCount < sortedFiles.length && (
+        {!isLoading && searchTerm && filteredFiles.length === 0 && (
+          <Box px="md" py="xl" data-testid="share-file-search-empty">
+            <Text size="sm" color="dimmed" align="center">
+              {t("share.custom.files.search-empty", { query: search.trim() })}
+            </Text>
+          </Box>
+        )}
+        {!isLoading && visibleCount < filteredFiles.length && (
           <Box
             ref={moreRef}
             px="md"
@@ -416,6 +503,11 @@ const skeletonRows = (count: number) =>
 
 export const FileListSkeleton = ({ count = 5 }: { count?: number }) => (
   <Paper withBorder radius="md" sx={{ overflow: "hidden" }}>
+    {count >= SEARCH_MIN_FILES && (
+      <Box px="md" py="xs" sx={toolbarStyle}>
+        <Skeleton height={30} radius="sm" />
+      </Box>
+    )}
     <FileListHeader />
     <Stack spacing={0}>{skeletonRows(count)}</Stack>
   </Paper>
