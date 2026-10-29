@@ -4,7 +4,9 @@ import { TbLink } from "react-icons/tb";
 import { FormattedMessage } from "react-intl";
 import useTranslate from "../../hooks/useTranslate.hook";
 import { FileUpload } from "../../types/File.type";
+import { isFileHostUrl } from "../../utils/fileHost.util";
 import toast from "../../utils/toast.util";
+import { fetchRemoteAsFile } from "../../utils/upload.util";
 
 const resolveRemoteName = (url: URL): string => {
   const segment = url.pathname.split("/").filter(Boolean).pop();
@@ -19,10 +21,11 @@ const resolveRemoteName = (url: URL): string => {
 };
 
 /**
- * Queues a file that the backend will fetch from a URL. The fetch is performed
- * server-side (with SSRF protections) once the share exists, so hosts without
- * CORS headers work too. The entry carries `remoteUrl` and is uploaded by the
- * normal flow instead of the chunked browser upload.
+ * Queues a file from a URL. Direct URLs are downloaded by the visitor's browser
+ * and added as a real file, so the remote host only ever sees the visitor's IP
+ * (the server IP is never exposed). Supported file-host pages (MediaFire,
+ * Bunkr) cannot be read cross-origin, so those are resolved server side with
+ * SSRF protections.
  */
 const UploadFromUrlButton = ({
   onFiles,
@@ -34,8 +37,14 @@ const UploadFromUrlButton = ({
   const t = useTranslate();
   const [opened, setOpened] = useState(false);
   const [value, setValue] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const submit = (event: FormEvent) => {
+  const close = () => {
+    setValue("");
+    setOpened(false);
+  };
+
+  const submit = async (event: FormEvent) => {
     event.preventDefault();
     const raw = value.trim();
     if (!raw) return;
@@ -52,15 +61,37 @@ const UploadFromUrlButton = ({
       return;
     }
 
-    const name = resolveRemoteName(url);
-    const file = new File([], name) as FileUpload;
-    file.uploadingProgress = 0;
-    file.remoteUrl = url.toString();
+    // Supported file-host pages are resolved and fetched by the backend.
+    if (isFileHostUrl(url.toString())) {
+      const name = resolveRemoteName(url);
+      const file = new File([], name) as FileUpload;
+      file.uploadingProgress = 0;
+      file.remoteUrl = url.toString();
+      file.remoteViaServer = true;
 
-    onFiles([file]);
-    toast.success(t("upload.url.notify.added", { name }));
-    setValue("");
-    setOpened(false);
+      onFiles([file]);
+      toast.success(t("upload.url.notify.added", { name }));
+      close();
+      return;
+    }
+
+    // Every other URL is downloaded here, in the visitor's browser.
+    setLoading(true);
+    try {
+      const file = (await fetchRemoteAsFile(
+        url.toString(),
+        resolveRemoteName(url),
+      )) as FileUpload;
+      file.uploadingProgress = 0;
+      onFiles([file]);
+      toast.success(t("upload.url.notify.added", { name: file.name }));
+      close();
+    } catch {
+      // A CORS failure or a non-2xx response lands here.
+      toast.error(t("upload.url.error.fetch"));
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -78,7 +109,7 @@ const UploadFromUrlButton = ({
 
       <Modal
         opened={opened}
-        onClose={() => setOpened(false)}
+        onClose={() => !loading && setOpened(false)}
         title={t("upload.url.title")}
         centered
       >
@@ -87,6 +118,7 @@ const UploadFromUrlButton = ({
             <TextInput
               data-autofocus
               value={value}
+              disabled={loading}
               onChange={(event) => setValue(event.currentTarget.value)}
               placeholder={t("upload.url.placeholder")}
               aria-label={t("upload.url.title")}
@@ -94,7 +126,7 @@ const UploadFromUrlButton = ({
             <Text size="xs" color="dimmed">
               <FormattedMessage id="upload.url.hint" />
             </Text>
-            <Button type="submit">
+            <Button type="submit" loading={loading}>
               <FormattedMessage id="upload.url.add" />
             </Button>
           </Stack>

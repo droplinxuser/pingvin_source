@@ -152,11 +152,28 @@ export function parseMediaFireHtml(html: string): ResolvedFile[] {
   }
   if (!direct || !/^https?:\/\//i.test(direct))
     throw new FileHostError("resolve", "mediafire: no download link found");
+  // The download host is read from page content (or a base64 blob), so restrict
+  // it to MediaFire's own download domain before the server fetches it. The
+  // SSRF guards still apply, but this keeps the server from being steered to an
+  // arbitrary public host by a tampered page.
+  if (!safeDownloadHost(direct))
+    throw new FileHostError("resolve", "mediafire: unexpected download host");
 
   const name = decodeURIComponent(
     new URL(direct).pathname.split("/").pop() ?? "",
   );
   return [{ url: direct, name: name || undefined }];
+}
+
+/** The hostname when `raw` is a MediaFire download URL, otherwise undefined. */
+function safeDownloadHost(raw?: string): string | undefined {
+  if (!raw || !/^https?:\/\//i.test(raw)) return undefined;
+  try {
+    const host = new URL(raw).hostname.toLowerCase();
+    return /(^|\.)mediafire\.com$/.test(host) ? host : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 async function resolveMediaFire(rawUrl: string): Promise<ResolvedFile[]> {

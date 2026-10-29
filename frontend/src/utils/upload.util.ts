@@ -4,6 +4,52 @@ const UPLOAD_INACTIVITY_TIMEOUT_MS = 60_000;
 
 export type UploadProgressHandler = (progressEvent: AxiosProgressEvent) => void;
 
+/**
+ * Downloads a remote file in the visitor's own browser and returns it as a
+ * `File`, so it can be uploaded through the normal chunked path. Running the
+ * fetch in the browser means the remote host only ever sees the visitor's IP,
+ * never the server's. Anything the browser cannot read cross-origin (a CORS
+ * failure) rejects here; supported file hosts are handled by the backend
+ * resolver instead.
+ */
+export const fetchRemoteAsFile = async (
+  url: string,
+  fallbackName: string,
+): Promise<File> => {
+  const response = await fetch(url, {
+    mode: "cors",
+    credentials: "omit",
+    redirect: "follow",
+  });
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  const blob = await response.blob();
+  const name = nameFromHeaders(response.headers) || fallbackName;
+  return new File([blob], sanitizeName(name), {
+    type: response.headers.get("content-type") || blob.type || undefined,
+  });
+};
+
+// Keeps the name safe for the backend's upload validation (no path segments or
+// control characters).
+const sanitizeName = (name: string): string => {
+  // eslint-disable-next-line no-control-regex
+  const trimmed = (name.split(/[\\/]/).pop() ?? "").replace(/[\u0000-\u001f\u007f]/g, "").trim();
+  return (trimmed || "download").slice(0, 1024);
+};
+
+const nameFromHeaders = (headers: Headers): string | undefined => {
+  const disposition = headers.get("content-disposition");
+  if (!disposition) return undefined;
+  const match = disposition.match(/filename\*?=(?:UTF-8'')?["']?([^"';]+)/i);
+  if (!match) return undefined;
+  try {
+    return decodeURIComponent(match[1]);
+  } catch {
+    return match[1];
+  }
+};
+
+
 type UploadRequest<T> = (
   signal: AbortSignal,
   onUploadProgress: UploadProgressHandler,

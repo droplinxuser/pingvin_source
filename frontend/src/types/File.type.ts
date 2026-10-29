@@ -1,8 +1,11 @@
 export type FileUpload = File & {
   uploadingProgress: number;
-  // Set for "upload from URL" entries: the backend fetches the URL after the
-  // share exists, so the browser never has to reach the remote host.
+  // Set only for supported file-host pages (MediaFire, Bunkr) that cannot be
+  // read cross-origin: the backend resolves and downloads them. Every other
+  // URL is fetched by the visitor's browser before upload, so the server IP is
+  // never exposed to the remote host.
   remoteUrl?: string;
+  remoteViaServer?: boolean;
 };
 
 export type FileUploadResponse = { id: string; name: string };

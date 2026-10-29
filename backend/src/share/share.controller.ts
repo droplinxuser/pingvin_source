@@ -36,8 +36,8 @@ import {
 import { SearchService } from "src/cache/search.service";
 import {
   NO_STORE_HEADERS,
-  getDownloadCacheHeaders,
   getEdgeCacheHeaders,
+  getImageCacheHeaders,
   isNotModified,
 } from "src/utils/cache.util";
 import { parsePagination } from "src/utils/pagination.util";
@@ -209,8 +209,9 @@ export class ShareController {
       typeof q === "string" ? q : "",
       Number.isFinite(parsedLimit) ? parsedLimit : undefined,
     );
-    // Never let a transient empty result be pinned at the edge.
-    response.set(items.length ? getEdgeCacheHeaders(60) : NO_STORE_HEADERS);
+    // Search results are stable for a while; keep them at the edge for an hour
+    // to absorb repeat queries. A transient empty result is never pinned.
+    response.set(items.length ? getEdgeCacheHeaders(3600) : NO_STORE_HEADERS);
     void this.fileService.warmShareThumbnails(items.map((item) => item.id));
     return items;
   }
@@ -274,7 +275,9 @@ export class ShareController {
 
     const isPublic =
       (request as Request & { shareIsPublic?: boolean }).shareIsPublic === true;
-    const cacheHeaders = getDownloadCacheHeaders(isPublic, `"${id}-thumbnail"`);
+    // Thumbnails are keyed by share id and refreshed when the share is edited,
+    // so the edge may keep them for an hour.
+    const cacheHeaders = getImageCacheHeaders(isPublic, `"${id}-thumbnail"`);
     if (isNotModified(request, cacheHeaders.ETag)) {
       response.status(304).set(cacheHeaders).end();
       return;

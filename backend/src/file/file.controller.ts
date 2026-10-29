@@ -22,6 +22,7 @@ import { StrictShareOwnerGuard } from "src/share/guard/strictShareOwner.guard";
 import { IdValidation } from "src/share/guard/shareIdValidation.guard";
 import {
   getDownloadCacheHeaders,
+  getImageCacheHeaders,
   getZipCacheHeaders,
   isNotModified,
 } from "src/utils/cache.util";
@@ -109,9 +110,10 @@ export class FileController {
     );
   }
 
-  // Server-side fetch of a remote file. The visitor's browser cannot fetch
-  // arbitrary hosts (CORS), so the backend downloads it with SSRF guards and
-  // stores it through the normal chunk pipeline. Owner-only and rate-limited
+  // Server-side import for supported file-host pages (MediaFire, Bunkr) whose
+  // content cannot be read cross-origin. Direct file URLs are downloaded by the
+  // visitor's browser instead, so this endpoint only accepts allowlisted hosts:
+  // the server never fetches an arbitrary URL. Owner-only and rate-limited
   // because it consumes server bandwidth and disk.
   @Post("from-url")
   @Throttle({
@@ -243,7 +245,9 @@ export class FileController {
       );
       if (preview) {
         const etag = `"${shareId}-${fileId}-webp-v300"`;
-        const cacheHeaders = getDownloadCacheHeaders(
+        // The converted preview is deterministic for a given file version, so
+        // it can live in the shared cache for an hour.
+        const cacheHeaders = getImageCacheHeaders(
           (req as FileRequest).shareIsPublic === true,
           etag,
         );

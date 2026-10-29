@@ -1,6 +1,6 @@
 import { GetServerSidePropsContext } from "next";
 import Meta from "../components/Meta";
-import TrendingToday from "../components/share/TrendingToday";
+import RecentFilesList from "../components/share/RecentFilesList";
 import useSiteMeta from "../hooks/siteMeta.hook";
 import useTranslate from "../hooks/useTranslate.hook";
 import shareService from "../services/share.service";
@@ -57,10 +57,8 @@ const NewFiles = ({
         canonicalPath="/new-files"
         jsonLd={jsonLd}
       />
-      <TrendingToday
-        embedded
+      <RecentFilesList
         limit={200}
-        previewBlur={2}
         initialItems={initialItems}
         loadItems={shareService.getRecentFiles}
         title={t("newFiles.custom.title")}

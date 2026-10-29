@@ -169,7 +169,7 @@ export default {
     "Share a short or custom link, show a QR code, or email the link directly to recipients.",
   "home.custom.bullet.c.name": "Share on your terms",
   "home.custom.bullet.c.description":
-    "Add a password, set a download limit, or make a share recipient-only. Links renew on every visit and expire after 100 quiet days.",
+    "Add a password, set a download limit, or make a share recipient-only. Links renew on every visit: a member's link stays alive for 100 quiet days, while a guest upload expires after 10.",
   "home.custom.button.start": "Start sharing",
   "home.custom.button.source": "About",
   // END /
@@ -713,9 +713,11 @@ export default {
   "upload.url.placeholder": "https://example.com/file.zip",
   "upload.url.add": "Add to upload",
   "upload.url.hint":
-    "The file is downloaded by the server when you upload, so hosts without cross-origin (CORS) support work too. Only public http(s) URLs on ports 80/443 are allowed.",
+    "Direct links are downloaded by your own browser, so the server never connects to the host and its IP stays hidden. MediaFire and Bunkr links are resolved by the server with SSRF protections. Only public http(s) URLs work.",
   "upload.url.notify.added": "Queued {name} from URL",
   "upload.url.error.invalid": "Enter a valid http(s) URL.",
+  "upload.url.error.fetch":
+    "Couldn't download this URL in your browser. The host may block cross-origin downloads (CORS) or the link may be invalid.",
 
   // FileList.tsx
   "upload.filelist.name": "Name",
@@ -775,7 +777,7 @@ export default {
   // showCompletedUploadModal.tsx
   "upload.modal.completed.never-expires": "This share will never expire.",
   "upload.modal.completed.expires-on":
-    "This share will expire on {expiration}.",
+    "This share stays available until {expiration}; every visit renews it.",
   "upload.modal.completed.share-ready": "Share ready",
   "upload.modal.completed.notified-reverse-share-creator":
     "We notified the reverse share creator. You can also share this link with them manually.",

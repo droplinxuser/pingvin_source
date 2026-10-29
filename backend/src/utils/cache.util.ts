@@ -6,6 +6,9 @@ const NO_STORE = "no-store";
 // being served from Cloudflare within minutes instead of a full day.
 const PUBLIC_CACHE_MAX_AGE = 60 * 60;
 const PUBLIC_EDGE_MAX_AGE = 10 * 60;
+// Thumbnails/previews are content-versioned (`?v=<updatedAt>`), so a deleted or
+// edited image gets a new URL. They can safely sit in the shared cache longer.
+const IMAGE_EDGE_MAX_AGE = 60 * 60;
 
 export const SHARE_DATA_CACHE_TTL_MS = 30 * 1000;
 
@@ -86,6 +89,24 @@ export function getDownloadCacheHeaders(
   const headers: Record<string, string> = isPublicShare
     ? cacheHeaders(
         `public, max-age=${PUBLIC_CACHE_MAX_AGE}, s-maxage=${PUBLIC_EDGE_MAX_AGE}, stale-while-revalidate=60`,
+      )
+    : cacheHeaders("private");
+  if (isPublicShare && etag) headers.ETag = etag;
+  return headers;
+}
+
+/**
+ * Cache headers for share thumbnails and inline WebP previews. The URL is
+ * versioned by the share's update time, so the shared cache may keep the image
+ * for an hour; protected shares stay private.
+ */
+export function getImageCacheHeaders(
+  isPublicShare: boolean,
+  etag?: string,
+): Record<string, string> {
+  const headers: Record<string, string> = isPublicShare
+    ? cacheHeaders(
+        `public, max-age=${PUBLIC_CACHE_MAX_AGE}, s-maxage=${IMAGE_EDGE_MAX_AGE}, stale-while-revalidate=60`,
       )
     : cacheHeaders("private");
   if (isPublicShare && etag) headers.ETag = etag;

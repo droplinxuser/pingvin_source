@@ -57,6 +57,17 @@ test("rejects a MediaFire page without a download link", () => {
   );
 });
 
+test("rejects a scrambled URL that points off MediaFire", () => {
+  const scrambled = Buffer.from("https://evil.example.com/payload.bin").toString(
+    "base64",
+  );
+  assert.throws(
+    () =>
+      parseMediaFireHtml(`<a data-scrambled-url="${scrambled}">Download</a>`),
+    (error) => error instanceof FileHostError && error.code === "resolve",
+  );
+});
+
 test("Gofile is reported as unsupported instead of circumventing it", async () => {
   await assert.rejects(
     () => resolveFileHost("https://gofile.io/d/mA8mGDxd"),

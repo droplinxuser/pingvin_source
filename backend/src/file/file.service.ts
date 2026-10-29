@@ -237,20 +237,21 @@ export class FileService implements OnModuleInit {
   }
 
   /**
-   * Imports files from a URL. Supported file hosts (Bunkr, MediaFire) are
-   * resolved to their direct download URLs first; anything else is treated as a
-   * direct file. Every direct URL still goes through the SSRF-guarded fetch.
+   * Imports files from a supported file-host page (Bunkr, MediaFire). Direct
+   * file URLs are downloaded by the visitor's browser, so the server endpoint
+   * only accepts allowlisted hosts: the server never fetches an arbitrary URL,
+   * which keeps its SSRF surface as small as possible. Every resolved direct
+   * URL still goes through the SSRF-guarded downloader.
    */
   async importFromUrl(shareId: string, url: string, name?: string) {
+    if (!detectFileHost(url))
+      throw new BadRequestException(this.i18n.t("file.remoteHostResolveFailed"));
+
     let targets: { url: string; name?: string }[];
-    if (detectFileHost(url)) {
-      try {
-        targets = await resolveFileHost(url);
-      } catch (error) {
-        throw this.toFileHostException(error);
-      }
-    } else {
-      targets = [{ url }];
+    try {
+      targets = await resolveFileHost(url);
+    } catch (error) {
+      throw this.toFileHostException(error);
     }
 
     const files = [];
