@@ -573,6 +573,7 @@ const SharePage = ({
           <MediaPreviewGallerySkeleton
             count={galleryPlaceholderCount}
             thumbnailUrl={galleryThumbnailUrl}
+            alt={indexable ? displayName : undefined}
           />
         }
         rootMargin="600px"
@@ -588,6 +589,7 @@ const SharePage = ({
           <MediaPreviewGallerySkeleton
             count={galleryPlaceholderCount}
             thumbnailUrl={galleryThumbnailUrl}
+            alt={indexable ? displayName : undefined}
           />
         )}
       </LazySection>

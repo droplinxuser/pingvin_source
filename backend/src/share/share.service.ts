@@ -274,20 +274,13 @@ export class ShareService {
           storageProvider: this.configService.get("s3.enabled")
             ? "S3"
             : "LOCAL",
+          // Link the reverse share in the same INSERT instead of a second
+          // UPDATE; the token is unique, so the nested connect is unambiguous.
+          reverseShare: reverseShare
+            ? { connect: { token: reverseShareToken } }
+            : undefined,
         },
       });
-
-      if (reverseShare) {
-        // Assign share to reverse share token
-        await this.prisma.reverseShare.update({
-          where: { token: reverseShareToken },
-          data: {
-            shares: {
-              connect: { id: shareTuple.id },
-            },
-          },
-        });
-      }
     } catch (error) {
       // Do not burn a use, and do not leave an unlinked share behind, when
       // the create/link step fails after the reservation.

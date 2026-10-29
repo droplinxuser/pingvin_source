@@ -29,6 +29,7 @@ import { invalidateShareDataCache } from "src/utils/cache.util";
 import { getFileMimeType } from "src/utils/mime.util";
 import { byteToHumanSizeString } from "src/utils/fileSize.util";
 import { getPreviewCandidates, PreviewFile } from "src/share/preview.util";
+import { sumFileSizes } from "src/share/share.util";
 import {
   RemoteFetchError,
   downloadRemoteToFile,
@@ -187,13 +188,6 @@ export class FileService implements OnModuleInit {
     name?: string,
     options: { rejectHtml?: boolean } = {},
   ) {
-    const share = await this.prisma.share.findFirst({
-      where: { id: shareId },
-      select: { uploadLocked: true },
-    });
-    if (share?.uploadLocked)
-      throw new BadRequestException(this.i18n.t("file.alreadyCompleted"));
-
     const fileId = crypto.randomUUID();
     const directory = `${SHARE_DIRECTORY}/${shareId}`;
     await fs.mkdir(directory, { recursive: true });
@@ -262,6 +256,16 @@ export class FileService implements OnModuleInit {
       throw new BadRequestException(
         this.i18n.t("file.remoteHostResolveFailed"),
       );
+
+    // Fail before downloading when the share is already completed. The storage
+    // layer re-checks on every chunk, so a direct createFromUrl caller stays
+    // guarded without this lookup repeating once per resolved file.
+    const share = await this.prisma.share.findFirst({
+      where: { id: shareId },
+      select: { uploadLocked: true },
+    });
+    if (share?.uploadLocked)
+      throw new BadRequestException(this.i18n.t("file.alreadyCompleted"));
 
     let targets: { url: string; name?: string }[];
     try {
@@ -1214,11 +1218,7 @@ export class FileService implements OnModuleInit {
       10,
     );
     if (maxZipSize > 0) {
-      const total = files.reduce(
-        (sum, file) => sum + (parseInt(file.size, 10) || 0),
-        0,
-      );
-      if (total > maxZipSize)
+      if (sumFileSizes(files) > maxZipSize)
         throw new PayloadTooLargeException(this.i18n.t("file.zipTooLarge"));
     }
 

@@ -9,7 +9,11 @@ const buildFallbackSitemap = (
   config: Parameters<typeof getConfigValue>[0],
 ) => {
   const urls = [
-    absoluteUrl("/", baseUrl),
+    // The home page 302s to /upload when it is disabled; only list it when it
+    // is actually served so the fallback sitemap never advertises a redirect.
+    ...(getConfigValue(config, "general.showHomePage") !== "false"
+      ? [absoluteUrl("/", baseUrl)]
+      : []),
     absoluteUrl("/trending", baseUrl),
     absoluteUrl("/new-media", baseUrl),
     absoluteUrl("/new-files", baseUrl),

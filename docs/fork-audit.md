@@ -208,7 +208,13 @@ the matching `utils/*.util.ts` files.
 - The sitemap is built from one SQLite read per ten-minute refresh and written
   to disk as an index plus 50,000-entry chunks. Nothing is stored in SQLite,
   Valkey or process memory. Content-hash `?v=` query strings version every chunk
-  and the robots pointer.
+  and the robots pointer. The home-page entry is written only when
+  `general.showHomePage` is enabled, since the page 302s to `/upload` otherwise.
+- A reverse-share upload links its share in the same `Share` INSERT (a nested
+  connect on the unique reverse-share token), so it no longer pays a second
+  `UPDATE`. The chunked and URL import paths both re-check `uploadLocked`; the
+  URL importer checks it once before downloading instead of once per resolved
+  host file, and `getZip` reuses `sumFileSizes` for its size cap.
 - The database keeps only one row per user avatar version (`avatarUpdatedAt`);
   the image itself is a file in the data directory.
 - No custom feature adds a SQLite table except the avatar version column and

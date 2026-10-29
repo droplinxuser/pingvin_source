@@ -287,9 +287,11 @@ const MediaPreviewGallery = ({
 export const MediaPreviewGallerySkeleton = ({
   count,
   thumbnailUrl,
+  alt,
 }: {
   count: number;
   thumbnailUrl?: string;
+  alt?: string;
 }) => {
   if (count <= 0) return null;
   // Match the first gallery batch so the initial placeholder is not heavier
@@ -330,7 +332,7 @@ export const MediaPreviewGallerySkeleton = ({
             // first video frame.
             <img
               src={thumbnailUrl}
-              alt=""
+              alt={alt ?? ""}
               loading="eager"
               fetchPriority="high"
               decoding="async"

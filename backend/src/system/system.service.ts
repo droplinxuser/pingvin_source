@@ -354,7 +354,10 @@ export class SystemService {
       chunkNumber += 1;
     };
 
-    entries.push(urlEntry(absoluteUrl("/", baseUrl)));
+    // The home page 302s to /upload when it is disabled; only list it when it
+    // is actually served so the sitemap never advertises a redirect.
+    if (this.configService.get("general.showHomePage") !== false)
+      entries.push(urlEntry(absoluteUrl("/", baseUrl)));
     entries.push(urlEntry(absoluteUrl("/trending", baseUrl)));
     entries.push(urlEntry(absoluteUrl("/new-media", baseUrl)));
     entries.push(urlEntry(absoluteUrl("/new-files", baseUrl)));
