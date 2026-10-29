@@ -83,6 +83,9 @@ the matching `utils/*.util.ts` files.
   from the accessibility tree; uploader icons use `role="img"`; ad iframes and
   injected full-page links are labelled; content links in the admin intro are
   underlined. Page headings use h1 -> h2 (admin config sections included).
+  The multi-file "Download all" button uses `cyan.9` on the light variant
+  (5.15:1); plain `cyan` was 2.56:1. The disabled placeholder in
+  `ShareActions.tsx` uses the same shade.
 - The footer uses slightly larger muted text and vertical padding on links for
   comfortable touch targets.
 - Large shares (>12 files) get a compact search field above the file table.

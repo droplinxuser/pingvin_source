@@ -67,7 +67,8 @@ const DownloadAllButton = ({
   return (
     <Button
       variant="light"
-      color="cyan"
+      // cyan.9 keeps the light variant but reaches WCAG AA on the cyan tint.
+      color="cyan.9"
       leftIcon={<TbDownload />}
       loading={isDownloading}
       onClick={confirmDownloadAll}

@@ -184,7 +184,7 @@ const ShareActions = ({
             // the action row wraps on phones and shifts the whole page (CLS).
             <Button
               variant="light"
-              color="cyan"
+              color="cyan.9"
               leftIcon={<TbDownload />}
               disabled
               aria-hidden
