@@ -53,9 +53,7 @@ export const getLegalDocument = (
   const url = siteUrl || "this website";
 
   if (kind === "imprint") {
-    return `# Imprint
-
-## Service provider
+    return `## Service provider
 
 ${siteName} is a self-hosted file-sharing service operated at ${url}.
 
@@ -137,9 +135,7 @@ periods may change to keep the service secure and sustainable.
 ${footer(context)}`;
   }
 
-  return `# Privacy Policy
-
-This policy explains what ${siteName} processes when you visit the site, upload
+  return `This policy explains what ${siteName} processes when you visit the site, upload
 or download files, create an account, or contact the operator.
 
 ## Controller

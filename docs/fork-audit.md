@@ -80,10 +80,13 @@ the matching `utils/*.util.ts` files.
   Other locales still receive their merged messages for a matching first render.
 - The legal markdown is now part of the application (`content/legalDocuments.ts`)
   instead of an admin-owned text field, so a release that adds a feature can
-  update the notice in the same commit. `/imprint` and `/privacy` still read the
-  live config on the server for the site name/URL and use the normal 60-second
-  public HTML cache. `_app` continues to replace any legacy admin legal text
-  with a presence marker so old installs do not serialize large documents.
+  update the notice in the same commit. The shared `LegalDocument` layout owns
+  the single page `h1`; the built-in documents start at `h2`, so `/imprint` and
+  `/privacy` do not render a second `h1`. `/imprint` and `/privacy` still read
+  the live config on the server for the site name/URL and use the normal
+  60-second public HTML cache. `_app` continues to replace any legacy admin
+  legal text with a presence marker so old installs do not serialize large
+  documents.
 - `/trending` renders only the selected country tab (`keepMounted={false}`);
   before this, ten panels with 100 hidden thumbnails and about a thousand extra
   DOM nodes were mounted on every visit.
