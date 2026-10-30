@@ -1,5 +1,6 @@
 import {
   Box,
+  Button,
   Container,
   createStyles,
   Group,
@@ -248,6 +249,8 @@ const ShareList = ({
   const [items, setItems] = useState<TrendingShare[]>(initialItems ?? []);
   const [hasServerData, setHasServerData] = useState(hasInitialData);
   const [isLoading, setIsLoading] = useState(!hasInitialData);
+  const [loadError, setLoadError] = useState(false);
+  const [retryToken, setRetryToken] = useState(0);
   const [shouldLoad, setShouldLoad] = useState(hasInitialData);
   const [visibleCount, setVisibleCount] = useState(ROW_BATCH_SIZE);
   const sectionRef = useRef<HTMLElement>(null);
@@ -292,11 +295,14 @@ const ShareList = ({
 
     let cancelled = false;
     setIsLoading(true);
+    setLoadError(false);
     loadItems(limit)
       .then((loaded) => {
         if (!cancelled) setItems(loaded);
       })
-      .catch(() => {})
+      .catch(() => {
+        if (!cancelled) setLoadError(true);
+      })
       .finally(() => {
         if (!cancelled) setIsLoading(false);
       });
@@ -304,7 +310,7 @@ const ShareList = ({
     return () => {
       cancelled = true;
     };
-  }, [hasServerData, shouldLoad, limit, loadItems]);
+  }, [hasServerData, shouldLoad, limit, loadItems, retryToken]);
 
   const showPlaceholder = isLoading || (!shouldLoad && !hasServerData);
 
@@ -363,7 +369,20 @@ const ShareList = ({
         </Text>
       </Group>
 
-      {!showPlaceholder && items.length === 0 ? (
+      {!showPlaceholder && loadError ? (
+        <Group position="center" mt="md" spacing="xs">
+          <Text className={classes.subheading}>
+            {t("common.custom.load-error")}
+          </Text>
+          <Button
+            variant="light"
+            size="xs"
+            onClick={() => setRetryToken((n) => n + 1)}
+          >
+            {t("common.custom.retry")}
+          </Button>
+        </Group>
+      ) : !showPlaceholder && items.length === 0 ? (
         <Text className={classes.subheading} mt="xs">
           {emptyText}
         </Text>

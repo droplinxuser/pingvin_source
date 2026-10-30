@@ -42,6 +42,7 @@ import {
   TbX,
 } from "react-icons/tb";
 import { FormattedMessage } from "react-intl";
+import useConfig from "../../hooks/config.hook";
 import useTranslate from "../../hooks/useTranslate.hook";
 import api from "../../services/api.service";
 import shareService from "../../services/share.service";
@@ -224,6 +225,7 @@ const FileList = ({
   const clipboard = useClipboard();
   const modals = useModals();
   const t = useTranslate();
+  const config = useConfig();
   const [sort, setSort] = useState<TableSort>({
     property: "name",
     direction: "asc",
@@ -549,7 +551,7 @@ const FileList = ({
                     {file.virustotal && (
                       <VirusTotalBadge report={file.virustotal} />
                     )}
-                    {isShareTextFile(file.name) && (
+                    {isShareTextFile(file.name) && !maxDownloads && (
                       <HoverTip label={t("share.copy-text-contents")}>
                         <ActionIcon
                           color="blue"
@@ -578,7 +580,7 @@ const FileList = ({
                         </ActionIcon>
                       </HoverTip>
                     )}
-                    {doesFileSupportPreview(file.name) && (
+                    {doesFileSupportPreview(file.name) && !maxDownloads && (
                       <HoverTip label={t("common.button.preview")}>
                         <ActionIcon
                           color="green"
@@ -592,6 +594,7 @@ const FileList = ({
                               modals,
                               mediaFiles,
                               !!maxDownloads,
+                              recipientId,
                             )
                           }
                         >
@@ -613,10 +616,12 @@ const FileList = ({
                             return;
                           }
                           clipboard.copy(
-                            `${window.location.origin}${getShareFileLink(
-                              share.id,
-                              file.id,
-                            )}`,
+                            `${
+                              config.get("general.appUrl") !==
+                              config.get("general.appUrl", true)
+                                ? config.get("general.appUrl")
+                                : window.location.origin
+                            }${getShareFileLink(share.id, file.id)}`,
                           );
                           toast.success(t("share.notify.copied-link"));
                         }}

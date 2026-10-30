@@ -27,9 +27,7 @@ import {
 import { IconType } from "react-icons";
 import { FormattedMessage } from "react-intl";
 import useTranslate from "../../hooks/useTranslate.hook";
-import systemService, {
-  DependencyCheck,
-} from "../../services/system.service";
+import systemService, { DependencyCheck } from "../../services/system.service";
 
 const ICONS: Record<string, IconType> = {
   node: TbBrandNodejs,
@@ -144,7 +142,7 @@ const ServerDependenciesCard = () => {
             return (
               <Box key={dependency.key}>
                 {index > 0 && <Divider mb="xs" />}
-                <Group position="apart" align="center" spacing="sm" noWrap>
+                <Group position="apart" align="flex-start" spacing="sm">
                   <Group spacing="xs" noWrap>
                     <Icon size={20} />
                     <Box>
@@ -160,9 +158,7 @@ const ServerDependenciesCard = () => {
                   </Group>
                   <Group spacing="xs" noWrap>
                     <Badge color="gray" variant="outline" size="sm">
-                      {t(
-                        `admin.dependencies.custom.type.${dependency.type}`,
-                      )}
+                      {t(`admin.dependencies.custom.type.${dependency.type}`)}
                     </Badge>
                     {dependency.version && (
                       <Badge

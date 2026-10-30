@@ -25,11 +25,13 @@ const FilePreviewDialog = ({
   files,
   initialFileId,
   cacheBust = false,
+  recipientId,
 }: {
   shareId: string;
   files: FileMetaData[];
   initialFileId: string;
   cacheBust?: boolean;
+  recipientId?: string;
 }) => {
   const t = useTranslate();
   const [index, setIndex] = useState(() =>
@@ -107,6 +109,7 @@ const FilePreviewDialog = ({
           fileSize={activeFile.size}
           mimeType={getFileMimeType(activeFile.name)}
           cacheBust={cacheBust}
+          recipientId={recipientId}
         />
         {canNavigate && (
           <Box
@@ -154,6 +157,7 @@ const showFilePreviewModal = (
   modals: ModalsContextProps,
   files?: FileMetaData[],
   cacheBust = false,
+  recipientId?: string,
 ) => {
   const sequence =
     files && files.some((item) => item.id === file.id) ? files : [file];
@@ -175,6 +179,7 @@ const showFilePreviewModal = (
         files={sequence}
         initialFileId={file.id}
         cacheBust={cacheBust}
+        recipientId={recipientId}
       />
     ),
   });

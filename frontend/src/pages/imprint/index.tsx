@@ -2,7 +2,10 @@ import { GetServerSidePropsContext } from "next";
 import LegalDocument from "../../components/legal/LegalDocument";
 import { getLegalDocument } from "../../content/legalDocuments";
 import { fetchConfig } from "../../utils/config.server.util";
-import { setPublicCacheHeaders } from "../../utils/httpCache.util";
+import {
+  setNoStoreHeaders,
+  setPublicCacheHeaders,
+} from "../../utils/httpCache.util";
 
 // The document lives in the application, so a release that adds a new feature
 // can update the imprint in the same commit. Config is still read on the
@@ -10,9 +13,11 @@ import { setPublicCacheHeaders } from "../../utils/httpCache.util";
 // makes the HTML edge-cacheable for a short window.
 export async function getServerSideProps({ res }: GetServerSidePropsContext) {
   const apiURL = process.env.API_URL || "http://localhost:8080";
-  const { config } = await fetchConfig(apiURL);
+  const { config, fallback } = await fetchConfig(apiURL);
   const text = getLegalDocument("imprint", config);
-  setPublicCacheHeaders(res, 60, 30);
+  // Never pin default site values at the edge after a backend hiccup.
+  if (fallback) setNoStoreHeaders(res);
+  else setPublicCacheHeaders(res, 60, 30);
   return { props: { text } };
 }
 

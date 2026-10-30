@@ -36,7 +36,10 @@ const LogoConfigInput = ({
             aria-label={t("admin.config.appearance.logo")}
             sx={(theme) => ({
               "& .mantine-FileInput-placeholder": {
-                color: theme.colors.gray[7],
+                color:
+                  theme.colorScheme === "dark"
+                    ? theme.colors.dark[2]
+                    : theme.colors.gray[7],
               },
             })}
             clearable
@@ -64,7 +67,10 @@ const LogoConfigInput = ({
             aria-label={t("admin.config.appearance.logo-dark")}
             sx={(theme) => ({
               "& .mantine-FileInput-placeholder": {
-                color: theme.colors.gray[7],
+                color:
+                  theme.colorScheme === "dark"
+                    ? theme.colors.dark[2]
+                    : theme.colors.gray[7],
               },
             })}
             clearable

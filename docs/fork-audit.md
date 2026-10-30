@@ -24,18 +24,18 @@ the suggested order for future features.
 | Cloudflare edge caching | Public search results and share images live at the edge for a short window: `GET /api/shares/search` and `/api/shares/:id/thumbnail` send `s-maxage=300` / `s-maxage=3600` respectively (`backend/src/utils/cache.util.ts` `getImageCacheHeaders`, `share.controller.ts`), the inline WebP preview in `file.controller.ts` uses the same image headers, and the search page shell is still `no-store` (query-dependent). Trending/recent listings keep a 60 s edge TTL. |
 | Admin pagination, search and sorting | `backend/src/share/share.service.ts`, `backend/src/user/user.service.ts` (quota columns paged in SQL), `frontend/src/pages/admin/*`, `frontend/src/components/core/SortIcon.tsx` |
 | Share reports | `backend/src/share/dto/reportShare.dto.ts`, `backend/src/email/email.service.ts`, `frontend/src/components/share/showReportShareModal.tsx` |
-| View-limit burn | `backend/src/share/share.controller.ts` (`GET /shares/:id`), `backend/src/share/share.service.ts` (`burnShare`, `isShareLimitReached`), `backend/src/share/shareState.service.ts` (`recordLimitedView`, rolling-expiration guard). The final allowed view renders; after a five-minute grace the share expires. Any subsequent page/SEO/HEAD request is a 404, while the last visitor's preview/file requests can finish during the grace. A rolling-expiration write is conditional on the previously read value so it cannot revive a burned share. |
+| View-limit burn | `backend/src/share/share.controller.ts` (`GET /shares/:id`), `backend/src/share/share.service.ts` (`burnShare`, `isShareLimitReached`), `backend/src/share/shareState.service.ts` (`recordLimitedView`, rolling-expiration guard). The final allowed view renders; after a five-minute grace the share expires. Any subsequent page/SEO/HEAD request is a 404, while the last visitor's preview/file requests can finish during the grace. Files require the share token even without a password, so the view limit cannot be bypassed with a copied file URL. A rolling-expiration write is conditional on the previously read value so it cannot revive a burned share, and follow-up burn checks do not shorten an existing grace window. |
 | Uploader metadata / visitors | `backend/src/utils/uploaderInfo.util.ts`, `ShareDTO.uploaderInfo`, `frontend/src/components/share/UploaderInfoBadges.tsx`, `ShareStats.tsx`; view counts stay in `Share.views`, written in five-second batches for unlimited shares and atomically for limited ones (`shareState.service.ts`). Geo labels are clamped before storage. The recent-visitor list is shown to every visitor. |
 | Reverse-share use limits | `backend/src/reverseShare/reverseShare.service.ts` (`reserveUse`), `backend/src/share/share.service.ts` (reserve at create, reject invalid cookies, no refund on revert) |
 | Inline media gallery | `frontend/src/components/share/MediaPreviewGallery.tsx` (up to 100 image/video cards, 12-card lazy batches, single-media square card, full-size previous/next modal), `frontend/src/components/core/LazySection.tsx` |
-| Individual downloads / legacy ZIP | `frontend/src/components/share/DownloadAllButton.tsx`, `frontend/src/services/share.service.ts`; `backend/src/share/share.service.ts` no longer creates archives. Existing `archive.zip` files remain served by the legacy API. The preview modal downloads through `shareService.downloadFile` too, so its clicks reach the download counters. |
-| Download caps / one-time links | `ShareSecurity.maxDownloads` + `downloadCount` in `backend/prisma/schema.prisma`, migration `20261031000000_add_download_limit`, `shareSecurity.dto.ts` / `updateShare.dto.ts`, `ShareService.reserveDownload` / `burnShare`, `file.controller.ts` (`getFile` / `getZip`), share create/edit modals, `ShareStats` and the disabled download actions. Capped shares are not public/cacheable and are excluded from listings and SEO. The final allowed download burns the share: page/SEO/HEAD and new downloads return 404, while the active file/ZIP stream continues; the row/files are removed by the normal expiry cleanup after a five-minute grace. An exhausted/in-flight cap request also returns 404 instead of a 403 limit message. |
+| Individual downloads / legacy ZIP | `frontend/src/components/share/DownloadAllButton.tsx`, `frontend/src/services/share.service.ts`; `backend/src/share/share.service.ts` no longer creates archives, and `fileService.getZip` builds every ZIP on demand. Any pre-existing `archive.zip` is deleted by the next upload/revert/removal and is not served. The preview modal downloads through `shareService.downloadFile` too (with the recipient id), so its clicks reach the download counters. |
+| Download caps / one-time links | `ShareSecurity.maxDownloads` + `downloadCount` in `backend/prisma/schema.prisma`, migration `20261031000000_add_download_limit`, `shareSecurity.dto.ts` / `updateShare.dto.ts`, `ShareService.reserveDownload` / `burnShare`, `file.controller.ts` (`getFile` / `getZip`), share create/edit modals, `ShareStats` and the disabled download actions. Capped shares are not public/cacheable and are excluded from listings and SEO. Every original-bytes response (attachment, inline, local or S3) consumes a slot; Range is ignored and HEAD never consumes one. The UI hides inline previews and the gallery for capped shares. The final allowed download burns the share: page/SEO/HEAD and new downloads return 404, while the active file/ZIP stream continues; the row/files are removed by the normal expiry cleanup after a five-minute grace. An exhausted/in-flight cap request also returns 404 instead of a 403 limit message. |
 | Native share / PWA share target | `frontend/src/components/share/ShareButton.tsx` (Web Share API with copy fallback), `CopyTextField.tsx`, `ShareActions.tsx`, `frontend/src/pages/manifest.json.tsx`, `frontend/worker/index.js`, `frontend/src/utils/shareTarget.util.ts`, `frontend/src/pages/upload/index.tsx`. The worker stores OS-shared files in Cache Storage (512 MB/file, 5 GB total, 24-hour cleanup) and redirects to `/upload?shared=...`, where the normal upload flow picks them up. |
 | Resumable uploads | `frontend/src/utils/uploadSession.util.ts`, `frontend/src/components/upload/ResumeUploads.tsx`, `frontend/src/pages/upload/index.tsx`. Only metadata (share/file ids, name, size, chunk size, completed chunk count) is kept in IndexedDB; the visitor reselects the same file and only missing chunks are sent. Direct multipart/S3 uploads are not resumed. |
 | Password tools | `frontend/src/utils/password.util.ts`, `showCreateUploadModal.tsx` (CSPRNG-generated 16-character password with generate/copy actions, avoiding look-alike characters). |
 | Add files after completion | Existing `EditableUpload` edit flow (`/share/:id/edit`) now has a clear “Add or remove files” entry in `ShareActions` and the share-information modal. It reuses `revertComplete` → upload → `completeShare`, preserving the link and re-running quota, size, malware/thumbnail and search/trending invalidation. Owner-only through the existing share-owner guards. |
 | Share and file size limits | `backend/prisma/seed/config.seed.ts` (`share.maxSize` 5 GB, `share.maxFileSize` 512 MB), migration `20261025000000_raise_share_size_limit`, `backend/src/share/share.util.ts` (`resolveShareSizeLimit`), local/S3 upload guards, upload UI |
-| Trending today / new shares | `backend/src/cache/trending.service.ts` (`getTrending`, `getTrendingCountries`, `getRecent`, `getRecentFiles`), `GET /api/shares/trending`, `/trending/countries`, `/recent`, `/recent-files`; `frontend/src/components/share/TrendingToday.tsx`, `TrendingCountries.tsx`, `ShareList.tsx` (polished row/list layout for `/new-files`), `frontend/src/pages/trending.tsx`, `new-media.tsx`, `new-files.tsx`, `search.tsx`. The main ranking counts only the last 24 hourly view buckets, ordered by 24-hour views then 24-hour downloads; shares still have to be public, completed and previewable, but there is no creation-age limit, so an older share with a recent view can appear. The country panel applies the same views-then-downloads order per country. The API result is cached 60 seconds in process and 60 seconds at the edge, and the frontend/SSR URL carries the build version as a cache-buster. Trending and the new listings cap at 200; rows/cards reveal in lazy batches with skeletons (infinite scroll). |
+| Trending today / new shares | `backend/src/cache/trending.service.ts` (`getTrending`, `getTrendingCountries`, `getRecent`, `getRecentFiles`), `GET /api/shares/trending`, `/trending/countries`, `/recent`, `/recent-files`; `frontend/src/components/share/TrendingToday.tsx`, `TrendingCountries.tsx`, `ShareList.tsx` (row/list layout for `/new-files`, showing up to three file names), `frontend/src/pages/trending.tsx`, `new-media.tsx`, `new-files.tsx`, `search.tsx`. The main ranking counts only the last 24 hourly view buckets, ordered by 24-hour views then 24-hour downloads; shares still have to be public, completed and previewable, but there is no creation-age limit, so an older share with a recent view can appear. The country panel applies the same views-then-downloads order per country. Without Valkey, trending falls back to the newest-media scan ordered by lifetime views. Empty results are `no-store` so a transient dependency failure is never pinned at the edge. The API result is cached 60 seconds in process and 60 seconds at the edge, and the frontend/SSR URL carries the build version as a cache-buster. Trending and the new listings cap at 200; rows/cards reveal in lazy batches with skeletons (infinite scroll). |
 | Shared UI polish | `frontend/src/components/core/RelativeTime.tsx`, `RouteProgress.tsx`, `LazyImage.tsx`, `LazyVideo.tsx`, `LazySection.tsx`, `frontend/src/utils/filePreview.util.ts`; `frontend/src/components/share/FileList.tsx` adds client-side file search for shares with 12+ files (`SEARCH_MIN_FILES`), filtering the rendered batches and the preview navigation without a backend request |
 | Profile pictures | `backend/prisma/schema.prisma` (`User.avatarUpdatedAt`), migration `20261028010000_add_user_avatar`, `backend/src/user/avatar.service.ts` (5 MB/40 MP limits, EXIF rotate, 256px centre-crop, metadata-stripped WebP, atomic 0600 write), `user.controller.ts` (`POST`/`DELETE /api/users/me/avatar`, public versioned `GET /api/users/:id/avatar.webp` with ETag/304), `frontend/src/components/core/UserAvatar.tsx`, `frontend/src/utils/avatar.util.ts` |
 | Legal pages | `frontend/src/content/legalDocuments.ts` (built-in imprint/privacy markdown that ships with the app), `frontend/src/components/legal/LegalDocument.tsx` (one shared layout). `/imprint` and `/privacy` server-render the text with the current site name/URL, upload limits, ZIP limit and guest-upload setting, then remain edge-cacheable. The public text is user-facing only: it does not name hosting, storage, delivery, security, malware-analysis or other backend providers, and it carries a visible last-updated date. Legacy admin legal text is ignored; `_app` still strips it from the shared payload for old installs. |
@@ -43,7 +43,7 @@ the suggested order for future features.
 | Upload paste and folder picks | Upstream `useClipboardPaste.hook.ts`, `file.util.ts`, `folder.util.ts`; the fork keeps only `share.maxFileSize` validation in `Dropzone.tsx`, the folder button and upload DTO bounds |
 | Share thumbnails / OG | `backend/src/file/file.service.ts` (share-level 300px WebP, ordered preview fallbacks, background queue, 32-day cleanup), `backend/src/share/preview.util.ts`, `GET /api/shares/:id/thumbnail`, listing cards and `Meta.tsx` |
 | Cache headers / hotlink protection | `backend/src/utils/cache.util.ts`, `frontend/src/utils/version.util.ts`, `backend/src/utils/referrer.util.ts`, `frontend/src/middleware.ts`, `frontend/next.config.js` |
-| Per-IP+User-Agent rate limiting | `backend/src/utils/visitorIdentity.util.ts`, `backend/src/cache/valkeyThrottler.storage.ts`, `backend/src/cache/throttler.config.ts`, `backend/src/main.ts` |
+| Per-IP rate limiting | `backend/src/utils/visitorIdentity.util.ts`, `backend/src/cache/valkeyThrottler.storage.ts`, `backend/src/cache/throttler.config.ts`, `backend/src/main.ts` |
 | Valkey cache | `backend/src/utils/cache.util.ts`, `backend/src/share/shareState.service.ts`, `backend/src/cache/*` |
 | Hot-path queries and cache fills | `shareState.service.ts` (view counters, comment-only invalidation), `share.service.ts` (SEO fill), `metrics.service.ts`, `system.service.ts`, `trending.service.ts` (recent fill), migration `20261028000000_add_relation_indexes` |
 | VirusTotal background scanning | `backend/src/virustotal/*`, `backend/src/share/share.service.ts` (completion hook), `backend/src/clamscan/clamscan.service.ts` (shared malicious-share removal), `frontend/src/pages/admin/virustotal.tsx`, `backend/.env.example` |
@@ -202,28 +202,30 @@ the matching `utils/*.util.ts` files.
 - `DATA_DIRECTORY="/var/www/pingvin_data"`. Uploader/visitor metadata is a
   per-share `uploads/shares/<shareId>/uploader.json` (mode `600`). Sitemaps are
   written to `DATA_DIRECTORY/sitemaps/<site-hash>/` and are derived data.
-- There is one base rate-limit policy: 90 requests per 60 seconds per client,
-  identified by client IP + browser `User-Agent`, blocking for 60 seconds. The
-  upstream per-IP `THROTTLE_LIMIT` bucket is gone; routes without an explicit
-  `@Throttle` override share the visitor bucket, keyed by the hashed IP+UA.
-  A route with an explicit limit (auth, upload, comments/reports/contact, SEO,
-  etc.) gets its own visitor bucket keyed by route + hashed IP+UA. This keeps a
-  strict comment limit from being consumed by ordinary page/API traffic and
-  keeps a high upload/SSR limit from raising the global bucket. Configure with
+- There is one base rate-limit policy: 90 requests per 60 seconds per client IP,
+  blocking for 60 seconds. The upstream per-IP `THROTTLE_LIMIT` bucket is gone;
+  routes without an explicit `@Throttle` override share the visitor bucket,
+  keyed by the hashed IP. The `User-Agent` is deliberately **not** part of the
+  key: it is attacker-controlled, so including it would let a script rotate its
+  own bucket and bypass both the shared and route limits. A route with an
+  explicit limit (auth, upload, comments/reports/contact, SEO, files, ZIP, etc.)
+  gets its own visitor bucket keyed by route + hashed IP. This keeps a strict
+  comment limit from being consumed by ordinary page/API traffic and keeps a
+  high upload/SSR limit from raising the global bucket. Configure with
   `VISITOR_RATE_LIMIT`, `VISITOR_RATE_TTL_MS`, `VISITOR_RATE_BLOCK_MS`.
   The backend uses Valkey when available and falls back to memory. The Next
   middleware applies the same policy to non-cacheable page HTML
   (`utils/pageRateLimit.util.ts`); cacheable anonymous shells are skipped.
-  Config/OAuth, stats/trending/recent, SEO and file/ZIP reads skip the shared
-  bucket because they are edge-cacheable or have no unbounded query key.
-  Search, comments reads, thumbnails and the share `HEAD` check carry their own
-  route buckets instead: their query strings (`q`, `page`, `v`) or IDs are
-  attacker-controlled, so a unique value can always miss the edge without
-  throttling the origin.
+  Config/OAuth, stats/trending/recent and SEO reads skip the shared bucket
+  because they are edge-cacheable. File and ZIP reads plus the search, comments
+  reads, thumbnails and share `HEAD` check carry their own route buckets:
+  their ids or query strings (`files`, `q`, `page`, `v`) are attacker-controlled,
+  so a unique value can always miss the edge without throttling the origin.
 - Valkey/Redis is optional but recommended: set `CACHE_REDIS_ENABLED=true` and
   `CACHE_REDIS_URL=redis://127.0.0.1:6379`. `update.sh` enables both when a local
   `valkey-server` is active. When Valkey is down, cache reads fail open to
-  SQLite, metrics/logs use bounded memory fallbacks, and a dead client cannot
+  SQLite, trending reuses the newest-media scan ordered by lifetime views,
+  metrics/logs use bounded memory fallbacks, and a dead client cannot
   hang a request (`disableOfflineQueue` + error handlers).
 - `update.sh` pulls origin/main, preserves `backend/.env` and local branding,
   rebuilds both packages, installs the systemd units, runs migrations/seeding
@@ -386,10 +388,11 @@ Origin responses set `Cache-Control`, `CDN-Cache-Control` and
   1 hour. Sitemap chunks, robots and manifest:
   1 day (60-second fallback when the backend artifact is unavailable).
   `/_next/static`, Workbox and custom worker bundles are immutable for a year.
-- Public file and preview GETs use a one-hour browser TTL and a **ten-minute**
+- Public file and download GETs use a one-hour browser TTL and a **ten-minute**
   shared TTL (no `immutable`) so deletions propagate quickly, plus an `ETag`
-  and `304` support. Protected files are `private`. ZIP responses are 60 seconds
-  for public shares and `no-store` for protected ones.
+  and `304` support. Inline WebP previews and share thumbnails use the image
+  policy: one-hour browser/shared TTL. Protected files are `private`. ZIP
+  responses are 60 seconds for public shares and `no-store` for protected ones.
 - Download-capped shares are deliberately excluded from every public/cached
   path: their files and ZIPs are `no-store`, their thumbnails/previews are
   private, and `publicShareWhere()`/`isPublicShare()` keep them out of recent,
@@ -398,10 +401,12 @@ Origin responses set `Cache-Control`, `CDN-Cache-Control` and
   per-click `t=` value: the CDN's browser-cache-TTL setting can rewrite the
   browser-facing `Cache-Control`, and a stable URL would otherwise let a second
   click come from the browser cache without consuming a slot.
-- Share thumbnails and avatars are public for one day, versioned through the
-  URL (`?v=<updatedAt>` / `<avatarUpdatedAt>`) and `no-store`/`private` when the
-  content is protected. The proxy may lengthen browser TTLs for image-looking
-  URLs; `CDN-Cache-Control` remains the edge authority.
+- Share thumbnails are public for one hour and avatars for one day, versioned
+  through the URL (`?v=<updatedAt>` / `<avatarUpdatedAt>`) and
+  `no-store`/`private` when the content is protected. Thumbnail ETags include
+  the file mtime so a regenerated image cannot be answered with a stale 304.
+  The proxy may lengthen browser TTLs for image-looking URLs;
+  `CDN-Cache-Control` remains the edge authority.
 - Auth, account, admin, upload, edit, error and missing-share pages are
   `no-store`. `_next/data` client-navigation responses are explicitly
   `no-store`: Next runs the middleware for those requests with the *page* path,
@@ -433,7 +438,33 @@ Origin responses set `Cache-Control`, `CDN-Cache-Control` and
 - Reverse-share tokens cannot bypass `allowShare`/`maxShares`; a use is reserved
   atomically at share creation. `CreateShareGuard` is only on `POST /shares`;
   upload/complete/revert/file routes use `StrictShareOwnerGuard` so an
-  in-progress upload is not rejected by the remaining-use check.
+  in-progress upload is not rejected by the remaining-use check. Abandoned
+  unfinished reverse-share uploads are refunded by the daily cleanup, and the
+  public upload form stays readable until the reverse share expires so an
+  interrupted upload can resume after the final use was reserved.
+- Anonymous (guest) uploads get an HttpOnly, share-scoped capability cookie
+  (`share_<id>_owner`, signed with the internal JWT secret) at creation. Chunk
+  upload, completion, revert and file-delete requests for a creator-less share
+  require it, so a recipient who only has the public link cannot modify or
+  revert the share. Reverse-share uploads keep using `reverse_share_token`.
+- A view-limited share requires its share token before any file byte is served,
+  even when it has no password. The token is issued by the page visit, so a
+  copied direct file URL cannot be downloaded forever after the view limit was
+  reached. The last permitted view keeps its token for file previews/downloads.
+- Download-capped shares count every request that streams the original object,
+  including `download=false` inline reads and S3 responses (capped S3 reads are
+  forced through the origin). `Range` is ignored for capped reads so a `bytes=1-`
+  request cannot bypass the cap, and `HEAD` never consumes a slot. The UI hides
+  inline previews/gallery for capped shares so opening a video cannot burn the
+  one-time link; the generated WebP thumbnail/preview remains private.
+- Completion re-checks the account (or reverse-share owner) storage quota after
+  the file rows exist, so a burst of concurrent chunks cannot publish an
+  over-quota share even if the in-flight reservation undercounted.
+- Comment pages only receive a long edge TTL when the `?v=` value equals the
+  current comment version; a guessed future version is `no-store`, so it cannot
+  be cached under a key that later becomes live. Sitemaps/robots never trust a
+  request Host in production, and `/d/` aliases are disallowed and send
+  `X-Robots-Tag: noindex`.
 - Upload bodies use class-validator DTOs (safe names, bounded chunks/parts) and
   the service caps chunk count against `maxFileSize`/`chunkSize`. Active
   documents (HTML/SVG/XML/JS/CSS) are forced to attachment/octet-stream on
@@ -455,8 +486,9 @@ Origin responses set `Cache-Control`, `CDN-Cache-Control` and
 - The public download beacon (`POST /api/shares/:id/download`) accepts at most
   500 well-formed ids and keeps only file ids that belong to that share, so it
   cannot create Valkey fields for arbitrary ids; the reserved `total` field is
-  rejected as a file id. Guest ads are never mounted on a non-indexable
-  (password/recipient/view-limited) share.
+  rejected as a file id. Guest ads may appear on public, protected, view-limited
+  and missing-share pages; they are skipped for signed-in visitors and while a
+  reverse-share upload cookie is active.
 - Local uploads reserve in-flight bytes per share and per user. Completion
   re-checks the aggregate share size and the user quota. Completed shares reject
   further uploads. Expired shares cannot be revived through the owner path.
@@ -473,7 +505,9 @@ Origin responses set `Cache-Control`, `CDN-Cache-Control` and
   permanently redirects to `/share/:id`. A configured localhost `general.appUrl`
   is treated as unset in production builds, so pages emit relative
   canonical/OG URLs instead of `http://localhost:3000`. Protected shares return
-  only `{ indexable: false, id }` from the SEO endpoint and never derive labels.
+  only `{ indexable: false, id, requiresPassword, requiresToken }` from the SEO
+  endpoint and never derive labels; the token hint lets the page request a
+  view-limit token without a guaranteed 403 in the console.
   The SEO endpoint uses a larger 1,200/min visitor bucket (instead of 90/min)
   because Next SSR reads it from one host IP; the edge-cached payload still
   returns immediately for repeat share links, and random-id scans stay bounded.
@@ -578,8 +612,8 @@ opens the normal share modal; the native Share button passes the correct short
 URL to a stubbed `navigator.share`; the password generator produces and copies a
 16-character password; and adding a file through `/share/:id/edit` leaves the
 same share id with both old and new files.
-Rate-limit smoke tests: 95 requests from one IP+UA to a
-non-cacheable API and page return 90 successes then 429, while a different UA
+Rate-limit smoke tests: 95 requests from one IP to a
+non-cacheable API and page return 90 successes then 429, while a different IP
 and a cacheable page remain available. Axe checks at 390 px
 should report zero WCAG A/AA and best-practice violations for the public pages,
 member account pages and every admin page; the temporary local admin promotion

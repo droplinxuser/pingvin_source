@@ -21,12 +21,12 @@ test("keeps route overrides out of the shared visitor bucket", () => {
 
   const shared = generateKey(
     context(ordinary, ShareController),
-    "ipua:127.0.0.1\nbrowser",
+    "ip:127.0.0.1",
     "default",
   );
   const route = generateKey(
     context(limited, ShareController),
-    "ipua:127.0.0.1\nbrowser",
+    "ip:127.0.0.1",
     "default",
   );
 
@@ -36,7 +36,7 @@ test("keeps route overrides out of the shared visitor bucket", () => {
     shared,
     generateKey(
       context(ordinary, ShareController),
-      "ipua:127.0.0.1\nbrowser",
+      "ip:127.0.0.1",
       "default",
     ),
   );
@@ -44,7 +44,7 @@ test("keeps route overrides out of the shared visitor bucket", () => {
     route,
     generateKey(
       context(limited, ShareController),
-      "ipua:127.0.0.1\nbrowser",
+      "ip:127.0.0.1",
       "default",
     ),
   );

@@ -178,18 +178,18 @@ const MyShares = () => {
                     </td>
                     <td>
                       <Group position="right">
-                        <Link href={`/share/${share.id}/edit`}>
-                          <HoverTip label={t("account.shares.button.edit")}>
-                            <ActionIcon
-                              color="orange"
-                              variant="light"
-                              size={25}
-                              aria-label={t("account.shares.button.edit")}
-                            >
-                              <TbPlusMinus />
-                            </ActionIcon>
-                          </HoverTip>
-                        </Link>
+                        <HoverTip label={t("account.shares.button.edit")}>
+                          <ActionIcon
+                            component={Link}
+                            href={`/share/${share.id}/edit`}
+                            color="orange"
+                            variant="light"
+                            size={25}
+                            aria-label={t("account.shares.button.edit")}
+                          >
+                            <TbPlusMinus />
+                          </ActionIcon>
+                        </HoverTip>
                         <HoverTip label={t("common.button.info")}>
                           <ActionIcon
                             color="blue"
@@ -211,6 +211,8 @@ const MyShares = () => {
                                         : item,
                                     ),
                                   ),
+                                false,
+                                true,
                               );
                             }}
                           >

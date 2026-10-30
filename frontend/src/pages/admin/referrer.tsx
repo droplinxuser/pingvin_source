@@ -167,6 +167,13 @@ const Referrers = () => {
                 total={totalPages}
                 value={page}
                 onChange={setPage}
+                getControlProps={(control) => ({
+                  "aria-label": t(
+                    control === "previous"
+                      ? "common.custom.pagination.previous"
+                      : "common.custom.pagination.next",
+                  ),
+                })}
               />
             </Stack>
           )}

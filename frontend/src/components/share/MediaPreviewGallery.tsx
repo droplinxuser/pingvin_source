@@ -196,11 +196,13 @@ const MediaPreviewGallery = ({
   shareId,
   files = [],
   posterUrl,
+  recipientId,
 }: {
   shareId: string;
   files?: FileMetaData[];
   /** Share thumbnail shown as the first video poster / LCP placeholder. */
   posterUrl?: string;
+  recipientId?: string;
 }) => {
   const modals = useModals();
   const t = useTranslate();
@@ -263,7 +265,14 @@ const MediaPreviewGallery = ({
           posterUrl={index === 0 ? posterUrl : undefined}
           priority={index === 0}
           onOpen={(file) =>
-            openFilePreview(shareId, file, modals, previewFiles)
+            openFilePreview(
+              shareId,
+              file,
+              modals,
+              previewFiles,
+              false,
+              recipientId,
+            )
           }
         />
       ))}

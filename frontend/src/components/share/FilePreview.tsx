@@ -51,6 +51,7 @@ const FilePreview = ({
   fileSize,
   mimeType,
   cacheBust = false,
+  recipientId,
 }: {
   shareId: string;
   fileId: string;
@@ -58,6 +59,7 @@ const FilePreview = ({
   fileSize: string;
   mimeType: string;
   cacheBust?: boolean;
+  recipientId?: string;
 }) => {
   const t = useTranslate();
   const [isNotSupported, setIsNotSupported] = useState(false);
@@ -88,7 +90,7 @@ const FilePreview = ({
             void shareService.downloadFile(
               shareId,
               fileId,
-              undefined,
+              recipientId,
               fileName,
               cacheBust,
             )

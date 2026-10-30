@@ -21,9 +21,10 @@ const VISITOR_RATE_BLOCK_MS = positiveInt(
 
 /**
  * One shared bucket for every non-cacheable API route. The upstream per-IP
- * "default" limiter is intentionally gone: the only identifier is the visitor
- * key (client IP + browser User-Agent) defined in visitorIdentity.util. Routes
- * that are safe to cache at the edge skip this bucket explicitly with
+ * "default" limiter is intentionally gone: the only identifier is the client
+ * IP defined in visitorIdentity.util (the User-Agent is attacker-controlled
+ * and must not create a fresh bucket). Routes that are safe to cache at the
+ * edge skip this bucket explicitly with
  * `@SkipThrottle({ default: true })`.
  */
 export const createThrottlerOptions = (
@@ -36,7 +37,8 @@ export const createThrottlerOptions = (
       ttl: VISITOR_RATE_TTL_MS,
       limit: VISITOR_RATE_LIMIT,
       blockDuration: VISITOR_RATE_BLOCK_MS,
-      // IP + browser User-Agent, hashed before the bucket key is stored.
+      // Client IP only, hashed before the bucket key is stored. Including the
+      // attacker-controlled User-Agent would allow a trivial bucket rotation.
       getTracker: (req) =>
         typeof req.visitorKey === "string"
           ? req.visitorKey

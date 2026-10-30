@@ -38,8 +38,10 @@ const DownloadAllButton = ({
 
   let maxZipSize = DEFAULT_MAX_ZIP_SIZE;
   try {
-    const configured = parseInt(config.get("share.maxZipSize") || "");
-    if (Number.isFinite(configured)) maxZipSize = configured;
+    const configured = Number(config.get("share.maxZipSize"));
+    // `0` is a valid "no ZIP limit" value, so it must not be treated as a
+    // missing key.
+    if (Number.isFinite(configured) && configured >= 0) maxZipSize = configured;
   } catch {
     // Keep the safe default if the key is unavailable.
   }

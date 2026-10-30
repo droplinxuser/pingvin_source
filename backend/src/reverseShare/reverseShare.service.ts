@@ -175,7 +175,13 @@ export class ReverseShareService {
       },
     });
 
-    return reverseShare && this.isUsable(reverseShare) ? reverseShare : null;
+    // Keep the upload form readable until the reverse share expires. Uses are
+    // enforced atomically when a share is created, so an upload that consumed
+    // the final use can still reload the page and resume its in-progress share
+    // instead of losing the page with a false "invalid" error.
+    return reverseShare && new Date() <= reverseShare.shareExpiration
+      ? reverseShare
+      : null;
   }
 
   async getAllByUser(userId: string) {

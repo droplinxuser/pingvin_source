@@ -147,13 +147,13 @@ export class TrendingService {
       const multi = client.multi();
       if (meta) {
         // One metadata entry per share instead of one copy in every hour
-        // bucket. The card payload is immutable until the share is edited
-        // (which deletes the key), so NX avoids rewriting it on every view.
-        // EXPIRE still refreshes the 25-hour TTL on each view.
+        // bucket. Always overwrite: an edit invalidates the key, and a view
+        // that was already in flight may still hold the previous payload.
+        // Letting it win once is harmless because the next view refreshes the
+        // entry; `NX` would let the stale copy survive for 25 hours.
         const metaKey = metaKeyFor(share.id);
         multi.set(metaKey, JSON.stringify(meta), {
           EX: META_TTL_SECONDS,
-          NX: true,
         });
         multi.expire(metaKey, META_TTL_SECONDS);
       }
@@ -189,8 +189,21 @@ export class TrendingService {
     // cache normally makes this a non-issue, but a restart or expiry can
     // otherwise produce one union per concurrent request.
     const pendingItems = await (this.pendingRanking ?? this.startRankingRead());
-    if (!pendingItems) return [];
+    if (!pendingItems) return this.getTrendingFallback(resultLimit);
     return pendingItems.slice(0, resultLimit);
+  }
+
+  /**
+   * Degraded ranking used when Valkey is disabled or unreachable. There is no
+   * 24-hour view data outside Valkey, so reuse the newest-media scan and order
+   * it by the lifetime view counter. This keeps the page useful instead of
+   * presenting a permanent empty state.
+   */
+  private async getTrendingFallback(limit: number): Promise<TrendingShare[]> {
+    const recent = await this.getRecentList(false, RECENT_MAX_RESULT);
+    return [...recent]
+      .sort((a, b) => b.views - a.views)
+      .slice(0, Math.min(limit, RECENT_MAX_RESULT));
   }
 
   private startRankingRead(): Promise<TrendingShare[] | undefined> {

@@ -12,7 +12,7 @@ import {
   StreamableFile,
   UseGuards,
 } from "@nestjs/common";
-import { SkipThrottle, Throttle } from "@nestjs/throttler";
+import { Throttle } from "@nestjs/throttler";
 import * as contentDisposition from "content-disposition";
 import { createReadStream } from "fs";
 import { Request, Response } from "express";
@@ -39,6 +39,9 @@ import { FileService } from "./file.service";
 import { FileSecurityGuard } from "./guard/fileSecurity.guard";
 
 const VALID_ID_REGEX = /^[a-zA-Z0-9-]*={0,2}$/;
+// A ZIP subset is a user-controlled query value. Bound it so one request
+// cannot build an arbitrarily large archive selection.
+const MAX_ZIP_FILE_IDS = 500;
 
 type FileRequest = Request & {
   shareIsPublic?: boolean;
@@ -155,7 +158,7 @@ export class FileController {
     );
   }
 
-  @SkipThrottle({ default: true })
+  @Throttle({ default: { limit: 60, ttl: 60 * 1000 } })
   @Get("zip")
   @UseGuards(FileSecurityGuard)
   async getZip(
@@ -179,7 +182,7 @@ export class FileController {
           ...new Set(
             files.split(",").filter((id) => id && VALID_ID_REGEX.test(id)),
           ),
-        ]
+        ].slice(0, MAX_ZIP_FILE_IDS)
       : undefined;
 
     const zipStream = await this.fileService.getZip(
@@ -189,10 +192,12 @@ export class FileController {
     );
 
     try {
-      await this.shareService.reserveDownload(
-        shareId,
-        (req as FileRequest).guardShare?.security?.maxDownloads,
-      );
+      if (req.method !== "HEAD") {
+        await this.shareService.reserveDownload(
+          shareId,
+          (req as FileRequest).guardShare?.security?.maxDownloads,
+        );
+      }
     } catch (error) {
       zipStream.destroy();
       throw error;
@@ -220,7 +225,7 @@ export class FileController {
     return new StreamableFile(zipStream);
   }
 
-  @SkipThrottle({ default: true })
+  @Throttle({ default: { limit: 600, ttl: 60 * 1000 } })
   @Get(":fileId")
   @UseGuards(FileSecurityGuard)
   async getFile(
@@ -277,7 +282,7 @@ export class FileController {
 
     if (
       storageProvider === "S3" &&
-      !(isDownload && (req as FileRequest).shareDownloadLimited)
+      !(req as FileRequest).shareDownloadLimited
     ) {
       const url = await this.fileService.getPreSignedDownloadUrl(
         shareId,
@@ -304,7 +309,10 @@ export class FileController {
     const file = await this.fileService.get(
       shareId,
       fileId,
-      req.headers.range,
+      // Download-capped shares always stream the complete object from the
+      // origin. Ignoring Range closes the "request bytes 1-" bypass and keeps
+      // the one-time slot tied to a single counted response.
+      (req as FileRequest).shareDownloadLimited ? undefined : req.headers.range,
       storageProvider,
     );
 
@@ -319,7 +327,11 @@ export class FileController {
       return;
     }
 
-    if (isDownload && shouldCountDownload(req)) {
+    if (
+      req.method !== "HEAD" &&
+      ((req as FileRequest).shareDownloadLimited ||
+        (isDownload && shouldCountDownload(req)))
+    ) {
       try {
         await this.shareService.reserveDownload(
           shareId,

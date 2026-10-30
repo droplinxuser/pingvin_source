@@ -33,6 +33,13 @@ export default <MantineThemeOverride>{
   },
   primaryColor: "victoria",
   components: {
+    PasswordInput: {
+      defaultProps: {
+        // Mantine's visibility toggle is icon-only; without a label it is an
+        // unnamed button for screen readers on every password form.
+        visibilityToggleLabel: "Show password",
+      },
+    },
     Modal: {
       styles: (theme) => ({
         title: {

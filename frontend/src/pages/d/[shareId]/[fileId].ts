@@ -19,6 +19,7 @@ export function getServerSideProps(context: GetServerSidePropsContext) {
   const recipientId = getQueryString(context.query.recipient);
 
   setNoStoreHeaders(context.res);
+  context.res.setHeader("X-Robots-Tag", "noindex, nofollow");
 
   if (!VALID_ID.test(shareId) || !VALID_ID.test(fileId)) {
     return { notFound: true } as const;

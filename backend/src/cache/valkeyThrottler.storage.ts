@@ -49,8 +49,7 @@ return {hits, math.ceil((expiresAt - now) / 1000), 0, 0}
 /**
  * Stores throttler buckets in the shared Valkey connection so multiple
  * instances and restarts see the same limits. Visitor keys are already SHA-256
- * hashes of the IP + User-Agent tracker, so raw client identifiers are not
- * stored.
+ * hashes of the client IP tracker, so raw client identifiers are not stored.
  * The in-memory store remains the fallback when Valkey is disabled or
  * unreachable.
  */

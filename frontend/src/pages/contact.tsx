@@ -12,11 +12,13 @@ import {
 } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { GetServerSidePropsContext } from "next";
+import Link from "next/link";
 import { useState } from "react";
 import { FormattedMessage } from "react-intl";
 import { TbAlertTriangle } from "react-icons/tb";
 import Meta from "../components/Meta";
 import TurnstileWidget from "../components/contact/TurnstileWidget";
+import useHomeHref from "../hooks/homeHref.hook";
 import useSiteMeta from "../hooks/siteMeta.hook";
 import useTranslate from "../hooks/useTranslate.hook";
 import contactService, { ContactConfig } from "../services/contact.service";
@@ -60,6 +62,7 @@ export async function getServerSideProps({
 const Contact = ({ config }: { config: ContactConfig }) => {
   const t = useTranslate();
   const { siteName, baseUrl } = useSiteMeta();
+  const homeHref = useHomeHref();
   const [token, setToken] = useState("");
   const [loading, setLoading] = useState(false);
   const [widgetKey, setWidgetKey] = useState(0);
@@ -190,7 +193,13 @@ const Contact = ({ config }: { config: ContactConfig }) => {
           title={t("contact.unavailable.title")}
         >
           <Text size="sm">{t("contact.unavailable.description")}</Text>
-          <Anchor href="/" size="sm" mt="xs" display="inline-block">
+          <Anchor
+            component={Link}
+            href={homeHref}
+            size="sm"
+            mt="xs"
+            display="inline-block"
+          >
             <FormattedMessage id="common.button.go-home" />
           </Anchor>
         </Alert>

@@ -74,6 +74,8 @@ const ShareActions = ({
       security: {
         passwordProtected: share.hasPassword,
         maxViews: share.maxViews,
+        maxDownloads: share.maxDownloads,
+        downloadCount: share.downloadCount,
         restrictToRecipients: false,
       },
     };
@@ -94,6 +96,9 @@ const ShareActions = ({
                 hasPassword:
                   updatedShare.security?.passwordProtected ?? prev.hasPassword,
                 maxViews: updatedShare.security?.maxViews,
+                maxDownloads: updatedShare.security?.maxDownloads,
+                downloadCount:
+                  updatedShare.security?.downloadCount ?? prev.downloadCount,
               }
             : prev,
         );
@@ -140,15 +145,17 @@ const ShareActions = ({
         title={share?.name || t("share.custom.share.title")}
         size="sm"
       />
-      <Button
-        variant="light"
-        color="red.9"
-        leftIcon={<TbFlag />}
-        aria-label={t("share.custom.report.button")}
-        onClick={handleReportClick}
-      >
-        <FormattedMessage id="share.custom.report.button" />
-      </Button>
+      {!isOwnerOrAdmin && (
+        <Button
+          variant="light"
+          color="red.9"
+          leftIcon={<TbFlag />}
+          aria-label={t("share.custom.report.button")}
+          onClick={handleReportClick}
+        >
+          <FormattedMessage id="share.custom.report.button" />
+        </Button>
+      )}
       {isOwner && (
         <HoverTip label={t("share.custom.manage-files")}>
           <ActionIcon

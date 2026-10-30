@@ -63,8 +63,8 @@ const cacheHeaders = (value) => [
 // service worker must be revalidated so new builds are picked up.
 const CACHE_RULES = [
   ["/_next/static/:path*", "public, max-age=31536000, immutable"],
-  ["/img/:path*", "public, max-age=86400, stale-while-revalidate=604800"],
-  ["/favicon.ico", "public, max-age=86400, stale-while-revalidate=604800"],
+  ["/img/:path*", "public, max-age=300, stale-while-revalidate=3600"],
+  ["/favicon.ico", "public, max-age=300, stale-while-revalidate=3600"],
   ["/sw.js", "no-cache"],
   ["/workbox-:path(.*)", "public, max-age=31536000, immutable"],
   ["/worker-:path(.*)", "public, max-age=31536000, immutable"],

@@ -6,8 +6,8 @@ import type { NextRequest } from "next/server";
  * Backend API routes are limited by the Nest visitor bucket. Cloudflare absorbs
  * cacheable HTML before it reaches this layer, so only the non-cacheable page
  * responses are counted here. The identifier is the same visitor key used by
- * the API limiter: client IP (Cloudflare / proxy aware) plus browser User-Agent,
- * hashed before it is stored. No cookie is issued.
+ * the API limiter: the client IP (Cloudflare / proxy aware), hashed before it
+ * is stored. No cookie is issued.
  */
 const LIMIT = 90;
 const WINDOW_MS = 60 * 1000;
@@ -35,9 +35,9 @@ const clientIp = (request: NextRequest): string => {
 };
 
 const hashVisitor = async (request: NextRequest): Promise<string> => {
-  const value = `ipua:${clientIp(request)}\n${
-    request.headers.get("user-agent")?.trim() || "unknown"
-  }`;
+  // IP only: the User-Agent is attacker-controlled and would let a script
+  // rotate its own bucket to bypass the page limit.
+  const value = `ip:${clientIp(request)}`;
 
   try {
     const bytes = new TextEncoder().encode(value);

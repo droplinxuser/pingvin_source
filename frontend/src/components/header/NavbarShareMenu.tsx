@@ -15,7 +15,7 @@ const NavbarShareMneu = () => {
   return (
     <Menu position="bottom-start" withinPortal onChange={setMenuOpened}>
       <Menu.Target>
-        <ActionIcon>
+        <ActionIcon aria-label={t("common.button.shares")}>
           <HoverTip label={t("common.button.shares")} disabled={menuOpened}>
             <div>
               <TbLink />

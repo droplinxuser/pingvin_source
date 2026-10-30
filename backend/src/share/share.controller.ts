@@ -164,7 +164,7 @@ export class ShareController {
     const items = await this.trending.getTrending(
       Number.isFinite(parsedLimit) ? parsedLimit : undefined,
     );
-    response.set(getEdgeCacheHeaders(60));
+    response.set(items.length ? getEdgeCacheHeaders(60) : NO_STORE_HEADERS);
     void this.fileService.warmShareThumbnails(items.map((item) => item.id));
     return items;
   }
@@ -177,7 +177,9 @@ export class ShareController {
     @Res({ passthrough: true }) response: Response,
   ): Promise<TrendingCountry[]> {
     const countries = await this.trending.getTrendingCountries();
-    response.set(getEdgeCacheHeaders(300));
+    response.set(
+      countries.length ? getEdgeCacheHeaders(300) : NO_STORE_HEADERS,
+    );
     void this.fileService.warmShareThumbnails(
       countries.flatMap((country) => country.shares.map((item) => item.id)),
     );
@@ -196,7 +198,7 @@ export class ShareController {
     const items = await this.trending.getRecent(
       Number.isFinite(parsedLimit) ? parsedLimit : undefined,
     );
-    response.set(getEdgeCacheHeaders(60));
+    response.set(items.length ? getEdgeCacheHeaders(60) : NO_STORE_HEADERS);
     void this.fileService.warmShareThumbnails(items.map((item) => item.id));
     return items;
   }
@@ -213,7 +215,7 @@ export class ShareController {
     const items = await this.trending.getRecentFiles(
       Number.isFinite(parsedLimit) ? parsedLimit : undefined,
     );
-    response.set(getEdgeCacheHeaders(60));
+    response.set(items.length ? getEdgeCacheHeaders(60) : NO_STORE_HEADERS);
     void this.fileService.warmShareThumbnails(items.map((item) => item.id));
     return items;
   }
@@ -353,7 +355,10 @@ export class ShareController {
       (request as Request & { shareIsPublic?: boolean }).shareIsPublic === true;
     // Thumbnails are keyed by share id and refreshed when the share is edited,
     // so the edge may keep them for an hour.
-    const cacheHeaders = getImageCacheHeaders(isPublic, `"${id}-thumbnail"`);
+    const cacheHeaders = getImageCacheHeaders(
+      isPublic,
+      `"${id}-${Math.round(thumbnail.mtimeMs)}-thumbnail"`,
+    );
     if (isNotModified(request, cacheHeaders.ETag)) {
       response.status(304).set(cacheHeaders).end();
       return;
@@ -403,17 +408,22 @@ export class ShareController {
   ) {
     const isPublic = (request as Request & { shareIsPublic?: boolean })
       .shareIsPublic;
-    // Only the versioned URL is safe to keep for a day. A caller that omits
-    // `v` would otherwise pin the current comment page at the edge, hiding
-    // later edits/deletions until the TTL expires.
+    const result = await this.commentService.list(id, page);
+
+    // Only the URL carrying the *current* comment version is safe to keep on
+    // the edge for a day. A caller that omits `v` or guesses a future version
+    // would otherwise pin today's comments under a key that later becomes the
+    // live version.
     const versioned =
-      typeof request.query.v === "string" && /^\d+$/.test(request.query.v);
+      typeof request.query.v === "string" &&
+      /^\d+$/.test(request.query.v) &&
+      Number(request.query.v) === result.version;
     response.set(
       isPublic && versioned
         ? getEdgeCacheHeaders(COMMENTS_EDGE_CACHE_SECONDS)
         : NO_STORE_HEADERS,
     );
-    return this.commentService.list(id, page);
+    return result;
   }
 
   @Throttle({
@@ -499,6 +509,7 @@ export class ShareController {
   async create(
     @Body() body: CreateShareDTO,
     @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
     @GetUser() user: User,
   ) {
     const { reverse_share_token } = request.cookies;
@@ -511,6 +522,27 @@ export class ShareController {
       ...getUploaderInfo(request),
       visitors: [],
     });
+
+    // Give an anonymous uploader a capability cookie so later chunk/revert/
+    // delete calls can prove they created this share. Reverse-share uploads
+    // already carry reverse_share_token instead.
+    if (!user && !reverse_share_token) {
+      const ownerToken = this.jwtService.sign(
+        { shareOwner: share.id },
+        {
+          secret: this.config.get("internal.jwtSecret"),
+          expiresIn: "30d",
+        },
+      );
+      response.cookie(`share_${share.id}_owner`, ownerToken, {
+        path: `/api/shares/${share.id}`,
+        httpOnly: true,
+        sameSite: "lax",
+        secure: useSecureCookies(this.config),
+        maxAge: 30 * 24 * 60 * 60 * 1000,
+      });
+    }
+
     return new ShareDTO().from(share);
   }
 
@@ -548,14 +580,18 @@ export class ShareController {
     @GetShare() share: Share,
   ) {
     const isDeleterAdmin = user?.isAdmin === true;
-    await this.shareService.remove(id, isDeleterAdmin, share);
+    await this.shareService.remove(id, isDeleterAdmin, share, user?.id);
   }
 
   @Post(":id/expire")
   @HttpCode(200)
   @UseGuards(IdValidation, ShareOwnerGuard)
-  async expire(@Param("id") id: string, @GetShare() share: Share) {
-    await this.shareService.expire(id, share);
+  async expire(
+    @Param("id") id: string,
+    @GetUser() user: User,
+    @GetShare() share: Share,
+  ) {
+    await this.shareService.expire(id, share, user?.id);
   }
 
   @Throttle({

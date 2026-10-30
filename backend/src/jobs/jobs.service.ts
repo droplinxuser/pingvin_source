@@ -101,7 +101,7 @@ export class JobsService {
           { updatedAt: { equals: null }, createdAt: { lt: cutoff } },
         ],
       },
-      select: { id: true },
+      select: { id: true, reverseShareId: true },
     });
 
     for (const unfinishedShare of unfinishedShares) {
@@ -109,6 +109,16 @@ export class JobsService {
       await this.prisma.share.delete({
         where: { id: unfinishedShare.id },
       });
+      // An abandoned reverse-share upload must not permanently consume one of
+      // the owner's uses.
+      if (unfinishedShare.reverseShareId) {
+        await this.prisma.reverseShare
+          .update({
+            where: { id: unfinishedShare.reverseShareId },
+            data: { remainingUses: { increment: 1 } },
+          })
+          .catch(() => {});
+      }
     }
 
     if (unfinishedShares.length > 0) {

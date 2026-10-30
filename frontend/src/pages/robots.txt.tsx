@@ -22,6 +22,7 @@ const buildFallbackRobots = (baseUrl: string) => {
     "Disallow: /error",
     "Disallow: /api",
     "Disallow: /s/",
+    "Disallow: /d/",
     "Disallow: /share/*/edit",
     "Disallow: /*?",
     "",

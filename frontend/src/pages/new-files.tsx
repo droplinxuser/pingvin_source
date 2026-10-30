@@ -15,7 +15,11 @@ export async function getServerSideProps({
 }: GetServerSidePropsContext) {
   const apiURL = process.env.API_URL || "http://localhost:8080";
   const initialItems = await fetchShareList(apiURL, "recent-files", 200);
-  setListingCacheHeaders(req, res, initialItems !== null);
+  setListingCacheHeaders(
+    req,
+    res,
+    initialItems !== null && initialItems.length > 0,
+  );
   return { props: { initialItems } };
 }
 
@@ -49,6 +53,7 @@ const NewFiles = ({
         initialItems={initialItems}
         loadItems={shareService.getRecentFiles}
         showDescription={false}
+        showFileNames
         testId="recent-files-list"
         title={t("newFiles.custom.title")}
         description={t("newFiles.custom.description")}

@@ -1,6 +1,7 @@
 import {
   Anchor,
   Box,
+  Button,
   Container,
   createStyles,
   Group,
@@ -375,6 +376,8 @@ const TrendingToday = ({
   const [items, setItems] = useState<TrendingShare[]>(initialItems ?? []);
   const [hasServerData, setHasServerData] = useState(hasInitialData);
   const [isLoading, setIsLoading] = useState(!hasInitialData);
+  const [loadError, setLoadError] = useState(false);
+  const [retryToken, setRetryToken] = useState(0);
   const [shouldLoad, setShouldLoad] = useState(hasInitialData);
   const [visibleCount, setVisibleCount] = useState(CARD_BATCH_SIZE);
   const sectionRef = useRef<HTMLElement>(null);
@@ -429,11 +432,14 @@ const TrendingToday = ({
     // and skips this branch.
     let cancelled = false;
     setIsLoading(true);
+    setLoadError(false);
     loadItems(limit)
       .then((trending) => {
         if (!cancelled) setItems(trending);
       })
-      .catch(() => {})
+      .catch(() => {
+        if (!cancelled) setLoadError(true);
+      })
       .finally(() => {
         if (!cancelled) setIsLoading(false);
       });
@@ -441,7 +447,7 @@ const TrendingToday = ({
     return () => {
       cancelled = true;
     };
-  }, [hasServerData, shouldLoad, limit, loadItems]);
+  }, [hasServerData, shouldLoad, limit, loadItems, retryToken]);
 
   const showPlaceholder = isLoading || (!shouldLoad && !hasServerData);
 
@@ -504,7 +510,20 @@ const TrendingToday = ({
 
       {children}
 
-      {!showPlaceholder && items.length === 0 ? (
+      {!showPlaceholder && loadError ? (
+        <Group position="center" mt="md" spacing="xs">
+          <Text className={classes.subheading}>
+            {t("common.custom.load-error")}
+          </Text>
+          <Button
+            variant="light"
+            size="xs"
+            onClick={() => setRetryToken((n) => n + 1)}
+          >
+            {t("common.custom.retry")}
+          </Button>
+        </Group>
+      ) : !showPlaceholder && items.length === 0 ? (
         <Text className={classes.subheading} mt="xs">
           {emptyText}
         </Text>

@@ -12,9 +12,11 @@ const showEnterPasswordModal = (
 ) => {
   const t = translateOutsideContext();
   return modals.openModal({
-    closeOnClickOutside: false,
-    withCloseButton: false,
-    closeOnEscape: false,
+    // The gate is not a trap: visitors who do not know the password can close
+    // it and use the normal site navigation.
+    closeOnClickOutside: true,
+    withCloseButton: true,
+    closeOnEscape: true,
     title: t("share.modal.password.title"),
     children: <Body submitCallback={submitCallback} />,
   });
@@ -50,6 +52,8 @@ const Body = ({
           <PasswordInput
             variant="filled"
             placeholder={t("share.modal.password")}
+            aria-label={t("share.modal.password")}
+            autoFocus
             error={passwordWrong && t("share.modal.error.invalid-password")}
             onFocus={() => setPasswordWrong(false)}
             onChange={(e) => setPassword(e.target.value)}

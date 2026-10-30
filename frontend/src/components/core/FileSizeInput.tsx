@@ -54,10 +54,12 @@ const FileSizeInput = ({
         },
       }}
       onChange={(event) => {
-        const unit = event.currentTarget
+        const nextUnit = event.currentTarget
           .value as (typeof units)[number]["value"];
-        setUnit(unit);
-        onChange(multipliers[unit] * inputValue);
+        // Keep the stored byte count unchanged and only convert the displayed
+        // number, so "512 MB" does not silently become 512 GB.
+        setUnit(nextUnit);
+        setInputValue(value / multipliers[nextUnit]);
       }}
     />
   );

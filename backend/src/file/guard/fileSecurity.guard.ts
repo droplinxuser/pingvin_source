@@ -115,14 +115,17 @@ export class FileSecurityGuard extends ShareSecurityGuard {
       if (share.security?.password)
         throw new ForbiddenException(this._i18n.t("file.passwordProtected"));
 
-      // The page view that consumed the last allowed view must still be able
-      // to download its files. Unlimited shares need no extra database query.
+      // A view-limited share must be opened through its page first: the page
+      // issues a share token cookie, and only that token may read the files
+      // after the view has been counted. Without this check a copied file URL
+      // would stay downloadable forever once the view limit was reached.
       if (share.security?.maxViews) {
-        this._shareService.assertViewLimit(
-          await this._shareService.getCurrentViews(share.id),
-          share.security.maxViews,
-          true,
-        );
+        const isCreator = !!user && share.creatorId === user.id;
+        if (!isCreator)
+          throw new ForbiddenException(
+            this._i18n.t("share.tokenRequired"),
+            "share_token_required",
+          );
       }
       return true;
     } else {

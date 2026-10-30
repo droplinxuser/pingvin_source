@@ -39,7 +39,7 @@ function CopyTextField(props: { link: string; toggleQR?: () => void }) {
           setTextClicked(true);
         }
       }}
-      rightSectionWidth={90}
+      rightSectionWidth={120}
       rightSection={
         <div style={{ display: "flex", alignItems: "center" }}>
           <Tooltip

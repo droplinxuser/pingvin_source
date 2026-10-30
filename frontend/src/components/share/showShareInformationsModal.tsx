@@ -36,6 +36,7 @@ const showShareInformationsModal = (
   defaultAppUrl: string,
   onShareUpdated?: (share: MyShare) => void,
   initiallyEditing = false,
+  canManageFiles = false,
 ) => {
   const t = translateOutsideContext();
 
@@ -49,6 +50,7 @@ const showShareInformationsModal = (
         defaultAppUrl={defaultAppUrl}
         onShareUpdated={onShareUpdated}
         initiallyEditing={initiallyEditing}
+        canManageFiles={canManageFiles}
       />
     ),
   });
@@ -61,6 +63,7 @@ const Body = ({
   defaultAppUrl,
   onShareUpdated,
   initiallyEditing,
+  canManageFiles,
 }: {
   share: MyShare;
   maxShareSize: number;
@@ -68,6 +71,7 @@ const Body = ({
   defaultAppUrl: string;
   onShareUpdated?: (share: MyShare) => void;
   initiallyEditing: boolean;
+  canManageFiles: boolean;
 }) => {
   const t = translateOutsideContext();
   const [currentShare, setCurrentShare] = useState(share);
@@ -194,13 +198,15 @@ const Body = ({
           {formattedMaxShareSize}
         </Text>
       </Flex>
-      <Button
-        component={Link}
-        href={`/share/${currentShare.id}/edit`}
-        variant="light"
-      >
-        <FormattedMessage id="share.custom.manage-files" />
-      </Button>
+      {canManageFiles && (
+        <Button
+          component={Link}
+          href={`/share/${currentShare.id}/edit`}
+          variant="light"
+        >
+          <FormattedMessage id="share.custom.manage-files" />
+        </Button>
+      )}
       <Button variant="light" onClick={() => setIsEditing(true)}>
         {t("common.button.edit")}
       </Button>

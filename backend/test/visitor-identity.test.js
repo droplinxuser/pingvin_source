@@ -30,28 +30,28 @@ function run({
   });
 }
 
-test("keys by IP and user agent without setting a cookie", async () => {
+test("keys by IP without setting a cookie", async () => {
   const first = await run();
   const same = await run();
 
-  assert.equal(first.visitorKey, "ipua:203.0.113.7\nMozilla/5.0 Test");
+  assert.equal(first.visitorKey, "ip:203.0.113.7");
   assert.equal(same.visitorKey, first.visitorKey);
 });
 
-test("separates different IPs and user agents", async () => {
+test("ignores the attacker-controlled user agent", async () => {
   const base = await run();
   const otherUserAgent = await run({ userAgent: "Other/1.0" });
   const otherIp = await run({ ip: "198.51.100.9" });
 
-  assert.notEqual(otherUserAgent.visitorKey, base.visitorKey);
+  assert.equal(otherUserAgent.visitorKey, base.visitorKey);
   assert.notEqual(otherIp.visitorKey, base.visitorKey);
 });
 
-test("uses a stable placeholder when the user agent is missing", async () => {
+test("stays stable when the user agent is missing", async () => {
   const first = await run({ omitUserAgent: true });
   const second = await run({ omitUserAgent: true });
 
-  assert.equal(first.visitorKey, "ipua:203.0.113.7\nunknown");
+  assert.equal(first.visitorKey, "ip:203.0.113.7");
   assert.equal(second.visitorKey, first.visitorKey);
 });
 
@@ -60,5 +60,5 @@ test("ignores legacy visitor cookies", async () => {
     headers: { cookie: "pingvin_visitor=forged" },
   });
 
-  assert.equal(request.visitorKey, "ipua:203.0.113.7\nMozilla/5.0 Test");
+  assert.equal(request.visitorKey, "ip:203.0.113.7");
 });

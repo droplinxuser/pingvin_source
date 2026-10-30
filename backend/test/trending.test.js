@@ -256,7 +256,7 @@ test("records public shares with image or video media regardless of age", async 
   assert.deepEqual(methods, ["set", "expire", "hIncrBy", "expire"]);
   const hour = Math.floor(Date.now() / (60 * 60 * 1000));
   assert.equal(queue[0][1][2].EX, 25 * 60 * 60);
-  assert.equal(queue[0][1][2].NX, true);
+  assert.equal(queue[0][1][2].NX, undefined);
   assert.deepEqual(queue[1][1], ["pingvin:trending:meta:share", 25 * 60 * 60]);
   assert.deepEqual(queue[2][1], [
     `pingvin:trending:geo:hour:${hour}`,

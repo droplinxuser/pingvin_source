@@ -35,6 +35,7 @@ import showErrorModal from "../../../components/share/showErrorModal";
 import useHomeHref from "../../../hooks/homeHref.hook";
 import useSiteMeta from "../../../hooks/siteMeta.hook";
 import useTranslate from "../../../hooks/useTranslate.hook";
+import useUser from "../../../hooks/user.hook";
 import shareService from "../../../services/share.service";
 import { FileMetaData } from "../../../types/File.type";
 import { Share as ShareType, ShareSeo } from "../../../types/share.type";
@@ -136,6 +137,7 @@ const SharePage = ({
   const homeHref = useHomeHref();
   const t = useTranslate();
   const intl = useIntl();
+  const { user: currentUser } = useUser();
   const { siteName, baseUrl } = useSiteMeta();
 
   const [share, setShare] = useState<ShareType>();
@@ -182,7 +184,11 @@ const SharePage = ({
       : skeletonMediaCount,
     30,
   );
-  const hasGalleryMedia = galleryPlaceholderCount > 0;
+  // Download-capped shares are intentionally download-only: opening a video
+  // or text preview would otherwise consume the one-time slot before the
+  // visitor chose to download.
+  const downloadLimited = !!share?.maxDownloads;
+  const hasGalleryMedia = !downloadLimited && galleryPlaceholderCount > 0;
   const fileSkeletonCount = displayFileCount || 5;
   const metaTitle = indexable
     ? subject
@@ -434,6 +440,17 @@ const SharePage = ({
       return;
     }
 
+    // A view-limited share needs a token before its payload can load. The SEO
+    // payload exposes this hint so the first request does not have to fail
+    // with a 403 that browsers report as a console error.
+    if (
+      seo?.requiresToken &&
+      !window.localStorage.getItem(`share_ready_${shareId}`)
+    ) {
+      void getShareToken();
+      return;
+    }
+
     getFiles();
   }, []);
 
@@ -471,12 +488,25 @@ const SharePage = ({
         <ShareMessage
           title={<FormattedMessage id="share.error.restricted.title" />}
           description={
-            <FormattedMessage id="share.error.restricted.description" />
+            currentUser ? (
+              <FormattedMessage id="share.error.restricted.description.member" />
+            ) : (
+              <FormattedMessage id="share.error.restricted.description" />
+            )
           }
-          action={{
-            href: `/auth/signIn?redirect=/share/${shareId}`,
-            label: <FormattedMessage id="share.error.restricted.button" />,
-          }}
+          action={
+            currentUser
+              ? {
+                  href: homeHref,
+                  label: <FormattedMessage id="common.button.go-home" />,
+                }
+              : {
+                  href: `/auth/signIn?redirect=/share/${shareId}`,
+                  label: (
+                    <FormattedMessage id="share.error.restricted.button" />
+                  ),
+                }
+          }
         />
         <Ads />
       </>
@@ -576,31 +606,34 @@ const SharePage = ({
         />
       </Box>
 
-      <LazySection
-        placeholder={
-          <MediaPreviewGallerySkeleton
-            count={galleryPlaceholderCount}
-            thumbnailUrl={galleryThumbnailUrl}
-            alt={indexable ? displayName : undefined}
-          />
-        }
-        rootMargin="600px"
-        busy={!share}
-      >
-        {share ? (
-          <MediaPreviewGallery
-            shareId={shareId}
-            files={share.files}
-            posterUrl={galleryThumbnailUrl}
-          />
-        ) : (
-          <MediaPreviewGallerySkeleton
-            count={galleryPlaceholderCount}
-            thumbnailUrl={galleryThumbnailUrl}
-            alt={indexable ? displayName : undefined}
-          />
-        )}
-      </LazySection>
+      {!downloadLimited && (
+        <LazySection
+          placeholder={
+            <MediaPreviewGallerySkeleton
+              count={galleryPlaceholderCount}
+              thumbnailUrl={galleryThumbnailUrl}
+              alt={indexable ? displayName : undefined}
+            />
+          }
+          rootMargin="600px"
+          busy={!share}
+        >
+          {share ? (
+            <MediaPreviewGallery
+              shareId={shareId}
+              files={share.files}
+              posterUrl={galleryThumbnailUrl}
+              recipientId={recipientId}
+            />
+          ) : (
+            <MediaPreviewGallerySkeleton
+              count={galleryPlaceholderCount}
+              thumbnailUrl={galleryThumbnailUrl}
+              alt={indexable ? displayName : undefined}
+            />
+          )}
+        </LazySection>
+      )}
 
       <Ads gallery={hasGalleryMedia} />
 

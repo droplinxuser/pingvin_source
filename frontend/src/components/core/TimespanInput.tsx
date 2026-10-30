@@ -3,6 +3,15 @@ import { Timespan } from "../../types/timespan.type";
 import { NativeSelect, NumberInput } from "@mantine/core";
 import useTranslate from "../../hooks/useTranslate.hook";
 
+const unitMinutes: Record<Timespan["unit"], number> = {
+  minutes: 1,
+  hours: 60,
+  days: 60 * 24,
+  weeks: 60 * 24 * 7,
+  months: 60 * 24 * 30,
+  years: 60 * 24 * 365,
+};
+
 const TimespanInput = ({
   label,
   value,
@@ -60,9 +69,17 @@ const TimespanInput = ({
         },
       }}
       onChange={(event) => {
-        const unit = event.currentTarget.value as Timespan["unit"];
-        setUnit(unit);
-        onChange({ value: inputValue, unit });
+        const nextUnit = event.currentTarget.value as Timespan["unit"];
+        // Convert the displayed number when the unit changes so "3 months"
+        // does not silently become "3 days".
+        const minutes = inputValue * unitMinutes[unit];
+        const nextValue = Math.max(
+          0,
+          Math.round(minutes / unitMinutes[nextUnit]),
+        );
+        setUnit(nextUnit);
+        setInputValue(nextValue);
+        onChange({ value: nextValue, unit: nextUnit });
       }}
     />
   );

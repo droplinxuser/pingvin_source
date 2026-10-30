@@ -29,7 +29,7 @@ export async function getServerSideProps({
   setListingCacheHeaders(
     req,
     res,
-    initialItems !== null && initialCountries !== null,
+    initialItems !== null && initialItems.length > 0,
   );
   return {
     props: {

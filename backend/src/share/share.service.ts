@@ -90,9 +90,9 @@ const SHARE_INCLUDE = {
   recipients: { select: { email: true } },
 } satisfies Prisma.ShareInclude;
 
-// The admin table only exposes the derived share size, so it does not need
-// file names or ids for every row in the page.
-const ADMIN_SHARE_INCLUDE = {
+// Admin and account tables only expose the derived share size, so they do not
+// need file names or ids for every row in the page.
+const SHARE_SIZE_INCLUDE = {
   ...SHARE_INCLUDE,
   files: { select: { size: true } },
 } satisfies Prisma.ShareInclude;
@@ -104,6 +104,9 @@ export type ShareSeo = {
   // first issuing a request that is guaranteed to return 403 (which browsers
   // report as a console error).
   requiresPassword?: boolean;
+  // A view-limited share needs its page token before the payload can load.
+  // Exposing the hint avoids a guaranteed 403 in the browser console.
+  requiresToken?: boolean;
   name?: string;
   description?: string;
   createdAt?: Date;
@@ -338,6 +341,7 @@ export class ShareService {
             allowShare: true,
             maxShares: true,
             shareSizeLimit: true,
+            storageQuotaLimit: true,
           },
         },
         reverseShare: {
@@ -351,6 +355,7 @@ export class ShareService {
                 username: true,
                 displayName: true,
                 email: true,
+                storageQuotaLimit: true,
               },
             },
           },
@@ -378,6 +383,32 @@ export class ShareService {
     );
     if (sizeLimit > 0 && shareSize > sizeLimit) {
       throw new BadRequestException(this.i18n.t("file.maxSizeExceeded"));
+    }
+
+    // Chunks are committed as File rows before completion, so the account
+    // usage query already includes this share. Re-check it here to catch a
+    // burst of concurrent uploads that raced past the per-chunk reservation.
+    const quotaOwner = share.reverseShare?.creator ?? share.creator;
+    if (quotaOwner?.storageQuotaLimit) {
+      const quotaLimit = parseInt(quotaOwner.storageQuotaLimit);
+      const activeStorageUsage = await getUserActiveStorageUsage(
+        this.prisma,
+        quotaOwner.id,
+      );
+      if (quotaLimit > 0 && activeStorageUsage > quotaLimit) {
+        const exceededSize = byteToHumanSizeString(
+          activeStorageUsage - quotaLimit,
+        );
+        throw new BadRequestException(
+          share.reverseShare
+            ? this.i18n.t("share.reverseShareQuotaExceeded", {
+                args: { exceededSize },
+              })
+            : this.i18n.t("share.storageQuotaExceeded", {
+                args: { exceededSize },
+              }),
+        );
+      }
     }
 
     if (share.creator) {
@@ -555,7 +586,7 @@ export class ShareService {
     sortBy?: string,
     sortDirection?: string,
   ) {
-    const include = ADMIN_SHARE_INCLUDE;
+    const include = SHARE_SIZE_INCLUDE;
 
     // Size is derived from the files, so it can't be sorted with a Prisma
     // orderBy clause. Order just the requested page in SQL instead of loading
@@ -637,7 +668,7 @@ export class ShareService {
       orderBy: {
         expiration: "desc",
       },
-      include: SHARE_INCLUDE,
+      include: SHARE_SIZE_INCLUDE,
     });
     return shares.map((share) => this.transformShare(share));
   }
@@ -793,6 +824,7 @@ export class ShareService {
         indexable: false,
         id: share.id,
         requiresPassword: !!share.security?.password,
+        requiresToken: !!share.security?.maxViews,
       };
 
     // The first 50 files are already loaded. A share at or below that limit
@@ -871,19 +903,27 @@ export class ShareService {
   async remove(
     shareId: string,
     isDeleterAdmin = false,
-    knownShare?: Pick<Share, "creatorId">,
+    knownShare?: Pick<Share, "creatorId"> & {
+      reverseShare?: { creatorId: string | null } | null;
+    },
+    deleterId?: string,
   ) {
     // The owner guard already loaded the share for the request.
     const share =
       knownShare ??
       (await this.prisma.share.findUnique({
         where: { id: shareId },
-        select: { creatorId: true },
+        select: {
+          creatorId: true,
+          reverseShare: { select: { creatorId: true } },
+        },
       }));
 
     if (!share) throw new NotFoundException(this.i18n.t("share.notFound"));
 
-    if (!share.creatorId && !isDeleterAdmin)
+    const isReverseShareOwner =
+      !!deleterId && share.reverseShare?.creatorId === deleterId;
+    if (!share.creatorId && !isDeleterAdmin && !isReverseShareOwner)
       throw new ForbiddenException(this.i18n.t("share.anonymousNoDelete"));
 
     await this.shareState.invalidateData(shareId);
@@ -895,17 +935,28 @@ export class ShareService {
     void this.searchService.invalidate();
   }
 
-  async expire(shareId: string, knownShare?: Pick<Share, "creatorId">) {
+  async expire(
+    shareId: string,
+    knownShare?: Pick<Share, "creatorId"> & {
+      reverseShare?: { creatorId: string | null } | null;
+    },
+    actorId?: string,
+  ) {
     const share =
       knownShare ??
       (await this.prisma.share.findUnique({
         where: { id: shareId },
-        select: { creatorId: true },
+        select: {
+          creatorId: true,
+          reverseShare: { select: { creatorId: true } },
+        },
       }));
 
     if (!share) throw new NotFoundException(this.i18n.t("share.notFound"));
 
-    if (!share.creatorId) {
+    const isReverseShareOwner =
+      !!actorId && share.reverseShare?.creatorId === actorId;
+    if (!share.creatorId && !isReverseShareOwner) {
       throw new ForbiddenException(this.i18n.t("share.anonymousNoExpire"));
     }
 
@@ -925,17 +976,25 @@ export class ShareService {
     shareId: string,
     body: UpdateShareDTO,
     user?: User,
-    share?: Share & { security?: ShareSecurity },
+    share?: Share & {
+      security?: ShareSecurity;
+      reverseShare?: { creatorId: string | null } | null;
+    },
   ) {
     const currentShare =
       share ||
       (await this.prisma.share.findUnique({
         where: { id: shareId },
-        include: { security: true },
+        include: {
+          security: true,
+          reverseShare: { select: { creatorId: true } },
+        },
       }));
 
     const isUpdaterAdmin = user?.isAdmin === true;
-    if (!currentShare.creatorId && !isUpdaterAdmin) {
+    const isReverseShareOwner =
+      !!user && currentShare?.reverseShare?.creatorId === user.id;
+    if (!currentShare?.creatorId && !isUpdaterAdmin && !isReverseShareOwner) {
       throw new ForbiddenException(this.i18n.t("share.anonymousNoUpdate"));
     }
 
@@ -1070,10 +1129,23 @@ export class ShareService {
    * Existing cleanup later removes the files and row.
    */
   async burnShare(shareId: string, graceMs = 0): Promise<void> {
+    const target = new Date(Date.now() + graceMs);
+    // Do not extend an existing grace window on every follow-up request, and
+    // do not shorten it either: only touches shares whose expiration is still
+    // farther away than the grace (or a legacy never-expiring share).
+    const threshold = new Date(
+      Date.now() + Math.max(graceMs, SHARE_LIMIT_GRACE_MS),
+    );
     try {
       await this.prisma.share.updateMany({
-        where: { id: shareId },
-        data: { expiration: new Date(Date.now() + graceMs) },
+        where: {
+          id: shareId,
+          OR: [
+            { expiration: { gt: threshold } },
+            { expiration: { equals: new Date(0) } },
+          ],
+        },
+        data: { expiration: target },
       });
     } catch (error) {
       this.logger.warn(`Could not burn share ${shareId}: ${error}`);

@@ -95,6 +95,7 @@ export type ShareSeo = {
   indexable: boolean;
   id: string;
   requiresPassword?: boolean;
+  requiresToken?: boolean;
   name?: string;
   description?: string;
   createdAt?: string;

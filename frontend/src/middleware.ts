@@ -77,7 +77,7 @@ export async function middleware(request: NextRequest) {
   // Cacheable anonymous public shells are absorbed by Cloudflare and do not
   // consume the visitor budget. Everything else (auth/account/admin/upload,
   // signed-in or theme/query variants, redirects and 404s) uses the same
-  // IP+User-Agent limit as the API visitor bucket. Link prefetches are cheap
+  // IP limit as the API visitor bucket. Link prefetches are cheap
   // background reads and must not exhaust the budget before a visitor follows
   // the link, so they are never counted.
   const isPrefetch = request.headers.get("x-middleware-prefetch") === "1";

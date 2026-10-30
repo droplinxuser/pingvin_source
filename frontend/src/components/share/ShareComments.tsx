@@ -543,6 +543,13 @@ const ShareComments = ({
             value={page}
             total={totalPages}
             onChange={(nextPage) => void loadPage(nextPage)}
+            getControlProps={(control) => ({
+              "aria-label": t(
+                control === "previous"
+                  ? "common.custom.pagination.previous"
+                  : "common.custom.pagination.next",
+              ),
+            })}
           />
         </Group>
       )}

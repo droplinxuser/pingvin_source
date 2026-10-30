@@ -19,7 +19,11 @@ export async function getServerSideProps({
   // must not be stored by the CDN. A single empty response cached during a
   // deployment would otherwise make every client transition render an error.
   // A failed backend request (`null`) is never cached either.
-  setListingCacheHeaders(req, res, initialItems !== null);
+  setListingCacheHeaders(
+    req,
+    res,
+    initialItems !== null && initialItems.length > 0,
+  );
   return { props: { initialItems } };
 }
 

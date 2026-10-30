@@ -244,13 +244,22 @@ export class SystemService {
     const configured = (this.configService.get("general.appUrl") as string)
       ?.trim()
       .replace(/\/+$/, "");
-    if (configured) return configured;
+    const isLocalConfigured =
+      !configured ||
+      /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(configured);
+    if (configured && !isLocalConfigured) return configured;
+
+    // In production the public URL must come from configuration. Deriving it
+    // from the request would let an attacker pin crawler artifacts (and the
+    // sitemap directory key) to an arbitrary Host/X-Forwarded-Host value.
+    if (process.env.NODE_ENV === "production") return "";
+    if (!request) return configured;
 
     const forwardedHost = request.headers["x-forwarded-host"];
     const host = Array.isArray(forwardedHost)
       ? forwardedHost[0]
       : forwardedHost || request.headers.host;
-    if (!host) return "";
+    if (!host) return configured;
 
     const forwardedProto = request.headers["x-forwarded-proto"];
     const proto = Array.isArray(forwardedProto)
@@ -296,6 +305,7 @@ export class SystemService {
       "Disallow: /error",
       "Disallow: /api",
       "Disallow: /s/",
+      "Disallow: /d/",
       "Disallow: /share/*/edit",
       // Query strings create duplicate share/auth variants and carry recipient
       // tokens. Canonical URLs never contain a query string.

@@ -126,22 +126,21 @@ export default function AppShellDemo() {
   };
 
   const updateConfigVariable = (configVariable: UpdateConfig) => {
-    if (configVariable.key === "general.appUrl") {
-      configVariable.value = sanitizeUrl(configVariable.value);
-    }
+    const next = {
+      ...configVariable,
+      value:
+        configVariable.key === "general.appUrl"
+          ? sanitizeUrl(configVariable.value)
+          : configVariable.value,
+    };
 
-    const index = updatedConfigVariables.findIndex(
-      (item) => item.key === configVariable.key,
-    );
-
-    if (index > -1) {
-      updatedConfigVariables[index] = {
-        ...updatedConfigVariables[index],
-        ...configVariable,
-      };
-    } else {
-      setUpdatedConfigVariables([...updatedConfigVariables, configVariable]);
-    }
+    setUpdatedConfigVariables((current) => {
+      const index = current.findIndex((item) => item.key === next.key);
+      if (index === -1) return [...current, next];
+      const copy = [...current];
+      copy[index] = { ...copy[index], ...next };
+      return copy;
+    });
   };
 
   const sanitizeUrl = (url: string): string => {

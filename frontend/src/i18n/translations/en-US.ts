@@ -22,7 +22,7 @@ export default {
   "seo.custom.share.content.documents": "documents",
   "seo.custom.share.content.archives": "archives",
   "seo.custom.trending.description":
-    "Discover the most-viewed public shares from the last 30 days. Preview and download images, videos, audio and documents.",
+    "Discover the most-viewed public shares from the last 24 hours. Preview and download images, videos, audio and documents.",
   "seo.custom.new.description":
     "Browse the newest public shares with image and video previews. Open a share to preview and download its files.",
   "seo.custom.newMedia.description":
@@ -43,6 +43,8 @@ export default {
   "common.custom.skip-to-content": "Skip to content",
   "common.custom.loading": "Loading",
   "common.custom.retry": "Try again",
+  "common.custom.load-error":
+    "Could not load this list. Check your connection and try again.",
   "common.custom.sort": "Sort",
   "common.custom.actions": "Actions",
   "common.custom.unit": "Unit",
@@ -93,14 +95,14 @@ export default {
   // Trending today
   "trending.custom.title": "Trending today",
   "trending.custom.description":
-    "Most-viewed public shares from the last 30 days.",
+    "Most-viewed public shares from the last 24 hours.",
   "trending.custom.files": "{count, plural, one {# file} other {# files}}",
   "trending.custom.uploaded": "Uploaded {date}",
   "trending.custom.views": "{count, plural, one {# view} other {# views}}",
   "trending.custom.video": "Video",
   "trending.custom.image": "Image",
   "trending.custom.empty":
-    "No public shares have been viewed in the last 30 days yet.",
+    "No public shares have been viewed in the last 24 hours yet.",
   "trending.custom.loading": "Loading trending shares…",
   "trending.custom.countries.title": "Top countries today",
   "trending.custom.countries.description":
@@ -860,7 +862,7 @@ export default {
   // showCompletedUploadModal.tsx
   "upload.modal.completed.never-expires": "This share will never expire.",
   "upload.modal.completed.expires-on":
-    "This share stays available until {expiration}; every visit renews it.",
+    "This share expires {expiration}; every visit renews it.",
   "upload.modal.completed.share-ready": "Share ready",
   "upload.modal.completed.notified-reverse-share-creator":
     "We notified the reverse share creator. You can also share this link with them manually.",
@@ -969,6 +971,8 @@ export default {
   "share.error.restricted.title": "Restricted share",
   "share.error.restricted.description":
     "This share is restricted to specific recipients. Please log in to access it.",
+  "share.error.restricted.description.member":
+    "This share is restricted to specific recipients. Ask the uploader to add this account.",
   "share.error.restricted.button": "Log in",
 
   "share.modal.password.title": "Password required",
@@ -1263,6 +1267,12 @@ export default {
   "admin.config.share.max-file-size": "Max file size",
   "admin.config.share.max-file-size.description":
     "Maximum size of each individual file. Keep this at or below 512 MB so downloads remain cacheable at the edge.",
+  "admin.config.share.max-zip-size": "Max ZIP download size",
+  "admin.config.share.max-zip-size.description":
+    "Largest combined selection streamed as one ZIP. Larger selections fall back to individual downloads. Set to 0 for no limit.",
+  "admin.config.share.enable-media-import": "Enable media import",
+  "admin.config.share.enable-media-import.description":
+    "Allow uploads from supported video and audio platforms through yt-dlp. Requires the yt-dlp binary on the server.",
   "admin.config.share.zip-compression-level": "Zip compression level",
   "admin.config.share.zip-compression-level.description":
     "Adjust the level to balance file size and compression speed. Valid values range from 0 to 9, with 0 being no compression and 9 being maximum compression. ",

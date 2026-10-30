@@ -5,6 +5,7 @@ import {
   BadRequestException,
 } from "@nestjs/common";
 import { User } from "@prisma/client";
+import { JwtService } from "@nestjs/jwt";
 import { Request } from "express";
 import { I18nService } from "nestjs-i18n";
 import { ConfigService } from "src/config/config.service";
@@ -17,6 +18,7 @@ export class ShareOwnerGuard extends JwtGuard {
     protected configService: ConfigService,
     private prisma: PrismaService,
     private readonly i18n: I18nService,
+    private readonly jwtService: JwtService,
   ) {
     super(configService);
   }
@@ -74,13 +76,32 @@ export class ShareOwnerGuard extends JwtGuard {
         );
       }
 
-      return this.configService.get("security.allowUnauthenticatedShares");
+      // Guest uploads are managed with a per-share capability cookie issued
+      // when the share is created. Without it, anyone holding the public link
+      // could delete files, revert completion or upload replacement files.
+      const ownerToken = request.cookies?.[`share_${shareId}_owner`];
+      if (ownerToken && this.isShareOwnerToken(shareId, ownerToken)) {
+        return true;
+      }
+
+      return false;
     }
 
     // If not signed in, deny access
     if (!user) return false;
 
     return false;
+  }
+
+  private isShareOwnerToken(shareId: string, token: string): boolean {
+    try {
+      const claims = this.jwtService.verify<{ shareOwner?: string }>(token, {
+        secret: this.configService.get("internal.jwtSecret"),
+      });
+      return claims.shareOwner === shareId;
+    } catch {
+      return false;
+    }
   }
 
   protected get allowAdmin(): boolean {

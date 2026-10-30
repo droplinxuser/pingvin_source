@@ -99,7 +99,7 @@ const WEBP_IMAGE_TYPES = new Set([
 ]);
 const SAFE_ID = /^[\w=-]+$/;
 
-type ShareThumbnail = { path: string; size: number };
+type ShareThumbnail = { path: string; size: number; mtimeMs: number };
 
 @Injectable()
 export class FileService implements OnModuleInit {
@@ -779,7 +779,7 @@ export class FileService implements OnModuleInit {
 
     try {
       const stat = await fs.stat(path);
-      return { path, size: stat.size };
+      return { path, size: stat.size, mtimeMs: stat.mtimeMs };
     } catch {
       // Not generated yet.
     }
@@ -875,7 +875,7 @@ export class FileService implements OnModuleInit {
 
     try {
       const stat = await fs.stat(path);
-      return { path, size: stat.size };
+      return { path, size: stat.size, mtimeMs: stat.mtimeMs };
     } catch {
       // Not generated yet.
     }
@@ -1024,7 +1024,11 @@ export class FileService implements OnModuleInit {
         const builtAt = new Date();
         await fs.utimes(thumbnailPath, builtAt, builtAt);
         const stat = await fs.stat(thumbnailPath);
-        return { path: thumbnailPath, size: stat.size };
+        return {
+          path: thumbnailPath,
+          size: stat.size,
+          mtimeMs: stat.mtimeMs,
+        };
       } catch (error) {
         await fs.rm(tempPath, { force: true }).catch(() => {});
         const reason = (error as { thumbnailReason?: string }).thumbnailReason;
