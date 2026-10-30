@@ -5,8 +5,14 @@ import { ValkeyClient, ValkeyService } from "./valkey.service";
 // unrelated shares the way a single global hash would. The window matches the
 // trending/search 30-day horizon and every key expires on its own.
 const DOWNLOAD_KEY_PREFIX = "pingvin:downloads:day:";
+const DOWNLOAD_HOUR_KEY_PREFIX = "pingvin:downloads:hour:";
 const WINDOW_DAYS = 30;
 const BUCKET_TTL_SECONDS = (WINDOW_DAYS + 1) * 24 * 60 * 60;
+// Trending only needs the last 24 hours for its download tie-break. One
+// sorted set per hour keeps that read to 24 keys and expires on its own.
+const HOUR_MS = 60 * 60 * 1000;
+const HOUR_WINDOW = 24;
+const HOUR_TTL_SECONDS = (HOUR_WINDOW + 1) * 60 * 60;
 const TOTAL_FIELD = "total";
 // The share payload is read on every view, so a short in-process cache removes
 // the 30-bucket read from the hot path. It is dropped on every new download so
@@ -47,10 +53,13 @@ export class DownloadService {
     const day = currentDay();
     const stored = await this.valkey.run(async (client) => {
       const key = bucketKey(day, shareId);
+      const hourKey = hourBucketKey(currentHour());
       const multi = client.multi();
       multi.hIncrBy(key, TOTAL_FIELD, 1);
       for (const fileId of fileIds) multi.hIncrBy(key, fileId, 1);
       multi.expire(key, BUCKET_TTL_SECONDS);
+      multi.zIncrBy(hourKey, 1, shareId);
+      multi.expire(hourKey, HOUR_TTL_SECONDS);
       await multi.exec();
       return true;
     });
@@ -148,6 +157,25 @@ function currentDay() {
   return Math.floor(Date.now() / 86_400_000);
 }
 
+function currentHour() {
+  return Math.floor(Date.now() / HOUR_MS);
+}
+
 function bucketKey(day: number, shareId: string) {
   return `${DOWNLOAD_KEY_PREFIX}${day}:${shareId}`;
+}
+
+function hourBucketKey(hour: number) {
+  return `${DOWNLOAD_HOUR_KEY_PREFIX}${hour}`;
+}
+
+/**
+ * The 24 hourly sorted sets used for the trending download tie-break. Kept
+ * next to the writer so the key format cannot drift.
+ */
+export function recentDownloadHourKeys(now = Date.now()) {
+  const hour = Math.floor(now / HOUR_MS);
+  return Array.from({ length: HOUR_WINDOW }, (_, offset) =>
+    hourBucketKey(hour - offset),
+  );
 }

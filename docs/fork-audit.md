@@ -29,7 +29,7 @@ the suggested order for future features.
 | Inline media gallery | `frontend/src/components/share/MediaPreviewGallery.tsx` (up to 100 image/video cards, 12-card lazy batches, single-media square card, full-size previous/next modal), `frontend/src/components/core/LazySection.tsx` |
 | Individual downloads / legacy ZIP | `frontend/src/components/share/DownloadAllButton.tsx`, `frontend/src/services/share.service.ts`; `backend/src/share/share.service.ts` no longer creates archives. Existing `archive.zip` files remain served by the legacy API. The preview modal downloads through `shareService.downloadFile` too, so its clicks reach the download counters. |
 | Share and file size limits | `backend/prisma/seed/config.seed.ts` (`share.maxSize` 5 GB, `share.maxFileSize` 512 MB), migration `20261025000000_raise_share_size_limit`, `backend/src/share/share.util.ts` (`resolveShareSizeLimit`), local/S3 upload guards, upload UI |
-| Trending today / new shares | `backend/src/cache/trending.service.ts` (`getTrending`, `getTrendingCountries`, `getRecent`, `getRecentFiles`), `GET /api/shares/trending`, `/trending/countries`, `/recent`, `/recent-files`; `frontend/src/components/share/TrendingToday.tsx`, `TrendingCountries.tsx`, `ShareList.tsx` (polished row/list layout for `/new-files`), `frontend/src/pages/trending.tsx`, `new-media.tsx`, `new-files.tsx`, `search.tsx`. Trending and the new listings cap at 200; rows/cards reveal in lazy batches with skeletons (infinite scroll). |
+| Trending today / new shares | `backend/src/cache/trending.service.ts` (`getTrending`, `getTrendingCountries`, `getRecent`, `getRecentFiles`), `GET /api/shares/trending`, `/trending/countries`, `/recent`, `/recent-files`; `frontend/src/components/share/TrendingToday.tsx`, `TrendingCountries.tsx`, `ShareList.tsx` (polished row/list layout for `/new-files`), `frontend/src/pages/trending.tsx`, `new-media.tsx`, `new-files.tsx`, `search.tsx`. The main ranking counts only the last 24 hourly view buckets, ordered by 24-hour views then 24-hour downloads; shares still have to be public, completed, previewable and created in the last 30 days. The API result is cached 60 seconds in process and 60 seconds at the edge, and the frontend/SSR URL carries the build version as a cache-buster. Trending and the new listings cap at 200; rows/cards reveal in lazy batches with skeletons (infinite scroll). |
 | Shared UI polish | `frontend/src/components/core/RelativeTime.tsx`, `RouteProgress.tsx`, `LazyImage.tsx`, `LazyVideo.tsx`, `LazySection.tsx`, `frontend/src/utils/filePreview.util.ts`; `frontend/src/components/share/FileList.tsx` adds client-side file search for shares with 12+ files (`SEARCH_MIN_FILES`), filtering the rendered batches and the preview navigation without a backend request |
 | Profile pictures | `backend/prisma/schema.prisma` (`User.avatarUpdatedAt`), migration `20261028010000_add_user_avatar`, `backend/src/user/avatar.service.ts` (5 MB/40 MP limits, EXIF rotate, 256px centre-crop, metadata-stripped WebP, atomic 0600 write), `user.controller.ts` (`POST`/`DELETE /api/users/me/avatar`, public versioned `GET /api/users/:id/avatar.webp` with ETag/304), `frontend/src/components/core/UserAvatar.tsx`, `frontend/src/utils/avatar.util.ts` |
 | Legal pages | `frontend/src/content/legalDocuments.ts` (built-in imprint/privacy markdown that ships with the app), `frontend/src/components/legal/LegalDocument.tsx` (one shared layout), `/imprint` and `/privacy` server-render the text with the current site name/URL and remain edge-cacheable. The public text does not name internal infrastructure or backend software. Legacy admin legal text is ignored; `_app` still strips it from the shared payload for old installs. |
@@ -221,6 +221,12 @@ the matching `utils/*.util.ts` files.
   the linear scan without caching typed values, so admin edits are immediate.
 - Public search scores each matching entry once before sorting instead of
   lowercasing the name and description again inside every comparator.
+- Trending keeps one hourly sorted set per hour for views
+  (`pingvin:trending:views:hour:<hour>`, TTL 25 h) and one for downloads
+  (`pingvin:downloads:hour:<hour>`, TTL 25 h). A read unions the last 24 of each
+  with `SUM`, then sorts by views and downloads. No SQLite seed is possible for
+  a 24-hour window, so the ranking starts from views recorded after the change;
+  old daily view keys expire on their own.
 - The unactivated-user cleanup also removes uploads made through the user's
   reverse shares (they have no `creatorId`), matching the admin user-delete
   path so no file bytes are orphaned on disk/S3.
@@ -455,8 +461,9 @@ Origin responses set `Cache-Control`, `CDN-Cache-Control` and
 The current suite covers: view limits and batched counters, visitor identity,
 Valkey/fallback throttling, uploader metadata, HTTP cache matching, storage
 quota, missing local files, page-view metrics, admin metrics, error logs,
-trending/recent/country ranking and cache behavior, public search index
-storage/matching/versioning, share thumbnails, sitemap
+trending/recent/country ranking and cache behavior (including the 24-hour view
+union and download tie-break), public search index storage/matching/versioning,
+share thumbnails, sitemap
 index/chunks/robots, comments, archive-encryption detection, VirusTotal
 audit/queue/filter/removal/notification flows, reverse-share guard wiring,
 referrers, avatars and the contact form (Turnstile success/failure, background

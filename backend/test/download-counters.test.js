@@ -5,11 +5,12 @@ const { DownloadService } = require("../dist/src/cache/download.service.js");
 // Minimal in-memory stand-in for the node-redis client used by ValkeyService.
 function createMockValkey({ enabled = true } = {}) {
   const hashes = new Map();
+  const sortedSets = new Map();
   const client = {
     multi() {
       const queue = [];
       const chain = {};
-      for (const method of ["hIncrBy", "expire", "hGetAll"]) {
+      for (const method of ["hIncrBy", "expire", "hGetAll", "zIncrBy"]) {
         chain[method] = (...args) => {
           queue.push([method, args]);
           return chain;
@@ -24,6 +25,12 @@ function createMockValkey({ enabled = true } = {}) {
             hash.set(field, (hash.get(field) ?? 0) + by);
             hashes.set(key, hash);
             out.push(hash.get(field));
+          } else if (method === "zIncrBy") {
+            const [key, by, member] = args;
+            const sorted = sortedSets.get(key) ?? new Map();
+            sorted.set(member, (sorted.get(member) ?? 0) + by);
+            sortedSets.set(key, sorted);
+            out.push(sorted.get(member));
           } else if (method === "hGetAll") {
             const hash = hashes.get(args[0]);
             out.push(
@@ -45,6 +52,7 @@ function createMockValkey({ enabled = true } = {}) {
 
   return {
     hashes,
+    sortedSets,
     valkey: {
       run: async (operation) => (enabled ? operation(client) : undefined),
     },
@@ -69,6 +77,11 @@ test("counts share and per-file downloads in Valkey", async () => {
     [...mock.hashes.keys()][0],
     /^pingvin:downloads:day:\d+:share-1$/,
   );
+  // The 24-hour tie-break uses one hourly sorted set for all shares.
+  assert.equal(mock.sortedSets.size, 1);
+  const [hourKey, scores] = [...mock.sortedSets.entries()][0];
+  assert.match(hourKey, /^pingvin:downloads:hour:\d+$/);
+  assert.equal(scores.get("share-1"), 3);
 });
 
 test("keeps each share's counters isolated", async () => {

@@ -17,13 +17,13 @@ import {
   type UploadProgressHandler,
   withUploadInactivityTimeout,
 } from "../utils/upload.util";
+import { withBuildVersion } from "../utils/version.util";
 import api from "./api.service";
 
 const isValidId = (id: string) => {
   return /^[a-zA-Z0-9_-]+$/.test(id);
 };
 
-const TRENDING_CACHE_TTL_MS = 30_000;
 const TRENDING_COUNTRIES_CACHE_TTL_MS = 5 * 60 * 1000;
 
 type CachedShareList = {
@@ -136,9 +136,9 @@ const getFromOwner = async (id: string): Promise<Share> => {
 };
 
 const getTrending = cachedShareList(
-  "shares/trending",
+  withBuildVersion("shares/trending"),
   12,
-  TRENDING_CACHE_TTL_MS,
+  60_000,
 );
 
 const getTrendingCountries = async (): Promise<TrendingCountry[]> => {

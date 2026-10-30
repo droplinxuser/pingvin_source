@@ -3,7 +3,6 @@ import { PrismaService } from "src/prisma/prisma.service";
 import {
   sumFileSizes,
   isPublicShare,
-  isShareExpired,
   publicShareWhere,
 } from "src/share/share.util";
 import { findPreview, PreviewKind } from "src/share/preview.util";
@@ -12,24 +11,27 @@ import {
   isCountryCode,
   normalizeCountryCode,
 } from "src/utils/country.util";
+import { recentDownloadHourKeys } from "./download.service";
 import { ValkeyClient, ValkeyService } from "./valkey.service";
 
-const VIEW_KEY_PREFIX = "pingvin:trending:views:";
+const VIEW_KEY_PREFIX = "pingvin:trending:views:hour:";
 const META_KEY_PREFIX = "pingvin:trending:meta:";
 const RANK_KEY_PREFIX = "pingvin:trending:rank:";
 const GEO_KEY_PREFIX = "pingvin:trending:geo:hour:";
-const SEED_KEY_PREFIX = "pingvin:trending:seed:";
 const WINDOW_DAYS = 30;
+// The main ranking counts only views from the last 24 hourly buckets. The
+// 30-day window below still controls which shares may appear at all.
+const VIEW_WINDOW_HOURS = 24;
 const DAY_MS = 24 * 60 * 60 * 1000;
 const HOUR_MS = 60 * 60 * 1000;
-const VIEW_TTL_SECONDS = (WINDOW_DAYS + 1) * 24 * 60 * 60;
+const VIEW_TTL_SECONDS = (VIEW_WINDOW_HOURS + 1) * 60 * 60;
 const META_TTL_SECONDS = (WINDOW_DAYS + 1) * 24 * 60 * 60;
 const MAX_SHARE_AGE_MS = WINDOW_DAYS * DAY_MS;
 const MAX_DESCRIPTION_LENGTH = 240;
 const CANDIDATE_LIMIT = 400;
 const DEFAULT_RESULT_LIMIT = 12;
 const MAX_RESULT_LIMIT = 200;
-const RESULT_CACHE_MS = 30 * 1000;
+const RESULT_CACHE_MS = 60 * 1000;
 // The recent list scans a bounded number of the newest public shares so the
 // text-only/protected rows do not turn into an unbounded query.
 const RECENT_SCAN_LIMIT = 1000;
@@ -37,10 +39,6 @@ const RECENT_MAX_RESULT = 200;
 const RECENT_CACHE_MS = 30 * 1000;
 // File-only cards list a couple of names over the thumbnail area.
 const MAX_CARD_FILE_NAMES = 3;
-// Shares viewed before the cache window expanded have no retained daily score.
-// They are seeded once from SQLite; retries are throttled if the database is
-// unavailable during the first read.
-const SEED_RETRY_MS = 5 * 60 * 1000;
 // The country ranking is read from hourly hashes. Twenty-four HGETALL replies
 // are aggregated in one round trip and the result is reused for five minutes,
 // matching the edge TTL on the API response.
@@ -125,7 +123,6 @@ export class TrendingService {
   private pendingRanking?: Promise<TrendingShare[] | undefined>;
   private pendingCountries?: Promise<TrendingCountry[] | undefined>;
   private pendingRecentScan?: Promise<RecentScan>;
-  private seedCheckedAt = 0;
 
   constructor(
     private readonly valkey: ValkeyService,
@@ -153,9 +150,11 @@ export class TrendingService {
     await this.valkey.run(async (client) => {
       const multi = client.multi();
       if (meta) {
-        const viewKey = viewKeyFor(currentDay());
+        const viewKey = viewKeyFor(currentHour());
         const metaKey = metaKeyFor(share.id);
-        multi.zAdd(viewKey, { score: share.views, value: share.id });
+        // One increment per share-page view. The 24 hourly sets are unioned
+        // with SUM when the ranking is read.
+        multi.zIncrBy(viewKey, 1, share.id);
         multi.expire(viewKey, VIEW_TTL_SECONDS);
         // One metadata entry per share instead of one copy in every day
         // bucket. The card payload is immutable until the share is edited
@@ -378,106 +377,29 @@ export class TrendingService {
     });
   }
 
-  /**
-   * Fills the current day's sorted set from SQLite once per window version.
-   * View buckets written before the ranking window grew have already expired,
-   * so without this seed a share created inside the window but not viewed for
-   * more than a week would be missing. The marker key contains the window size,
-   * so changing WINDOW_DAYS seeds again. Normal reads stay cache-only.
-   */
-  private async ensureSeed(client: ValkeyClient): Promise<void> {
-    if (Date.now() - this.seedCheckedAt < SEED_RETRY_MS) return;
-    this.seedCheckedAt = Date.now();
-    if (await client.exists(seedKey())) return;
-    await this.seed(client);
-  }
-
-  private async seed(client: ValkeyClient): Promise<void> {
-    const shares = await this.prisma.share
-      .findMany({
-        where: {
-          createdAt: { gte: new Date(Date.now() - MAX_SHARE_AGE_MS) },
-          uploadLocked: true,
-          removedReason: null,
-          views: { gt: 0 },
-        },
-        select: {
-          id: true,
-          name: true,
-          description: true,
-          createdAt: true,
-          updatedAt: true,
-          views: true,
-          expiration: true,
-          security: {
-            select: {
-              password: true,
-              maxViews: true,
-              restrictToRecipients: true,
-            },
-          },
-          reverseShare: { select: { publicAccess: true } },
-          files: {
-            select: { id: true, name: true, size: true },
-            orderBy: { name: "asc" },
-          },
-        },
-        orderBy: { views: "desc" },
-      })
-      .catch(() => undefined);
-    if (!shares) return;
-
-    const now = Date.now();
-    const viewKey = viewKeyFor(currentDay());
-    const multi = client.multi();
-    let ranked = 0;
-
-    for (const share of shares) {
-      if (share.views <= 0) continue;
-      if (now - share.createdAt.getTime() > MAX_SHARE_AGE_MS) continue;
-      if (!isPublicShare(share)) continue;
-      if (isShareExpired(share.expiration, now)) continue;
-
-      const media = findPreview(share.files);
-      if (!media) continue;
-
-      multi.zAdd(viewKey, { score: share.views, value: share.id });
-      multi.set(
-        metaKeyFor(share.id),
-        JSON.stringify(buildMeta(share, media.preview, media.hasVideo)),
-        {
-          EX: META_TTL_SECONDS,
-          NX: true,
-        },
-      );
-      ranked += 1;
-    }
-
-    if (ranked > 0) multi.expire(viewKey, VIEW_TTL_SECONDS);
-    // The marker is written in the same MULTI, so a failed connection retries
-    // instead of leaving an empty ranking marked as seeded.
-    multi.set(seedKey(), "1");
-    await multi.exec().catch(() => {});
-  }
-
   private async read(client: ValkeyClient): Promise<TrendingShare[]> {
-    await this.ensureSeed(client);
-
-    const day = currentDay();
-    const keys = Array.from({ length: WINDOW_DAYS }, (_, offset) =>
-      viewKeyFor(day - offset),
+    const hour = currentHour();
+    const viewKeys = Array.from({ length: VIEW_WINDOW_HOURS }, (_, offset) =>
+      viewKeyFor(hour - offset),
     );
     // A unique temporary key keeps concurrent ranking reads from deleting each
     // other's union. The short TTL covers a process that dies between the
     // union and the DEL; the normal path removes it immediately.
-    const rankKey = `${RANK_KEY_PREFIX}${process.pid}:${Date.now()}:${Math.random()
+    const suffix = `${process.pid}:${Date.now()}:${Math.random()
       .toString(36)
       .slice(2)}`;
+    const rankKey = `${RANK_KEY_PREFIX}${suffix}`;
+    const downloadRankKey = `${RANK_KEY_PREFIX}downloads:${suffix}`;
     const multi = client.multi();
-    multi.zUnionStore(rankKey, keys, { AGGREGATE: "MAX" });
+    // SUM turns the hourly counters into a 24-hour view total per share.
+    multi.zUnionStore(rankKey, viewKeys, { AGGREGATE: "SUM" });
     multi.zRangeWithScores(rankKey, 0, CANDIDATE_LIMIT - 1, { REV: true });
-    multi.expire(rankKey, 60);
+    multi.zUnionStore(downloadRankKey, recentDownloadHourKeys(), {
+      AGGREGATE: "SUM",
+    });
+    multi.zRangeWithScores(downloadRankKey, 0, -1);
     multi.del(rankKey);
+    multi.del(downloadRankKey);
     const replies = await multi.exec();
     const ranked = replies?.[1] as unknown as
       | {
@@ -487,8 +409,18 @@ export class TrendingService {
       | null;
     if (!ranked?.length) return [];
 
+    const downloadRanked = replies?.[3] as unknown as
+      | {
+          value: string;
+          score: number;
+        }[]
+      | null;
+    const downloads = new Map(
+      (downloadRanked ?? []).map((item) => [item.value, Number(item.score)]),
+    );
+
     const ids = ranked.map((item) => item.value);
-    // One MGET for every candidate replaces thirty per-day HGETs.
+    // One MGET for every candidate replaces 24 per-hour HGETs.
     const values = await client.mGet(ids.map(metaKeyFor));
     const metas = parseMetaValues(values);
 
@@ -499,19 +431,24 @@ export class TrendingService {
     if (legacyIds.length > 0) await this.backfill(client, legacyIds, metas);
 
     const now = Date.now();
-    const items: TrendingShare[] = [];
+    const items: { item: TrendingShare; downloads: number }[] = [];
     for (const { value: id, score } of ranked) {
       const meta = metas.get(id);
       if (!meta) continue;
       if (now - new Date(meta.createdAt).getTime() > MAX_SHARE_AGE_MS) continue;
 
-      // The union keeps the highest daily score, which is the share's
-      // current total view count.
-      items.push(toTrendingShare(meta, Number(score)));
+      items.push({
+        item: toTrendingShare(meta, Number(score)),
+        downloads: downloads.get(id) ?? 0,
+      });
     }
 
-    // zRangeWithScores already returned the candidates by descending score.
-    return items.slice(0, MAX_RESULT_LIMIT);
+    // Primary: 24-hour views. Secondary: 24-hour downloads. The stable sort
+    // keeps Redis's order for exact ties (share id, reverse lexicographic).
+    items.sort(
+      (a, b) => b.item.views - a.item.views || b.downloads - a.downloads,
+    );
+    return items.slice(0, MAX_RESULT_LIMIT).map(({ item }) => item);
   }
 
   private async readCountries(
@@ -794,16 +731,12 @@ function legacyMetaIds(ids: string[], metas: Map<string, TrendingMeta>) {
   });
 }
 
-function currentDay() {
-  return Math.floor(Date.now() / DAY_MS);
-}
-
 function currentHour() {
   return Math.floor(Date.now() / HOUR_MS);
 }
 
-function viewKeyFor(day: number) {
-  return `${VIEW_KEY_PREFIX}${day}`;
+function viewKeyFor(hour: number) {
+  return `${VIEW_KEY_PREFIX}${hour}`;
 }
 
 function geoKeyFor(hour: number) {
@@ -820,8 +753,4 @@ function geoTotalFieldFor(country: string) {
 
 function metaKeyFor(shareId: string) {
   return `${META_KEY_PREFIX}${shareId}`;
-}
-
-function seedKey() {
-  return `${SEED_KEY_PREFIX}${WINDOW_DAYS}`;
 }

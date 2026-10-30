@@ -2,21 +2,15 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const { TrendingService } = require("../dist/src/cache/trending.service.js");
 
-function createMockValkey(
-  execute,
-  metaValues = [],
-  runDelay = 0,
-  seedExists = true,
-) {
+function createMockValkey(execute, metaValues = [], runDelay = 0) {
   const calls = [];
   const client = {
     mGet: async () => metaValues,
-    exists: async () => (seedExists ? 1 : 0),
     multi() {
       const queue = [];
       const chain = {};
       for (const method of [
-        "zAdd",
+        "zIncrBy",
         "expire",
         "set",
         "del",
@@ -56,6 +50,12 @@ function createService(mock, prisma = emptyPrisma) {
   return new TrendingService(mock.valkey, prisma);
 }
 
+// Reply shape for the ranking read: view union, view range, download union,
+// download range, then the two DELs.
+function readReplies(ranked, downloads = []) {
+  return [1, ranked, 1, downloads, 1, 1];
+}
+
 const now = Date.now();
 const recent = new Date(now - 60 * 60 * 1000).toISOString();
 const old = new Date(now - 31 * 24 * 60 * 60 * 1000).toISOString();
@@ -76,7 +76,7 @@ function meta(id, _views, createdAt, kind = "image") {
   });
 }
 
-test("ranks the last thirty days by total views and filters stale shares", async () => {
+test("ranks the last 24 hours by views and filters stale shares", async () => {
   const ranked = [
     { value: "a", score: 40 },
     { value: "old", score: 30 },
@@ -84,7 +84,7 @@ test("ranks the last thirty days by total views and filters stale shares", async
     { value: "broken", score: 10 },
   ];
   const mock = createMockValkey(
-    () => [1, ranked, 1],
+    () => readReplies(ranked),
     [
       meta("a", 400, recent),
       meta("old", 300, old),
@@ -109,118 +109,61 @@ test("ranks the last thirty days by total views and filters stale shares", async
   assert.equal(items[0].size, 1234);
   assert.equal(items[0].createdAt, recent);
 
-  // The union uses a per-read temporary key, never the old shared key.
+  // The view union sums 24 hourly buckets into a per-read temporary key.
   const [unionMethod, unionArgs] = mock.calls[0][0];
   assert.equal(unionMethod, "zUnionStore");
   assert.match(unionArgs[0], /^pingvin:trending:rank:/);
+  assert.equal(unionArgs[1].length, 24);
+  assert.equal(unionArgs[2].AGGREGATE, "SUM");
 });
 
-test("seeds the current bucket from SQLite once for missed views", async () => {
-  const tenDays = new Date(now - 10 * 24 * 60 * 60 * 1000);
-  const ineligible = new Date(now - 31 * 24 * 60 * 60 * 1000);
-  const future = new Date(now + 30 * 24 * 60 * 60 * 1000);
-  const past = new Date(now - 60 * 1000);
-  const file = { id: "file-image", name: "photo.jpg", size: "1234" };
-  const row = (overrides) => ({
-    id: "share",
-    name: null,
-    description: null,
-    createdAt: tenDays,
-    views: 100,
-    expiration: future,
-    uploadLocked: true,
-    removedReason: null,
-    security: { password: null, maxViews: null, restrictToRecipients: false },
-    reverseShare: null,
-    files: [file],
-    ...overrides,
-  });
-  const rows = [
-    row({
-      id: "seeded",
-      name: "Seeded share",
-      description: "  seeded\nshare ",
-      views: 900,
-    }),
-    row({
-      id: "private",
-      views: 800,
-      security: {
-        password: "secret",
-        maxViews: null,
-        restrictToRecipients: false,
-      },
-    }),
-    row({ id: "expired", views: 700, expiration: past }),
-    row({ id: "zero", views: 0 }),
-    row({ id: "stale", views: 600, createdAt: ineligible }),
+test("uses 24-hour downloads as the tie-break", async () => {
+  const ranked = [
+    { value: "a", score: 10 },
+    { value: "b", score: 10 },
+    { value: "c", score: 5 },
   ];
-  let lookups = 0;
-  const prisma = {
-    share: {
-      findMany: async () => {
-        lookups += 1;
-        return rows;
-      },
-    },
-  };
+  const downloads = [
+    { value: "a", score: 1 },
+    { value: "b", score: 4 },
+  ];
   const mock = createMockValkey(
-    (queue) =>
-      queue.some(([method]) => method === "zRangeWithScores")
-        ? [1, [{ value: "seeded", score: 900 }], 1]
-        : [1],
-    [meta("seeded", 900, tenDays.toISOString())],
-    0,
-    false,
+    () => readReplies(ranked, downloads),
+    [meta("a", 10, recent), meta("b", 10, recent), meta("c", 5, recent)],
   );
-  const service = createService(mock, prisma);
+  const service = createService(mock);
 
   const items = await service.getTrending();
 
   assert.deepEqual(
     items.map((item) => item.id),
-    ["seeded"],
+    ["b", "a", "c"],
   );
-  assert.equal(items[0].views, 900);
-  assert.equal(items[0].description, "Description for seeded");
-  assert.equal(lookups, 1);
+  assert.equal(items[0].views, 10);
+});
 
-  const seedQueue = mock.calls.find((queue) =>
-    queue.some(
-      ([method, args]) =>
-        method === "set" && args[0] === "pingvin:trending:seed:30",
-    ),
+test("does not seed the 24-hour ranking from SQLite", async () => {
+  let lookups = 0;
+  const prisma = {
+    share: {
+      findMany: async () => {
+        lookups += 1;
+        return [];
+      },
+    },
+  };
+  const mock = createMockValkey(
+    () => readReplies([{ value: "a", score: 3 }]),
+    [meta("a", 3, recent)],
   );
-  assert.ok(seedQueue);
-  const zAdds = seedQueue
-    .filter(([method]) => method === "zAdd")
-    .map(([, args]) => args);
-  assert.deepEqual(zAdds, [
-    [
-      `pingvin:trending:views:${Math.floor(Date.now() / (24 * 60 * 60 * 1000))}`,
-      { score: 900, value: "seeded" },
-    ],
-  ]);
-  const expireArg = seedQueue.find(([method]) => method === "expire");
-  assert.deepEqual(expireArg[1], [
-    `pingvin:trending:views:${Math.floor(Date.now() / (24 * 60 * 60 * 1000))}`,
-    31 * 24 * 60 * 60,
-  ]);
-  const seededMeta = seedQueue
-    .filter(
-      ([method, args]) =>
-        method === "set" && args[0] === "pingvin:trending:meta:seeded",
-    )
-    .map(([, args]) => JSON.parse(args[1]))[0];
-  assert.equal(seededMeta.description, "seeded share");
-  assert.equal(seededMeta.fileCount, 1);
-  assert.equal(seededMeta.size, 1234);
-  assert.equal(seededMeta.previewFileId, "file-image");
+  const service = createService(mock, prisma);
 
-  // The in-process guard stops a second seed lookup even if the marker is
-  // reported missing.
-  await service.getTrending();
-  assert.equal(lookups, 1);
+  assert.deepEqual(
+    (await service.getTrending()).map((item) => item.id),
+    ["a"],
+  );
+  // The 24-hour window cannot be reconstructed from cumulative SQLite views.
+  assert.equal(lookups, 0);
 });
 
 test("returns twelve by default and caps the full list at two hundred", async () => {
@@ -232,7 +175,7 @@ test("returns twelve by default and caps the full list at two hundred", async ()
     meta(`s${index}`, 200 - index, recent),
   );
 
-  const mock = createMockValkey(() => [1, ranked, 1], metas);
+  const mock = createMockValkey(() => readReplies(ranked), metas);
   const service = createService(mock);
   const items = await service.getTrending();
 
@@ -285,8 +228,17 @@ test("records only recent public shares with image or video media", async () => 
   assert.equal(mock.calls.length, 1);
 
   const methods = mock.calls[0].map(([method]) => method);
-  assert.deepEqual(methods, ["zAdd", "expire", "set"]);
-  assert.deepEqual(mock.calls[0][0][1][1], { score: 7, value: "share" });
+  assert.deepEqual(methods, ["zIncrBy", "expire", "set"]);
+  const hour = Math.floor(Date.now() / (60 * 60 * 1000));
+  assert.deepEqual(mock.calls[0][0][1], [
+    `pingvin:trending:views:hour:${hour}`,
+    1,
+    "share",
+  ]);
+  assert.deepEqual(mock.calls[0][1][1], [
+    `pingvin:trending:views:hour:${hour}`,
+    25 * 60 * 60,
+  ]);
   assert.equal(mock.calls[0][2][1][2].EX, 31 * 24 * 60 * 60);
   assert.equal(mock.calls[0][2][1][2].NX, true);
 
@@ -352,7 +304,7 @@ test("drops metadata for shares that no longer exist", async () => {
     createdAt: recent,
   });
   const mock = createMockValkey(
-    () => [1, [{ value: "a", score: 4 }], 1],
+    () => readReplies([{ value: "a", score: 4 }]),
     [legacy],
   );
   const service = createService(mock);
@@ -369,7 +321,7 @@ test("drops metadata for shares that no longer exist", async () => {
 
 test("keeps the short ranking cache between views", async () => {
   const mock = createMockValkey(
-    () => [1, [{ value: "a", score: 1 }], 1],
+    () => readReplies([{ value: "a", score: 1 }]),
     [meta("a", 1, recent)],
   );
   const service = createService(mock);
@@ -393,13 +345,13 @@ test("keeps the short ranking cache between views", async () => {
   );
 
   // Only the recordView MULTI reached Valkey; the second read came from the
-  // 30-second in-process result cache.
+  // 60-second in-process result cache.
   assert.equal(mock.calls.length, callsAfterFirstRead + 1);
 });
 
 test("invalidates cached rankings and share metadata", async () => {
   const mock = createMockValkey(
-    () => [1, [{ value: "a", score: 1 }], 1],
+    () => readReplies([{ value: "a", score: 1 }]),
     [meta("a", 1, recent)],
   );
   const service = createService(mock);
@@ -769,7 +721,10 @@ test("serves the media and file listings from one scan", async () => {
     recentShare({ id: "document", files: ["notes.txt"] }),
     recentShare({ id: "image", files: ["photo.jpg"] }),
   ]);
-  const service = createService(createMockValkey(() => []), prisma);
+  const service = createService(
+    createMockValkey(() => []),
+    prisma,
+  );
 
   const media = await service.getRecent(100);
   const documents = await service.getRecentFiles(100);

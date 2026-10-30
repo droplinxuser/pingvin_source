@@ -2,6 +2,7 @@ import type { IncomingMessage } from "http";
 import Config from "../types/config.type";
 import { ShareSeo, TrendingCountry, TrendingShare } from "../types/share.type";
 import { getConfiguredSiteUrl, normalizeBaseUrl } from "./seo.util";
+import { withBuildVersion } from "./version.util";
 
 const ERROR_CACHE_MS = 5_000;
 const SEO_CACHE_MAX_ENTRIES = 500;
@@ -78,8 +79,12 @@ export async function fetchShareList(
   limit: number,
 ): Promise<TrendingShare[] | null> {
   try {
+    const url = `${apiUrl}/api/shares/${path}?limit=${limit}`;
     const response = await fetch(
-      `${apiUrl}/api/shares/${path}?limit=${limit}`,
+      // The trending endpoint is cached for a minute at the edge. Versioning
+      // its URL with the build keeps a deployment from inheriting the previous
+      // build's cached ranking.
+      path === "trending" ? withBuildVersion(url) : url,
       {
         // The API response is public and edge-cacheable. getServerSideProps
         // does not populate Next's fetch cache, so this is a plain request;
