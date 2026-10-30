@@ -5,13 +5,9 @@ import useSiteMeta from "../hooks/siteMeta.hook";
 import useTranslate from "../hooks/useTranslate.hook";
 import shareService from "../services/share.service";
 import { TrendingShare } from "../types/share.type";
-import { getShareThumbnailUrl } from "../utils/file.util";
-import {
-  setNoStoreHeaders,
-  setPublicCacheHeaders,
-} from "../utils/httpCache.util";
+import { setListingCacheHeaders } from "../utils/httpCache.util";
 import { fetchShareList } from "../utils/seo.server.util";
-import { buildCollectionPage, buildItemList } from "../utils/seo.util";
+import { buildShareListCollectionPage } from "../utils/seo.util";
 
 export async function getServerSideProps({
   req,
@@ -19,9 +15,7 @@ export async function getServerSideProps({
 }: GetServerSidePropsContext) {
   const apiURL = process.env.API_URL || "http://localhost:8080";
   const initialItems = await fetchShareList(apiURL, "recent-files", 200);
-  if (req.url?.startsWith("/_next/data/") || initialItems === null)
-    setNoStoreHeaders(res);
-  else setPublicCacheHeaders(res, 60, 30);
+  setListingCacheHeaders(req, res, initialItems !== null);
   return { props: { initialItems: initialItems ?? [] } };
 }
 
@@ -33,20 +27,13 @@ const NewFiles = ({
   const t = useTranslate();
   const { siteName, baseUrl } = useSiteMeta();
   const description = t("seo.custom.newFiles.description");
-  const jsonLd = buildCollectionPage({
+  const jsonLd = buildShareListCollectionPage({
+    items: initialItems,
     name: t("newFiles.custom.title"),
     description,
     path: "/new-files",
     siteName,
     baseUrl,
-    mainEntity: buildItemList(
-      initialItems.slice(0, 50).map((item) => ({
-        name: item.name?.trim() || item.id,
-        path: `/share/${item.id}`,
-        image: getShareThumbnailUrl(item.id, item.updatedAt),
-      })),
-      baseUrl,
-    ),
   });
 
   return (

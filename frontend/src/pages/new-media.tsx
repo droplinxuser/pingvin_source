@@ -5,13 +5,9 @@ import useSiteMeta from "../hooks/siteMeta.hook";
 import useTranslate from "../hooks/useTranslate.hook";
 import shareService from "../services/share.service";
 import { TrendingShare } from "../types/share.type";
-import { getShareThumbnailUrl } from "../utils/file.util";
-import {
-  setNoStoreHeaders,
-  setPublicCacheHeaders,
-} from "../utils/httpCache.util";
+import { setListingCacheHeaders } from "../utils/httpCache.util";
 import { fetchShareList } from "../utils/seo.server.util";
-import { buildCollectionPage, buildItemList } from "../utils/seo.util";
+import { buildShareListCollectionPage } from "../utils/seo.util";
 
 export async function getServerSideProps({
   req,
@@ -23,9 +19,7 @@ export async function getServerSideProps({
   // must not be stored by the CDN. A single empty response cached during a
   // deployment would otherwise make every client transition render an error.
   // A failed backend request (`null`) is never cached either.
-  if (req.url?.startsWith("/_next/data/") || initialItems === null)
-    setNoStoreHeaders(res);
-  else setPublicCacheHeaders(res, 60, 30);
+  setListingCacheHeaders(req, res, initialItems !== null);
   return { props: { initialItems: initialItems ?? [] } };
 }
 
@@ -37,20 +31,13 @@ const NewMedia = ({
   const t = useTranslate();
   const { siteName, baseUrl } = useSiteMeta();
   const description = t("seo.custom.newMedia.description");
-  const jsonLd = buildCollectionPage({
+  const jsonLd = buildShareListCollectionPage({
+    items: initialItems,
     name: t("newMedia.custom.title"),
     description,
     path: "/new-media",
     siteName,
     baseUrl,
-    mainEntity: buildItemList(
-      initialItems.slice(0, 50).map((item) => ({
-        name: item.name?.trim() || item.id,
-        path: `/share/${item.id}`,
-        image: getShareThumbnailUrl(item.id, item.updatedAt),
-      })),
-      baseUrl,
-    ),
   });
 
   return (

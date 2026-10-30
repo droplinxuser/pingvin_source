@@ -3,13 +3,13 @@ import {
   ForbiddenException,
   Inject,
   Injectable,
+  Logger,
   NotFoundException,
   OnApplicationShutdown,
 } from "@nestjs/common";
 import { Prisma } from "@prisma/client";
 import { Cache } from "cache-manager";
 import { Request } from "express";
-import * as moment from "moment";
 import { I18nService } from "nestjs-i18n";
 import { PrismaService } from "src/prisma/prisma.service";
 import { MetricsService } from "src/cache/metrics.service";
@@ -34,7 +34,12 @@ import {
 } from "src/utils/cache.util";
 import { readCommentVersion } from "./comment.service";
 import { readVirusTotalReport } from "src/virustotal/virustotalReport.util";
-import { getShareExpiration, isMemberShare, sumFileSizes } from "./share.util";
+import {
+  getShareExpiration,
+  isMemberShare,
+  isShareExpired,
+  sumFileSizes,
+} from "./share.util";
 
 // Collapse bursts of share views into one metadata write per share. The
 // returned visitor list is updated immediately; only the disk write is delayed.
@@ -79,6 +84,7 @@ export type GuardShare = Prisma.ShareGetPayload<{
 
 @Injectable()
 export class ShareStateService implements OnApplicationShutdown {
+  private readonly logger = new Logger(ShareStateService.name);
   private readonly visitorLock = new KeyedLock();
   private readonly pendingVisitors = new Map<string, UploaderInfo>();
   private readonly visitorSnapshots = new Map<string, UploaderInfo>();
@@ -185,15 +191,18 @@ export class ShareStateService implements OnApplicationShutdown {
     // owner-management request (GET /shares/:id/from-owner) or by a late cache
     // miss: expiration is also how takedowns and reverse-share deletion work.
     const commentsVersionRead = readCommentVersion(id);
-    const hasExpiration = !moment(share.expiration).isSame(0);
-    if (hasExpiration && moment().isAfter(share.expiration)) {
+    if (isShareExpired(share.expiration)) {
       throw new NotFoundException(this.i18n.t("share.notFound"));
     }
-    if (hasExpiration) {
+    // Shares with the epoch expiration never expire and keep that value.
+    if (share.expiration.getTime() !== 0) {
       // The rolling window follows the share's owner: member shares keep 100
       // days, guest uploads expire after 10 days without a visit.
       share.expiration = getShareExpiration(isMemberShare(share));
-      await this.persistExpiration(share.id, share.expiration);
+      // The fresh expiration is already in the response. Persisting it is a
+      // best-effort side effect: a transient SQLite busy/locked error must not
+      // turn a valid share page into a 500.
+      void this.persistExpiration(share.id, share.expiration);
     }
 
     const { security, files, ...shareData } = share;
@@ -204,9 +213,7 @@ export class ShareStateService implements OnApplicationShutdown {
     // Attach the flat-file scan verdict to each file so the share page can show
     // a "safe" indicator without a database column.
     const filesWithReport = files.map((file) =>
-      virusTotal[file.id]
-        ? { ...file, virustotal: virusTotal[file.id] }
-        : file,
+      virusTotal[file.id] ? { ...file, virustotal: virusTotal[file.id] } : file,
     );
     const result = {
       ...shareData,
@@ -244,10 +251,19 @@ export class ShareStateService implements OnApplicationShutdown {
     // Record the attempt before awaiting so concurrent cache misses for the
     // same share cannot queue duplicate UPDATEs.
     this.expirationWrites.set(shareId, now);
-    await this.prisma.share.updateMany({
-      where: { id: shareId },
-      data: { expiration },
-    });
+    try {
+      await this.prisma.share.updateMany({
+        where: { id: shareId },
+        data: { expiration },
+      });
+    } catch (error) {
+      // Let the next cache miss retry instead of suppressing writes for six
+      // hours after one transient failure.
+      this.expirationWrites.delete(shareId);
+      this.logger.warn(
+        `Could not refresh the expiration of share ${shareId}: ${error}`,
+      );
+    }
   }
 
   async invalidateData(shareId: string) {
@@ -324,11 +340,7 @@ export class ShareStateService implements OnApplicationShutdown {
 
   async shareExists(shareId: string): Promise<boolean> {
     const share = await this.getGuardShare(shareId);
-    return (
-      !!share &&
-      (moment(share.expiration).isSame(0) ||
-        !moment().isAfter(share.expiration))
-    );
+    return !!share && !isShareExpired(share.expiration);
   }
 
   async getCurrentViews(shareId: string): Promise<number> {
@@ -348,6 +360,7 @@ export class ShareStateService implements OnApplicationShutdown {
       where: { id: shareId },
       select: { views: true },
     });
+    if (share) this.rememberLimitedView(shareId, share.views);
     return share?.views ?? 0;
   }
 

@@ -558,12 +558,10 @@ const FileList = ({
                               );
                               return;
                             }
-                            api
-                              .get(
-                                `/shares/${share.id}/files/${file.id}?download=false`,
-                              )
-                              .then((res) => {
-                                clipboard.copy(res.data);
+                            shareService
+                              .getFileText(share.id, file.id)
+                              .then((text) => {
+                                clipboard.copy(text);
                                 toast.success(
                                   t("share.notify.copied-contents"),
                                 );

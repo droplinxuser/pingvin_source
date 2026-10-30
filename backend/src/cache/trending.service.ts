@@ -3,6 +3,7 @@ import { PrismaService } from "src/prisma/prisma.service";
 import {
   sumFileSizes,
   isPublicShare,
+  isShareExpired,
   publicShareWhere,
 } from "src/share/share.util";
 import { findPreview, PreviewKind } from "src/share/preview.util";
@@ -435,8 +436,7 @@ export class TrendingService {
       if (share.views <= 0) continue;
       if (now - share.createdAt.getTime() > MAX_SHARE_AGE_MS) continue;
       if (!isPublicShare(share)) continue;
-      if (share.expiration.getTime() !== 0 && share.expiration.getTime() <= now)
-        continue;
+      if (isShareExpired(share.expiration, now)) continue;
 
       const media = findPreview(share.files);
       if (!media) continue;

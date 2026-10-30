@@ -498,17 +498,19 @@ const SharePage = ({
     <article aria-labelledby="share-title">
       {shareMeta}
 
-      <Breadcrumbs mb="md" aria-label="Breadcrumb">
-        <Anchor component={Link} href={homeHref}>
-          {t("seo.custom.breadcrumb.home")}
-        </Anchor>
-        <Anchor component={Link} href="/trending">
-          {t("trending.custom.title")}
-        </Anchor>
-        <Text truncate maw={{ base: 160, sm: 420 }}>
-          {displayName}
-        </Text>
-      </Breadcrumbs>
+      <nav aria-label="Breadcrumb">
+        <Breadcrumbs mb="md">
+          <Anchor component={Link} href={homeHref}>
+            {t("seo.custom.breadcrumb.home")}
+          </Anchor>
+          <Anchor component={Link} href="/trending">
+            {t("trending.custom.title")}
+          </Anchor>
+          <Text truncate maw={{ base: 160, sm: 420 }}>
+            {displayName}
+          </Text>
+        </Breadcrumbs>
+      </nav>
 
       <Box
         mb="lg"

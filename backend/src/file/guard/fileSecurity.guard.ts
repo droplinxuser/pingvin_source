@@ -6,12 +6,11 @@ import {
   BadRequestException,
 } from "@nestjs/common";
 import { Request } from "express";
-import * as moment from "moment";
 import { I18nService } from "nestjs-i18n";
 import { PrismaService } from "src/prisma/prisma.service";
 import { ShareSecurityGuard } from "src/share/guard/shareSecurity.guard";
 import { ShareService } from "src/share/share.service";
-import { isPublicShare } from "src/share/share.util";
+import { isPublicShare, isShareExpired } from "src/share/share.util";
 import { ConfigService } from "src/config/config.service";
 
 @Injectable()
@@ -62,10 +61,7 @@ export class FileSecurityGuard extends ShareSecurityGuard {
 
     // If there is no share token the user requests a file directly
     if (!shareToken) {
-      const expired =
-        !!share &&
-        moment().isAfter(share.expiration) &&
-        !moment(share.expiration).isSame(0);
+      const expired = !!share && isShareExpired(share.expiration);
 
       // Public, unexpired file reads do not need an account lookup. A share
       // page can request dozens of previews, so this keeps signed-in visitors

@@ -133,16 +133,16 @@ const ShareActions = ({
       </Button>
       {isOwner && (
         <HoverTip label={t("account.shares.button.edit")}>
-          <Link href={`/share/${shareId}/edit`}>
-            <ActionIcon
-              variant="light"
-              color="orange"
-              size="lg"
-              aria-label={t("account.shares.button.edit")}
-            >
-              <TbPlusMinus />
-            </ActionIcon>
-          </Link>
+          <ActionIcon
+            component={Link}
+            href={`/share/${shareId}/edit`}
+            variant="light"
+            color="orange"
+            size="lg"
+            aria-label={t("account.shares.button.edit")}
+          >
+            <TbPlusMinus />
+          </ActionIcon>
         </HoverTip>
       )}
       {isOwnerOrAdmin && (

@@ -5,12 +5,11 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { Request } from "express";
-import * as moment from "moment";
 import { I18nService } from "nestjs-i18n";
 import { PrismaService } from "src/prisma/prisma.service";
 import { ShareService } from "src/share/share.service";
 import { GuardShare } from "src/share/shareState.service";
-import { isPublicShare } from "src/share/share.util";
+import { isPublicShare, isShareExpired } from "src/share/share.util";
 import { ConfigService } from "src/config/config.service";
 import { JwtGuard } from "src/auth/guard/jwt.guard";
 import { User } from "@prisma/client";
@@ -93,7 +92,9 @@ export class ShareSecurityGuard extends JwtGuard {
 
     // FileSecurityGuard already loaded the same guard entry before delegating
     // here; reuse it instead of issuing a second cache read per file.
-    const guardedRequest = request as Request & { guardShare?: GuardShare | null };
+    const guardedRequest = request as Request & {
+      guardShare?: GuardShare | null;
+    };
     const share =
       guardedRequest.guardShare === undefined
         ? await this.shareService.getGuardShare(shareId)
@@ -105,9 +106,7 @@ export class ShareSecurityGuard extends JwtGuard {
     (request as Request & { shareIsPublic?: boolean }).shareIsPublic =
       publicShare;
 
-    const expired =
-      moment().isAfter(share.expiration) &&
-      !moment(share.expiration).isSame(0);
+    const expired = isShareExpired(share.expiration);
 
     // A public, unexpired GET needs no account lookup. Skipping authentication
     // here keeps the share payload, comments and thumbnail reads from issuing

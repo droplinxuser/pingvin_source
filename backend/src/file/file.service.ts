@@ -25,11 +25,15 @@ import { I18nService } from "nestjs-i18n";
 import { TrendingService } from "src/cache/trending.service";
 import { SearchService } from "src/cache/search.service";
 import { VirusTotalQueueService } from "src/virustotal/virustotalQueue.service";
-import { invalidateShareDataCache } from "src/utils/cache.util";
+import {
+  getCachedValue,
+  invalidateShareDataCache,
+  setCachedValue,
+} from "src/utils/cache.util";
 import { getFileMimeType } from "src/utils/mime.util";
 import { byteToHumanSizeString } from "src/utils/fileSize.util";
 import { getPreviewCandidates, PreviewFile } from "src/share/preview.util";
-import { sumFileSizes } from "src/share/share.util";
+import { isShareExpired, sumFileSizes } from "src/share/share.util";
 import {
   RemoteFetchError,
   downloadRemoteToFile,
@@ -178,8 +182,10 @@ export class FileService implements OnModuleInit {
     const storageService = this.getStorageService();
     const result = await storageService.create(data, chunk, file, shareId);
     // A legacy archive.zip is a snapshot. It must never keep serving a file
-    // that was removed or an older version of the share after an upload.
-    await this.removeLocalZip(shareId);
+    // that was removed or an older version of the share after an upload. The
+    // first chunk is enough: later chunks cannot recreate the archive, so
+    // avoid one failed unlink per chunk of a large upload.
+    if (chunk.index === 0) await this.removeLocalZip(shareId);
     return result;
   }
 
@@ -356,8 +362,7 @@ export class FileService implements OnModuleInit {
       for (let index = 0; index < total; index++) {
         const length = Math.min(chunkSize, size - index * chunkSize);
         const buffer = Buffer.alloc(Math.max(length, 0));
-        if (length > 0)
-          await handle.read(buffer, 0, length, index * chunkSize);
+        if (length > 0) await handle.read(buffer, 0, length, index * chunkSize);
         await this.create(
           buffer.toString("base64"),
           { index, total },
@@ -945,10 +950,7 @@ export class FileService implements OnModuleInit {
       this.rememberThumbnailFailure(shareId, "unavailable");
       return undefined;
     }
-    if (
-      share.expiration.getTime() !== 0 &&
-      share.expiration.getTime() <= Date.now()
-    ) {
+    if (isShareExpired(share.expiration)) {
       this.rememberThumbnailFailure(shareId, "expired");
       return undefined;
     }
@@ -1345,7 +1347,7 @@ export class FileService implements OnModuleInit {
         return;
 
       const notificationKey = `share-download-notification:${shareId}:${recipientId}`;
-      if (await this.cache.get<true>(notificationKey)) return;
+      if (await getCachedValue<true>(this.cache, notificationKey)) return;
 
       const share = await this.prisma.share.findUnique({
         where: { id: shareId },
@@ -1369,12 +1371,6 @@ export class FileService implements OnModuleInit {
         select: { displayName: true, username: true },
       });
 
-      await this.cache.set(
-        notificationKey,
-        true,
-        DOWNLOAD_NOTIFICATION_COOLDOWN_MS,
-      );
-
       await this.emailService.sendShareDownloadNotification(
         share.creator.email,
         share.id,
@@ -1382,6 +1378,15 @@ export class FileService implements OnModuleInit {
         recipient.email,
         share.creator?.displayName || share.creator?.username,
         recipientUser?.displayName || recipientUser?.username,
+      );
+
+      // Start the cooldown only after a successful send, so a transient SMTP
+      // failure does not suppress the notification for fifteen minutes.
+      await setCachedValue(
+        this.cache,
+        notificationKey,
+        true,
+        DOWNLOAD_NOTIFICATION_COOLDOWN_MS,
       );
     } catch (e) {
       this.logger.error(

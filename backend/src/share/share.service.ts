@@ -42,6 +42,7 @@ import {
   activeShareWhere,
   getShareExpiration,
   isPublicShare,
+  isShareExpired,
   isViewLimitExceeded,
   resolveShareSizeLimit,
   sumFileSizes,
@@ -247,19 +248,19 @@ export class ShareService {
       );
     }
 
-    fs.mkdirSync(`${SHARE_DIRECTORY}/${share.id}`, {
-      recursive: true,
-    });
-
     const {
       size: _size,
       security: _security,
       recipients: _recipients,
       ...shareData
     } = share;
+    const shareDirectory = `${SHARE_DIRECTORY}/${share.id}`;
 
     let shareTuple;
     try {
+      // Keep the directory creation inside the guarded block: a failure here
+      // must refund the reserved reverse-share use like any other create error.
+      fs.mkdirSync(shareDirectory, { recursive: true });
       shareTuple = await this.prisma.share.create({
         data: {
           ...shareData,
@@ -282,21 +283,19 @@ export class ShareService {
         },
       });
     } catch (error) {
-      // Do not burn a use, and do not leave an unlinked share behind, when
-      // the create/link step fails after the reservation.
+      // Do not burn a use, and do not leave an unlinked share or an empty
+      // directory behind, when the create/link step fails after the
+      // reservation.
       if (reservedUse)
         await this.reverseShareService.refundUse(reverseShareToken);
       if (shareTuple) {
         await this.prisma.share
           .delete({ where: { id: shareTuple.id } })
           .catch(() => undefined);
-        await fs.promises
-          .rm(`${SHARE_DIRECTORY}/${share.id}`, {
-            recursive: true,
-            force: true,
-          })
-          .catch(() => undefined);
       }
+      await fs.promises
+        .rm(shareDirectory, { recursive: true, force: true })
+        .catch(() => undefined);
       throw error;
     }
 
@@ -409,16 +408,22 @@ export class ShareService {
       this.logger.warn(`Could not notify share recipients: ${error}`),
     );
 
-    // Auto-link email recipients who are registered users so the share appears in their dashboard
+    // Auto-link email recipients who are registered users so the share appears in their dashboard.
     if (this.configService.get("share.enableUserRecipients")) {
-      for (const matchedUser of matchedUsers) {
-        await this.prisma.shareUserRecipient.upsert({
-          where: {
-            userId_shareId: { userId: matchedUser.id, shareId: share.id },
-          },
-          create: { userId: matchedUser.id, shareId: share.id },
-          update: {},
+      const userIds = matchedUsers.map((user) => user.id);
+      if (userIds.length > 0) {
+        // One read plus one insert instead of a serial UPSERT per recipient;
+        // with a single SQLite connection that loop dominated completion time.
+        const existing = await this.prisma.shareUserRecipient.findMany({
+          where: { shareId: share.id, userId: { in: userIds } },
+          select: { userId: true },
         });
+        const linked = new Set(existing.map((row) => row.userId));
+        const missing = userIds.filter((userId) => !linked.has(userId));
+        if (missing.length > 0)
+          await this.prisma.shareUserRecipient.createMany({
+            data: missing.map((userId) => ({ shareId: share.id, userId })),
+          });
       }
     }
 
@@ -517,6 +522,7 @@ export class ShareService {
       data: { uploadLocked: false, isZipReady: false },
     });
     await this.shareState.invalidateData(id);
+    void this.searchService.invalidate();
     await this.fileService.removeShareThumbnail(id);
     await this.fileService.removeLocalZip(id);
     return updatedShare;
@@ -637,10 +643,6 @@ export class ShareService {
    * the short-lived share cache so the next page load requests the new
    * comments cache key instead of a month-old edge entry.
    */
-  async invalidateDataCache(id: string): Promise<void> {
-    await this.shareState.invalidateDataCache(id);
-  }
-
   async invalidateCommentsDataCache(id: string): Promise<void> {
     await this.shareState.invalidateCommentsData(id);
   }
@@ -718,10 +720,7 @@ export class ShareService {
     if (!share || share.removedReason || !share.uploadLocked)
       throw new NotFoundException(this.i18n.t("share.notFound"));
 
-    if (
-      !moment(share.expiration).isSame(0) &&
-      moment().isAfter(share.expiration)
-    )
+    if (isShareExpired(share.expiration))
       throw new NotFoundException(this.i18n.t("share.notFound"));
 
     if (!isPublicShare(share) || share._count.files === 0)
@@ -731,13 +730,20 @@ export class ShareService {
         requiresPassword: !!share.security?.password,
       };
 
-    const sizeRows = await this.prisma.$queryRaw<
-      { size: number | bigint | null }[]
-    >`
-      SELECT COALESCE(SUM(CAST(size AS INTEGER)), 0) AS size
-      FROM "File"
-      WHERE "shareId" = ${share.id}
-    `;
+    // The first 50 files are already loaded. A share at or below that limit
+    // has its complete file list in memory, so the SUM query is unnecessary.
+    const size =
+      share._count.files <= share.files.length
+        ? sumFileSizes(share.files)
+        : Number(
+            (
+              await this.prisma.$queryRaw<{ size: number | bigint | null }[]>`
+                SELECT COALESCE(SUM(CAST(size AS INTEGER)), 0) AS size
+                FROM "File"
+                WHERE "shareId" = ${share.id}
+              `
+            )[0]?.size ?? 0,
+          );
 
     // Start the background build, then expose the versioned URL once the
     // thumbnail exists. New shares are built at completion; this covers legacy
@@ -759,7 +765,7 @@ export class ShareService {
       createdAt: share.createdAt,
       updatedAt: share.updatedAt ?? share.createdAt,
       fileCount: share._count.files,
-      size: Number(sizeRows[0]?.size ?? 0),
+      size,
       files: share.files,
       thumbnailUrl,
     };

@@ -14,7 +14,7 @@ the suggested order for future features.
 |---|---|
 | Environment loading / production config | `backend/src/constants.ts`, `backend/src/config/config.service.ts`, `backend/src/main.ts`, `backend/.env.example` |
 | Rolling expiration (member 100 days / guest 10 days) | `backend/src/share/share.util.ts` (`SHARE_EXPIRATION`, `GUEST_SHARE_EXPIRATION`, `getShareExpiration`, `isMemberShare`), `share.service.ts` (create), `shareState.service.ts` (renew on visit), migrations `20261016000000` / `20261016000001`, share create/edit modals |
-| Public-content search | `backend/src/cache/search.service.ts` (Valkey-backed index, no SQLite table/FTS), `GET /api/shares/search`, `frontend/src/components/header/NavbarSearch.tsx` (desktop form beside the logo, mobile icon on the right), `frontend/src/pages/search.tsx`. The stored index keeps only display fields; the lowercase search text is derived in process memory on load, so the Valkey value does not duplicate every name and description. |
+| Public-content search | `backend/src/cache/search.service.ts` (Valkey-backed index, no SQLite table/FTS), `GET /api/shares/search`, `frontend/src/components/header/NavbarSearch.tsx` (desktop form beside the logo, mobile icon on the right), `frontend/src/pages/search.tsx`. The stored index keeps only display fields; the lowercase search text is derived in process memory on load, so the Valkey value does not duplicate every name and description. The page memoizes its `loadItems` callback and keys the listing by query, so an empty result set cannot refetch in a render loop and a new query cannot keep the previous cards. |
 | Header discovery icons | `frontend/src/components/header/NavbarIconLink.tsx` renders the desktop "New media"/"New files" entries as icon links (matching `NavbarShareMenu`); the mobile menu keeps text links |
 | Member-only create options | In the create-share modal (`frontend/src/components/upload/modals/showCreateUploadModal.tsx`) the **Email recipients** and **Security options** accordions render only when `isUserSignedIn` is true; a guest upload gets just the link and name/description. |
 | New-media / new-files / search listings | `backend/src/cache/trending.service.ts` (`getRecent` media-only, `getRecentFiles` no-media, both derived from one shared newest-shares SQLite scan), `GET /api/shares/recent-files`, `GET /api/shares/search`, `frontend/src/pages/new-media.tsx` and `search.tsx` (square preview cards via `TrendingToday.tsx`; on search, file-only cards use `fileOnlyLayout="centered"` — no file names, title + description centered), `new-files.tsx` (polished row/list layout via `frontend/src/components/share/ShareList.tsx`), `/new` 308-redirects to `/new-media` |
@@ -27,7 +27,7 @@ the suggested order for future features.
 | Uploader metadata / visitors | `backend/src/utils/uploaderInfo.util.ts`, `ShareDTO.uploaderInfo`, `frontend/src/components/share/UploaderInfoBadges.tsx`, `ShareStats.tsx`; view counts stay in `Share.views`, written in five-second batches for unlimited shares and atomically for limited ones (`shareState.service.ts`). Geo labels are clamped before storage. The recent-visitor list is shown to every visitor. |
 | Reverse-share use limits | `backend/src/reverseShare/reverseShare.service.ts` (`reserveUse`), `backend/src/share/share.service.ts` (reserve at create, reject invalid cookies, no refund on revert) |
 | Inline media gallery | `frontend/src/components/share/MediaPreviewGallery.tsx` (up to 100 image/video cards, 12-card lazy batches, single-media square card, full-size previous/next modal), `frontend/src/components/core/LazySection.tsx` |
-| Individual downloads / legacy ZIP | `frontend/src/components/share/DownloadAllButton.tsx`, `frontend/src/services/share.service.ts`; `backend/src/share/share.service.ts` no longer creates archives. Existing `archive.zip` files remain served by the legacy API. |
+| Individual downloads / legacy ZIP | `frontend/src/components/share/DownloadAllButton.tsx`, `frontend/src/services/share.service.ts`; `backend/src/share/share.service.ts` no longer creates archives. Existing `archive.zip` files remain served by the legacy API. The preview modal downloads through `shareService.downloadFile` too, so its clicks reach the download counters. |
 | Share and file size limits | `backend/prisma/seed/config.seed.ts` (`share.maxSize` 5 GB, `share.maxFileSize` 512 MB), migration `20261025000000_raise_share_size_limit`, `backend/src/share/share.util.ts` (`resolveShareSizeLimit`), local/S3 upload guards, upload UI |
 | Trending today / new shares | `backend/src/cache/trending.service.ts` (`getTrending`, `getTrendingCountries`, `getRecent`, `getRecentFiles`), `GET /api/shares/trending`, `/trending/countries`, `/recent`, `/recent-files`; `frontend/src/components/share/TrendingToday.tsx`, `TrendingCountries.tsx`, `ShareList.tsx` (polished row/list layout for `/new-files`), `frontend/src/pages/trending.tsx`, `new-media.tsx`, `new-files.tsx`, `search.tsx`. Trending and the new listings cap at 200; rows/cards reveal in lazy batches with skeletons (infinite scroll). |
 | Shared UI polish | `frontend/src/components/core/RelativeTime.tsx`, `RouteProgress.tsx`, `LazyImage.tsx`, `LazyVideo.tsx`, `LazySection.tsx`, `frontend/src/utils/filePreview.util.ts`; `frontend/src/components/share/FileList.tsx` adds client-side file search for shares with 12+ files (`SEARCH_MIN_FILES`), filtering the rendered batches and the preview navigation without a backend request |
@@ -99,6 +99,13 @@ the matching `utils/*.util.ts` files.
   The multi-file "Download all" button uses `cyan.9` on the light variant
   (5.15:1); plain `cyan` was 2.56:1. The disabled placeholder in
   `ShareActions.tsx` uses the same shade.
+- Interactive elements are not nested: icon links use
+  `ActionIcon component={Link}` (or `component="a"`) instead of an icon inside
+  an `<a>`, so one control is one tab stop. The share breadcrumb is wrapped in
+  a `nav[aria-label="Breadcrumb"]`, and view-count badges carry `role="img"`
+  so their count label is not ignored on a generic span. Public listing
+  JSON-LD is built once by `buildShareListCollectionPage`; listing cache
+  headers are set by `setListingCacheHeaders`.
 - The footer uses slightly larger muted text and vertical padding on links for
   comfortable touch targets.
 - Large shares (>12 files) get a compact search field above the file table.
@@ -243,6 +250,24 @@ the matching `utils/*.util.ts` files.
   delete share content during maintenance. Reclaimable index/fragmentation space
   is handled by the migration + `VACUUM`; on the 16k-share reference database
   this reduced the file from 9.49 MB to 8.54 MB with integrity `ok`.
+- `share.util.ts` owns the expiry rule (`isShareExpired`): the epoch means
+  "never expires". Every guard, listing and cache path uses it instead of a raw
+  date comparison, so an epoch share cannot be treated as expired in one route
+  and valid in another.
+- View-limited shares fill the short `limitedViewCounts` cache after reading
+  the counter, so a gallery with N files costs one SELECT instead of one per
+  file request. Completion links registered recipients with one `findMany` plus
+  one `createMany` instead of a serial UPSERT per address, and a failed share
+  create removes its directory and refunds the reserved reverse-share use.
+- The rolling-expiration write is best-effort and no longer awaited on the
+  share read path; a transient SQLite error is logged and retried on the next
+  cache miss instead of failing the page. `revertComplete` invalidates the
+  public search index, so an un-completed share cannot stay searchable.
+- Only the first uploaded chunk removes the legacy `archive.zip`; later chunks
+  skip the guaranteed-ENOENT unlink. The SEO loader computes the share size
+  from the already-loaded first 50 files and only runs the `SUM` query for
+  larger shares. The recipient download notification starts its cooldown only
+  after a successful SMTP send.
 
 ## HTTP caching
 
@@ -389,11 +414,15 @@ trending/recent/country ranking and cache behavior, public search index
 storage/matching/versioning, share thumbnails, sitemap
 index/chunks/robots, comments, archive-encryption detection, VirusTotal
 audit/queue/filter/removal/notification flows, reverse-share guard wiring,
-referrers and avatars. Keep this suite green before pushing; run the frontend
-production build and lint in the same pass. Playwright smoke checks should cover
+referrers and avatars. `share-util.test.js` pins the epoch/expiry rule. Keep
+this suite green before pushing; run the frontend production build and lint in
+the same pass. Playwright smoke checks should cover
 guest, member and mobile views of the public pages, upload/download/comment,
 admin redirects and the share gallery with zero application console errors or
-warnings (the intentional 404 document status is excluded). Axe checks at 390 px
+warnings (the intentional 404 document status is excluded). Also verify that
+`/search` sends no API request for an empty query, that a zero-result query
+clears the previous cards, and that a preview-modal download sends the
+`POST /api/shares/:id/download` beacon. Axe checks at 390 px
 should report zero WCAG A/AA and best-practice violations for the public pages,
 member account pages and every admin page; the temporary local admin promotion
 used for that check must be reverted afterwards.

@@ -47,11 +47,13 @@ function CopyTextField(props: { link: string; toggleQR?: () => void }) {
             offset={-2}
             openDelay={200}
           >
-            <a href={props.link}>
-              <ActionIcon>
-                <IoOpenOutline />
-              </ActionIcon>
-            </a>
+            <ActionIcon
+              component="a"
+              href={props.link}
+              aria-label={t("common.text.navigate-to-link")}
+            >
+              <IoOpenOutline />
+            </ActionIcon>
           </Tooltip>
 
           {window.isSecureContext && (
@@ -62,7 +64,10 @@ function CopyTextField(props: { link: string; toggleQR?: () => void }) {
                 offset={-2}
                 openDelay={200}
               >
-                <ActionIcon onClick={copyLink}>
+                <ActionIcon
+                  onClick={copyLink}
+                  aria-label={t("common.button.clickToCopy")}
+                >
                   {checkState ? <TbCheck /> : <TbCopy />}
                 </ActionIcon>
               </Tooltip>
@@ -73,7 +78,10 @@ function CopyTextField(props: { link: string; toggleQR?: () => void }) {
                 offset={-2}
                 openDelay={200}
               >
-                <ActionIcon onClick={props.toggleQR}>
+                <ActionIcon
+                  onClick={props.toggleQR}
+                  aria-label={t("common.button.showQRCode")}
+                >
                   <TbQrcode />
                 </ActionIcon>
               </Tooltip>

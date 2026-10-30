@@ -90,9 +90,7 @@ const useStyles = createStyles((theme) => {
       },
 
       "&:focus-visible": {
-        outline: `2px solid ${
-          theme.colors[theme.primaryColor][dark ? 5 : 4]
-        }`,
+        outline: `2px solid ${theme.colors[theme.primaryColor][dark ? 5 : 4]}`,
         outlineOffset: 2,
       },
 
@@ -254,7 +252,9 @@ const ShareList = ({
   const moreRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!initialItems?.length) return;
+    // See TrendingToday: an empty array from the server must clear a previous
+    // listing, while `undefined` keeps the widget's lazy loader in charge.
+    if (!Array.isArray(initialItems)) return;
     setItems(initialItems);
     setIsLoading(false);
     setShouldLoad(true);
@@ -453,8 +453,11 @@ const ShareList = ({
                   )}
                   <Box
                     component="span"
+                    role="img"
                     className={classes.metaItem}
-                    aria-label={t("trending.custom.views", { count: item.views })}
+                    aria-label={t("trending.custom.views", {
+                      count: item.views,
+                    })}
                   >
                     <TbEye size={14} aria-hidden />
                     {views}

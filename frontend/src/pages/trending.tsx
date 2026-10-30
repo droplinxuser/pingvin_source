@@ -7,17 +7,13 @@ import TrendingCountries, {
 import TrendingToday from "../components/share/TrendingToday";
 import useSiteMeta from "../hooks/siteMeta.hook";
 import useTranslate from "../hooks/useTranslate.hook";
-import {
-  setNoStoreHeaders,
-  setPublicCacheHeaders,
-} from "../utils/httpCache.util";
+import { setListingCacheHeaders } from "../utils/httpCache.util";
 import {
   fetchShareList,
   fetchTrendingCountries,
 } from "../utils/seo.server.util";
-import { buildCollectionPage, buildItemList } from "../utils/seo.util";
+import { buildShareListCollectionPage } from "../utils/seo.util";
 import { TrendingCountry, TrendingShare } from "../types/share.type";
-import { getShareThumbnailUrl } from "../utils/file.util";
 
 export async function getServerSideProps({
   req,
@@ -30,13 +26,11 @@ export async function getServerSideProps({
   ]);
   // Never let the CDN cache a failed backend response or an empty
   // client-navigation payload; the client retries both.
-  if (
-    req.url?.startsWith("/_next/data/") ||
-    initialItems === null ||
-    initialCountries === null
-  )
-    setNoStoreHeaders(res);
-  else setPublicCacheHeaders(res, 60, 30);
+  setListingCacheHeaders(
+    req,
+    res,
+    initialItems !== null && initialCountries !== null,
+  );
   return {
     props: {
       initialItems: initialItems ?? [],
@@ -55,20 +49,13 @@ const Trending = ({
   const t = useTranslate();
   const { siteName, baseUrl } = useSiteMeta();
   const description = t("seo.custom.trending.description");
-  const jsonLd = buildCollectionPage({
+  const jsonLd = buildShareListCollectionPage({
+    items: initialItems,
     name: t("trending.custom.title"),
     description,
     path: "/trending",
     siteName,
     baseUrl,
-    mainEntity: buildItemList(
-      initialItems.slice(0, 50).map((item) => ({
-        name: item.name?.trim() || item.id,
-        path: `/share/${item.id}`,
-        image: getShareThumbnailUrl(item.id, item.updatedAt),
-      })),
-      baseUrl,
-    ),
   });
 
   return (

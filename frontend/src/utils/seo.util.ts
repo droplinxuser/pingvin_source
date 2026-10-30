@@ -1,5 +1,5 @@
 import Config from "../types/config.type";
-import { getBaseName } from "./file.util";
+import { getBaseName, getShareThumbnailUrl } from "./file.util";
 import { getFileMimeType } from "./mime.util";
 
 export const DEFAULT_SITE_NAME = "DropMB";
@@ -227,6 +227,41 @@ export const getShareContentKinds = (
   }
   return [...kinds];
 };
+
+/**
+ * The JSON-LD used by every public share listing. The same ItemList shape is
+ * built from the first 50 links, so trending/new/search cannot drift.
+ */
+export const buildShareListCollectionPage = ({
+  items,
+  name,
+  description,
+  path,
+  siteName,
+  baseUrl,
+}: {
+  items: { id: string; name?: string; updatedAt?: string }[];
+  name: string;
+  description: string;
+  path: string;
+  siteName: string;
+  baseUrl: string;
+}) =>
+  buildCollectionPage({
+    name,
+    description,
+    path,
+    siteName,
+    baseUrl,
+    mainEntity: buildItemList(
+      items.slice(0, 50).map((item) => ({
+        name: item.name?.trim() || item.id,
+        path: `/share/${item.id}`,
+        image: getShareThumbnailUrl(item.id, item.updatedAt),
+      })),
+      baseUrl,
+    ),
+  });
 
 export const buildCollectionPage = ({
   name,

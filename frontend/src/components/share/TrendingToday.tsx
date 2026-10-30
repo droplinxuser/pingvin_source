@@ -373,7 +373,9 @@ const TrendingToday = ({
   const moreRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!initialItems?.length) return;
+    // `undefined` means the widget loads lazily from `loadItems`; any provided
+    // array (including an empty result set) is the authoritative server data.
+    if (!Array.isArray(initialItems)) return;
     setItems(initialItems);
     setIsLoading(false);
     setShouldLoad(true);
@@ -523,10 +525,8 @@ const TrendingToday = ({
             const description = item.description?.trim();
             const hasVideo =
               item.previewKind === "video" || item.hasVideo === true;
-            const showMediaBadge =
-              hasMedia && (hasVideo || showMediaTypeBadge);
-            const centeredFileCard =
-              fileOnlyLayout === "centered" && !hasMedia;
+            const showMediaBadge = hasMedia && (hasVideo || showMediaTypeBadge);
+            const centeredFileCard = fileOnlyLayout === "centered" && !hasMedia;
             const metaItems = (
               <>
                 {!!item.fileCount && (
@@ -629,6 +629,7 @@ const TrendingToday = ({
                   )}
                   <Box
                     component="span"
+                    role="img"
                     className={classes.badge}
                     aria-label={t("trending.custom.views", {
                       count: item.views,
@@ -669,7 +670,11 @@ const TrendingToday = ({
                   </>
                 ) : (
                   <Box component="span" className={classes.body}>
-                    <Text component="span" className={classes.name} lineClamp={2}>
+                    <Text
+                      component="span"
+                      className={classes.name}
+                      lineClamp={2}
+                    >
                       {name}
                     </Text>
                     {description && (

@@ -14,6 +14,7 @@ import { FormattedMessage } from "react-intl";
 import { TbDownload, TbExternalLink } from "react-icons/tb";
 import useTranslate from "../../hooks/useTranslate.hook";
 import api from "../../services/api.service";
+import shareService from "../../services/share.service";
 import { getShareFileUrl } from "../../utils/file.util";
 import { HoverTip } from "../core/HoverTip";
 import LazyImage from "../core/LazyImage";
@@ -69,12 +70,13 @@ const FilePreview = ({
       </HoverTip>
       <HoverTip label={t("common.button.download")}>
         <ActionIcon
-          component="a"
-          href={getShareFileUrl(shareId, fileId, { download: true })}
           variant="light"
           color="cyan"
           size="lg"
           aria-label={t("common.button.download")}
+          onClick={() =>
+            void shareService.downloadFile(shareId, fileId, undefined, fileName)
+          }
         >
           <TbDownload size={18} />
         </ActionIcon>

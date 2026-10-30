@@ -22,6 +22,21 @@ export function setPublicCacheHeaders(
 }
 
 /**
+ * Public listing pages (trending, new media/files) share the same rule: a
+ * failed backend response and every `_next/data` client-navigation payload
+ * must stay out of the CDN, while a successful shell may be shared briefly.
+ */
+export function setListingCacheHeaders(
+  req: { url?: string },
+  response: ServerResponse,
+  succeeded: boolean,
+) {
+  if (req.url?.startsWith("/_next/data/") || !succeeded)
+    setNoStoreHeaders(response);
+  else setPublicCacheHeaders(response, 60, 30);
+}
+
+/**
  * Overrides the public page-shell headers when the server-rendered response is
  * a transient error. Without this, the middleware's short public TTL could
  * pin a backend hiccup at the edge.

@@ -209,6 +209,20 @@ const isShareIdAvailable = async (id: string): Promise<boolean> => {
   return (await api.get(`/shares/isShareIdAvailable/${id}`)).data.isAvailable;
 };
 
+const getFileText = async (
+  shareId: string,
+  fileId: string,
+  signal?: AbortSignal,
+): Promise<string> => {
+  if (!isValidId(shareId) || !isValidId(fileId)) throw new Error("Invalid ID");
+  return (
+    await api.get(`shares/${shareId}/files/${fileId}`, {
+      params: { download: false },
+      signal,
+    })
+  ).data as string;
+};
+
 const downloadFile = async (
   shareId: string,
   fileId: string,
@@ -601,6 +615,7 @@ export default {
   getReceivedShares,
   isShareIdAvailable,
   isReverseShareTokenAvailable,
+  getFileText,
   downloadFile,
   downloadZip,
   removeFile,

@@ -1,7 +1,7 @@
 import { Button, Container, Group, TextInput } from "@mantine/core";
 import { GetServerSidePropsContext } from "next";
 import { useRouter } from "next/router";
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useCallback, useEffect, useState } from "react";
 import { TbSearch } from "react-icons/tb";
 import Meta from "../components/Meta";
 import TrendingToday from "../components/share/TrendingToday";
@@ -52,6 +52,15 @@ const Search = ({
   // this page is already mounted.
   useEffect(() => setTerm(query), [query]);
 
+  // The listing widget keeps this callback in an effect dependency list. An
+  // inline arrow would get a new identity on every render, so an empty result
+  // set would keep refetching (and a keystroke would fire a request per
+  // character).
+  const loadSearchItems = useCallback(
+    (limit: number) => shareService.searchShares(query, limit),
+    [query],
+  );
+
   const submit = (event: FormEvent) => {
     event.preventDefault();
     const value = term.trim();
@@ -85,11 +94,12 @@ const Search = ({
         </form>
       </Container>
       <TrendingToday
+        key={query}
         embedded
         limit={200}
         previewBlur={2}
         initialItems={initialItems}
-        loadItems={(limit) => shareService.searchShares(query, limit)}
+        loadItems={loadSearchItems}
         showMediaTypeBadge
         fileOnlyLayout="centered"
         title={
@@ -99,9 +109,7 @@ const Search = ({
         }
         description={t("search.custom.description")}
         loadingText={t("search.custom.loading")}
-        emptyText={
-          query ? t("search.custom.empty") : t("search.custom.prompt")
-        }
+        emptyText={query ? t("search.custom.empty") : t("search.custom.prompt")}
       />
     </>
   );

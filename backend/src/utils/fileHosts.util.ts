@@ -117,17 +117,6 @@ export function detectFileHost(rawUrl: string): FileHostName | null {
 // Hosts whose public page can be resolved to a direct download without an
 // account. Everything else that is "detected" is reported as unsupported with
 // a clear reason instead of being silently tried.
-const SUPPORTED: ReadonlySet<FileHostName> = new Set<FileHostName>([
-  "bunkr",
-  "mediafire",
-  "dropbox",
-  "gdrive",
-  "onedrive",
-  "pcloud",
-  "pixeldrain",
-  "tmpfiles",
-]);
-
 /**
  * Resolves a supported file-host page URL to one or more direct, publicly
  * fetchable URLs. Only public page HTML/JSON is parsed (no account
@@ -160,10 +149,6 @@ export async function resolveFileHost(rawUrl: string): Promise<ResolvedFile[]> {
     default:
       throw new FileHostError("unsupported", `unsupported host: ${host}`);
   }
-}
-
-export function isSupportedFileHost(host: FileHostName): boolean {
-  return SUPPORTED.has(host);
 }
 
 function decodeJsonString(value: string): string {

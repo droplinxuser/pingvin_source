@@ -27,6 +27,22 @@ export function getShareExpiration(isMember: boolean): Date {
   );
 }
 
+/**
+ * A share with the epoch (0) as its expiration never expires. Every guard,
+ * listing and cache path must use this same rule; a raw date comparison would
+ * otherwise treat "never" as "expired long ago".
+ */
+export function isShareExpired(
+  expiration: Date | string,
+  now = Date.now(),
+): boolean {
+  const time =
+    expiration instanceof Date
+      ? expiration.getTime()
+      : new Date(expiration).getTime();
+  return time !== 0 && Number.isFinite(time) && time <= now;
+}
+
 type ShareVisibility = {
   security?: Pick<
     ShareSecurity,
