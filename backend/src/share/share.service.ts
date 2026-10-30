@@ -45,6 +45,7 @@ import {
   isShareExpired,
   isViewLimitExceeded,
   resolveShareSizeLimit,
+  shareWriteLock,
   sumFileSizes,
 } from "./share.util";
 import { SearchService } from "src/cache/search.service";
@@ -293,9 +294,16 @@ export class ShareService {
           .delete({ where: { id: shareTuple.id } })
           .catch(() => undefined);
       }
-      await fs.promises
-        .rm(shareDirectory, { recursive: true, force: true })
+      // A concurrent request may have won the same share id and already be
+      // uploading into this directory. Only remove it when no Share row owns
+      // the id, otherwise this failed request would delete the winner's files.
+      const owner = await this.prisma.share
+        .findUnique({ where: { id: share.id }, select: { id: true } })
         .catch(() => undefined);
+      if (!owner)
+        await fs.promises
+          .rm(shareDirectory, { recursive: true, force: true })
+          .catch(() => undefined);
       throw error;
     }
 
@@ -303,6 +311,10 @@ export class ShareService {
   }
 
   async complete(id: string) {
+    return shareWriteLock.run(id, () => this.completeShare(id));
+  }
+
+  private async completeShare(id: string) {
     const share = await this.prisma.share.findUnique({
       where: { id },
       select: {
@@ -508,6 +520,10 @@ export class ShareService {
   }
 
   async revertComplete(id: string) {
+    return shareWriteLock.run(id, () => this.revertCompleteShare(id));
+  }
+
+  private async revertCompleteShare(id: string) {
     const share = await this.prisma.share.findUnique({
       where: { id },
       select: { uploadLocked: true },
@@ -986,6 +1002,23 @@ export class ShareService {
       select: { id: true },
     });
     return { isAvailable: !share };
+  }
+
+  /**
+   * Keeps only file ids that actually belong to the share. The download beacon
+   * is public, so without this check any visitor could create a new Valkey hash
+   * field per arbitrary id and inflate per-file counters.
+   */
+  async filterDownloadFileIds(
+    shareId: string,
+    fileIds: string[],
+  ): Promise<string[]> {
+    if (fileIds.length === 0) return [];
+    const files = await this.prisma.file.findMany({
+      where: { shareId, id: { in: fileIds } },
+      select: { id: true },
+    });
+    return files.map((file) => file.id);
   }
 
   async recordView(id: string, request: Request, maxViews?: number | null) {

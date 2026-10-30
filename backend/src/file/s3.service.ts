@@ -29,7 +29,11 @@ import * as crypto from "crypto";
 import { promises as fs } from "fs";
 import * as mime from "mime-types";
 import { SHARE_DIRECTORY } from "../constants";
-import { resolveShareSizeLimit, sumFileSizes } from "src/share/share.util";
+import {
+  resolveShareSizeLimit,
+  shareWriteLock,
+  sumFileSizes,
+} from "src/share/share.util";
 import { byteToHumanSizeString } from "src/utils/fileSize.util";
 import { getUserActiveStorageUsage } from "src/utils/storageQuota.util";
 import { getFileMimeType } from "src/utils/mime.util";
@@ -59,6 +63,19 @@ export class S3FileService {
   ) {}
 
   async create(
+    data: string,
+    chunk: { index: number; total: number },
+    file: { id?: string; name: string },
+    shareId: string,
+  ) {
+    // Completion takes the same per-share lock so the last part can never
+    // publish a File row after the completion snapshot.
+    return shareWriteLock.run(shareId, () =>
+      this.createChunk(data, chunk, file, shareId),
+    );
+  }
+
+  private async createChunk(
     data: string,
     chunk: { index: number; total: number },
     file: { id?: string; name: string },
@@ -551,6 +568,24 @@ export class S3FileService {
   }
 
   async completePreSignedUpload(
+    shareId: string,
+    fileId: string,
+    fileName: string,
+    uploadId: string,
+    parts: Array<{ ETag: string; PartNumber: number }>,
+  ): Promise<{ id: string; name: string }> {
+    return shareWriteLock.run(shareId, () =>
+      this.completePreSignedUploadLocked(
+        shareId,
+        fileId,
+        fileName,
+        uploadId,
+        parts,
+      ),
+    );
+  }
+
+  private async completePreSignedUploadLocked(
     shareId: string,
     fileId: string,
     fileName: string,

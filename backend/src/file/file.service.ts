@@ -80,6 +80,11 @@ const THUMBNAIL_WARM_LIMIT = 48;
 // A public share id is enough to request a thumbnail, so keep the pending
 // conversion queue bounded instead of letting scrapers stack ffmpeg/sharp work.
 const THUMBNAIL_QUEUE_LIMIT = 200;
+// Per-file WebP previews need their own queue: share thumbnails call this
+// helper while they occupy a thumbnail slot, so sharing one queue would
+// deadlock once every slot waits for a preview task that can never start.
+const PREVIEW_CONCURRENCY = 3;
+const PREVIEW_QUEUE_LIMIT = 200;
 // Reject decompression-bomb images well below sharp's default limit.
 const PREVIEW_MAX_INPUT_PIXELS = 64_000_000;
 const THUMBNAIL_TIMEOUT_MS = 20_000;
@@ -127,6 +132,8 @@ export class FileService implements OnModuleInit {
   private thumbnailActive = 0;
   private lastThumbnailWarmAt = 0;
   private thumbnailPlaceholder?: Promise<Buffer>;
+  private readonly previewQueue: Array<() => void> = [];
+  private previewActive = 0;
 
   async onModuleInit() {
     await this.removeOldPreviewVersions(PREVIEW_ROOT, PREVIEW_VERSION);
@@ -624,12 +631,21 @@ export class FileService implements OnModuleInit {
     const running = this.previewBuilds.get(buildKey);
     if (running) return running;
 
-    const build = this.buildWebpPreview(
-      shareId,
-      fileId,
-      storageProvider,
-      shareDirectory,
-      previewPath,
+    // Route image previews through their own bounded queue. Share thumbnails
+    // call this from the thumbnail queue, so reusing that queue would deadlock.
+    if (this.previewQueue.length >= PREVIEW_QUEUE_LIMIT) {
+      this.previewMisses.set(buildKey, Date.now());
+      return undefined;
+    }
+
+    const build = this.enqueuePreview(() =>
+      this.buildWebpPreview(
+        shareId,
+        fileId,
+        storageProvider,
+        shareDirectory,
+        previewPath,
+      ),
     )
       .then((result) => {
         if (result) {
@@ -923,6 +939,30 @@ export class FileService implements OnModuleInit {
       this.thumbnailQueue.length > 0
     ) {
       this.thumbnailQueue.shift()?.();
+    }
+  }
+
+  private enqueuePreview<T>(task: () => Promise<T>): Promise<T> {
+    return new Promise<T>((resolve, reject) => {
+      this.previewQueue.push(() => {
+        this.previewActive += 1;
+        task()
+          .then(resolve, reject)
+          .finally(() => {
+            this.previewActive -= 1;
+            this.processPreviewQueue();
+          });
+      });
+      this.processPreviewQueue();
+    });
+  }
+
+  private processPreviewQueue(): void {
+    while (
+      this.previewActive < PREVIEW_CONCURRENCY &&
+      this.previewQueue.length > 0
+    ) {
+      this.previewQueue.shift()?.();
     }
   }
 
@@ -1267,9 +1307,13 @@ export class FileService implements OnModuleInit {
     ]);
   }
 
+  /** Releases in-flight bytes after the daily cleanup removes a temp chunk. */
+  releaseTempBytes(shareId: string, bytes: number) {
+    this.localFileService.releaseTempBytes(shareId, bytes);
+  }
+
   async deleteAllFiles(shareId: string, invalidateCaches = true) {
     await this.virusTotalQueue.removeForShare(shareId);
-
     const share = await this.prisma.share.findFirst({
       where: { id: shareId },
       select: { id: true, storageProvider: true },

@@ -92,19 +92,53 @@ function isBlockedIpv4(ip: string): boolean {
   return BLOCKED_V4_RANGES.some((range) => inV4Range(ip, range));
 }
 
+/**
+ * Expands an IPv6 literal into eight 16-bit groups. Returns null for anything
+ * that is not a valid IPv6 address, so callers fail closed.
+ */
+function expandIpv6(ip: string): number[] | null {
+  const lower = ip.toLowerCase().split("%")[0];
+  if (!/^[0-9a-f:]+$/.test(lower)) return null;
+
+  let groups: string[];
+  if (lower.includes("::")) {
+    const [left, right] = lower.split("::");
+    const leftGroups = left ? left.split(":") : [];
+    const rightGroups = right ? right.split(":") : [];
+    const missing = 8 - leftGroups.length - rightGroups.length;
+    if (missing < 0) return null;
+    groups = [
+      ...leftGroups,
+      ...Array<string>(missing).fill("0"),
+      ...rightGroups,
+    ];
+  } else {
+    groups = lower.split(":");
+  }
+  if (groups.length !== 8) return null;
+
+  const parsed = groups.map((group) => parseInt(group, 16));
+  return parsed.every((value) => Number.isInteger(value)) ? parsed : null;
+}
+
 function isBlockedIpv6(ip: string): boolean {
-  const lower = ip.toLowerCase();
-  const mapped = lower.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/);
-  if (mapped) return isBlockedIpv4(mapped[1]);
-  if (lower === "::1" || lower === "::") return true;
-  // fc00::/7 (unique local), fe80::/10 (link local), ff00::/8 (multicast),
-  // 2001:db8::/32 (documentation), 2002::/16 (6to4) and 64:ff9b::/96 (NAT64).
-  if (/^f[cd]/.test(lower)) return true;
-  if (/^fe[89ab]/.test(lower)) return true;
-  if (/^ff/.test(lower)) return true;
-  if (lower.startsWith("2001:db8")) return true;
-  if (lower.startsWith("2002")) return true;
-  if (lower.startsWith("64:ff9b")) return true;
+  const groups = expandIpv6(ip);
+  // Invalid literals are never allowed to reach a socket.
+  if (!groups) return true;
+
+  // Every address that can reach a local/private target lives outside the
+  // global unicast block 2000::/3: loopback, unspecified, IPv4-mapped and
+  // IPv4-compatible forms, NAT64, ULA (fc00::/7), link-local (fe80::/10) and
+  // multicast (ff00::/8). Requiring global unicast is simpler and safer than
+  // enumerating every transition mechanism.
+  if ((groups[0] & 0xe000) !== 0x2000) return true;
+
+  // 2001:db8::/32 (documentation), 2001::/32 (Teredo) and 2002::/16 (6to4)
+  // are not ordinary public unicast destinations.
+  if (groups[0] === 0x2001 && groups[1] === 0x0db8) return true;
+  if (groups[0] === 0x2001 && groups[1] === 0x0000) return true;
+  if (groups[0] === 0x2002) return true;
+
   return false;
 }
 
@@ -145,9 +179,7 @@ function safeLookup(
       return;
     }
     // Prefer IPv4 for broader compatibility when both families resolve.
-    safe.sort(
-      (a, b) => (a.family === 4 ? -1 : 0) - (b.family === 4 ? -1 : 0),
-    );
+    safe.sort((a, b) => (a.family === 4 ? -1 : 0) - (b.family === 4 ? -1 : 0));
     // Node passes `all: true` and then expects the full address list back.
     if (wantsAll) callback(null, safe);
     else callback(null, safe[0].address, safe[0].family);
@@ -168,9 +200,7 @@ function parseContentDisposition(value?: string): string | undefined {
 function normalizeHostname(url: URL): string {
   const host = url.hostname;
   // IPv6 literals are wrapped in brackets in the URL host.
-  return host.startsWith("[") && host.endsWith("]")
-    ? host.slice(1, -1)
-    : host;
+  return host.startsWith("[") && host.endsWith("]") ? host.slice(1, -1) : host;
 }
 
 function validateUrl(raw: string): URL {
@@ -180,7 +210,8 @@ function validateUrl(raw: string): URL {
   } catch {
     throw new RemoteFetchError("invalid");
   }
-  if (!ALLOWED_PROTOCOLS.has(url.protocol)) throw new RemoteFetchError("blocked");
+  if (!ALLOWED_PROTOCOLS.has(url.protocol))
+    throw new RemoteFetchError("blocked");
   if (!ALLOWED_PORTS.has(url.port)) throw new RemoteFetchError("blocked");
   const host = normalizeHostname(url);
   if (!host) throw new RemoteFetchError("invalid");
@@ -223,14 +254,12 @@ function requestOnce(
     // eslint-disable-next-line prefer-const
     let overallTimer: NodeJS.Timeout | undefined;
 
-    const finish =
-      (fn: (value: never) => void) =>
-      (value: unknown) => {
-        if (settled) return;
-        settled = true;
-        if (overallTimer) clearTimeout(overallTimer);
-        fn(value as never);
-      };
+    const finish = (fn: (value: never) => void) => (value: unknown) => {
+      if (settled) return;
+      settled = true;
+      if (overallTimer) clearTimeout(overallTimer);
+      fn(value as never);
+    };
     const ok = finish(resolve as (value: never) => void);
     const fail = finish(reject as (value: never) => void);
 

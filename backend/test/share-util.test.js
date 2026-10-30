@@ -1,6 +1,10 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { isShareExpired } = require("../dist/src/share/share.util.js");
+const {
+  isShareExpired,
+  parseSizeLimit,
+  resolveShareSizeLimit,
+} = require("../dist/src/share/share.util.js");
 
 test("treats the epoch as never expiring", () => {
   assert.equal(isShareExpired(new Date(0)), false);
@@ -28,4 +32,22 @@ test("parses an ISO string the same way as a Date", () => {
 
 test("does not mark an invalid date as expired", () => {
   assert.equal(isShareExpired("not-a-date"), false);
+});
+
+test("falls back when a stored size limit overflows or is invalid", () => {
+  const fallback = 5_000_000;
+  assert.equal(parseSizeLimit("9".repeat(400), fallback), fallback);
+  assert.equal(parseSizeLimit("Infinity", fallback), fallback);
+  assert.equal(parseSizeLimit("0", fallback), fallback);
+  assert.equal(parseSizeLimit("", fallback), fallback);
+  assert.equal(parseSizeLimit("1234", fallback), 1234);
+});
+
+test("resolveShareSizeLimit clamps an overflowed reverse-share limit", () => {
+  assert.equal(
+    resolveShareSizeLimit(5_000_000, {
+      reverseShare: { maxShareSize: "9".repeat(400) },
+    }),
+    5_000_000,
+  );
 });

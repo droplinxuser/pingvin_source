@@ -16,7 +16,11 @@ import { I18nService } from "nestjs-i18n";
 import { resolve, sep } from "path";
 import { ConfigService } from "src/config/config.service";
 import { PrismaService } from "src/prisma/prisma.service";
-import { resolveShareSizeLimit, sumFileSizes } from "src/share/share.util";
+import {
+  resolveShareSizeLimit,
+  shareWriteLock,
+  sumFileSizes,
+} from "src/share/share.util";
 import { byteToHumanSizeString } from "src/utils/fileSize.util";
 import { getUserActiveStorageUsage } from "src/utils/storageQuota.util";
 import { validate as isValidUUID } from "uuid";
@@ -35,6 +39,9 @@ export class LocalFileService {
   // completion check in ShareService is the final backstop.
   private readonly pendingShareBytes = new Map<string, number>();
   private readonly pendingUserBytes = new Map<string, number>();
+  // Which account owns the in-flight bytes of each share, so deleting a share
+  // or an abandoned temp file can release the same user quota it reserved.
+  private readonly pendingShareOwner = new Map<string, string>();
 
   constructor(
     private prisma: PrismaService,
@@ -43,6 +50,19 @@ export class LocalFileService {
   ) {}
 
   async create(
+    data: string,
+    chunk: { index: number; total: number },
+    file: { id?: string; name: string },
+    shareId: string,
+  ) {
+    // ShareService.complete() takes the same lock, so a completion can never
+    // snapshot the file list while a chunk is being appended or published.
+    return shareWriteLock.run(shareId, () =>
+      this.createChunk(data, chunk, file, shareId),
+    );
+  }
+
+  private async createChunk(
     data: string,
     chunk: { index: number; total: number },
     file: { id?: string; name: string },
@@ -226,10 +246,16 @@ export class LocalFileService {
     pendingUser: number,
     bytes: number,
   ) {
-    if (this.pendingShareBytes.size > 5000) this.pendingShareBytes.clear();
+    if (this.pendingShareBytes.size > 5000) {
+      this.pendingShareBytes.clear();
+      this.pendingShareOwner.clear();
+    }
     if (this.pendingUserBytes.size > 5000) this.pendingUserBytes.clear();
     this.pendingShareBytes.set(shareId, pendingShare + bytes);
-    if (userId) this.pendingUserBytes.set(userId, pendingUser + bytes);
+    if (userId) {
+      this.pendingShareOwner.set(shareId, userId);
+      this.pendingUserBytes.set(userId, pendingUser + bytes);
+    }
   }
 
   private releasePendingBytes(
@@ -338,11 +364,49 @@ export class LocalFileService {
   }
 
   async deleteAllFiles(shareId: string) {
+    const pending = this.pendingShareBytes.get(shareId) ?? 0;
+    const owner = this.pendingShareOwner.get(shareId);
     this.pendingShareBytes.delete(shareId);
+    this.pendingShareOwner.delete(shareId);
+    if (pending > 0 && owner)
+      this.pendingUserBytes.set(
+        owner,
+        Math.max(0, (this.pendingUserBytes.get(owner) ?? 0) - pending),
+      );
+
     await fs.rm(`${SHARE_DIRECTORY}/${shareId}`, {
       recursive: true,
       force: true,
     });
+  }
+
+  /**
+   * Releases the in-flight bytes of an abandoned temp chunk (called by the
+   * daily cleanup) so a client that drops halfway through an upload cannot
+   * keep another account's quota reduced until the backend restarts.
+   */
+  releaseTempBytes(shareId: string, bytes: number) {
+    if (bytes <= 0) return;
+    const remaining = Math.max(
+      0,
+      (this.pendingShareBytes.get(shareId) ?? 0) - bytes,
+    );
+    if (remaining > 0) {
+      this.pendingShareBytes.set(shareId, remaining);
+    } else {
+      this.pendingShareBytes.delete(shareId);
+    }
+
+    const owner = this.pendingShareOwner.get(shareId);
+    if (owner) {
+      const userRemaining = Math.max(
+        0,
+        (this.pendingUserBytes.get(owner) ?? 0) - bytes,
+      );
+      if (userRemaining > 0) this.pendingUserBytes.set(owner, userRemaining);
+      else this.pendingUserBytes.delete(owner);
+    }
+    if (remaining === 0) this.pendingShareOwner.delete(shareId);
   }
 
   /**

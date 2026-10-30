@@ -138,7 +138,7 @@ export class JobsService {
       let temporaryFiles: string[];
       try {
         temporaryFiles = (await fs.promises.readdir(directory)).filter((file) =>
-          file.endsWith(".tmp-chunk"),
+          /\.(tmp-chunk|remote|media|tmp)$/.test(file),
         );
       } catch (error) {
         // The share can be deleted while this loop is running.
@@ -163,7 +163,11 @@ export class JobsService {
           .isBefore(moment());
 
         if (isOlderThanOneDay) {
-          await fs.promises.rm(filePath, { force: true });
+          await fs.promises.rm(filePath, { recursive: true, force: true });
+          // A partially uploaded chunk reserved in-flight bytes; return them
+          // to the share/user quota as soon as its temp file is gone.
+          if (stats.isFile())
+            this.fileService.releaseTempBytes(share.name, stats.size);
           filesDeleted++;
         }
       }

@@ -73,13 +73,18 @@ import { CompletedShareDTO } from "./dto/shareComplete.dto";
 // A ZIP can attribute one download to many files; cap the list so a beacon
 // cannot turn into an unbounded Valkey write.
 const MAX_DOWNLOAD_FILE_IDS = 500;
-const DOWNLOAD_FILE_ID_REGEX = /^[a-zA-Z0-9-]*={0,2}$/;
+const DOWNLOAD_FILE_ID_REGEX = /^[a-zA-Z0-9_-]+$/;
+// `total` is the share-wide counter field in the Valkey hash and must never be
+// accepted as a file id.
+const DOWNLOAD_RESERVED_IDS = new Set(["total"]);
 
 function normalizeDownloadFileIds(fileIds: unknown): string[] {
   if (!Array.isArray(fileIds)) return [];
   const valid = fileIds.filter(
     (id): id is string =>
-      typeof id === "string" && DOWNLOAD_FILE_ID_REGEX.test(id),
+      typeof id === "string" &&
+      DOWNLOAD_FILE_ID_REGEX.test(id) &&
+      !DOWNLOAD_RESERVED_IDS.has(id),
   );
   return [...new Set(valid)].slice(0, MAX_DOWNLOAD_FILE_IDS);
 }
@@ -285,10 +290,12 @@ export class ShareController {
     @Param("id") id: string,
     @Body() body: { fileIds?: unknown },
   ) {
-    await this.downloadService.recordDownload(
+    const requestedIds = normalizeDownloadFileIds(body?.fileIds);
+    const fileIds = await this.shareService.filterDownloadFileIds(
       id,
-      normalizeDownloadFileIds(body?.fileIds),
+      requestedIds,
     );
+    await this.downloadService.recordDownload(id, fileIds);
     return { counted: true };
   }
 
@@ -338,6 +345,11 @@ export class ShareController {
   }
 
   @Get(":id/seo")
+  // Next renders share pages by calling this from the frontend host, so all
+  // SSR traffic shares one IP. Give it a much larger bucket than ordinary API
+  // routes (the payload is cached for 60 s), but keep a per-IP cap so random
+  // share ids cannot hammer the database without bound.
+  @Throttle({ default: { limit: 1200, ttl: 60 * 1000 } })
   @SkipThrottle({ visitor: true })
   @UseGuards(IdValidation)
   async getSeo(

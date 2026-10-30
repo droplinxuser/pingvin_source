@@ -14,8 +14,8 @@ export class CreateReverseShareDTO {
   sendEmailNotification: boolean;
 
   @IsString()
-  @Matches(/^[0-9]+$/, {
-    message: "maxShareSize must contain only digits",
+  @Matches(/^[0-9]{1,15}$/, {
+    message: "maxShareSize must be a positive integer with at most 15 digits",
   })
   maxShareSize: string;
 

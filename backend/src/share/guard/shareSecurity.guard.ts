@@ -160,6 +160,18 @@ export class ShareSecurityGuard extends JwtGuard {
         "share_token_required",
       );
 
+    // A token is issued while views are still below the limit, but it stays
+    // valid for the whole share lifetime. Without this check a visitor could
+    // keep downloading files with the cookie after the page limit was reached.
+    // The view that consumed the final allowed visit may still read its files.
+    if (share.security?.maxViews) {
+      this.shareService.assertViewLimit(
+        await this.shareService.getCurrentViews(share.id),
+        share.security.maxViews,
+        true,
+      );
+    }
+
     // Only the creator and reverse share creator can access the reverse share if it's not public
     if (
       share.reverseShare &&

@@ -30,6 +30,14 @@ test("blocks private, loopback, link-local and reserved addresses", () => {
     "ff02::1",
     "2001:db8::1",
     "::ffff:127.0.0.1",
+    // URL normalization turns these into the compressed hex forms, so the
+    // dotted-only check above is not enough.
+    "::ffff:7f00:1",
+    "::7f00:1",
+    "::ffff:a9fe:a9fe",
+    "0:0:0:0:0:ffff:7f00:1",
+    "64:ff9b::7f00:1",
+    "2002:7f00:1::",
   ]) {
     assert.equal(isBlockedIp(ip), true, `${ip} should be blocked`);
   }
@@ -69,6 +77,19 @@ test("rejects a loopback host without connecting", async () => {
   const dest = path.join(dir, "out");
   await assert.rejects(
     () => downloadRemoteToFile("http://127.0.0.1/secret", dest, { maxBytes: 100 }),
+    (error) => error instanceof RemoteFetchError && error.reason === "blocked",
+  );
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
+test("rejects an IPv4-mapped IPv6 loopback literal", async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "pingvin-remote-"));
+  const dest = path.join(dir, "out");
+  await assert.rejects(
+    () =>
+      downloadRemoteToFile("http://[::ffff:127.0.0.1]/secret", dest, {
+        maxBytes: 100,
+      }),
     (error) => error instanceof RemoteFetchError && error.reason === "blocked",
   );
   fs.rmSync(dir, { recursive: true, force: true });

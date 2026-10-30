@@ -1,5 +1,13 @@
 import { Prisma, ShareSecurity } from "@prisma/client";
 import { parseRelativeDateToAbsolute } from "src/utils/date.util";
+import { KeyedLock } from "src/utils/keyedLock.util";
+
+/**
+ * Serializes upload completion with chunk writes for the same share. Without
+ * this, a chunk that already passed its `uploadLocked` check can append and
+ * insert a File row after completion took its size/scan snapshot.
+ */
+export const shareWriteLock = new KeyedLock();
 
 // Every share gets a rolling expiration which is reset on each visit. Member
 // shares (an authenticated creator) keep the long window; anonymous/guest
@@ -143,6 +151,20 @@ type ShareSizeLimitSource = {
 };
 
 /**
+ * Parses a stored size limit into a positive safe integer. A blank, non-numeric
+ * or absurdly large value falls back to the site default instead of disabling
+ * every upload cap (`parseInt` returns Infinity for a long digit string).
+ */
+export function parseSizeLimit(
+  value: string | number | null | undefined,
+  fallback: number,
+): number {
+  if (value === null || value === undefined || value === "") return fallback;
+  const parsed = Number(value);
+  return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+/**
  * Reverse shares and per-user limits take precedence over the site default.
  * Keep this in one place so local and S3 uploads enforce the same limit.
  */
@@ -151,9 +173,9 @@ export function resolveShareSizeLimit(
   share?: ShareSizeLimitSource | null,
 ): number {
   if (share?.reverseShare?.maxShareSize)
-    return parseInt(String(share.reverseShare.maxShareSize));
+    return parseSizeLimit(share.reverseShare.maxShareSize, defaultLimit);
   if (share?.creator?.shareSizeLimit)
-    return parseInt(String(share.creator.shareSizeLimit));
+    return parseSizeLimit(share.creator.shareSizeLimit, defaultLimit);
   return defaultLimit;
 }
 

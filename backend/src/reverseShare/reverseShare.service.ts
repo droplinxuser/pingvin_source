@@ -16,7 +16,7 @@ import { PrismaService } from "src/prisma/prisma.service";
 import { VirusTotalQueueService } from "src/virustotal/virustotalQueue.service";
 import { parseRelativeDateToAbsolute } from "src/utils/date.util";
 import { invalidateShareDataCache } from "src/utils/cache.util";
-import { SHARE_EXPIRATION } from "src/share/share.util";
+import { SHARE_EXPIRATION, parseSizeLimit } from "src/share/share.util";
 import { CreateReverseShareDTO } from "./dto/createReverseShare.dto";
 
 @Injectable()
@@ -71,10 +71,18 @@ export class ReverseShareService {
     }
 
     const userMaxShareSize = creator?.shareSizeLimit
-      ? parseInt(creator.shareSizeLimit)
+      ? parseSizeLimit(
+          creator.shareSizeLimit,
+          parseInt(this.config.get("share.maxSize")),
+        )
       : parseInt(this.config.get("share.maxSize"));
+    const requestedShareSize = Number(data.maxShareSize);
 
-    if (userMaxShareSize < parseInt(data.maxShareSize))
+    if (
+      !Number.isSafeInteger(requestedShareSize) ||
+      requestedShareSize <= 0 ||
+      userMaxShareSize < requestedShareSize
+    )
       throw new BadRequestException(
         this.i18n.t("reverseShare.maxShareSizeExceeded", {
           args: { maxSize: userMaxShareSize },
