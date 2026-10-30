@@ -1,5 +1,6 @@
 import {
   Accordion,
+  ActionIcon,
   Alert,
   Button,
   Checkbox,
@@ -10,12 +11,14 @@ import {
   Stack,
   Textarea,
   TextInput,
+  Tooltip,
 } from "@mantine/core";
+import { useClipboard } from "@mantine/hooks";
 import { useForm, yupResolver } from "@mantine/form";
 import { useModals } from "@mantine/modals";
 import { ModalsContextProps } from "@mantine/modals/lib/context";
 import React, { useState } from "react";
-import { TbAlertCircle } from "react-icons/tb";
+import { TbAlertCircle, TbCopy, TbWand } from "react-icons/tb";
 import { FormattedMessage } from "react-intl";
 import * as yup from "yup";
 import useTranslate, {
@@ -25,6 +28,7 @@ import shareService from "../../../services/share.service";
 import { FileUpload } from "../../../types/File.type";
 import { CreateShare } from "../../../types/share.type";
 import toast from "../../../utils/toast.util";
+import { generatePassword } from "../../../utils/password.util";
 import { generateShareId } from "../../../utils/share.util";
 import CustomUrlInput from "../../share/CustomUrlInput";
 
@@ -104,6 +108,7 @@ const CreateUploadModalBody = ({
 }) => {
   const modals = useModals();
   const t = useTranslate();
+  const clipboard = useClipboard({ timeout: 800 });
 
   const generatedLink = generateShareId(options.shareIdLength);
 
@@ -133,6 +138,10 @@ const CreateUploadModalBody = ({
       .number()
       .transform((value) => value || undefined)
       .min(1),
+    maxDownloads: yup
+      .number()
+      .transform((value) => value || undefined)
+      .min(1),
     description: yup
       .string()
       .optional()
@@ -144,8 +153,9 @@ const CreateUploadModalBody = ({
       name: undefined,
       link: generatedLink,
       recipients: [] as string[],
-      password: undefined,
+      password: "",
       maxViews: undefined,
+      maxDownloads: undefined,
       description: undefined,
       restrictToRecipients: false,
     },
@@ -156,7 +166,7 @@ const CreateUploadModalBody = ({
     form.setFieldValue("restrictToRecipients", checked);
     if (checked) {
       // A share can't be both password-protected and restricted to recipients.
-      form.setFieldValue("password", undefined);
+      form.setFieldValue("password", "");
     }
   };
 
@@ -175,6 +185,7 @@ const CreateUploadModalBody = ({
               ? undefined
               : values.password || undefined,
             maxViews: values.maxViews || undefined,
+            maxDownloads: values.maxDownloads || undefined,
             restrictToRecipients: values.restrictToRecipients || undefined,
           },
         },
@@ -315,17 +326,67 @@ const CreateUploadModalBody = ({
                 <Accordion.Panel>
                   <Stack align="stretch">
                     {!form.values.restrictToRecipients && (
-                      <PasswordInput
-                        variant="filled"
-                        placeholder={t(
-                          "upload.modal.accordion.security.password.placeholder",
-                        )}
-                        label={t(
-                          "upload.modal.accordion.security.password.label",
-                        )}
-                        autoComplete="new-password"
-                        {...form.getInputProps("password")}
-                      />
+                      <Stack spacing="xs">
+                        <PasswordInput
+                          variant="filled"
+                          placeholder={t(
+                            "upload.modal.accordion.security.password.placeholder",
+                          )}
+                          label={t(
+                            "upload.modal.accordion.security.password.label",
+                          )}
+                          autoComplete="new-password"
+                          {...form.getInputProps("password")}
+                        />
+                        <Group spacing="xs">
+                          <Button
+                            type="button"
+                            size="xs"
+                            variant="light"
+                            leftIcon={<TbWand size={14} />}
+                            onClick={() => {
+                              form.setFieldValue(
+                                "password",
+                                generatePassword(),
+                              );
+                              toast.success(
+                                t(
+                                  "upload.modal.accordion.security.password.generated",
+                                ),
+                              );
+                            }}
+                          >
+                            {t(
+                              "upload.modal.accordion.security.password.generate",
+                            )}
+                          </Button>
+                          <Tooltip
+                            label={t(
+                              "upload.modal.accordion.security.password.copy",
+                            )}
+                            openDelay={200}
+                          >
+                            <ActionIcon
+                              type="button"
+                              variant="subtle"
+                              disabled={!form.values.password}
+                              aria-label={t(
+                                "upload.modal.accordion.security.password.copy",
+                              )}
+                              onClick={() => {
+                                clipboard.copy(form.values.password || "");
+                                toast.success(
+                                  t(
+                                    "upload.modal.accordion.security.password.copied",
+                                  ),
+                                );
+                              }}
+                            >
+                              <TbCopy size={16} />
+                            </ActionIcon>
+                          </Tooltip>
+                        </Group>
+                      </Stack>
                     )}
                     <NumberInput
                       min={1}
@@ -334,8 +395,25 @@ const CreateUploadModalBody = ({
                       placeholder={t(
                         "upload.modal.accordion.security.max-views.placeholder",
                       )}
-                      label={t("upload.modal.accordion.security.max-views.label")}
+                      label={t(
+                        "upload.modal.accordion.security.max-views.label",
+                      )}
                       {...form.getInputProps("maxViews")}
+                    />
+                    <NumberInput
+                      min={1}
+                      type="number"
+                      variant="filled"
+                      placeholder={t(
+                        "upload.modal.accordion.security.max-downloads.placeholder",
+                      )}
+                      label={t(
+                        "upload.modal.accordion.security.max-downloads.label",
+                      )}
+                      description={t(
+                        "upload.modal.accordion.security.max-downloads.description",
+                      )}
+                      {...form.getInputProps("maxDownloads")}
                     />
                   </Stack>
                 </Accordion.Panel>

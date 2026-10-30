@@ -169,7 +169,9 @@ model ShareSecurity {
 
   password             String?
   maxViews             Int?
-  restrictToRecipients Boolean @default(false)
+  maxDownloads         Int?
+  downloadCount        Int      @default(0)
+  restrictToRecipients Boolean  @default(false)
 
   shareId String? @unique
   share   Share?  @relation(fields: [shareId], references: [id], onDelete: Cascade)

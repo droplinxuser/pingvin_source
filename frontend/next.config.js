@@ -19,6 +19,8 @@ if (!commitHash) {
 const withPWA = require("next-pwa")({
   dest: "public",
   disable: process.env.NODE_ENV === "development",
+  // Files shared from the OS share sheet are handled by worker/index.js.
+  customWorkerDir: "worker",
   // Registered manually in _app with the build hash in the URL so a cached
   // /sw.js cannot keep an old service worker alive across deployments.
   register: false,
@@ -65,6 +67,7 @@ const CACHE_RULES = [
   ["/favicon.ico", "public, max-age=86400, stale-while-revalidate=604800"],
   ["/sw.js", "no-cache"],
   ["/workbox-:path(.*)", "public, max-age=31536000, immutable"],
+  ["/worker-:path(.*)", "public, max-age=31536000, immutable"],
 ];
 
 module.exports = withPWA({

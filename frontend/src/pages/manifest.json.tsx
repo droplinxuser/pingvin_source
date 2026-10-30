@@ -50,6 +50,17 @@ export async function getServerSideProps({ res }: GetServerSidePropsContext) {
         orientation: "portrait",
         scope: "/",
         start_url: "/",
+        share_target: {
+          action: "/share-target",
+          method: "POST",
+          enctype: "multipart/form-data",
+          params: {
+            title: "title",
+            text: "text",
+            url: "url",
+            files: [{ name: "files", accept: ["*/*"] }],
+          },
+        },
         icons,
       },
       null,

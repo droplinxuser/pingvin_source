@@ -237,6 +237,9 @@ const FileList = ({
   const [selectMode, setSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const moreRef = useRef<HTMLDivElement>(null);
+  const maxDownloads = share?.maxDownloads;
+  const downloadLimitReached =
+    !!maxDownloads && (share?.downloadCount ?? 0) >= maxDownloads;
   // Typing stays responsive even while a very long list is filtered; the
   // deferred value lags one paint behind the controlled input.
   const deferredSearch = useDeferredValue(search);
@@ -406,6 +409,7 @@ const FileList = ({
                 files={selectedFiles}
                 labelId="share.custom.files.download-selected"
                 size="xs"
+                disabled={downloadLimitReached}
               />
             )}
           </Group>
@@ -619,6 +623,7 @@ const FileList = ({
                         variant="light"
                         size={28}
                         aria-label={t("common.button.download")}
+                        disabled={downloadLimitReached}
                         onClick={async () => {
                           await shareService.downloadFile(
                             share.id,

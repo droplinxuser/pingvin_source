@@ -23,6 +23,12 @@ export class ShareDTO {
   maxViews?: number;
 
   @Expose()
+  maxDownloads?: number;
+
+  @Expose()
+  downloadCount?: number;
+
+  @Expose()
   @Type(() => FileDTO)
   files: FileDTO[];
 

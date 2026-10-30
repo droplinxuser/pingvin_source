@@ -69,6 +69,7 @@ const GUARD_INCLUDE = {
     select: {
       password: true,
       maxViews: true,
+      maxDownloads: true,
       restrictToRecipients: true,
     },
   },
@@ -170,6 +171,8 @@ export class ShareStateService implements OnApplicationShutdown {
           select: {
             password: true,
             maxViews: true,
+            maxDownloads: true,
+            downloadCount: true,
           },
         },
       },
@@ -221,6 +224,8 @@ export class ShareStateService implements OnApplicationShutdown {
       size: sumFileSizes(files),
       hasPassword: !!security?.password,
       maxViews: security?.maxViews,
+      maxDownloads: security?.maxDownloads,
+      downloadCount: security?.downloadCount,
       commentsVersion,
     };
     await setCachedValueIfCurrent(

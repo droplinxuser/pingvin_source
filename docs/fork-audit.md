@@ -28,6 +28,11 @@ the suggested order for future features.
 | Reverse-share use limits | `backend/src/reverseShare/reverseShare.service.ts` (`reserveUse`), `backend/src/share/share.service.ts` (reserve at create, reject invalid cookies, no refund on revert) |
 | Inline media gallery | `frontend/src/components/share/MediaPreviewGallery.tsx` (up to 100 image/video cards, 12-card lazy batches, single-media square card, full-size previous/next modal), `frontend/src/components/core/LazySection.tsx` |
 | Individual downloads / legacy ZIP | `frontend/src/components/share/DownloadAllButton.tsx`, `frontend/src/services/share.service.ts`; `backend/src/share/share.service.ts` no longer creates archives. Existing `archive.zip` files remain served by the legacy API. The preview modal downloads through `shareService.downloadFile` too, so its clicks reach the download counters. |
+| Download caps / one-time links | `ShareSecurity.maxDownloads` + `downloadCount` in `backend/prisma/schema.prisma`, migration `20261031000000_add_download_limit`, `shareSecurity.dto.ts` / `updateShare.dto.ts`, `ShareService.reserveDownload`, `file.controller.ts` (`getFile` / `getZip`), share create/edit modals, `ShareStats` and the disabled download actions. Capped shares are not public/cacheable and are excluded from listings and SEO. |
+| Native share / PWA share target | `frontend/src/components/share/ShareButton.tsx` (Web Share API with copy fallback), `CopyTextField.tsx`, `ShareActions.tsx`, `frontend/src/pages/manifest.json.tsx`, `frontend/worker/index.js`, `frontend/src/utils/shareTarget.util.ts`, `frontend/src/pages/upload/index.tsx`. The worker stores OS-shared files in Cache Storage (512 MB/file, 5 GB total, 24-hour cleanup) and redirects to `/upload?shared=...`, where the normal upload flow picks them up. |
+| Resumable uploads | `frontend/src/utils/uploadSession.util.ts`, `frontend/src/components/upload/ResumeUploads.tsx`, `frontend/src/pages/upload/index.tsx`. Only metadata (share/file ids, name, size, chunk size, completed chunk count) is kept in IndexedDB; the visitor reselects the same file and only missing chunks are sent. Direct multipart/S3 uploads are not resumed. |
+| Password tools | `frontend/src/utils/password.util.ts`, `showCreateUploadModal.tsx` (CSPRNG-generated 16-character password with generate/copy actions, avoiding look-alike characters). |
+| Add files after completion | Existing `EditableUpload` edit flow (`/share/:id/edit`) now has a clear “Add or remove files” entry in `ShareActions` and the share-information modal. It reuses `revertComplete` → upload → `completeShare`, preserving the link and re-running quota, size, malware/thumbnail and search/trending invalidation. Owner-only through the existing share-owner guards. |
 | Share and file size limits | `backend/prisma/seed/config.seed.ts` (`share.maxSize` 5 GB, `share.maxFileSize` 512 MB), migration `20261025000000_raise_share_size_limit`, `backend/src/share/share.util.ts` (`resolveShareSizeLimit`), local/S3 upload guards, upload UI |
 | Trending today / new shares | `backend/src/cache/trending.service.ts` (`getTrending`, `getTrendingCountries`, `getRecent`, `getRecentFiles`), `GET /api/shares/trending`, `/trending/countries`, `/recent`, `/recent-files`; `frontend/src/components/share/TrendingToday.tsx`, `TrendingCountries.tsx`, `ShareList.tsx` (polished row/list layout for `/new-files`), `frontend/src/pages/trending.tsx`, `new-media.tsx`, `new-files.tsx`, `search.tsx`. The main ranking counts only the last 24 hourly view buckets, ordered by 24-hour views then 24-hour downloads; shares still have to be public, completed and previewable, but there is no creation-age limit, so an older share with a recent view can appear. The country panel applies the same views-then-downloads order per country. The API result is cached 60 seconds in process and 60 seconds at the edge, and the frontend/SSR URL carries the build version as a cache-buster. Trending and the new listings cap at 200; rows/cards reveal in lazy batches with skeletons (infinite scroll). |
 | Shared UI polish | `frontend/src/components/core/RelativeTime.tsx`, `RouteProgress.tsx`, `LazyImage.tsx`, `LazyVideo.tsx`, `LazySection.tsx`, `frontend/src/utils/filePreview.util.ts`; `frontend/src/components/share/FileList.tsx` adds client-side file search for shares with 12+ files (`SEARCH_MIN_FILES`), filtering the rendered batches and the preview navigation without a backend request |
@@ -172,6 +177,10 @@ the matching `utils/*.util.ts` files.
 - `share.maxSize` is 5 GB per share and `share.maxFileSize` is 512 MB per file.
   The per-file cap keeps each download within Cloudflare's cacheable-file limit;
   multi-file shares download file by file instead of as an archive.
+- Download caps are optional per share (`ShareSecurity.maxDownloads`, with
+  `1` meaning a one-time download) and are enforced atomically at the origin.
+  Capped shares stay private/no-store and are excluded from public listings,
+  search and sitemaps.
 - Expiration is rolling and automatic; `share.maxExpiration` /
   `share.defaultExpiration` are intentionally absent from the seed and DTOs.
 - Report notifications and contact-form mail use `REPORT_EMAIL` from
@@ -255,7 +264,26 @@ the matching `utils/*.util.ts` files.
 - Unlimited share views are batched into one SQLite write every five seconds
   (`VIEW_WRITE_DELAY_MS`); limited shares use one conditional
   `UPDATE ... RETURNING` so the limit check and increment cannot race. Pending
-  counts are flushed on shutdown.
+  counts are flushed on shutdown. Download caps use the same pattern:
+  `ShareService.reserveDownload` atomically increments
+  `ShareSecurity.downloadCount` only while it is below `maxDownloads`, so two
+  concurrent downloads cannot both take the last slot. Capped shares are
+  omitted from `publicShareWhere()` and `isPublicShare()`, and their file/ZIP
+  responses are `no-store`; thumbnails and previews remain private.
+- Resumable uploads keep only a small manifest in IndexedDB (no file bytes and
+  no server/Valkey storage). The server's existing chunk endpoint reports the
+  expected index, so resume skips completed chunks and keeps its existing
+  temp-chunk cleanup. Direct S3 multipart uploads are intentionally not
+  persisted because their in-memory upload session cannot survive a reload.
+- The PWA share-target worker keeps OS-shared files in Cache Storage only until
+  `/upload` imports them, enforces the same 512 MB/file and 5 GB/share envelope,
+  and removes stale payloads after 24 hours. The generated `worker-*.js` is
+  build output (ignored in git), imported by the generated service worker.
+- Adding files to a completed share temporarily reverts completion, uploads
+  through the normal chunk pipeline, then completes again. Completion re-checks
+  the aggregate size/quota, ClamAV/VirusTotal scanning and thumbnail generation,
+  while revert/complete invalidate the share, search and trending caches. The
+  public link never changes.
 - The `/new-media` and `/new-files` listings are derived from one shared
   newest-shares scan (30-second in-process cache), so opening both pages in the
   same window costs one indexed SQLite read instead of two. The public search
@@ -282,8 +310,9 @@ the matching `utils/*.util.ts` files.
   host file, and `getZip` reuses `sumFileSizes` for its size cap.
 - The database keeps only one row per user avatar version (`avatarUpdatedAt`);
   the image itself is a file in the data directory.
-- No custom feature adds a SQLite table except the avatar version column and
-  the relation/performance indexes in the recent migrations.
+- No custom feature adds a SQLite table except the avatar version column, the
+  download-cap columns on `ShareSecurity`, and the relation/performance indexes
+  in the recent migrations.
 - SQLite maintenance: `Share_creatorId_idx` and `Share_reverseShareId_idx` are
   partial indexes (`WHERE ... IS NOT NULL`) because anonymous shares leave
   `creatorId` NULL and normal shares leave `reverseShareId` NULL. This keeps
@@ -345,11 +374,16 @@ Origin responses set `Cache-Control`, `CDN-Cache-Control` and
   app version query; an unversioned comment URL is `no-store`. Sitemap index:
   1 hour. Sitemap chunks, robots and manifest:
   1 day (60-second fallback when the backend artifact is unavailable).
-  `/_next/static` and Workbox bundles are immutable for a year.
+  `/_next/static`, Workbox and custom worker bundles are immutable for a year.
 - Public file and preview GETs use a one-hour browser TTL and a **ten-minute**
   shared TTL (no `immutable`) so deletions propagate quickly, plus an `ETag`
   and `304` support. Protected files are `private`. ZIP responses are 60 seconds
   for public shares and `no-store` for protected ones.
+- Download-capped shares are deliberately excluded from every public/cached
+  path: their files and ZIPs are `no-store`, their thumbnails/previews are
+  private, and `publicShareWhere()`/`isPublicShare()` keep them out of recent,
+  trending, search, sitemaps and SEO. The cap must be checked at the origin, so
+  it cannot be bypassed by an edge hit.
 - Share thumbnails and avatars are public for one day, versioned through the
   URL (`?v=<updatedAt>` / `<avatarUpdatedAt>`) and `no-store`/`private` when the
   content is protected. The proxy may lengthen browser TTLs for image-looking
@@ -515,7 +549,16 @@ and that the header order is Home/Upload, Trending, New (New media/New files).
 Also check that a versioned comments URL is `s-maxage=86400`, an unversioned
 one is `no-store`, `HEAD /api/shares/:id` is `s-maxage=60`, search results are
 `s-maxage=300`, and the search/comments/thumbnail/HEAD route buckets throttle
-independently from the shared visitor bucket.
+independently from the shared visitor bucket. Feature-specific checks:
+download-capped shares return one `200` then a `403`
+(`share_max_downloads_exceeded`) for both single files and ZIPs, are absent from
+recent/search/sitemap, and render the limit + disabled download actions; a
+pre-seeded IndexedDB upload manifest resumes after the same file is reselected
+and completes the original share; the PWA share target POST stores a file and
+opens the normal share modal; the native Share button passes the correct short
+URL to a stubbed `navigator.share`; the password generator produces and copies a
+16-character password; and adding a file through `/share/:id/edit` leaves the
+same share id with both old and new files.
 Rate-limit smoke tests: 95 requests from one IP+UA to a
 non-cacheable API and page return 90 successes then 429, while a different UA
 and a cacheable page remain available. Axe checks at 390 px

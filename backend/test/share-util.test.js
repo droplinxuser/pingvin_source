@@ -2,6 +2,8 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const {
   isShareExpired,
+  isPublicShare,
+  isAccessPublicShare,
   parseSizeLimit,
   resolveShareSizeLimit,
 } = require("../dist/src/share/share.util.js");
@@ -50,4 +52,21 @@ test("resolveShareSizeLimit clamps an overflowed reverse-share limit", () => {
     }),
     5_000_000,
   );
+});
+
+test("a download cap stays accessible but is not public/cacheable", () => {
+  const share = { security: { maxDownloads: 1 } };
+  assert.equal(isAccessPublicShare(share), true);
+  assert.equal(isPublicShare(share), false);
+});
+
+test("passwords, view caps and private reverse shares block public access", () => {
+  assert.equal(isAccessPublicShare({ security: { password: "hash" } }), false);
+  assert.equal(isAccessPublicShare({ security: { maxViews: 2 } }), false);
+  assert.equal(
+    isAccessPublicShare({ reverseShare: { publicAccess: false } }),
+    false,
+  );
+  assert.equal(isPublicShare({}), true);
+  assert.equal(isAccessPublicShare({}), true);
 });

@@ -15,6 +15,7 @@ import {
 } from "@mantine/core";
 import { useForm, yupResolver } from "@mantine/form";
 import { ModalsContextProps } from "@mantine/modals/lib/context";
+import Link from "next/link";
 import { FormattedMessage } from "react-intl";
 import * as yup from "yup";
 import { translateOutsideContext } from "../../hooks/useTranslate.hook";
@@ -152,6 +153,16 @@ const Body = ({
           <RelativeTime date={currentShare.expiration} />
         )}
       </Text>
+      {!!currentShare.security?.maxDownloads && (
+        <Text size="sm" data-testid="share-download-limit">
+          <b>
+            <FormattedMessage id="upload.modal.accordion.security.max-downloads.label" />
+            :{" "}
+          </b>
+          {currentShare.security.downloadCount ?? 0} /{" "}
+          {currentShare.security.maxDownloads}
+        </Text>
+      )}
       <Divider />
       <CopyTextField link={link} toggleQR={handleToggleQR} />
       <Collapse in={showQR}>{showQR && <QRCode link={link} />}</Collapse>
@@ -183,6 +194,13 @@ const Body = ({
           {formattedMaxShareSize}
         </Text>
       </Flex>
+      <Button
+        component={Link}
+        href={`/share/${currentShare.id}/edit`}
+        variant="light"
+      >
+        <FormattedMessage id="share.custom.manage-files" />
+      </Button>
       <Button variant="light" onClick={() => setIsEditing(true)}>
         {t("common.button.edit")}
       </Button>
@@ -204,6 +222,7 @@ const EditShareBody = ({
   const security = share.security ?? {
     passwordProtected: false,
     maxViews: undefined,
+    maxDownloads: undefined,
   };
 
   const validationSchema = yup.object().shape({
@@ -226,6 +245,11 @@ const EditShareBody = ({
       .nullable()
       .transform((value) => value || undefined)
       .min(1, t("common.error.number-too-small", { min: 1 })),
+    maxDownloads: yup
+      .number()
+      .nullable()
+      .transform((value) => value || undefined)
+      .min(1, t("common.error.number-too-small", { min: 1 })),
   });
 
   const form = useForm({
@@ -235,6 +259,7 @@ const EditShareBody = ({
       password: "",
       removePassword: false,
       maxViews: security.maxViews || undefined,
+      maxDownloads: security.maxDownloads || undefined,
     },
     validate: yupResolver(validationSchema),
   });
@@ -247,6 +272,7 @@ const EditShareBody = ({
         password: values.password || undefined,
         removePassword: values.removePassword,
         maxViews: values.maxViews || null,
+        maxDownloads: values.maxDownloads || null,
       },
     };
 
@@ -309,6 +335,19 @@ const EditShareBody = ({
           )}
           label={t("upload.modal.accordion.security.max-views.label")}
           {...form.getInputProps("maxViews")}
+        />
+        <NumberInput
+          min={1}
+          type="number"
+          variant="filled"
+          placeholder={t(
+            "upload.modal.accordion.security.max-downloads.placeholder",
+          )}
+          label={t("upload.modal.accordion.security.max-downloads.label")}
+          description={t(
+            "upload.modal.accordion.security.max-downloads.description",
+          )}
+          {...form.getInputProps("maxDownloads")}
         />
         <Group position="right">
           <Button variant="default" onClick={onCancel}>

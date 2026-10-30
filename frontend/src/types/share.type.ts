@@ -12,6 +12,8 @@ export type Share = {
   size: number;
   hasPassword: boolean;
   maxViews?: number;
+  maxDownloads?: number;
+  downloadCount?: number;
   isZipReady?: boolean;
   uploaderInfo?: UploaderInfo;
   downloads?: ShareDownloadStats;
@@ -85,6 +87,7 @@ export type UpdateShare = {
     password?: string;
     removePassword?: boolean;
     maxViews?: number | null;
+    maxDownloads?: number | null;
   };
 };
 
@@ -147,6 +150,7 @@ export type MyReverseShare = {
 
 export type ShareSecurity = {
   maxViews?: number;
+  maxDownloads?: number;
   password?: string;
   restrictToRecipients?: boolean;
 };
@@ -154,5 +158,7 @@ export type ShareSecurity = {
 export type MyShareSecurity = {
   passwordProtected: boolean;
   maxViews?: number;
+  maxDownloads?: number;
+  downloadCount?: number;
   restrictToRecipients: boolean;
 };

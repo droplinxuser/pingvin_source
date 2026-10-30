@@ -80,6 +80,22 @@ const ShareStats = ({
               </Text>
             </Group>
           )}
+          {!!share.maxDownloads && (
+            <Group spacing={6} align="baseline" noWrap>
+              <Text size="xs" color="dimmed" weight={600} tt="uppercase">
+                {t("share.custom.stats.download-limit")}
+              </Text>
+              <Text
+                size={20}
+                weight={800}
+                lh={1}
+                data-testid="share-download-limit"
+              >
+                {(share.downloadCount ?? 0).toLocaleString(intl.locale)} /{" "}
+                {share.maxDownloads.toLocaleString(intl.locale)}
+              </Text>
+            </Group>
+          )}
         </Group>
       </Group>
 

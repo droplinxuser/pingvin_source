@@ -336,6 +336,10 @@ interface S3UploadSession {
 const s3UploadSessions: Record<string, S3UploadSession> = {};
 const s3UploadSupportedShares: Record<string, boolean> = {};
 
+/** Whether this share's first chunk switched to a direct multipart upload. */
+const isDirectS3 = (shareId: string): boolean =>
+  s3UploadSupportedShares[shareId] === true;
+
 const uploadFileDirectS3 = async (
   shareId: string,
   chunk: Blob,
@@ -635,6 +639,7 @@ export default {
   removeFile,
   uploadFile,
   uploadFromUrl,
+  isDirectS3,
   setReverseShare,
   createReverseShare,
   getMyReverseShares,

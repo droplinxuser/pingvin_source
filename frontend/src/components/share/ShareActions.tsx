@@ -6,8 +6,8 @@ import { FormattedMessage } from "react-intl";
 import {
   TbDownload,
   TbEdit,
+  TbFilePlus,
   TbFlag,
-  TbPlusMinus,
   TbTrash,
 } from "react-icons/tb";
 import useConfig from "../../hooks/config.hook";
@@ -18,6 +18,7 @@ import { MyShare, Share } from "../../types/share.type";
 import toast from "../../utils/toast.util";
 import { HoverTip } from "../core/HoverTip";
 import DownloadAllButton from "./DownloadAllButton";
+import ShareButton from "./ShareButton";
 
 const ShareActions = ({
   share,
@@ -42,6 +43,18 @@ const ShareActions = ({
   const isOwner = !!user && !!share && share.creator?.id === user.id;
   const isOwnerOrAdmin =
     !!user && !!share && (share.creator?.id === user.id || user.isAdmin);
+  const maxDownloads = share?.maxDownloads;
+  const downloadLimitReached =
+    !!maxDownloads && (share?.downloadCount ?? 0) >= maxDownloads;
+
+  const appUrl = config.get("general.appUrl");
+  const shareUrl = `${
+    appUrl !== config.get("general.appUrl", true)
+      ? appUrl
+      : typeof window !== "undefined"
+        ? window.location.origin
+        : appUrl
+  }/s/${shareId}`;
 
   const handleEditClick = async () => {
     if (!share) return;
@@ -122,6 +135,11 @@ const ShareActions = ({
 
   return (
     <Group spacing="xs">
+      <ShareButton
+        url={shareUrl}
+        title={share?.name || t("share.custom.share.title")}
+        size="sm"
+      />
       <Button
         variant="light"
         color="red.9"
@@ -132,16 +150,16 @@ const ShareActions = ({
         <FormattedMessage id="share.custom.report.button" />
       </Button>
       {isOwner && (
-        <HoverTip label={t("account.shares.button.edit")}>
+        <HoverTip label={t("share.custom.manage-files")}>
           <ActionIcon
             component={Link}
             href={`/share/${shareId}/edit`}
             variant="light"
             color="orange"
             size="lg"
-            aria-label={t("account.shares.button.edit")}
+            aria-label={t("share.custom.manage-files")}
           >
-            <TbPlusMinus />
+            <TbFilePlus />
           </ActionIcon>
         </HoverTip>
       )}
@@ -177,6 +195,7 @@ const ShareActions = ({
               shareId={shareId}
               recipientId={recipientId}
               files={share.files}
+              disabled={downloadLimitReached}
             />
           )
         : (fileCount ?? 0) > 1 && (
@@ -192,6 +211,11 @@ const ShareActions = ({
               <FormattedMessage id="share.button.download-all" />
             </Button>
           )}
+      {downloadLimitReached && (
+        <Text size="sm" color="red.9" data-testid="download-limit-reached">
+          <FormattedMessage id="share.custom.download-limit.reached" />
+        </Text>
+      )}
     </Group>
   );
 };

@@ -19,6 +19,7 @@ import { Request, Response } from "express";
 import { ConfigService } from "src/config/config.service";
 import { StrictShareOwnerGuard } from "src/share/guard/strictShareOwner.guard";
 import { IdValidation } from "src/share/guard/shareIdValidation.guard";
+import { ShareService } from "src/share/share.service";
 import {
   getDownloadCacheHeaders,
   getImageCacheHeaders,
@@ -41,9 +42,18 @@ const VALID_ID_REGEX = /^[a-zA-Z0-9-]*={0,2}$/;
 
 type FileRequest = Request & {
   shareIsPublic?: boolean;
+  shareDownloadLimited?: boolean;
   shareStorageProvider?: string;
   shareIsZipReady?: boolean;
+  guardShare?: { security?: { maxDownloads?: number | null } | null } | null;
 };
+
+function shouldCountDownload(req: Request): boolean {
+  const range = req.headers.range;
+  // A range download is one download only when it starts at the first byte.
+  // Follow-up ranges (or a resumed request) must not consume another slot.
+  return !range || /^bytes=0-/i.test(range);
+}
 
 function getValidRecipientId(recipientId?: string): string | undefined {
   if (!recipientId) return undefined;
@@ -55,6 +65,7 @@ export class FileController {
   constructor(
     private fileService: FileService,
     private config: ConfigService,
+    private shareService: ShareService,
   ) {}
 
   @Post("upload-init")
@@ -177,6 +188,16 @@ export class FileController {
       fileIds,
     );
 
+    try {
+      await this.shareService.reserveDownload(
+        shareId,
+        (req as FileRequest).guardShare?.security?.maxDownloads,
+      );
+    } catch (error) {
+      zipStream.destroy();
+      throw error;
+    }
+
     res.set({
       "Content-Type": "application/zip",
       "Content-Disposition": contentDisposition(`${shareId}.zip`),
@@ -185,7 +206,9 @@ export class FileController {
     res.set(
       fileIds
         ? NO_STORE_HEADERS
-        : getZipCacheHeaders((req as FileRequest).shareIsPublic === true),
+        : (req as FileRequest).shareDownloadLimited
+          ? NO_STORE_HEADERS
+          : getZipCacheHeaders((req as FileRequest).shareIsPublic === true),
     );
 
     void this.fileService.notifyRecipientDownload(
@@ -252,7 +275,10 @@ export class FileController {
       }
     }
 
-    if (storageProvider === "S3") {
+    if (
+      storageProvider === "S3" &&
+      !(isDownload && (req as FileRequest).shareDownloadLimited)
+    ) {
       const url = await this.fileService.getPreSignedDownloadUrl(
         shareId,
         fileId,
@@ -293,6 +319,18 @@ export class FileController {
       return;
     }
 
+    if (isDownload && shouldCountDownload(req)) {
+      try {
+        await this.shareService.reserveDownload(
+          shareId,
+          (req as FileRequest).guardShare?.security?.maxDownloads,
+        );
+      } catch (error) {
+        file.file.destroy();
+        throw error;
+      }
+    }
+
     const mimeType = getFileMimeType(file.metaData.name, isDownload);
 
     const isPassiveMedia =
@@ -324,10 +362,13 @@ export class FileController {
       headers["Content-Security-Policy"] = "sandbox";
     }
 
-    const cacheHeaders = getDownloadCacheHeaders(
-      (req as FileRequest).shareIsPublic === true,
-      `"${shareId}-${fileId}-${totalSize}"`,
-    );
+    const cacheHeaders: Record<string, string> = (req as FileRequest)
+      .shareDownloadLimited
+      ? NO_STORE_HEADERS
+      : getDownloadCacheHeaders(
+          (req as FileRequest).shareIsPublic === true,
+          `"${shareId}-${fileId}-${totalSize}"`,
+        );
     Object.assign(headers, cacheHeaders);
 
     if (isNotModified(req, cacheHeaders.ETag)) {

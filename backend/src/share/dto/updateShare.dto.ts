@@ -24,6 +24,11 @@ export class UpdateShareSecurityDTO {
   @Min(1)
   @IsOptional()
   maxViews?: number | null;
+
+  @IsInt()
+  @Min(1)
+  @IsOptional()
+  maxDownloads?: number | null;
 }
 
 export class UpdateShareDTO {

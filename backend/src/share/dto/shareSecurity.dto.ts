@@ -18,6 +18,11 @@ export class ShareSecurityDTO {
   @IsOptional()
   maxViews: number;
 
+  @IsInt()
+  @Min(1)
+  @IsOptional()
+  maxDownloads: number;
+
   @IsBoolean()
   @IsOptional()
   restrictToRecipients: boolean;

@@ -33,6 +33,14 @@ import {
   validateAndFilterFiles,
 } from "../../utils/file.util";
 import { byteToHumanSizeString } from "../../utils/fileSize.util";
+import { getQueryString } from "../../utils/router.util";
+import { takeSharedTargetPayload } from "../../utils/shareTarget.util";
+import {
+  removeSessionsForShare,
+  saveUploadSession,
+  updateUploadProgress,
+} from "../../utils/uploadSession.util";
+import ResumeUploads from "../../components/upload/ResumeUploads";
 
 const promiseLimit = pLimit(3);
 const MAX_UPLOAD_RETRIES = 3;
@@ -61,6 +69,7 @@ const Upload = ({
   filesRef.current = files;
   // One controller per in-flight file so the list can cancel an upload.
   const uploadAbortsRef = useRef(new Map<FileUpload, AbortController>());
+  const sharedImportRef = useRef(false);
 
   useConfirmLeave({
     message: t("upload.notify.confirm-leave"),
@@ -136,11 +145,13 @@ const Upload = ({
           return;
         }
 
+        const normalizedName = getNormalizedFileName(file);
         let chunks = Math.ceil(file.size / chunkSize.current);
 
         // If the file is 0 bytes, we still need to upload 1 chunk
         if (chunks == 0) chunks++;
 
+        let sessionStarted = false;
         let retries = 0;
         for (let chunkIndex = 0; chunkIndex < chunks; chunkIndex++) {
           if (signal.aborted) return;
@@ -154,7 +165,7 @@ const Upload = ({
                 blob,
                 {
                   id: fileId,
-                  name: getNormalizedFileName(file),
+                  name: normalizedName,
                 },
                 chunkIndex,
                 chunks,
@@ -173,9 +184,34 @@ const Upload = ({
                 },
                 signal,
               )
-              .then((response) => {
+              .then(async (response) => {
                 fileId = response.id;
+                // Direct multipart uploads keep their session in memory and
+                // cannot be resumed after a reload. Only persist proxied
+                // uploads, whose chunks live on the server as temp files.
+                if (
+                  !sessionStarted &&
+                  !shareService.isDirectS3(createdShare.id)
+                ) {
+                  sessionStarted = true;
+                  await saveUploadSession({
+                    shareId: createdShare.id,
+                    fileId,
+                    name: normalizedName,
+                    size: file.size,
+                    chunkSize: chunkSize.current,
+                    totalChunks: chunks,
+                    completedChunks: chunkIndex + 1,
+                  });
+                }
               });
+
+            if (sessionStarted)
+              await updateUploadProgress(
+                createdShare.id,
+                fileId!,
+                chunkIndex + 1,
+              );
 
             retries = 0;
             setFileProgress(((chunkIndex + 1) / chunks) * 100);
@@ -278,6 +314,53 @@ const Upload = ({
     [maxShareSize, autoOpenCreateUploadModal, t, showCreateUploadModalCallback],
   );
 
+  // The PWA share target stores files in Cache Storage and redirects here with
+  // their id. Hand them to the normal upload flow, then clean the URL.
+  useEffect(() => {
+    if (!router.isReady || sharedImportRef.current) return;
+    const shared = getQueryString(router.query.shared);
+    if (!shared) return;
+    sharedImportRef.current = true;
+
+    const finish = () =>
+      router.replace("/upload", undefined, { shallow: true });
+    if (shared === "empty") {
+      toast.error(t("upload.notify.shared-files-missing"));
+      void finish();
+      return;
+    }
+    if (shared === "error") {
+      toast.error(t("upload.notify.shared-files-error"));
+      void finish();
+      return;
+    }
+
+    void takeSharedTargetPayload(shared)
+      .then((payload) => {
+        if (!payload?.files.length) {
+          toast.error(t("upload.notify.shared-files-missing"));
+          return;
+        }
+        const uploaded = payload.files.map((file) => {
+          const upload = file as FileUpload;
+          upload.uploadingProgress = 0;
+          return upload;
+        });
+        handleDropzoneFilesChanged(uploaded);
+        toast.success(
+          t("upload.notify.shared-files-added", { count: uploaded.length }),
+        );
+      })
+      .catch(() => toast.error(t("upload.notify.shared-files-error")))
+      .finally(() => void finish());
+  }, [
+    router.isReady,
+    router.query.shared,
+    handleDropzoneFilesChanged,
+    router,
+    t,
+  ]);
+
   useEffect(() => {
     // Check if there are any files that failed to upload
     const fileErrorCount = files.filter(
@@ -312,6 +395,7 @@ const Upload = ({
       shareService
         .completeShare(createdShare.id)
         .then(async (share) => {
+          await removeSessionsForShare(createdShare.id);
           setisUploading(false);
           const { default: showCompletedUploadModal } =
             await import("../../components/upload/modals/showCompletedUploadModal");
@@ -367,6 +451,7 @@ const Upload = ({
       <Title order={1} className="visually-hidden">
         {t("upload.title")}
       </Title>
+      {!isReverseShare && <ResumeUploads />}
       <Group position="right" mb={20}>
         <Button
           loading={isUploading}

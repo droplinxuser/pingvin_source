@@ -20,12 +20,14 @@ const DownloadAllButton = ({
   files,
   labelId = "share.button.download-all",
   size,
+  disabled = false,
 }: {
   shareId: string;
   recipientId?: string;
   files: DownloadableFile[];
   labelId?: string;
   size?: MantineSize;
+  disabled?: boolean;
 }) => {
   const config = useConfig();
   const modals = useModals();
@@ -115,6 +117,7 @@ const DownloadAllButton = ({
       size={size}
       leftIcon={<TbDownload />}
       loading={isDownloading}
+      disabled={disabled}
       onClick={confirmDownloadAll}
     >
       <FormattedMessage id={labelId} />

@@ -8,5 +8,11 @@ export class MyShareSecurityDTO {
   maxViews: number;
 
   @Expose()
+  maxDownloads?: number;
+
+  @Expose()
+  downloadCount?: number;
+
+  @Expose()
   restrictToRecipients: boolean;
 }

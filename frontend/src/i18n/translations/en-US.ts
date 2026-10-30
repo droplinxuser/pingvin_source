@@ -848,6 +848,14 @@ export default {
   "upload.modal.accordion.security.password.placeholder": "No password",
   "upload.modal.accordion.security.max-views.label": "Maximum views",
   "upload.modal.accordion.security.max-views.placeholder": "No limit",
+  "upload.modal.accordion.security.max-downloads.label": "Maximum downloads",
+  "upload.modal.accordion.security.max-downloads.placeholder": "No limit",
+  "upload.modal.accordion.security.max-downloads.description":
+    "Blocks further downloads after this many. Set 1 for a one-time download.",
+  "upload.modal.accordion.security.password.generate": "Generate password",
+  "upload.modal.accordion.security.password.copy": "Copy password",
+  "upload.modal.accordion.security.password.copied": "Password copied.",
+  "upload.modal.accordion.security.password.generated": "Strong password generated.",
 
   // showCompletedUploadModal.tsx
   "upload.modal.completed.never-expires": "This share will never expire.",
@@ -856,6 +864,25 @@ export default {
   "upload.modal.completed.share-ready": "Share ready",
   "upload.modal.completed.notified-reverse-share-creator":
     "We notified the reverse share creator. You can also share this link with them manually.",
+
+  "upload.resume.title": "Unfinished uploads",
+  "upload.resume.description":
+    "Select the same file again to continue from the last uploaded chunk. Files stay on your device.",
+  "upload.resume.button": "Resume",
+  "upload.resume.discard": "Discard",
+  "upload.resume.remaining": "{count} of {total} chunks left",
+  "upload.resume.mismatch":
+    "Select the same file to resume: {name} ({size}).",
+  "upload.resume.chunk-size-changed":
+    "Upload settings changed. Please start this upload again.",
+  "upload.resume.completed": "Upload resumed and completed.",
+  "upload.resume.discarded": "Unfinished upload discarded.",
+  "upload.notify.shared-files-added":
+    "{count, plural, =1 {# shared file added} other {# shared files added}}.",
+  "upload.notify.shared-files-missing":
+    "The shared files are no longer available. Select them again.",
+  "upload.notify.shared-files-error":
+    "The shared files could not be read. Select them again.",
 
   // END /upload
 
@@ -869,6 +896,17 @@ export default {
   "share.custom.stats.title": "Recent visitors",
   "share.custom.stats.views": "Total views",
   "share.custom.stats.downloads": "Downloads",
+  "share.custom.stats.download-limit": "Download limit",
+  "share.custom.download-limit.reached":
+    "This share has reached its download limit.",
+  "share.custom.download-limit.remaining":
+    "{remaining} of {max} downloads remaining.",
+  "share.custom.share.button": "Share",
+  "share.custom.share.title": "Share this link",
+  "share.custom.share.text": "Check out this share on {siteName}.",
+  "share.custom.share.copied":
+    "Sharing is not available in this browser; the link was copied instead.",
+  "share.custom.manage-files": "Add or remove files",
   "share.custom.stats.empty": "No visits recorded yet.",
   "share.custom.stats.unknown-location": "Unknown location",
   "share.custom.stats.direct": "Direct visit",

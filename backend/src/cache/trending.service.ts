@@ -311,6 +311,7 @@ export class TrendingService {
             select: {
               password: true,
               maxViews: true,
+              maxDownloads: true,
               restrictToRecipients: true,
             },
           },

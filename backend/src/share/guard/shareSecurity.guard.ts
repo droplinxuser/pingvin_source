@@ -9,7 +9,11 @@ import { I18nService } from "nestjs-i18n";
 import { PrismaService } from "src/prisma/prisma.service";
 import { ShareService } from "src/share/share.service";
 import { GuardShare } from "src/share/shareState.service";
-import { isPublicShare, isShareExpired } from "src/share/share.util";
+import {
+  isAccessPublicShare,
+  isPublicShare,
+  isShareExpired,
+} from "src/share/share.util";
 import { ConfigService } from "src/config/config.service";
 import { JwtGuard } from "src/auth/guard/jwt.guard";
 import { User } from "@prisma/client";
@@ -102,9 +106,13 @@ export class ShareSecurityGuard extends JwtGuard {
 
     if (!share) throw new NotFoundException(this.i18n.t("share.notFound"));
 
-    const publicShare = isPublicShare(share);
+    const accessPublic = isAccessPublicShare(share);
+    const cachePublic = isPublicShare(share);
     (request as Request & { shareIsPublic?: boolean }).shareIsPublic =
-      publicShare;
+      cachePublic;
+    (
+      request as Request & { shareDownloadLimited?: boolean }
+    ).shareDownloadLimited = !!share.security?.maxDownloads;
 
     const expired = isShareExpired(share.expiration);
 
@@ -112,7 +120,7 @@ export class ShareSecurityGuard extends JwtGuard {
     // here keeps the share payload, comments and thumbnail reads from issuing
     // a refresh-token query for every signed-in visitor. Mutations still
     // authenticate so comment authors and admin previews keep working.
-    if (publicShare && request.method === "GET" && !expired) return true;
+    if (accessPublic && request.method === "GET" && !expired) return true;
 
     const user = await this.authenticateUser(context);
 
@@ -146,7 +154,7 @@ export class ShareSecurityGuard extends JwtGuard {
 
     // Public shares need no token: their files are already readable without
     // one by the file guard. This saves the 403 -> token -> retry round trip.
-    if (publicShare) return true;
+    if (accessPublic) return true;
 
     if (share.security?.password && !shareToken)
       throw new ForbiddenException(

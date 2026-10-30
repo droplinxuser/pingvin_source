@@ -54,16 +54,17 @@ export function isShareExpired(
 type ShareVisibility = {
   security?: Pick<
     ShareSecurity,
-    "password" | "restrictToRecipients" | "maxViews"
+    "password" | "restrictToRecipients" | "maxViews" | "maxDownloads"
   > | null;
   reverseShare?: { publicAccess: boolean } | null;
 };
 
 /**
- * A share can be cached publicly when it has no password, no view limit, is
- * not restricted to named recipients and is not a private reverse share.
+ * A share can be opened without a password, view limit, recipient restriction
+ * or private reverse share. A download cap does not require a credential, so
+ * it is not part of this access check.
  */
-export function isPublicShare(share?: ShareVisibility | null): boolean {
+export function isAccessPublicShare(share?: ShareVisibility | null): boolean {
   return (
     !!share &&
     !share.security?.password &&
@@ -71,6 +72,16 @@ export function isPublicShare(share?: ShareVisibility | null): boolean {
     !share.security?.restrictToRecipients &&
     (!share.reverseShare || share.reverseShare.publicAccess)
   );
+}
+
+/**
+ * A share can be cached publicly and listed/indexed when it has no access
+ * restriction and no download cap. Download-capped shares must reach the
+ * origin to enforce the cap, so they are never treated as cacheable/public
+ * listing entries even when they do not need a password.
+ */
+export function isPublicShare(share?: ShareVisibility | null): boolean {
+  return isAccessPublicShare(share) && !share?.security?.maxDownloads;
 }
 
 /**
@@ -98,6 +109,7 @@ export function publicShareWhere(now = new Date()): Prisma.ShareWhereInput {
               is: {
                 password: null,
                 maxViews: null,
+                maxDownloads: null,
                 restrictToRecipients: false,
               },
             },

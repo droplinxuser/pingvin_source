@@ -10,7 +10,11 @@ import { I18nService } from "nestjs-i18n";
 import { PrismaService } from "src/prisma/prisma.service";
 import { ShareSecurityGuard } from "src/share/guard/shareSecurity.guard";
 import { ShareService } from "src/share/share.service";
-import { isPublicShare, isShareExpired } from "src/share/share.util";
+import {
+  isAccessPublicShare,
+  isPublicShare,
+  isShareExpired,
+} from "src/share/share.util";
 import { ConfigService } from "src/config/config.service";
 
 @Injectable()
@@ -49,11 +53,13 @@ export class FileSecurityGuard extends ShareSecurityGuard {
 
     const shareRequest = request as Request & {
       shareIsPublic?: boolean;
+      shareDownloadLimited?: boolean;
       shareStorageProvider?: string;
       shareIsZipReady?: boolean;
       guardShare?: typeof share;
     };
     shareRequest.shareIsPublic = isPublicShare(share);
+    shareRequest.shareDownloadLimited = !!share?.security?.maxDownloads;
     shareRequest.shareStorageProvider = share?.storageProvider ?? "LOCAL";
     shareRequest.shareIsZipReady = share?.isZipReady === true;
     // ShareSecurityGuard can reuse this load when the token path delegates.
@@ -64,9 +70,9 @@ export class FileSecurityGuard extends ShareSecurityGuard {
       const expired = !!share && isShareExpired(share.expiration);
 
       // Public, unexpired file reads do not need an account lookup. A share
-      // page can request dozens of previews, so this keeps signed-in visitors
-      // from issuing one refresh-token query per image.
-      if (share && shareRequest.shareIsPublic && !expired) return true;
+      // with only a download cap still falls in this branch: the cap is
+      // enforced at the download handler, not by a password/token.
+      if (share && isAccessPublicShare(share) && !expired) return true;
 
       const user = await this.authenticateUser(context);
 

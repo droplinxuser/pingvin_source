@@ -80,6 +80,8 @@ const SHARE_INCLUDE = {
     select: {
       password: true,
       maxViews: true,
+      maxDownloads: true,
+      downloadCount: true,
       restrictToRecipients: true,
     },
   },
@@ -718,6 +720,7 @@ export class ShareService {
           select: {
             password: true,
             maxViews: true,
+            maxDownloads: true,
             restrictToRecipients: true,
           },
         },
@@ -928,13 +931,18 @@ export class ShareService {
       body.security.maxViews !== undefined
         ? body.security.maxViews
         : currentSecurity?.maxViews;
+    const nextMaxDownloads =
+      body.security.maxDownloads !== undefined
+        ? body.security.maxDownloads
+        : currentSecurity?.maxDownloads;
 
     // A recipient-restricted share keeps its security row even when it has no
-    // password or view limit; deleting the row would silently lift the
-    // restriction.
+    // password, view limit or download limit; deleting the row would silently
+    // lift the restriction.
     if (
       !nextPassword &&
       !nextMaxViews &&
+      !nextMaxDownloads &&
       !currentSecurity?.restrictToRecipients
     ) {
       if (currentSecurity) {
@@ -949,11 +957,13 @@ export class ShareService {
         share: { connect: { id: shareId } },
         password: nextPassword,
         maxViews: nextMaxViews,
+        maxDownloads: nextMaxDownloads,
         restrictToRecipients: currentSecurity?.restrictToRecipients ?? false,
       },
       update: {
         password: nextPassword,
         maxViews: nextMaxViews,
+        maxDownloads: nextMaxDownloads,
       },
     });
   }
@@ -990,6 +1000,8 @@ export class ShareService {
       recipients: share.recipients?.map((recipient) => recipient.email) ?? [],
       security: {
         maxViews: share.security?.maxViews,
+        maxDownloads: share.security?.maxDownloads,
+        downloadCount: share.security?.downloadCount,
         passwordProtected: !!share.security?.password,
         restrictToRecipients: !!share.security?.restrictToRecipients,
       },
@@ -1002,6 +1014,41 @@ export class ShareService {
       select: { id: true },
     });
     return { isAvailable: !share };
+  }
+
+  /**
+   * Atomically consumes one download from a share's optional cap. Uncapped
+   * shares return immediately, so the common path stays a single guard-cache
+   * read. Capped shares use one conditional UPDATE, which makes two concurrent
+   * downloads unable to both pass the last slot. The share payload/guard caches
+   * are dropped so the next page view shows the new remaining count.
+   */
+  async reserveDownload(
+    shareId: string,
+    knownMaxDownloads?: number | null,
+  ): Promise<void> {
+    const maxDownloads =
+      knownMaxDownloads !== undefined
+        ? knownMaxDownloads
+        : (await this.shareState.getGuardShare(shareId))?.security
+            ?.maxDownloads;
+    if (!maxDownloads) return;
+
+    const rows = await this.prisma.$queryRaw<{ downloadCount: number }[]>`
+      UPDATE "ShareSecurity"
+      SET "downloadCount" = "downloadCount" + 1
+      WHERE "shareId" = ${shareId}
+        AND "maxDownloads" IS NOT NULL
+        AND "downloadCount" < "maxDownloads"
+      RETURNING "downloadCount"
+    `;
+    if (rows.length === 0) {
+      throw new ForbiddenException(
+        this.i18n.t("share.maxDownloadsExceeded"),
+        "share_max_downloads_exceeded",
+      );
+    }
+    await this.shareState.invalidateDataCache(shareId);
   }
 
   /**

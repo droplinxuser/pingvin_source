@@ -5,6 +5,7 @@ import { IoOpenOutline } from "react-icons/io5";
 import { TbCheck, TbCopy, TbQrcode } from "react-icons/tb";
 import useTranslate from "../../hooks/useTranslate.hook";
 import toast from "../../utils/toast.util";
+import ShareButton from "../share/ShareButton";
 
 function CopyTextField(props: { link: string; toggleQR?: () => void }) {
   const clipboard = useClipboard({ timeout: 500 });
@@ -58,6 +59,9 @@ function CopyTextField(props: { link: string; toggleQR?: () => void }) {
 
           {window.isSecureContext && (
             <>
+              {typeof navigator !== "undefined" && "share" in navigator && (
+                <ShareButton url={props.link} compact size="sm" />
+              )}
               <Tooltip
                 label={t("common.button.clickToCopy")}
                 position="top"
