@@ -177,7 +177,7 @@ const Contact = ({ config }: { config: ContactConfig }) => {
                   onVerify={setToken}
                 />
               </div>
-              <Button type="submit" loading={loading}>
+              <Button type="submit" loading={loading} disabled={!token}>
                 {t("contact.submit")}
               </Button>
             </Stack>

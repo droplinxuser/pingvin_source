@@ -222,6 +222,7 @@ const Header = () => {
           },
         ]
       : []),
+    { link: "/trending", label: t("trending.custom.title") },
     { link: "/new-media", label: t("navbar.newMedia") },
     { link: "/new-files", label: t("navbar.newFiles") },
     {
@@ -240,6 +241,7 @@ const Header = () => {
     if (config.get("security.allowUnauthenticatedShares"))
       links.push({ link: "/upload", label: t("navbar.upload") });
 
+    links.push({ link: "/trending", label: t("trending.custom.title") });
     links.push({ link: "/new-media", label: t("navbar.newMedia") });
     links.push({ link: "/new-files", label: t("navbar.newFiles") });
 
@@ -264,6 +266,10 @@ const Header = () => {
               },
             ]
           : []),
+        {
+          link: "/trending",
+          label: t("trending.custom.title"),
+        },
         {
           link: "/new-media",
           label: t("navbar.newMedia"),

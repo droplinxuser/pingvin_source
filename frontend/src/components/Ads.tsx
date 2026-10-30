@@ -11,13 +11,7 @@ const SCRIPTS = [
   { src: "https://wingsmob.com/1/ccdff92c9d7f97c5af143f6c519f16ed" },
 ];
 
-const Ads = ({
-  gallery = false,
-  disabled = false,
-}: {
-  gallery?: boolean;
-  disabled?: boolean;
-}) => {
+const Ads = ({ gallery = false }: { gallery?: boolean }) => {
   const bannerRef = useRef<HTMLDivElement>(null);
   const [collapsed, setCollapsed] = useState(false);
   const [isGuest, setIsGuest] = useState(false);
@@ -27,17 +21,13 @@ const Ads = ({
   // Resolve the session in the browser before mounting the ad slot so account
   // holders never execute or see the publisher scripts.
   useEffect(() => {
-    // Never inject third-party scripts on a protected share (its password and
-    // recipient state must not sit next to arbitrary publisher code), or while
-    // a reverse-share cookie grants upload permission to page scripts.
-    if (disabled) {
-      setIsGuest(false);
-      return;
-    }
+    // Never inject third-party scripts while a reverse-share cookie grants
+    // upload permission and is readable by page scripts. Every other guest
+    // share/404 request, including protected and private shares, gets the ad.
     setIsGuest(
       !user && !getCookie("access_token") && !getCookie("reverse_share_token"),
     );
-  }, [user, disabled]);
+  }, [user]);
 
   useEffect(() => {
     if (!isGuest) return;
@@ -134,7 +124,7 @@ const Ads = ({
     };
   }, [isGuest]);
 
-  if (disabled || !isGuest) return null;
+  if (!isGuest) return null;
 
   // Keep one stable DOM node for every page variant. The share page switches
   // the `gallery` layout after its data arrives; swapping an <aside> for a

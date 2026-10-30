@@ -472,7 +472,7 @@ const SharePage = ({
             label: <FormattedMessage id="share.error.restricted.button" />,
           }}
         />
-        <Ads disabled={!indexable} />
+        <Ads />
       </>
     );
   }
@@ -489,7 +489,7 @@ const SharePage = ({
             label: <FormattedMessage id="common.button.go-home" />,
           }}
         />
-        <Ads disabled={!indexable} />
+        <Ads />
       </>
     );
   }
@@ -596,7 +596,7 @@ const SharePage = ({
         )}
       </LazySection>
 
-      <Ads gallery={hasGalleryMedia} disabled={!indexable} />
+      <Ads gallery={hasGalleryMedia} />
 
       <LazySection
         placeholder={<FileListSkeleton count={fileSkeletonCount} />}

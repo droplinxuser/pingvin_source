@@ -61,6 +61,46 @@ ${siteName} is a self-hosted file-sharing service operated at ${url}.
 
 **Contact:** [contact page](${context.contactUrl})
 
+## Website features
+
+${siteName} is a complete file-sharing web application. The main user-facing
+features are:
+
+- **Uploads:** drag-and-drop and file-picker uploads, multi-file and folder
+  selection, clipboard paste, resumable chunked uploads, upload cancellation,
+  progress reporting, per-file and per-share size limits, and optional direct
+  S3 uploads.
+- **Upload from URL:** direct links are downloaded by the visitor's browser and
+  then uploaded normally. Supported file-host pages (for example MediaFire,
+  Bunkr, Dropbox, Google Drive, OneDrive, pCloud, Pixeldrain and tmpfiles) are
+  resolved by the server, and allowlisted video/audio platforms can be
+  imported with yt-dlp.
+- **Share pages:** short links, custom names and descriptions, file lists,
+  image/video galleries with keyboard navigation, PDF/text/audio previews,
+  per-file copy-link actions, individual downloads, bulk selection and streamed
+  ZIP downloads, download counters and visitor statistics.
+- **Access control:** optional passwords, view limits, recipient-only shares,
+  automatic rolling expiration, reverse shares for receiving files, and
+  creator/admin share management.
+- **Discovery:** public full-text search, daily trending shares, country
+  breakdowns, newest media, newest files, share thumbnails and Open Graph
+  previews.
+- **Accounts:** registration and sign-in, email verification, password reset,
+  optional TOTP two-factor authentication, OAuth and LDAP sign-in, profiles,
+  avatars, personal share/received/reverse-share dashboards and storage quotas.
+- **Community and safety:** comments with owner/admin moderation, abuse
+  reporting, ClamAV scanning, VirusTotal background checks and per-file
+  malware badges.
+- **Administration:** configuration management, user/share/referrer
+  administration, error logs, VirusTotal queue, server dependency checks,
+  SQLite metrics and Valkey metrics.
+- **Front-end experience:** responsive mobile/desktop layouts, light and dark
+  themes, keyboard-accessible controls, reduced layout shift, lazy-loaded
+  galleries and listings, localized dates and numbers, PWA manifest/service
+  worker support, and guest advertising on public share and 404 pages.
+- **Delivery and SEO:** Cloudflare-compatible cache headers, public sitemap and
+  robots endpoints, canonical URLs, structured data, and social-media metadata.
+
 ## Responsibility for content
 
 Shares, comments and other content are uploaded by users of the service. The
@@ -146,10 +186,11 @@ upload permission. These values keep you signed in and enforce share access
 rules. Clearing them signs you out or requires you to enter a share password
 again.
 
-Guests may see advertising units. Ad providers can set their own cookies or
-similar identifiers when an ad is displayed; signed-in visitors, protected
-shares and reverse-share upload pages do not load those units. Where required,
-consent is requested by the ad provider or the applicable consent mechanism.
+Guests may see advertising units on public share and 404 pages, including
+password-protected, view-limited and private shares. Ad providers can set their
+own cookies or similar identifiers when an ad is displayed; signed-in visitors
+and reverse-share upload pages do not load those units. Where required, consent
+is requested by the ad provider or the applicable consent mechanism.
 
 ## Why we process data
 
