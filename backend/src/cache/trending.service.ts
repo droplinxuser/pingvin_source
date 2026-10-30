@@ -14,17 +14,16 @@ import {
 import { recentDownloadHourKeys } from "./download.service";
 import { ValkeyClient, ValkeyService } from "./valkey.service";
 
-const VIEW_KEY_PREFIX = "pingvin:trending:views:hour:";
 const META_KEY_PREFIX = "pingvin:trending:meta:";
 const RANK_KEY_PREFIX = "pingvin:trending:rank:";
 const GEO_KEY_PREFIX = "pingvin:trending:geo:hour:";
 const WINDOW_DAYS = 30;
-// The main ranking counts only views from the last 24 hourly buckets. The
-// 30-day window below still controls which shares may appear at all.
-const VIEW_WINDOW_HOURS = 24;
+// Views and country shares both use the same 24 hourly geo hashes. The 30-day
+// window below still controls which shares may appear at all.
+const HOUR_WINDOW = 24;
+const UNKNOWN_COUNTRY = "XX";
 const DAY_MS = 24 * 60 * 60 * 1000;
 const HOUR_MS = 60 * 60 * 1000;
-const VIEW_TTL_SECONDS = (VIEW_WINDOW_HOURS + 1) * 60 * 60;
 const META_TTL_SECONDS = (WINDOW_DAYS + 1) * 24 * 60 * 60;
 const MAX_SHARE_AGE_MS = WINDOW_DAYS * DAY_MS;
 const MAX_DESCRIPTION_LENGTH = 240;
@@ -42,8 +41,7 @@ const MAX_CARD_FILE_NAMES = 3;
 // The country ranking is read from hourly hashes. Twenty-four HGETALL replies
 // are aggregated in one round trip and the result is reused for five minutes,
 // matching the edge TTL on the API response.
-const GEO_WINDOW_HOURS = 24;
-const GEO_TTL_SECONDS = (GEO_WINDOW_HOURS + 1) * 60 * 60;
+const GEO_TTL_SECONDS = (HOUR_WINDOW + 1) * 60 * 60;
 const GEO_COUNTRY_LIMIT = 10;
 const GEO_SHARE_LIMIT = 10;
 // Deleted/expired shares can leave high-scoring entries without metadata.
@@ -146,32 +144,31 @@ export class TrendingService {
 
     // Keep the short result cache: a view only changes a score, and rebuilding
     // the ranking after every view would turn each visit into extra Valkey
-    // reads. The cached order is at most 30 seconds old.
+    // reads. The cached order is at most 60 seconds old.
     await this.valkey.run(async (client) => {
       const multi = client.multi();
       if (meta) {
-        const viewKey = viewKeyFor(currentHour());
-        const metaKey = metaKeyFor(share.id);
-        // One increment per share-page view. The 24 hourly sets are unioned
-        // with SUM when the ranking is read.
-        multi.zIncrBy(viewKey, 1, share.id);
-        multi.expire(viewKey, VIEW_TTL_SECONDS);
-        // One metadata entry per share instead of one copy in every day
+        // One metadata entry per share instead of one copy in every hour
         // bucket. The card payload is immutable until the share is edited
         // (which deletes the key), so NX avoids rewriting it on every view.
         // The thirty-one-day TTL still covers the thirty-day ranking window.
-        multi.set(metaKey, JSON.stringify(meta), {
+        multi.set(metaKeyFor(share.id), JSON.stringify(meta), {
           EX: META_TTL_SECONDS,
           NX: true,
         });
       }
-      if (code) {
-        // Country totals cover every public share view; the per-share fields
-        // keep the top ten list aligned with the renderable trending shares.
-        // One hourly hash keeps the footprint to 25 short-lived keys.
+      if (meta || code) {
+        // One hourly hash carries both the country totals and the per-share
+        // counts used by the main ranking. A view without a country still
+        // counts under XX, which the country panel ignores.
         const geoKey = geoKeyFor(currentHour());
-        multi.hIncrBy(geoKey, geoTotalFieldFor(code), 1);
-        if (meta) multi.hIncrBy(geoKey, geoFieldFor(code, share.id), 1);
+        if (code) multi.hIncrBy(geoKey, geoTotalFieldFor(code), 1);
+        if (meta)
+          multi.hIncrBy(
+            geoKey,
+            geoFieldFor(code ?? UNKNOWN_COUNTRY, share.id),
+            1,
+          );
         multi.expire(geoKey, GEO_TTL_SECONDS);
       }
       await multi.exec();
@@ -379,37 +376,50 @@ export class TrendingService {
 
   private async read(client: ValkeyClient): Promise<TrendingShare[]> {
     const hour = currentHour();
-    const viewKeys = Array.from({ length: VIEW_WINDOW_HOURS }, (_, offset) =>
-      viewKeyFor(hour - offset),
-    );
     // A unique temporary key keeps concurrent ranking reads from deleting each
-    // other's union. The short TTL covers a process that dies between the
-    // union and the DEL; the normal path removes it immediately.
+    // other's download union. The short TTL covers a process that dies between
+    // the union and the DEL; the normal path removes it immediately.
     const suffix = `${process.pid}:${Date.now()}:${Math.random()
       .toString(36)
       .slice(2)}`;
-    const rankKey = `${RANK_KEY_PREFIX}${suffix}`;
     const downloadRankKey = `${RANK_KEY_PREFIX}downloads:${suffix}`;
     const multi = client.multi();
-    // SUM turns the hourly counters into a 24-hour view total per share.
-    multi.zUnionStore(rankKey, viewKeys, { AGGREGATE: "SUM" });
-    multi.zRangeWithScores(rankKey, 0, CANDIDATE_LIMIT - 1, { REV: true });
+    // The main ranking and the country panel share the same hourly hashes.
+    for (let offset = 0; offset < HOUR_WINDOW; offset++)
+      multi.hGetAll(geoKeyFor(hour - offset));
     multi.zUnionStore(downloadRankKey, recentDownloadHourKeys(), {
       AGGREGATE: "SUM",
     });
     multi.zRangeWithScores(downloadRankKey, 0, -1);
-    multi.del(rankKey);
     multi.del(downloadRankKey);
     const replies = await multi.exec();
-    const ranked = replies?.[1] as unknown as
-      | {
-          value: string;
-          score: number;
-        }[]
-      | null;
-    if (!ranked?.length) return [];
 
-    const downloadRanked = replies?.[3] as unknown as
+    const buckets = (replies?.slice(0, HOUR_WINDOW) ??
+      []) as unknown as (Record<string, string> | null)[];
+    const views = new Map<string, number>();
+    for (const bucket of buckets) {
+      if (!bucket) continue;
+      for (const [field, value] of Object.entries(bucket)) {
+        if (field.startsWith(COUNTRY_FIELD_PREFIX)) continue;
+        // Per-share fields are `<two-letter country>:<shareId>`; XX is the
+        // fallback for a view without a country and is ignored by the panel.
+        const separator = field.indexOf(":");
+        if (separator !== 2) continue;
+        if (!/^[A-Z]{2}$/.test(field.slice(0, 2))) continue;
+        const id = field.slice(3);
+        const count = Number(value);
+        if (!id || !Number.isFinite(count) || count <= 0) continue;
+        views.set(id, (views.get(id) ?? 0) + count);
+      }
+    }
+
+    const ranked = [...views.entries()]
+      .map(([value, score]) => ({ value, score }))
+      .sort((a, b) => b.score - a.score || b.value.localeCompare(a.value))
+      .slice(0, CANDIDATE_LIMIT);
+    if (ranked.length === 0) return [];
+
+    const downloadRanked = replies?.[HOUR_WINDOW + 1] as unknown as
       | {
           value: string;
           score: number;
@@ -420,7 +430,7 @@ export class TrendingService {
     );
 
     const ids = ranked.map((item) => item.value);
-    // One MGET for every candidate replaces 24 per-hour HGETs.
+    // One MGET for every candidate replaces 24 per-hour HGETs of metadata.
     const values = await client.mGet(ids.map(metaKeyFor));
     const metas = parseMetaValues(values);
 
@@ -444,7 +454,7 @@ export class TrendingService {
     }
 
     // Primary: 24-hour views. Secondary: 24-hour downloads. The stable sort
-    // keeps Redis's order for exact ties (share id, reverse lexicographic).
+    // keeps the id order for exact ties.
     items.sort(
       (a, b) => b.item.views - a.item.views || b.downloads - a.downloads,
     );
@@ -456,7 +466,7 @@ export class TrendingService {
   ): Promise<TrendingCountry[]> {
     const hour = currentHour();
     const multi = client.multi();
-    for (let offset = 0; offset < GEO_WINDOW_HOURS; offset++)
+    for (let offset = 0; offset < HOUR_WINDOW; offset++)
       multi.hGetAll(geoKeyFor(hour - offset));
 
     const buckets = (await multi.exec()) as unknown as (Record<
@@ -733,10 +743,6 @@ function legacyMetaIds(ids: string[], metas: Map<string, TrendingMeta>) {
 
 function currentHour() {
   return Math.floor(Date.now() / HOUR_MS);
-}
-
-function viewKeyFor(hour: number) {
-  return `${VIEW_KEY_PREFIX}${hour}`;
 }
 
 function geoKeyFor(hour: number) {

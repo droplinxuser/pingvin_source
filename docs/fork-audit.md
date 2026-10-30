@@ -221,12 +221,14 @@ the matching `utils/*.util.ts` files.
   the linear scan without caching typed values, so admin edits are immediate.
 - Public search scores each matching entry once before sorting instead of
   lowercasing the name and description again inside every comparator.
-- Trending keeps one hourly sorted set per hour for views
-  (`pingvin:trending:views:hour:<hour>`, TTL 25 h) and one for downloads
-  (`pingvin:downloads:hour:<hour>`, TTL 25 h). A read unions the last 24 of each
-  with `SUM`, then sorts by views and downloads. No SQLite seed is possible for
-  a 24-hour window, so the ranking starts from views recorded after the change;
-  old daily view keys expire on their own.
+- Trending reuses the 24 hourly geo hashes for views. Each renderable share
+  writes `<country>:<shareId>` (or `XX:<shareId>` when the request has no valid
+  country), and the main ranking sums the last 24 hashes. The country panel
+  ignores the `XX` fields, so both views stay on the same small key set.
+  Downloads use one hourly sorted set (`pingvin:downloads:hour:<hour>`, TTL
+  25 h); the main read unions the last 24 with `SUM` for the tie-break. No
+  SQLite seed is possible for a 24-hour window, so the ranking starts from views
+  recorded after the change; old daily view keys expire on their own.
 - The unactivated-user cleanup also removes uploads made through the user's
   reverse shares (they have no `creatorId`), matching the admin user-delete
   path so no file bytes are orphaned on disk/S3.
@@ -461,8 +463,9 @@ Origin responses set `Cache-Control`, `CDN-Cache-Control` and
 The current suite covers: view limits and batched counters, visitor identity,
 Valkey/fallback throttling, uploader metadata, HTTP cache matching, storage
 quota, missing local files, page-view metrics, admin metrics, error logs,
-trending/recent/country ranking and cache behavior (including the 24-hour view
-union and download tie-break), public search index storage/matching/versioning,
+trending/recent/country ranking and cache behavior (including the 24-hour geo
+view aggregation and download tie-break), public search index
+storage/matching/versioning,
 share thumbnails, sitemap
 index/chunks/robots, comments, archive-encryption detection, VirusTotal
 audit/queue/filter/removal/notification flows, reverse-share guard wiring,

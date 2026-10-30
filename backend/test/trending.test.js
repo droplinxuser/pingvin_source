@@ -10,7 +10,6 @@ function createMockValkey(execute, metaValues = [], runDelay = 0) {
       const queue = [];
       const chain = {};
       for (const method of [
-        "zIncrBy",
         "expire",
         "set",
         "del",
@@ -50,10 +49,17 @@ function createService(mock, prisma = emptyPrisma) {
   return new TrendingService(mock.valkey, prisma);
 }
 
-// Reply shape for the ranking read: view union, view range, download union,
-// download range, then the two DELs.
-function readReplies(ranked, downloads = []) {
-  return [1, ranked, 1, downloads, 1, 1];
+// One hourly bucket with per-share fields; the other 23 hours are empty.
+function viewBucket(fields) {
+  const buckets = Array.from({ length: 24 }, () => null);
+  buckets[0] = fields;
+  return buckets;
+}
+
+// Reply shape for the ranking read: 24 hourly HGETALLs, download union,
+// download range, then the DEL.
+function readReplies(buckets, downloads = []) {
+  return [...buckets, 1, downloads, 1];
 }
 
 const now = Date.now();
@@ -77,14 +83,16 @@ function meta(id, _views, createdAt, kind = "image") {
 }
 
 test("ranks the last 24 hours by views and filters stale shares", async () => {
-  const ranked = [
-    { value: "a", score: 40 },
-    { value: "old", score: 30 },
-    { value: "b", score: 20 },
-    { value: "broken", score: 10 },
-  ];
   const mock = createMockValkey(
-    () => readReplies(ranked),
+    () =>
+      readReplies(
+        viewBucket({
+          "PH:a": "40",
+          "PH:old": "30",
+          "PH:b": "20",
+          "PH:broken": "10",
+        }),
+      ),
     [
       meta("a", 400, recent),
       meta("old", 300, old),
@@ -109,26 +117,26 @@ test("ranks the last 24 hours by views and filters stale shares", async () => {
   assert.equal(items[0].size, 1234);
   assert.equal(items[0].createdAt, recent);
 
-  // The view union sums 24 hourly buckets into a per-read temporary key.
-  const [unionMethod, unionArgs] = mock.calls[0][0];
-  assert.equal(unionMethod, "zUnionStore");
-  assert.match(unionArgs[0], /^pingvin:trending:rank:/);
-  assert.equal(unionArgs[1].length, 24);
-  assert.equal(unionArgs[2].AGGREGATE, "SUM");
+  // Views come from 24 hourly geo hashes; downloads are unioned separately.
+  const calls = mock.calls[0];
+  assert.equal(calls[0][0], "hGetAll");
+  assert.equal(calls.filter(([method]) => method === "hGetAll").length, 24);
+  assert.match(calls[0][1][0], /^pingvin:trending:geo:hour:/);
+  const downloadUnion = calls.find(([method]) => method === "zUnionStore");
+  assert.equal(downloadUnion[1][2].AGGREGATE, "SUM");
 });
 
 test("uses 24-hour downloads as the tie-break", async () => {
-  const ranked = [
-    { value: "a", score: 10 },
-    { value: "b", score: 10 },
-    { value: "c", score: 5 },
-  ];
   const downloads = [
     { value: "a", score: 1 },
     { value: "b", score: 4 },
   ];
   const mock = createMockValkey(
-    () => readReplies(ranked, downloads),
+    () =>
+      readReplies(
+        viewBucket({ "PH:a": "10", "PH:b": "10", "PH:c": "5" }),
+        downloads,
+      ),
     [meta("a", 10, recent), meta("b", 10, recent), meta("c", 5, recent)],
   );
   const service = createService(mock);
@@ -153,7 +161,7 @@ test("does not seed the 24-hour ranking from SQLite", async () => {
     },
   };
   const mock = createMockValkey(
-    () => readReplies([{ value: "a", score: 3 }]),
+    () => readReplies(viewBucket({ "XX:a": "3" })),
     [meta("a", 3, recent)],
   );
   const service = createService(mock, prisma);
@@ -175,7 +183,17 @@ test("returns twelve by default and caps the full list at two hundred", async ()
     meta(`s${index}`, 200 - index, recent),
   );
 
-  const mock = createMockValkey(() => readReplies(ranked), metas);
+  const mock = createMockValkey(
+    () =>
+      readReplies(
+        viewBucket(
+          Object.fromEntries(
+            ranked.map(({ value, score }) => [`PH:${value}`, String(score)]),
+          ),
+        ),
+      ),
+    metas,
+  );
   const service = createService(mock);
   const items = await service.getTrending();
 
@@ -228,21 +246,21 @@ test("records only recent public shares with image or video media", async () => 
   assert.equal(mock.calls.length, 1);
 
   const methods = mock.calls[0].map(([method]) => method);
-  assert.deepEqual(methods, ["zIncrBy", "expire", "set"]);
+  assert.deepEqual(methods, ["set", "hIncrBy", "expire"]);
   const hour = Math.floor(Date.now() / (60 * 60 * 1000));
-  assert.deepEqual(mock.calls[0][0][1], [
-    `pingvin:trending:views:hour:${hour}`,
-    1,
-    "share",
-  ]);
+  assert.equal(mock.calls[0][0][1][2].EX, 31 * 24 * 60 * 60);
+  assert.equal(mock.calls[0][0][1][2].NX, true);
   assert.deepEqual(mock.calls[0][1][1], [
-    `pingvin:trending:views:hour:${hour}`,
+    `pingvin:trending:geo:hour:${hour}`,
+    "XX:share",
+    1,
+  ]);
+  assert.deepEqual(mock.calls[0][2][1], [
+    `pingvin:trending:geo:hour:${hour}`,
     25 * 60 * 60,
   ]);
-  assert.equal(mock.calls[0][2][1][2].EX, 31 * 24 * 60 * 60);
-  assert.equal(mock.calls[0][2][1][2].NX, true);
 
-  const stored = JSON.parse(mock.calls[0][2][1][1]);
+  const stored = JSON.parse(mock.calls[0][0][1][1]);
   assert.equal(stored.previewFileId, "video");
   assert.equal(stored.previewKind, "video");
   assert.equal(stored.description, "First line second line");
@@ -267,7 +285,7 @@ test("stores compact metadata and truncates long descriptions", async () => {
     ],
   });
 
-  const stored = JSON.parse(mock.calls[0][2][1][1]);
+  const stored = JSON.parse(mock.calls[0][0][1][1]);
   assert.equal(stored.description.length, 240);
   assert.equal(stored.description.startsWith("First line xxx"), true);
   assert.equal(stored.fileCount, 2);
@@ -290,7 +308,7 @@ test("prefers a browser-playable video preview", async () => {
     ],
   });
 
-  const stored = JSON.parse(mock.calls[0][2][1][1]);
+  const stored = JSON.parse(mock.calls[0][0][1][1]);
   assert.equal(stored.previewFileId, "mp4");
   assert.equal(stored.previewKind, "video");
 });
@@ -304,7 +322,7 @@ test("drops metadata for shares that no longer exist", async () => {
     createdAt: recent,
   });
   const mock = createMockValkey(
-    () => readReplies([{ value: "a", score: 4 }]),
+    () => readReplies(viewBucket({ "PH:a": "4" })),
     [legacy],
   );
   const service = createService(mock);
@@ -321,7 +339,7 @@ test("drops metadata for shares that no longer exist", async () => {
 
 test("keeps the short ranking cache between views", async () => {
   const mock = createMockValkey(
-    () => readReplies([{ value: "a", score: 1 }]),
+    () => readReplies(viewBucket({ "PH:a": "1" })),
     [meta("a", 1, recent)],
   );
   const service = createService(mock);
@@ -351,7 +369,7 @@ test("keeps the short ranking cache between views", async () => {
 
 test("invalidates cached rankings and share metadata", async () => {
   const mock = createMockValkey(
-    () => readReplies([{ value: "a", score: 1 }]),
+    () => readReplies(viewBucket({ "PH:a": "1" })),
     [meta("a", 1, recent)],
   );
   const service = createService(mock);
@@ -399,9 +417,10 @@ test("records country views in one hourly hash", async () => {
   ]);
 });
 
-test("ignores invalid country codes", async () => {
+test("counts a view without a valid country under XX", async () => {
   const mock = createMockValkey(() => []);
   const service = createService(mock);
+  const hour = Math.floor(Date.now() / (60 * 60 * 1000));
 
   await service.recordView(
     {
@@ -413,8 +432,17 @@ test("ignores invalid country codes", async () => {
     "invalid",
   );
 
+  const geo = mock.calls[0].filter(([method]) => method === "hIncrBy");
+  assert.deepEqual(geo[0][1], [
+    `pingvin:trending:geo:hour:${hour}`,
+    "XX:share",
+    1,
+  ]);
   assert.equal(
-    mock.calls[0].some(([method]) => method === "hIncrBy"),
+    mock.calls[0].some(
+      ([method, args]) =>
+        method === "hIncrBy" && String(args[1]).startsWith("c:"),
+    ),
     false,
   );
 });
