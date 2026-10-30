@@ -40,7 +40,7 @@ export class ConfigController {
   ) {}
 
   @Get()
-  @SkipThrottle({ visitor: true })
+  @SkipThrottle({ default: true })
   async list(@Res({ passthrough: true }) response: Response) {
     // The public config is identical for every visitor. A short CDN TTL keeps
     // middleware/SSR reads off the backend without delaying admin changes.

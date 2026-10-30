@@ -2,6 +2,7 @@ import { jwtDecode } from "jwt-decode";
 import { NextRequest, NextResponse } from "next/server";
 import { getConfig as readConfig } from "./utils/config.util";
 import { fetchConfig } from "./utils/config.server.util";
+import { checkPageRateLimit } from "./utils/pageRateLimit.util";
 import { isPublicPageRoute } from "./utils/router.util";
 
 // This middleware redirects based on different conditions:
@@ -66,17 +67,43 @@ export async function middleware(request: NextRequest) {
     routes.disabled.routes.push("/auth/resetPassword", "/auth/resetPassword/*");
   }
 
-  if (!getConfig("legal.enabled")) {
-    routes.disabled.routes.push("/imprint", "/privacy");
-  } else {
-    if (!getConfig("legal.imprintText") && !getConfig("legal.imprintUrl")) {
-      routes.disabled.routes.push("/imprint");
-    }
-    if (
-      !getConfig("legal.privacyPolicyText") &&
-      !getConfig("legal.privacyPolicyUrl")
-    ) {
-      routes.disabled.routes.push("/privacy");
+  const configuredDefaultLanguage = getConfig(
+    "general.defaultLanguage",
+  ) as string;
+  const defaultLanguage = configuredDefaultLanguage || "en-US";
+  const language = request.cookies.get("language")?.value || defaultLanguage;
+  const colorSchemeCookie = request.cookies.get("mantine-color-scheme")?.value;
+
+  // Cacheable anonymous public shells are absorbed by Cloudflare and do not
+  // consume the visitor budget. Everything else (auth/account/admin/upload,
+  // signed-in or theme/query variants, redirects and 404s) uses the same
+  // IP+User-Agent limit as the API visitor bucket. Link prefetches are cheap
+  // background reads and must not exhaust the budget before a visitor follows
+  // the link, so they are never counted.
+  const isPrefetch = request.headers.get("x-middleware-prefetch") === "1";
+  const publicShellEligible =
+    isPublicPageRoute(route) &&
+    !user &&
+    !isConfigFallback &&
+    !request.nextUrl.search &&
+    (colorSchemeCookie === undefined || colorSchemeCookie === "light") &&
+    language === defaultLanguage;
+
+  if (!publicShellEligible && !isPrefetch) {
+    const limit = await checkPageRateLimit(request);
+    if (!limit.allowed) {
+      const response = new NextResponse(
+        "Too many requests. Please try again shortly.",
+        {
+          status: 429,
+          headers: {
+            "Content-Type": "text/plain; charset=utf-8",
+            "Retry-After": String(limit.retryAfter ?? 60),
+          },
+        },
+      );
+      setCacheHeaders(response, "no-store");
+      return response;
     }
   }
 
@@ -113,16 +140,6 @@ export async function middleware(request: NextRequest) {
       condition: (!getConfig("general.showHomePage") || user) && route == "/",
       path: "/upload",
     },
-    // Imprint redirect
-    {
-      condition: route == "/imprint" && !getConfig("legal.imprintText") && getConfig("legal.imprintUrl"),
-      path: getConfig("legal.imprintUrl"),
-    },
-    // Privacy redirect
-    {
-      condition: route == "/privacy" && !getConfig("legal.privacyPolicyText") && getConfig("legal.privacyPolicyUrl"),
-      path: getConfig("legal.privacyPolicyUrl"),
-    },
   ];
   for (const rule of rules) {
     if (rule.condition) {
@@ -154,25 +171,7 @@ export async function middleware(request: NextRequest) {
     return response;
   }
 
-  const configuredDefaultLanguage = getConfig(
-    "general.defaultLanguage",
-  ) as string;
-  const defaultLanguage = configuredDefaultLanguage || "en-US";
-  const language = request.cookies.get("language")?.value || defaultLanguage;
-  const colorSchemeCookie = request.cookies.get("mantine-color-scheme")?.value;
-
-  if (
-    isPublicPageRoute(route) &&
-    !user &&
-    !isConfigFallback &&
-    // Query strings can carry recipient identifiers or language/theme
-    // overrides; only clean, anonymous URLs may be shared between visitors.
-    !request.nextUrl.search &&
-    // The shell embeds colorScheme in __NEXT_DATA__. The default is light, so
-    // a light preference produces the same shell; other themes bypass cache.
-    (colorSchemeCookie === undefined || colorSchemeCookie === "light") &&
-    language === defaultLanguage
-  ) {
+  if (publicShellEligible) {
     setCacheHeaders(response, PUBLIC_CACHE);
     // Do not vary on Cookie: Cloudflare ignores it for its cache key, and the
     // anonymous shell is intentionally shared. Signed-in requests are excluded

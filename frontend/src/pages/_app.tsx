@@ -50,10 +50,9 @@ const TrendingToday = dynamic(
 
 const excludeDefaultLayoutRoutes = ["/admin/config/[category]"];
 
-// The configured imprint/privacy documents can be tens of kilobytes of
-// markdown. The two legal pages read their own document through
-// getServerSideProps; every shared page only needs to know whether the footer
-// link should exist, so the full value becomes a tiny presence marker.
+// Legacy legal documents can still be tens of kilobytes in old installs. The
+// imprint/privacy pages now render built-in application content; every shared
+// page only needs the config marker, so strip any legacy text from the payload.
 const LEGAL_TEXT_KEYS = new Set([
   "legal.imprintText",
   "legal.privacyPolicyText",

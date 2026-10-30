@@ -39,7 +39,7 @@ export class OAuthController {
   ) {}
 
   @Get("available")
-  @SkipThrottle({ visitor: true })
+  @SkipThrottle({ default: true })
   available(@Res({ passthrough: true }) response: Response) {
     // Provider availability only changes when an admin edits the config, so
     // the edge can answer the sign-in and account pages without the backend.

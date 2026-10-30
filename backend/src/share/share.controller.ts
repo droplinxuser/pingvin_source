@@ -153,7 +153,7 @@ export class ShareController {
   }
 
   @Get("trending")
-  @SkipThrottle({ default: true, visitor: true })
+  @SkipThrottle({ default: true })
   async getTrending(
     @Query("limit") limit: string,
     @Res({ passthrough: true }) response: Response,
@@ -170,7 +170,7 @@ export class ShareController {
   // Country aggregates only change as views arrive; five minutes matches the
   // in-process cache and keeps Cloudflare and the origin in sync.
   @Get("trending/countries")
-  @SkipThrottle({ default: true, visitor: true })
+  @SkipThrottle({ default: true })
   async getTrendingCountries(
     @Res({ passthrough: true }) response: Response,
   ): Promise<TrendingCountry[]> {
@@ -185,7 +185,7 @@ export class ShareController {
   // Newest public shares with a renderable image/video preview. The card shape
   // is shared with trending so both pages use the same UI and cache policy.
   @Get("recent")
-  @SkipThrottle({ default: true, visitor: true })
+  @SkipThrottle({ default: true })
   async getRecent(
     @Query("limit") limit: string,
     @Res({ passthrough: true }) response: Response,
@@ -202,7 +202,7 @@ export class ShareController {
   // Newest public shares without an image/video preview ("files"). Same card
   // shape and cache policy as the media listing so both pages share the UI.
   @Get("recent-files")
-  @SkipThrottle({ default: true, visitor: true })
+  @SkipThrottle({ default: true })
   async getRecentFiles(
     @Query("limit") limit: string,
     @Res({ passthrough: true }) response: Response,
@@ -219,8 +219,7 @@ export class ShareController {
   // Search across every public share. The index lives in Valkey; results are
   // edge-cached for a minute. A missing/blank query returns an empty list.
   @Get("search")
-  @Throttle({ default: { limit: 60, ttl: 60 * 1000 } })
-  @SkipThrottle({ visitor: true })
+  @SkipThrottle({ default: true })
   async search(
     @Query("q") q: string,
     @Query("limit") limit: string,
@@ -241,8 +240,7 @@ export class ShareController {
   // Lightweight existence check used by external monitors and the share page
   // SSR so missing shares get a real 404 without recording a view.
   @Head(":id")
-  @Throttle({ default: { limit: 60, ttl: 60 * 1000 } })
-  @SkipThrottle({ visitor: true })
+  @SkipThrottle({ default: true })
   async exists(@Param("id") id: string) {
     if (!(await this.shareService.shareExists(id)))
       throw new NotFoundException();
@@ -281,10 +279,7 @@ export class ShareController {
    * access it can count a download.
    */
   @Post(":id/download")
-  @Throttle({
-    default: { limit: 300, ttl: 60 * 1000 },
-    visitor: { limit: 120, ttl: 60 * 1000 },
-  })
+  @Throttle({ default: { limit: 120, ttl: 60 * 1000 } })
   @UseGuards(IdValidation, ShareSecurityGuard)
   async recordDownload(
     @Param("id") id: string,
@@ -299,13 +294,7 @@ export class ShareController {
     return { counted: true };
   }
 
-  @Throttle({
-    default: {
-      limit: 1200,
-      ttl: 60 * 1000,
-    },
-  })
-  @SkipThrottle({ visitor: true })
+  @SkipThrottle({ default: true })
   @Get(":id/thumbnail")
   @UseGuards(IdValidation, ShareSecurityGuard)
   async getThumbnail(
@@ -345,12 +334,10 @@ export class ShareController {
   }
 
   @Get(":id/seo")
-  // Next renders share pages by calling this from the frontend host, so all
-  // SSR traffic shares one IP. Give it a much larger bucket than ordinary API
-  // routes (the payload is cached for 60 s), but keep a per-IP cap so random
-  // share ids cannot hammer the database without bound.
+  // Next renders share pages by calling this from the frontend host. The
+  // payload is cached for 60 s, but a larger bucket keeps SSR traffic from
+  // exhausting the ordinary limit while still bounding random-id scans.
   @Throttle({ default: { limit: 1200, ttl: 60 * 1000 } })
-  @SkipThrottle({ visitor: true })
   @UseGuards(IdValidation)
   async getSeo(
     @Param("id") id: string,
@@ -372,7 +359,7 @@ export class ShareController {
    * by Cloudflare.
    */
   @Get(":id/comments")
-  @SkipThrottle({ visitor: true })
+  @SkipThrottle({ default: true })
   @UseGuards(IdValidation, ShareSecurityGuard)
   async getComments(
     @Param("id") id: string,

@@ -56,7 +56,7 @@ export class UserController {
   // frontend process rather than the visitor. Keep the JWT and per-route
   // limiters, but do not share a visitor bucket between different users.
   @Get("me")
-  @SkipThrottle({ visitor: true })
+  @SkipThrottle({ default: true })
   @UseGuards(JwtGuard)
   async getCurrentUser(@GetUser() user?: User) {
     if (!user) return null;
@@ -107,8 +107,7 @@ export class UserController {
    * be cached for a year. Unversioned requests stay short-lived.
    */
   @Get(":id/avatar.webp")
-  @Throttle({ default: { limit: 1200, ttl: 60 * 1000 } })
-  @SkipThrottle({ visitor: true })
+  @SkipThrottle({ default: true })
   async getAvatar(
     @Param("id") id: string,
     @Req() request: Request,

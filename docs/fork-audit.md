@@ -32,7 +32,8 @@ the suggested order for future features.
 | Trending today / new shares | `backend/src/cache/trending.service.ts` (`getTrending`, `getTrendingCountries`, `getRecent`, `getRecentFiles`), `GET /api/shares/trending`, `/trending/countries`, `/recent`, `/recent-files`; `frontend/src/components/share/TrendingToday.tsx`, `TrendingCountries.tsx`, `ShareList.tsx` (polished row/list layout for `/new-files`), `frontend/src/pages/trending.tsx`, `new-media.tsx`, `new-files.tsx`, `search.tsx`. Trending and the new listings cap at 200; rows/cards reveal in lazy batches with skeletons (infinite scroll). |
 | Shared UI polish | `frontend/src/components/core/RelativeTime.tsx`, `RouteProgress.tsx`, `LazyImage.tsx`, `LazyVideo.tsx`, `LazySection.tsx`, `frontend/src/utils/filePreview.util.ts`; `frontend/src/components/share/FileList.tsx` adds client-side file search for shares with 12+ files (`SEARCH_MIN_FILES`), filtering the rendered batches and the preview navigation without a backend request |
 | Profile pictures | `backend/prisma/schema.prisma` (`User.avatarUpdatedAt`), migration `20261028010000_add_user_avatar`, `backend/src/user/avatar.service.ts` (5 MB/40 MP limits, EXIF rotate, 256px centre-crop, metadata-stripped WebP, atomic 0600 write), `user.controller.ts` (`POST`/`DELETE /api/users/me/avatar`, public versioned `GET /api/users/:id/avatar.webp` with ETag/304), `frontend/src/components/core/UserAvatar.tsx`, `frontend/src/utils/avatar.util.ts` |
-| Legal pages | `frontend/src/components/legal/LegalDocument.tsx` (one shared imprint/privacy markdown layout); the pages load their document through `getServerSideProps` and `_app` only sends a presence marker |
+| Legal pages | `frontend/src/content/legalDocuments.ts` (built-in imprint/privacy markdown that ships with the app), `frontend/src/components/legal/LegalDocument.tsx` (one shared layout), `/imprint` and `/privacy` server-render the text with the current site name/URL and remain edge-cacheable. Legacy admin legal text is ignored; `_app` still strips it from the shared payload for old installs. |
+| Contact page and Cloudflare Turnstile | `frontend/src/pages/contact.tsx`, `frontend/src/components/contact/TurnstileWidget.tsx`, `backend/src/contact/*`, `EmailService.sendContactEmail`. `CFT_KEY`/`CFT_SECRET` verify the widget server-side; the validated message is emailed to `REPORT_EMAIL` (falling back to `smtp.email`) in the background. The public config endpoint exposes only the site key. |
 | Upload paste and folder picks | Upstream `useClipboardPaste.hook.ts`, `file.util.ts`, `folder.util.ts`; the fork keeps only `share.maxFileSize` validation in `Dropzone.tsx`, the folder button and upload DTO bounds |
 | Share thumbnails / OG | `backend/src/file/file.service.ts` (share-level 300px WebP, ordered preview fallbacks, background queue, 32-day cleanup), `backend/src/share/preview.util.ts`, `GET /api/shares/:id/thumbnail`, listing cards and `Meta.tsx` |
 | Cache headers / hotlink protection | `backend/src/utils/cache.util.ts`, `frontend/src/utils/version.util.ts`, `backend/src/utils/referrer.util.ts`, `frontend/src/middleware.ts`, `frontend/next.config.js` |
@@ -77,11 +78,12 @@ the matching `utils/*.util.ts` files.
   locale. The English catalogue is already part of the client bundle, so
   serializing it into `__NEXT_DATA__` only added ~70 KB to every English page.
   Other locales still receive their merged messages for a matching first render.
-- The legal markdown no longer travels in the shared config. `_app` replaces the
-  imprint/privacy `value` with a `"1"` presence marker (the footer, middleware
-  and sitemap only test existence), while `/imprint` and `/privacy` load their
-  own text through `getServerSideProps` + `fetchConfig`. A new page that needs
-  the full document must use the same server-side read instead of `useConfig`.
+- The legal markdown is now part of the application (`content/legalDocuments.ts`)
+  instead of an admin-owned text field, so a release that adds a feature can
+  update the notice in the same commit. `/imprint` and `/privacy` still read the
+  live config on the server for the site name/URL and use the normal 60-second
+  public HTML cache. `_app` continues to replace any legacy admin legal text
+  with a presence marker so old installs do not serialize large documents.
 - `/trending` renders only the selected country tab (`keepMounted={false}`);
   before this, ten panels with 100 hidden thumbnails and about a thousand extra
   DOM nodes were mounted on every visit.
@@ -160,8 +162,11 @@ the matching `utils/*.util.ts` files.
   multi-file shares download file by file instead of as an archive.
 - Expiration is rolling and automatic; `share.maxExpiration` /
   `share.defaultExpiration` are intentionally absent from the seed and DTOs.
-- Report notifications use `REPORT_EMAIL` from `backend/.env`, falling back to
-  the configured SMTP sender.
+- Report notifications and contact-form mail use `REPORT_EMAIL` from
+  `backend/.env`, falling back to the configured SMTP sender. Set `CFT_KEY` and
+  `CFT_SECRET` from Cloudflare Turnstile to enable the public contact form; the
+  key is exposed through `GET /api/contact/config`, the secret never leaves the
+  server. The message is queued in the background after verification.
 - Video/media URL import (`share.enableMediaImport=true`) needs the `yt-dlp`
   binary on `PATH`. `update.sh` does not install it; install it with the
   distribution package (`sudo apt install yt-dlp`) or `pipx`. Platforms that
@@ -174,14 +179,18 @@ the matching `utils/*.util.ts` files.
 - `DATA_DIRECTORY="/var/www/pingvin_data"`. Uploader/visitor metadata is a
   per-share `uploads/shares/<shareId>/uploader.json` (mode `600`). Sitemaps are
   written to `DATA_DIRECTORY/sitemaps/<site-hash>/` and are derived data.
-- Global rate limiting is 90 requests per 60 seconds per client, identified by
-  client IP + browser `User-Agent`, blocking for 60 seconds. Configure with
-  `VISITOR_RATE_LIMIT`, `VISITOR_RATE_TTL_MS`, `VISITOR_RATE_BLOCK_MS`. The
-  throttler hashes IP+UA with SHA-256 before storage; no visitor cookie is
-  issued. The upstream per-route `THROTTLE_LIMIT` (100/min) remains. When
-  `CACHE_REDIS_ENABLED=true`, both buckets live in Valkey and fall back to memory
-  if it is unavailable. Config, user session, share `HEAD`, upload requests and
-  file/ZIP reads skip the visitor bucket.
+- There is exactly one rate-limit policy: 90 requests per 60 seconds per
+  client, identified by client IP + browser `User-Agent`, blocking for 60
+  seconds. The upstream per-IP `THROTTLE_LIMIT` bucket is gone; the remaining
+  Nest bucket is the visitor bucket and is keyed by the hashed IP+UA. Configure
+  with `VISITOR_RATE_LIMIT`, `VISITOR_RATE_TTL_MS`, `VISITOR_RATE_BLOCK_MS`.
+  The backend uses Valkey when available and falls back to memory. The Next
+  middleware applies the same policy to non-cacheable page HTML
+  (`utils/pageRateLimit.util.ts`); cacheable anonymous shells are skipped.
+  Config/OAuth, stats/trending/recent/search/SEO, thumbnails/avatars, share
+  `HEAD`, comments reads and file/ZIP reads skip the bucket because they are
+  edge-cacheable. Auth, upload, comment mutations, reports, contact, avatar
+  mutations and other writes keep stricter route limits under the same bucket.
 - Valkey/Redis is optional but recommended: set `CACHE_REDIS_ENABLED=true` and
   `CACHE_REDIS_URL=redis://127.0.0.1:6379`. `update.sh` enables both when a local
   `valkey-server` is active. When Valkey is down, cache reads fail open to
@@ -285,8 +294,8 @@ the matching `utils/*.util.ts` files.
 Origin responses set `Cache-Control`, `CDN-Cache-Control` and
 `Cloudflare-CDN-Cache-Control` consistently (`utils/cache.util.ts`).
 
-- Public HTML shells (`/`, `/trending`, `/new-media`, `/new-files`, `/share/*`,
-  legal pages) are
+- Public HTML shells (`/`, `/trending`, `/new-media`, `/new-files`, `/contact`,
+  `/share/*`, legal pages) are
   `public, s-maxage=60, stale-while-revalidate=30, stale-if-error=300` only when
   the URL has no query string, the language is the default and the theme is
   unset or light. Authenticated, non-default-language, `?lang=`, `?recipient=`
@@ -375,9 +384,9 @@ Origin responses set `Cache-Control`, `CDN-Cache-Control` and
   is treated as unset in production builds, so pages emit relative
   canonical/OG URLs instead of `http://localhost:3000`. Protected shares return
   only `{ indexable: false, id }` from the SEO endpoint and never derive labels.
-  The SEO endpoint keeps the visitor bucket off and uses a larger 1,200/min
-  default bucket, so Next SSR traffic from one host IP cannot exhaust the
-  ordinary request bucket while random share ids are still rate-limited.
+  The SEO endpoint uses a larger 1,200/min visitor bucket (instead of 90/min)
+  because Next SSR reads it from one host IP; the edge-cached payload still
+  returns immediately for repeat share links, and random-id scans stay bounded.
 - Share metadata is auto-generated when the owner leaves title/description
   empty; owner-written text wins and is followed by a short count/size summary.
   The same label is used for H1, breadcrumb and JSON-LD; protected shares never
@@ -438,9 +447,10 @@ trending/recent/country ranking and cache behavior, public search index
 storage/matching/versioning, share thumbnails, sitemap
 index/chunks/robots, comments, archive-encryption detection, VirusTotal
 audit/queue/filter/removal/notification flows, reverse-share guard wiring,
-referrers and avatars. `share-util.test.js` pins the epoch/expiry rule and the
-overflowed-size fallback; `remote-fetch.test.js` covers IPv4-mapped/compatible
-IPv6 spellings. Keep this suite green before pushing; run the frontend production
+referrers, avatars and the contact form (Turnstile success/failure, background
+email queuing and header sanitization). `share-util.test.js` pins the
+epoch/expiry rule and the overflowed-size fallback; `remote-fetch.test.js`
+covers IPv4-mapped/compatible IPv6 spellings. Keep this suite green before pushing; run the frontend production
 build and lint in the same pass. Playwright smoke checks should cover
 guest, member and mobile views of the public pages, upload/download/comment,
 URL upload, admin redirects and the share gallery with zero application console
@@ -448,8 +458,11 @@ errors or warnings (the intentional 404 document status is excluded). Also
 verify that `/search` sends no API request for an empty query, that a zero-result
 query clears the previous cards, that a preview-modal download sends the
 `POST /api/shares/:id/download` beacon, that `/d/` counts one page view, that a
-protected share mounts no ad scripts, and that a browser URL upload streams a
-small file correctly. Axe checks at 390 px
+protected share mounts no ad scripts, that a browser URL upload streams a
+small file correctly, and that the contact form validates and sends the
+Turnstile token. Rate-limit smoke tests: 95 requests from one IP+UA to a
+non-cacheable API and page return 90 successes then 429, while a different UA
+and a cacheable page remain available. Axe checks at 390 px
 should report zero WCAG A/AA and best-practice violations for the public pages,
 member account pages and every admin page; the temporary local admin promotion
 used for that check must be reverted afterwards.

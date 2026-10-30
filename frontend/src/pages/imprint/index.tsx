@@ -1,22 +1,22 @@
+import { GetServerSidePropsContext } from "next";
 import LegalDocument from "../../components/legal/LegalDocument";
+import { getLegalDocument } from "../../content/legalDocuments";
 import { fetchConfig } from "../../utils/config.server.util";
-import { getConfigValue } from "../../utils/seo.util";
+import { setPublicCacheHeaders } from "../../utils/httpCache.util";
 
-// The shared app config only carries a presence marker for legal documents, so
-// this page reads its own document on the server. Keeping the text in a page
-// prop also makes client navigation independent of the config loaded with the
-// first page.
-export async function getServerSideProps() {
+// The document lives in the application, so a release that adds a new feature
+// can update the imprint in the same commit. Config is still read on the
+// server so the site name/URL in the text follow admin changes; middleware
+// makes the HTML edge-cacheable for a short window.
+export async function getServerSideProps({ res }: GetServerSidePropsContext) {
   const apiURL = process.env.API_URL || "http://localhost:8080";
   const { config } = await fetchConfig(apiURL);
-  return {
-    props: {
-      text: getConfigValue(config, "legal.imprintText"),
-    },
-  };
+  const text = getLegalDocument("imprint", config);
+  setPublicCacheHeaders(res, 60, 30);
+  return { props: { text } };
 }
 
-const Imprint = ({ text }: { text?: string }) => {
+const Imprint = ({ text }: { text: string }) => {
   return (
     <LegalDocument
       titleId="imprint-title"

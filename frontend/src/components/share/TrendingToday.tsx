@@ -152,6 +152,10 @@ const useStyles = createStyles((theme) => {
       filter: "blur(2px) brightness(0.5)",
     },
 
+    mediaSoftest1: {
+      filter: "blur(1px) brightness(0.5)",
+    },
+
     // File-only shares have no image to blur; list a few file names instead so
     // the card still reads as a share. Falls back to a document glyph when the
     // name list is unavailable.
@@ -325,7 +329,7 @@ const TrendingToday = ({
   initialItems,
   embedded = false,
   limit = 12,
-  previewBlur = 4,
+  previewBlur = 2,
   children,
   title: titleOverride,
   description: descriptionOverride,
@@ -338,7 +342,7 @@ const TrendingToday = ({
   initialItems?: TrendingShare[] | null;
   embedded?: boolean;
   limit?: number;
-  previewBlur?: 2 | 4 | 6;
+  previewBlur?: 1 | 2 | 4 | 6;
   children?: ReactNode;
   title?: string;
   description?: string;
@@ -363,7 +367,9 @@ const TrendingToday = ({
       ? ` ${classes.mediaSoft}`
       : previewBlur === 2
         ? ` ${classes.mediaSoftest}`
-        : ""
+        : previewBlur === 1
+          ? ` ${classes.mediaSoftest1}`
+          : ""
   }`;
   const hasInitialData = Array.isArray(initialItems);
   const [items, setItems] = useState<TrendingShare[]>(initialItems ?? []);

@@ -19,6 +19,13 @@ const VISITOR_RATE_BLOCK_MS = positiveInt(
   60 * 1000,
 );
 
+/**
+ * One shared bucket for every non-cacheable API route. The upstream per-IP
+ * "default" limiter is intentionally gone: the only identifier is the visitor
+ * key (client IP + browser User-Agent) defined in visitorIdentity.util. Routes
+ * that are safe to cache at the edge skip this bucket explicitly with
+ * `@SkipThrottle({ default: true })`.
+ */
 export const createThrottlerOptions = (
   valkey: ValkeyService,
 ): ThrottlerModuleOptions => ({
@@ -26,12 +33,6 @@ export const createThrottlerOptions = (
   throttlers: [
     {
       name: "default",
-      ttl: 60 * 1000,
-      limit: positiveInt(process.env.THROTTLE_LIMIT, 100),
-      blockDuration: 60 * 1000,
-    },
-    {
-      name: "visitor",
       ttl: VISITOR_RATE_TTL_MS,
       limit: VISITOR_RATE_LIMIT,
       blockDuration: VISITOR_RATE_BLOCK_MS,

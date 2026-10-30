@@ -35,6 +35,8 @@ export default {
     "Read how {siteName} handles data, cookies and uploaded files.",
   "seo.custom.imprint.description":
     "Legal and operator information for {siteName}.",
+  "seo.custom.contact.description":
+    "Contact the {siteName} team about a share, a report, privacy or another question.",
   "seo.custom.defaultDescription":
     "Fast, private file sharing with short links, previews and download controls.",
   "seo.custom.breadcrumb.home": "Home",
@@ -1009,6 +1011,29 @@ export default {
   // /privacy
   "privacy.title": "Privacy Policy",
   // END /privacy
+
+  // /contact
+  "contact.title": "Contact us",
+  "contact.description":
+    "Send a message about a share, a report, privacy or anything else. We usually reply by email.",
+  "contact.name": "Your name",
+  "contact.email": "Your email",
+  "contact.subject": "Subject",
+  "contact.message": "Message",
+  "contact.captcha": "Security check",
+  "contact.captcha.required": "Complete the security check first.",
+  "contact.submit": "Send message",
+  "contact.success":
+    "Your message has been sent. We will reply to the email address you provided.",
+  "contact.unavailable.title": "Contact form unavailable",
+  "contact.unavailable.description":
+    "The contact form is not configured yet. Please try again later.",
+  "contact.error.name-required": "Enter your name.",
+  "contact.error.email-required": "Enter your email address.",
+  "contact.error.email-invalid": "Enter a valid email address.",
+  "contact.error.subject-required": "Enter a subject.",
+  "contact.error.message-required": "Enter a message.",
+  // END /contact
 
   // /admin/config
   "admin.config.config-file-warning.title": "Configuration file present",

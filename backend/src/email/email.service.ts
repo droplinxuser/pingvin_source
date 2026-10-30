@@ -353,6 +353,34 @@ export class EmailService {
     );
   }
 
+  async sendContactEmail(
+    name: string,
+    email: string,
+    subject: string,
+    message: string,
+  ) {
+    const adminEmail =
+      process.env.REPORT_EMAIL?.trim() ||
+      (this.config.get("smtp.email") as string);
+    if (!adminEmail) {
+      throw new InternalServerErrorException(
+        this.i18n.t("email.reportEmailNotConfigured"),
+      );
+    }
+
+    const vars = { name, email, subject, message };
+    await this.sendMail(
+      adminEmail,
+      `[Contact] ${subject}`,
+      this.formatTemplate(
+        "New contact message\\n\\nFrom: {name} <{email}>\\nSubject: {subject}\\n\\n{message}",
+        vars,
+        true,
+      ),
+      { name, address: email },
+    );
+  }
+
   async sendShareReportEmail(
     shareId: string,
     shareName: string | null,

@@ -8,7 +8,7 @@ import {
   Req,
   UseGuards,
 } from "@nestjs/common";
-import { SkipThrottle, Throttle } from "@nestjs/throttler";
+import { Throttle } from "@nestjs/throttler";
 import { Request } from "express";
 import { AdministratorGuard } from "src/auth/guard/isAdmin.guard";
 import { JwtGuard } from "src/auth/guard/jwt.guard";
@@ -27,7 +27,6 @@ export class LogsController {
   // Client error reports are unauthenticated; a tight per-IP cap keeps them
   // from evicting real alerts from the capped admin log.
   @Throttle({ default: { limit: 10, ttl: 60 * 1000 } })
-  @SkipThrottle({ visitor: true })
   @HttpCode(204)
   async reportClientError(
     @Body() body: ClientErrorDTO,

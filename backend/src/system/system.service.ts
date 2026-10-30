@@ -5,7 +5,11 @@ import { promises as fs } from "fs";
 import { Request } from "express";
 import * as path from "path";
 import { CLAMAV_HOST, CLAMAV_PORT, DATA_DIRECTORY } from "src/constants";
-import { MetricsService, PageViewMetrics, ReferrerPage } from "src/cache/metrics.service";
+import {
+  MetricsService,
+  PageViewMetrics,
+  ReferrerPage,
+} from "src/cache/metrics.service";
 import {
   ValkeyMetrics,
   emptyValkeyMetrics,
@@ -394,26 +398,9 @@ export class SystemService {
     entries.push(urlEntry(absoluteUrl("/trending", baseUrl)));
     entries.push(urlEntry(absoluteUrl("/new-media", baseUrl)));
     entries.push(urlEntry(absoluteUrl("/new-files", baseUrl)));
-
-    const legalEnabled = this.configService.get("legal.enabled") === true;
-    const imprintText = this.configService.get("legal.imprintText") as string;
-    const imprintUrl = this.configService.get("legal.imprintUrl") as string;
-    const privacyText = this.configService.get(
-      "legal.privacyPolicyText",
-    ) as string;
-    const privacyUrl = this.configService.get(
-      "legal.privacyPolicyUrl",
-    ) as string;
-    if (
-      legalEnabled &&
-      (imprintText || (imprintUrl && !/^https?:\/\//i.test(imprintUrl)))
-    )
-      entries.push(urlEntry(absoluteUrl("/imprint", baseUrl)));
-    if (
-      legalEnabled &&
-      (privacyText || (privacyUrl && !/^https?:\/\//i.test(privacyUrl)))
-    )
-      entries.push(urlEntry(absoluteUrl("/privacy", baseUrl)));
+    entries.push(urlEntry(absoluteUrl("/contact", baseUrl)));
+    entries.push(urlEntry(absoluteUrl("/imprint", baseUrl)));
+    entries.push(urlEntry(absoluteUrl("/privacy", baseUrl)));
 
     const where = publicShareWhere();
     let cursor: string | undefined;
@@ -728,7 +715,9 @@ export class SystemService {
     return { available: false };
   }
 
-  private async probeDatabase(): Promise<Omit<DependencyCheck, "key" | "type">> {
+  private async probeDatabase(): Promise<
+    Omit<DependencyCheck, "key" | "type">
+  > {
     try {
       await this.prisma.$queryRaw`SELECT 1`;
       return { available: true };

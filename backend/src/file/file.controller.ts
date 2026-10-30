@@ -58,10 +58,7 @@ export class FileController {
   ) {}
 
   @Post("upload-init")
-  @Throttle({
-    default: { limit: 300, ttl: 60 * 1000 },
-    visitor: { limit: 300, ttl: 60 * 1000 },
-  })
+  @Throttle({ default: { limit: 300, ttl: 60 * 1000 } })
   @UseGuards(IdValidation, StrictShareOwnerGuard)
   async uploadInit(
     @Body() body: UploadInitDTO,
@@ -75,10 +72,7 @@ export class FileController {
   }
 
   @Post("upload-complete")
-  @Throttle({
-    default: { limit: 300, ttl: 60 * 1000 },
-    visitor: { limit: 300, ttl: 60 * 1000 },
-  })
+  @Throttle({ default: { limit: 300, ttl: 60 * 1000 } })
   @UseGuards(IdValidation, StrictShareOwnerGuard)
   async uploadComplete(
     @Body() body: UploadCompleteDTO,
@@ -94,10 +88,7 @@ export class FileController {
   }
 
   @Post("upload-abort")
-  @Throttle({
-    default: { limit: 300, ttl: 60 * 1000 },
-    visitor: { limit: 300, ttl: 60 * 1000 },
-  })
+  @Throttle({ default: { limit: 300, ttl: 60 * 1000 } })
   @UseGuards(IdValidation, StrictShareOwnerGuard)
   async uploadAbort(
     @Body() body: UploadAbortDTO,
@@ -116,10 +107,7 @@ export class FileController {
   // the server never fetches an arbitrary URL. Owner-only and rate-limited
   // because it consumes server bandwidth and disk.
   @Post("from-url")
-  @Throttle({
-    default: { limit: 30, ttl: 60 * 1000 },
-    visitor: { limit: 15, ttl: 60 * 1000 },
-  })
+  @Throttle({ default: { limit: 15, ttl: 60 * 1000 } })
   @UseGuards(IdValidation, StrictShareOwnerGuard)
   async fromUrl(
     @Body() body: UploadFromUrlDTO,
@@ -132,10 +120,7 @@ export class FileController {
   // Large shares need many chunks, but an unbounded endpoint is a cheap disk
   // and CPU DoS. These limits still allow a 5 GB share at the default chunk
   // size to finish well within a minute.
-  @Throttle({
-    default: { limit: 1200, ttl: 60 * 1000 },
-    visitor: { limit: 600, ttl: 60 * 1000 },
-  })
+  @Throttle({ default: { limit: 600, ttl: 60 * 1000 } })
   @UseGuards(IdValidation, StrictShareOwnerGuard)
   async create(
     @Query()
@@ -159,7 +144,7 @@ export class FileController {
     );
   }
 
-  @SkipThrottle({ visitor: true })
+  @SkipThrottle({ default: true })
   @Get("zip")
   @UseGuards(FileSecurityGuard)
   async getZip(
@@ -212,13 +197,7 @@ export class FileController {
     return new StreamableFile(zipStream);
   }
 
-  @Throttle({
-    default: {
-      limit: 1200,
-      ttl: 60 * 1000,
-    },
-  })
-  @SkipThrottle({ visitor: true })
+  @SkipThrottle({ default: true })
   @Get(":fileId")
   @UseGuards(FileSecurityGuard)
   async getFile(
@@ -370,10 +349,7 @@ export class FileController {
   }
 
   @Delete(":fileId")
-  @Throttle({
-    default: { limit: 120, ttl: 60 * 1000 },
-    visitor: { limit: 120, ttl: 60 * 1000 },
-  })
+  @Throttle({ default: { limit: 120, ttl: 60 * 1000 } })
   @UseGuards(IdValidation, StrictShareOwnerGuard)
   async remove(
     @Param("fileId") fileId: string,

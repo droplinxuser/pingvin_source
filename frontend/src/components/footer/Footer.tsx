@@ -15,7 +15,6 @@ import { useRouter } from "next/router";
 import { useEffect, useRef, useState } from "react";
 import { useIntl } from "react-intl";
 import { TbEye } from "react-icons/tb";
-import useConfig from "../../hooks/config.hook";
 import useSiteMeta from "../../hooks/siteMeta.hook";
 import useTranslate from "../../hooks/useTranslate.hook";
 import useUser from "../../hooks/user.hook";
@@ -134,6 +133,16 @@ const useStyles = createStyles((theme) => {
       },
     },
 
+    legalBar: {
+      display: "flex",
+      flexWrap: "wrap",
+      alignItems: "center",
+      gap: theme.spacing.lg,
+      marginTop: theme.spacing.lg,
+      paddingTop: theme.spacing.md,
+      borderTop: `1px solid ${border}`,
+    },
+
     copyright: {
       color: muted,
       fontSize: 11,
@@ -147,7 +156,6 @@ const Footer = () => {
   const t = useTranslate();
   const intl = useIntl();
   const router = useRouter();
-  const config = useConfig();
   const { user } = useUser();
   const { classes } = useStyles();
   const { siteName } = useSiteMeta();
@@ -219,21 +227,8 @@ const Footer = () => {
     };
   }, [router.asPath]);
 
-  const hasImprint = !!(
-    config.get("legal.imprintUrl") || config.get("legal.imprintText")
-  );
-  const hasPrivacy = !!(
-    config.get("legal.privacyPolicyUrl") ||
-    config.get("legal.privacyPolicyText")
-  );
-  const imprintUrl =
-    (!config.get("legal.imprintText") && config.get("legal.imprintUrl")) ||
-    "/imprint";
-  const privacyUrl =
-    (!config.get("legal.privacyPolicyText") &&
-      config.get("legal.privacyPolicyUrl")) ||
-    "/privacy";
-  const contactUrl = "mailto:contactwebph@gmail.com";
+  const primaryHref = user ? "/upload" : "/";
+  const primaryLabel = user ? t("navbar.upload") : t("navbar.home");
 
   const compact = (value?: number) =>
     value == null ? "—" : getCompactNumberFormat(intl.locale).format(value);
@@ -250,8 +245,6 @@ const Footer = () => {
 
   const views = stats?.pageViewsLastDay ?? 0;
   const countries = stats?.topCountriesLastDay?.slice(0, 8) ?? [];
-  const primaryHref = user ? "/upload" : "/";
-  const primaryLabel = user ? t("navbar.upload") : t("navbar.home");
 
   return (
     <MFooter height="auto" className={classes.footer} zIndex={100}>
@@ -362,13 +355,6 @@ const Footer = () => {
               <Anchor
                 className={classes.link}
                 component={Link}
-                href="/trending"
-              >
-                {t("trending.custom.title")}
-              </Anchor>
-              <Anchor
-                className={classes.link}
-                component={Link}
                 href="/new-media"
               >
                 {t("navbar.newMedia")}
@@ -380,22 +366,25 @@ const Footer = () => {
               >
                 {t("navbar.newFiles")}
               </Anchor>
-              <Anchor className={classes.link} href={contactUrl}>
-                {t("footer.custom.contact")}
-              </Anchor>
-              {hasImprint && (
-                <Anchor className={classes.link} href={imprintUrl}>
-                  {t("imprint.title")}
-                </Anchor>
-              )}
-              {hasPrivacy && (
-                <Anchor className={classes.link} href={privacyUrl}>
-                  {t("privacy.title")}
-                </Anchor>
-              )}
             </Box>
           </Box>
         </div>
+
+        <Box
+          component="nav"
+          aria-label={t("footer.custom.navigation")}
+          className={classes.legalBar}
+        >
+          <Anchor className={classes.link} component={Link} href="/contact">
+            {t("footer.custom.contact")}
+          </Anchor>
+          <Anchor className={classes.link} component={Link} href="/imprint">
+            {t("imprint.title")}
+          </Anchor>
+          <Anchor className={classes.link} component={Link} href="/privacy">
+            {t("privacy.title")}
+          </Anchor>
+        </Box>
       </Container>
     </MFooter>
   );

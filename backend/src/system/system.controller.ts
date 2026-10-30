@@ -61,7 +61,7 @@ export class SystemController {
   }
 
   @Get("stats")
-  @SkipThrottle({ visitor: true })
+  @SkipThrottle({ default: true })
   async getSystemStats(
     @Res({ passthrough: true }) response: Response,
   ): Promise<SystemStats> {
@@ -77,7 +77,7 @@ export class SystemController {
   }
 
   @Get("robots.txt")
-  @SkipThrottle({ visitor: true })
+  @SkipThrottle({ default: true })
   async getRobots(
     @Req() request: Request,
     @Res({ passthrough: true }) response: Response,
@@ -89,7 +89,7 @@ export class SystemController {
   }
 
   @Get("sitemap.xml")
-  @SkipThrottle({ visitor: true })
+  @SkipThrottle({ default: true })
   async getSitemap(
     @Req() request: Request,
     @Res({ passthrough: true }) response: Response,
@@ -101,7 +101,7 @@ export class SystemController {
   }
 
   @Get("sitemaps/:name")
-  @SkipThrottle({ visitor: true })
+  @SkipThrottle({ default: true })
   async getSitemapFile(
     @Param("name") name: string,
     @Req() request: Request,

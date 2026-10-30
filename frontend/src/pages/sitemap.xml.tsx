@@ -17,22 +17,10 @@ const buildFallbackSitemap = (
     absoluteUrl("/trending", baseUrl),
     absoluteUrl("/new-media", baseUrl),
     absoluteUrl("/new-files", baseUrl),
+    absoluteUrl("/contact", baseUrl),
+    absoluteUrl("/imprint", baseUrl),
+    absoluteUrl("/privacy", baseUrl),
   ];
-  const legalEnabled = getConfigValue(config, "legal.enabled") === "true";
-  const imprintText = getConfigValue(config, "legal.imprintText");
-  const imprintUrl = getConfigValue(config, "legal.imprintUrl");
-  const privacyText = getConfigValue(config, "legal.privacyPolicyText");
-  const privacyUrl = getConfigValue(config, "legal.privacyPolicyUrl");
-  if (
-    legalEnabled &&
-    (imprintText || (imprintUrl && !/^https?:\/\//i.test(imprintUrl)))
-  )
-    urls.push(absoluteUrl("/imprint", baseUrl));
-  if (
-    legalEnabled &&
-    (privacyText || (privacyUrl && !/^https?:\/\//i.test(privacyUrl)))
-  )
-    urls.push(absoluteUrl("/privacy", baseUrl));
 
   return [
     `<?xml version="1.0" encoding="UTF-8"?>`,

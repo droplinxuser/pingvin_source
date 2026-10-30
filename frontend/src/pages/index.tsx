@@ -14,7 +14,6 @@ import { TbCheck } from "react-icons/tb";
 import { FormattedMessage } from "react-intl";
 import Logo from "../components/Logo";
 import Meta from "../components/Meta";
-import useConfig from "../hooks/config.hook";
 import useSiteMeta from "../hooks/siteMeta.hook";
 import useHomeHref from "../hooks/homeHref.hook";
 import useTranslate from "../hooks/useTranslate.hook";
@@ -74,7 +73,6 @@ const useStyles = createStyles((theme) => ({
 
 export default function Home() {
   const { classes } = useStyles();
-  const config = useConfig();
   const homeHref = useHomeHref();
   const t = useTranslate();
   const { siteName, baseUrl } = useSiteMeta();
@@ -94,8 +92,7 @@ export default function Home() {
   }, [redirectTarget]);
 
   const description = t("home.custom.metaDescription", { siteName });
-  const aboutHref = (config.get("legal.imprintUrl") as string) || "/imprint";
-  const aboutIsExternal = /^https?:\/\//i.test(aboutHref);
+  const aboutHref = "/imprint";
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "SoftwareApplication",
@@ -190,7 +187,6 @@ export default function Home() {
                 <Button
                   component={Link}
                   href={aboutHref}
-                  target={aboutIsExternal ? "_blank" : undefined}
                   variant="default"
                   radius="xl"
                   size="md"

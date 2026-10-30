@@ -69,7 +69,7 @@ const Trending = ({
       <TrendingToday
         embedded
         limit={200}
-        previewBlur={2}
+        previewBlur={1}
         initialItems={initialItems}
       >
         <LazySection

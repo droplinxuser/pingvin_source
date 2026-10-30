@@ -10,6 +10,7 @@ export function isPublicPageRoute(pathname: string) {
     pathname === "/new-media" ||
     pathname === "/new-files" ||
     /^\/share\/[^/]+\/?$/.test(pathname) ||
+    pathname === "/contact" ||
     pathname === "/imprint" ||
     pathname === "/privacy"
   );
