@@ -56,12 +56,33 @@ export const LEGACY_CONFIG_ALIASES: Record<
 export class ConfigService extends EventEmitter {
   yamlConfig?: YamlConfig;
   logger = new Logger(ConfigService.name);
+  // `get()` runs several times per request. Rebuild the key lookup only when
+  // the array is replaced (config reload), not on every linear scan.
+  private configLookup?: {
+    variables: Config[];
+    byKey: Map<string, Config>;
+  };
 
   constructor(
     @Inject("CONFIG_VARIABLES") private configVariables: Config[],
     private prisma: PrismaService,
   ) {
     super();
+  }
+
+  private findConfigVariable(key: string): Config | undefined {
+    if (this.configLookup?.variables !== this.configVariables) {
+      this.configLookup = {
+        variables: this.configVariables,
+        byKey: new Map(
+          this.configVariables.map((variable) => [
+            `${variable.category}.${variable.name}`,
+            variable,
+          ]),
+        ),
+      };
+    }
+    return this.configLookup.byKey.get(key);
   }
 
   // Initialize gets called by the ConfigModule
@@ -95,9 +116,7 @@ export class ConfigService extends EventEmitter {
   private applyEnvOverride(key: string, value?: string) {
     if (!value) return;
 
-    const variable = this.configVariables.find(
-      (v) => `${v.category}.${v.name}` === key,
-    );
+    const variable = this.findConfigVariable(key);
     if (!variable) return;
 
     variable.value = value;
@@ -184,9 +203,7 @@ export class ConfigService extends EventEmitter {
   }
 
   get(key: `${string}.${string}`): any {
-    const configVariable = this.configVariables.find(
-      (variable) => `${variable.category}.${variable.name}` == key,
-    );
+    const configVariable = this.findConfigVariable(key);
 
     if (!configVariable) throw new Error(`Config variable ${key} not found`);
 
@@ -262,9 +279,7 @@ export class ConfigService extends EventEmitter {
     const [category, name] = key.split(".");
     // The config table is loaded into memory at startup and kept in sync by
     // this service, so validating from memory avoids a query per variable.
-    const configVariable = this.configVariables.find(
-      (variable) => variable.category === category && variable.name === name,
-    );
+    const configVariable = this.findConfigVariable(key);
 
     if (!configVariable || configVariable.locked)
       throw new NotFoundException(

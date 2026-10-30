@@ -41,8 +41,26 @@ export const createThrottlerOptions = (
         typeof req.visitorKey === "string"
           ? req.visitorKey
           : getVisitorKey(req),
-      generateKey: (_context, tracker) =>
-        createHash("sha256").update(`visitor:${tracker}`).digest("hex"),
+      // Routes without an explicit @Throttle override share one visitor
+      // bucket, so the 90/min policy applies across the whole API. A route
+      // override (comment, auth, upload, SEO, ...) gets its own bucket;
+      // otherwise its stricter limit would consume the global counter and
+      // reject a comment after a handful of ordinary page requests.
+      generateKey: (context, tracker, throttlerName) => {
+        const handler = context.getHandler();
+        const classRef = context.getClass();
+        const hasRouteLimit = [handler, classRef].some((target) =>
+          Reflect.getOwnMetadataKeys(target).some((key) =>
+            key.startsWith("THROTTLER:LIMIT"),
+          ),
+        );
+        const prefix = hasRouteLimit
+          ? `visitor:${classRef.name}-${handler.name}-${throttlerName}`
+          : "visitor";
+        return createHash("sha256")
+          .update(`${prefix}:${tracker}`)
+          .digest("hex");
+      },
     },
   ],
 });

@@ -64,15 +64,19 @@ export class SearchService {
     const { items, haystacks } = await this.getIndex();
 
     const max = Math.min(Math.max(limit, 1), MAX_RESULTS);
-    const matches = items.filter((_, index) =>
-      tokens.every((token) => haystacks[index].includes(token)),
-    );
+    const matches = items
+      .filter((_, index) =>
+        tokens.every((token) => haystacks[index].includes(token)),
+      )
+      // Score once per match instead of lowercasing every name and description
+      // again inside the comparator.
+      .map((entry) => ({ entry, score: score(entry, term) }));
 
     matches.sort(
-      (a, b) => score(b, term) - score(a, term) || b.c.localeCompare(a.c),
+      (a, b) => b.score - a.score || b.entry.c.localeCompare(a.entry.c),
     );
 
-    return matches.slice(0, max).map(toTrendingShare);
+    return matches.slice(0, max).map(({ entry }) => toTrendingShare(entry));
   }
 
   /**
@@ -133,11 +137,9 @@ export class SearchService {
     const index = indexFrom(items);
     this.index = index;
     await this.valkey.run((client) =>
-      client.set(
-        INDEX_KEY,
-        JSON.stringify({ v: INDEX_CACHE_VERSION, items }),
-        { EX: INDEX_TTL_SECONDS },
-      ),
+      client.set(INDEX_KEY, JSON.stringify({ v: INDEX_CACHE_VERSION, items }), {
+        EX: INDEX_TTL_SECONDS,
+      }),
     );
     return index;
   }
@@ -148,9 +150,8 @@ function indexFrom(items: SearchEntry[]): Indexed {
   return {
     at: Date.now(),
     items,
-    haystacks: items.map(
-      (entry) =>
-        `${entry.n ?? ""}\n${entry.d ?? ""}\n${entry.id}`.toLowerCase(),
+    haystacks: items.map((entry) =>
+      `${entry.n ?? ""}\n${entry.d ?? ""}\n${entry.id}`.toLowerCase(),
     ),
   };
 }

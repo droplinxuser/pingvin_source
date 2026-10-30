@@ -372,6 +372,7 @@ const Header = () => {
               key={link.label}
               href={link.link ?? ""}
               onClick={close}
+              aria-current={currentRoute == link.link ? "page" : undefined}
               className={cx(classes.link, {
                 [classes.linkActive]: currentRoute == link.link,
               })}
@@ -441,6 +442,7 @@ const Header = () => {
           close();
           setMobileMenuView("root");
         }}
+        aria-current={currentRoute == link.link ? "page" : undefined}
         className={cx(classes.link, {
           [classes.linkActive]: currentRoute == link.link,
         })}

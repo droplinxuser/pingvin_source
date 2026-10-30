@@ -72,6 +72,34 @@ test("matches the name, description and id from one in-process index", async () 
   assert.equal(queries, 1);
 });
 
+test("ranks name matches before description matches", async () => {
+  const mock = createMockValkey();
+  const prisma = {
+    share: {
+      findMany: async () => [
+        share({
+          id: "description",
+          name: "Beach trip",
+          description: "Holiday photos from the coast",
+        }),
+        share({
+          id: "contains",
+          name: "Summer holiday album",
+          description: "Warm days",
+        }),
+        share({ id: "exact", name: "holiday", description: "A short trip" }),
+      ],
+    },
+  };
+  const service = new SearchService(prisma, mock.valkey);
+
+  const results = await service.search("holiday");
+  assert.deepEqual(
+    results.map((item) => item.id),
+    ["exact", "contains", "description"],
+  );
+});
+
 test("ignores an index written by an older version", async () => {
   const mock = createMockValkey([
     [

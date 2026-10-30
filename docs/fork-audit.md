@@ -179,18 +179,21 @@ the matching `utils/*.util.ts` files.
 - `DATA_DIRECTORY="/var/www/pingvin_data"`. Uploader/visitor metadata is a
   per-share `uploads/shares/<shareId>/uploader.json` (mode `600`). Sitemaps are
   written to `DATA_DIRECTORY/sitemaps/<site-hash>/` and are derived data.
-- There is exactly one rate-limit policy: 90 requests per 60 seconds per
-  client, identified by client IP + browser `User-Agent`, blocking for 60
-  seconds. The upstream per-IP `THROTTLE_LIMIT` bucket is gone; the remaining
-  Nest bucket is the visitor bucket and is keyed by the hashed IP+UA. Configure
-  with `VISITOR_RATE_LIMIT`, `VISITOR_RATE_TTL_MS`, `VISITOR_RATE_BLOCK_MS`.
+- There is one base rate-limit policy: 90 requests per 60 seconds per client,
+  identified by client IP + browser `User-Agent`, blocking for 60 seconds. The
+  upstream per-IP `THROTTLE_LIMIT` bucket is gone; routes without an explicit
+  `@Throttle` override share the visitor bucket, keyed by the hashed IP+UA.
+  A route with an explicit limit (auth, upload, comments/reports/contact, SEO,
+  etc.) gets its own visitor bucket keyed by route + hashed IP+UA. This keeps a
+  strict comment limit from being consumed by ordinary page/API traffic and
+  keeps a high upload/SSR limit from raising the global bucket. Configure with
+  `VISITOR_RATE_LIMIT`, `VISITOR_RATE_TTL_MS`, `VISITOR_RATE_BLOCK_MS`.
   The backend uses Valkey when available and falls back to memory. The Next
   middleware applies the same policy to non-cacheable page HTML
   (`utils/pageRateLimit.util.ts`); cacheable anonymous shells are skipped.
   Config/OAuth, stats/trending/recent/search/SEO, thumbnails/avatars, share
   `HEAD`, comments reads and file/ZIP reads skip the bucket because they are
-  edge-cacheable. Auth, upload, comment mutations, reports, contact, avatar
-  mutations and other writes keep stricter route limits under the same bucket.
+  edge-cacheable.
 - Valkey/Redis is optional but recommended: set `CACHE_REDIS_ENABLED=true` and
   `CACHE_REDIS_URL=redis://127.0.0.1:6379`. `update.sh` enables both when a local
   `valkey-server` is active. When Valkey is down, cache reads fail open to
@@ -212,6 +215,15 @@ the matching `utils/*.util.ts` files.
   metrics, top referrers, error logs, VirusTotal jobs/verdicts/request spacing,
   throttling buckets and short-lived share data all live in Valkey. SQLite is
   the durable source for shares, files, users and counters only.
+- Config reads use an in-process key index (`ConfigService.findConfigVariable`,
+  `frontend/src/utils/config.util.ts`) that is rebuilt only when the config
+  array is replaced. This keeps the many `config.get()` calls per request off
+  the linear scan without caching typed values, so admin edits are immediate.
+- Public search scores each matching entry once before sorting instead of
+  lowercasing the name and description again inside every comparator.
+- The unactivated-user cleanup also removes uploads made through the user's
+  reverse shares (they have no `creatorId`), matching the admin user-delete
+  path so no file bytes are orphaned on disk/S3.
 - Share page data and guard data are cached for 30 seconds; SEO for 60 seconds.
   A cold-cache burst shares one in-flight load. Cache fills are generation
   checked, so a read that started before an edit cannot restore a stale share.
@@ -450,7 +462,10 @@ audit/queue/filter/removal/notification flows, reverse-share guard wiring,
 referrers, avatars and the contact form (Turnstile success/failure, background
 email queuing and header sanitization). `share-util.test.js` pins the
 epoch/expiry rule and the overflowed-size fallback; `remote-fetch.test.js`
-covers IPv4-mapped/compatible IPv6 spellings. Keep this suite green before pushing; run the frontend production
+covers IPv4-mapped/compatible IPv6 spellings; `throttler-config.test.js` pins
+the shared-vs-route bucket split; `jobs.test.js` covers reverse-share upload
+cleanup; `config-service.test.js` pins the config lookup reload; and the search
+suite covers ranking order. Keep this suite green before pushing; run the frontend production
 build and lint in the same pass. Playwright smoke checks should cover
 guest, member and mobile views of the public pages, upload/download/comment,
 URL upload, admin redirects and the share gallery with zero application console

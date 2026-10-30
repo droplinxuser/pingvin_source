@@ -220,12 +220,26 @@ export class JobsService {
       select: {
         id: true,
         shares: { select: { id: true } },
+        // Uploads through the user's reverse shares have no creatorId, so they
+        // are not in `shares`; deleting the account still has to remove their
+        // bytes instead of orphaning them on disk/S3.
+        reverseShares: {
+          select: { shares: { select: { id: true } } },
+        },
       },
     });
 
     for (const user of unactivatedUsers) {
+      const shareIds = new Set([
+        ...user.shares.map((share) => share.id),
+        ...user.reverseShares.flatMap((reverseShare) =>
+          reverseShare.shares.map((share) => share.id),
+        ),
+      ]);
       await Promise.all(
-        user.shares.map((share) => this.fileService.deleteAllFiles(share.id)),
+        [...shareIds].map((shareId) =>
+          this.fileService.deleteAllFiles(shareId),
+        ),
       );
       await this.prisma.user.delete({ where: { id: user.id } });
     }

@@ -1,6 +1,21 @@
 import Config from "../types/config.type";
 import { stringToTimespan } from "./date.util";
 
+// Components read several keys per render. Index each config array once; a
+// refresh replaces the array, so the WeakMap entry is collected with it.
+const configIndexes = new WeakMap<Config[], Map<string, Config>>();
+
+const findConfig = (key: string, configVariables: Config[]) => {
+  let index = configIndexes.get(configVariables);
+  if (!index) {
+    index = new Map(
+      configVariables.map((variable) => [variable.key, variable]),
+    );
+    configIndexes.set(configVariables, index);
+  }
+  return index.get(key);
+};
+
 /**
  * Reads a typed value from the public config array. Kept free of axios so the
  * Edge middleware can use it without pulling Node-only polyfills into its
@@ -13,9 +28,7 @@ export const getConfig = (
 ): any => {
   if (!configVariables) return null;
 
-  const configVariable = configVariables.find(
-    (variable) => variable.key === key,
-  );
+  const configVariable = findConfig(key, configVariables);
   if (!configVariable) throw new Error(`Config variable ${key} not found`);
 
   const value = returnDefault
