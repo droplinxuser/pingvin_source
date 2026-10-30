@@ -18,6 +18,10 @@ function createMockValkey(initial = []) {
       calls.push(["del", key]);
       store.delete(key);
     },
+    unlink: async (key) => {
+      calls.push(["unlink", key]);
+      store.delete(key);
+    },
   };
   return {
     store,
@@ -37,7 +41,7 @@ const share = (overrides = {}) => ({
   ...overrides,
 });
 
-test("stores the index without the duplicated lowercase search text", async () => {
+test("stores the index without the duplicated lowercase search text or file names", async () => {
   const mock = createMockValkey();
   const prisma = { share: { findMany: async () => [share()] } };
   const service = new SearchService(prisma, mock.valkey);
@@ -47,11 +51,13 @@ test("stores the index without the duplicated lowercase search text", async () =
     results.map((item) => item.id),
     ["abc123"],
   );
+  assert.equal(results[0].fileNames, undefined);
 
   const setCall = mock.calls.find((call) => call[0] === "set");
   const payload = JSON.parse(setCall[2]);
-  assert.equal(payload.v, 4);
+  assert.equal(payload.v, 5);
   assert.equal(payload.items[0].w, undefined);
+  assert.equal(payload.items[0].fn, undefined);
 });
 
 test("matches the name, description and id from one in-process index", async () => {

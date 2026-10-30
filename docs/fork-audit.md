@@ -14,14 +14,14 @@ the suggested order for future features.
 |---|---|
 | Environment loading / production config | `backend/src/constants.ts`, `backend/src/config/config.service.ts`, `backend/src/main.ts`, `backend/.env.example` |
 | Rolling expiration (member 100 days / guest 10 days) | `backend/src/share/share.util.ts` (`SHARE_EXPIRATION`, `GUEST_SHARE_EXPIRATION`, `getShareExpiration`, `isMemberShare`), `share.service.ts` (create), `shareState.service.ts` (renew on visit), migrations `20261016000000` / `20261016000001`, share create/edit modals |
-| Public-content search | `backend/src/cache/search.service.ts` (Valkey-backed index, no SQLite table/FTS), `GET /api/shares/search`, `frontend/src/components/header/NavbarSearch.tsx` (desktop form beside the logo, mobile icon on the right), `frontend/src/pages/search.tsx`. The stored index keeps only display fields; the lowercase search text is derived in process memory on load, so the Valkey value does not duplicate every name and description. `/search` is `noindex`, so it does not SSR-fetch results: the client widget loads them (and a blank query never calls the API). The page memoizes its `loadItems` callback and keys the listing by query, so an empty result set cannot refetch in a render loop and a new query cannot keep the previous cards. An authoritative empty server listing is passed as `[]` and is never retried; only `null`/`undefined` (backend unavailable) falls back to the client loader. |
+| Public-content search | `backend/src/cache/search.service.ts` (Valkey-backed index, no SQLite table/FTS), `GET /api/shares/search`, `frontend/src/components/header/NavbarSearch.tsx` (desktop form beside the logo, mobile icon on the right), `frontend/src/pages/search.tsx`. The stored index keeps only the card fields (no lowercase search text and no file names, since `/search` uses the centered file-only layout); the lowercase search text is derived in process memory on load, so the Valkey value does not duplicate every name and description. `/search` is `noindex`, so it does not SSR-fetch results: the client widget loads them (and a blank query never calls the API). The page memoizes its `loadItems` callback and keys the listing by query, so an empty result set cannot refetch in a render loop and a new query cannot keep the previous cards. An authoritative empty server listing is passed as `[]` and is never retried; only `null`/`undefined` (backend unavailable) falls back to the client loader. Results are edge-cached for five minutes and the route keeps its own bounded bucket because the query string makes the edge key unbounded. |
 | Header navigation | Desktop navigation is a consistent text nav: Home/Upload, Trending, New (a dropdown with New media/New files), followed by the share menu and avatar controls. The mobile menu mirrors the same “New” submenu. The visible label is short (“Trending”), while the page title remains “Trending today”. |
 | Member-only create options | In the create-share modal (`frontend/src/components/upload/modals/showCreateUploadModal.tsx`) the **Email recipients** and **Security options** accordions render only when `isUserSignedIn` is true; a guest upload gets just the link and name/description. |
 | New-media / new-files / search listings | `backend/src/cache/trending.service.ts` (`getRecent` media-only, `getRecentFiles` no-media, both derived from one shared newest-shares SQLite scan), `GET /api/shares/recent-files`, `GET /api/shares/search`, `frontend/src/pages/new-media.tsx` and `search.tsx` (square preview cards via `TrendingToday.tsx`; on search, file-only cards use `fileOnlyLayout="centered"` — no file names, title + description centered), `new-files.tsx` (polished row/list layout via `frontend/src/components/share/ShareList.tsx`), `/new` 308-redirects to `/new-media` |
 | Upload from URL (browser-fetched) | Direct URLs are downloaded by the visitor's browser (`frontend/src/utils/upload.util.ts` `fetchRemoteAsFile`), so the remote host never sees the server IP; the file is then uploaded through the normal chunked path. The stream is capped at `share.maxFileSize` (declared `Content-Length` first, then a running byte count) so a huge or endless response cannot exhaust tab memory. This requires the host to allow CORS. The fetch rejects an HTML/XHTML body (`RemoteNotAFileError`) so a landing page is never uploaded as a "file", and resolves the name from `Content-Disposition`, `X-Filename` headers or the URL path. `frontend/src/components/upload/UploadFromUrlButton.tsx` queues a real `File`, wired in `Dropzone.tsx` and the upload/edit flows |
 | File-host import (Bunkr, MediaFire, Dropbox, Google Drive, OneDrive, pCloud, Pixeldrain, tmpfiles) | `backend/src/utils/fileHosts.util.ts` resolves a page URL to direct download URLs (`detectFileHost`/`resolveFileHost`); Bunkr reads `jsCDN` + `signUrl` from the page and signs the CDN link through an allowlisted `*.cdn.cr` host, MediaFire extracts the `download####.mediafire.com` link (base64 `data-scrambled-url` or plain), Dropbox appends `dl=1`, Google Drive/OneDrive build their public download API URLs, pCloud walks the public-link JSON, and Pixeldrain/tmpfiles rewrite to their `/api/file/` and `/dl/` links. These pages cannot be read cross-origin, so the server resolves and downloads them (`FileService.importFromUrl`), guarded by `backend/src/utils/remoteFetch.util.ts` (http/https only, ports 80/443, DNS validated and pinned, IP-literal check, redirect cap, size/time caps). `POST /api/shares/:id/files/from-url` now **only accepts allowlisted hosts** (`detectFileHost`/`detectMediaHost`), so the server never fetches an arbitrary URL. Gofile is intentionally rejected (`FileHostError` code `gofile`). Tests: `backend/test/file-hosts.test.js`, `backend/test/remote-fetch.test.js` |
 | Media/video import (yt-dlp) | `backend/src/utils/mediaHosts.util.ts` allowlists well-known public platforms (YouTube, Vimeo, Dailymotion, Twitch, Streamable, Facebook, Instagram, TikTok, X/Twitter, Reddit, SoundCloud, Mixcloud, Imgur, Bilibili, NicoNico, TED, Bandcamp, Odysee, Rumble, BitChute, archive.org) and runs `yt-dlp` (single item, `--no-playlist`, `--ignore-config`, size cap, hard timeout, `--` before the URL, optional `YTDLP_COOKIES_FILE`). `FileService.importMediaFromUrl` downloads into a per-file temp dir, then feeds the bytes through the same chunk pipeline. Gated by `share.enableMediaImport` (admin config) and by the `yt-dlp` binary being present. Tests: `backend/test/media-hosts.test.js` |
-| Cloudflare edge caching | Public search results and share images live at the edge for an hour: `GET /api/shares/search` and `/api/shares/:id/thumbnail` send `s-maxage=3600` (`backend/src/utils/cache.util.ts` `getImageCacheHeaders`, `share.controller.ts`), the inline WebP preview in `file.controller.ts` uses the same image headers, and the search page shell is still `no-store` (query-dependent). Trending/recent listings keep a 60 s edge TTL. |
+| Cloudflare edge caching | Public search results and share images live at the edge for a short window: `GET /api/shares/search` and `/api/shares/:id/thumbnail` send `s-maxage=300` / `s-maxage=3600` respectively (`backend/src/utils/cache.util.ts` `getImageCacheHeaders`, `share.controller.ts`), the inline WebP preview in `file.controller.ts` uses the same image headers, and the search page shell is still `no-store` (query-dependent). Trending/recent listings keep a 60 s edge TTL. |
 | Admin pagination, search and sorting | `backend/src/share/share.service.ts`, `backend/src/user/user.service.ts` (quota columns paged in SQL), `frontend/src/pages/admin/*`, `frontend/src/components/core/SortIcon.tsx` |
 | Share reports | `backend/src/share/dto/reportShare.dto.ts`, `backend/src/email/email.service.ts`, `frontend/src/components/share/showReportShareModal.tsx` |
 | Uploader metadata / visitors | `backend/src/utils/uploaderInfo.util.ts`, `ShareDTO.uploaderInfo`, `frontend/src/components/share/UploaderInfoBadges.tsx`, `ShareStats.tsx`; view counts stay in `Share.views`, written in five-second batches for unlimited shares and atomically for limited ones (`shareState.service.ts`). Geo labels are clamped before storage. The recent-visitor list is shown to every visitor. |
@@ -200,9 +200,12 @@ the matching `utils/*.util.ts` files.
   The backend uses Valkey when available and falls back to memory. The Next
   middleware applies the same policy to non-cacheable page HTML
   (`utils/pageRateLimit.util.ts`); cacheable anonymous shells are skipped.
-  Config/OAuth, stats/trending/recent/search/SEO, thumbnails/avatars, share
-  `HEAD`, comments reads and file/ZIP reads skip the bucket because they are
-  edge-cacheable.
+  Config/OAuth, stats/trending/recent, SEO and file/ZIP reads skip the shared
+  bucket because they are edge-cacheable or have no unbounded query key.
+  Search, comments reads, thumbnails and the share `HEAD` check carry their own
+  route buckets instead: their query strings (`q`, `page`, `v`) or IDs are
+  attacker-controlled, so a unique value can always miss the edge without
+  throttling the origin.
 - Valkey/Redis is optional but recommended: set `CACHE_REDIS_ENABLED=true` and
   `CACHE_REDIS_URL=redis://127.0.0.1:6379`. `update.sh` enables both when a local
   `valkey-server` is active. When Valkey is down, cache reads fail open to
@@ -331,10 +334,13 @@ Origin responses set `Cache-Control`, `CDN-Cache-Control` and
   and other query variants stay `no-store`. Pages never put account data in
   `__NEXT_DATA__`; `_app` restores the user client-side.
 - Config and OAuth availability: 30 seconds. Stats, trending, recent,
-  recent-files, public search results and share SEO: 60 seconds. An empty search
+  recent-files and share SEO: 60 seconds; public search results: 300 seconds
+  (the index TTL), so a deleted/protected share cannot remain discoverable
+  through a stale edge result for an hour. An empty search
   result is `no-store` so a transient miss is never pinned at the edge. Trending
   countries: 300 seconds. Comments: 24 hours with an
-  app version query. Sitemap index: 1 hour. Sitemap chunks, robots and manifest:
+  app version query; an unversioned comment URL is `no-store`. Sitemap index:
+  1 hour. Sitemap chunks, robots and manifest:
   1 day (60-second fallback when the backend artifact is unavailable).
   `/_next/static` and Workbox bundles are immutable for a year.
 - Public file and preview GETs use a one-hour browser TTL and a **ten-minute**
@@ -445,9 +451,9 @@ Origin responses set `Cache-Control`, `CDN-Cache-Control` and
   properly; purging or reviewing the edge rule removes the duplicate. The app
   versions config/OAuth URLs with the build hash so each deploy reads a fresh
   origin response.
-- Unversioned comment URLs can be served from a 24-hour edge copy. The app
-  always sends `?v=<commentsVersion>`; purge the comments URL to clear old
-  entries.
+- Comment URLs are versioned (`?v=<commentsVersion>`); an unversioned request
+  is explicitly `no-store`, so it can never pin a stale comment page. The app
+  always sends the version.
 - Thumbnail/avatar URLs are versioned. A browser or edge copy of a removed
   avatar can survive until its TTL, while new pages show the initials fallback.
 - After a share is deleted, Cloudflare may serve its last public shell for the
@@ -503,6 +509,10 @@ protected share mounts no ad scripts, that a browser URL upload streams a
 small file correctly, that the contact button stays disabled until Turnstile
 returns a token, that guest ads appear on protected/private share and 404 pages,
 and that the header order is Home/Upload, Trending, New (New media/New files).
+Also check that a versioned comments URL is `s-maxage=86400`, an unversioned
+one is `no-store`, `HEAD /api/shares/:id` is `s-maxage=60`, search results are
+`s-maxage=300`, and the search/comments/thumbnail/HEAD route buckets throttle
+independently from the shared visitor bucket.
 Rate-limit smoke tests: 95 requests from one IP+UA to a
 non-cacheable API and page return 90 successes then 429, while a different UA
 and a cacheable page remain available. Axe checks at 390 px

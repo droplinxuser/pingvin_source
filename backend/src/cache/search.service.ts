@@ -14,8 +14,7 @@ const INDEX_TTL_SECONDS = 5 * 60;
 // Serve the in-process copy for a minute before re-reading Valkey. Long enough
 // to collapse a burst, short enough that an edit shows up quickly.
 const INDEX_FRESH_MS = 60 * 1000;
-const INDEX_CACHE_VERSION = 4;
-const MAX_CARD_FILE_NAMES = 3;
+const INDEX_CACHE_VERSION = 5;
 const MAX_INDEXED_SHARES = 20_000;
 const MAX_RESULTS = 200;
 const MAX_QUERY_LENGTH = 100;
@@ -28,7 +27,6 @@ type SearchEntry = {
   d?: string;
   v: number;
   p?: { id: string; k: "image" | "video"; video?: boolean };
-  fn?: string[];
   fc: number;
   s: number;
   c: string;
@@ -38,7 +36,9 @@ type SearchEntry = {
 // `items` is the serialized payload; `haystacks` is derived once per load and
 // kept only in process memory. Storing the lowercase search text in Valkey
 // duplicated the name and description for every entry, so it is rebuilt on
-// read instead of paying that footprint in the cache.
+// read instead of paying that footprint in the cache. File names are also left
+// out: `/search` renders file-only results with the centered layout, so the
+// index never needs a second copy of them.
 type Indexed = { at: number; items: SearchEntry[]; haystacks: string[] };
 
 /**
@@ -85,7 +85,9 @@ export class SearchService {
    */
   async invalidate(): Promise<void> {
     this.index = undefined;
-    await this.valkey.run((client) => client.del(INDEX_KEY));
+    // The index can be several megabytes. UNLINK frees it in the background
+    // instead of blocking the shared Valkey event loop like DEL would.
+    await this.valkey.run((client) => client.unlink(INDEX_KEY));
   }
 
   private async getIndex(): Promise<Indexed> {
@@ -184,7 +186,6 @@ function buildEntry(share: {
           video: media.hasVideo || undefined,
         }
       : undefined,
-    fn: share.files?.slice(0, MAX_CARD_FILE_NAMES).map((file) => file.name),
     fc: share.files?.length ?? 0,
     s: sumFileSizes(share.files),
     c: new Date(share.createdAt).toISOString(),
@@ -222,7 +223,6 @@ function toTrendingShare(entry: SearchEntry): TrendingShare {
     previewFileId: entry.p?.id,
     previewKind: entry.p?.k,
     hasVideo: entry.p?.video === true,
-    fileNames: entry.fn,
     fileCount: entry.fc,
     size: entry.s,
     createdAt: entry.c,

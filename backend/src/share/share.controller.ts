@@ -216,10 +216,11 @@ export class ShareController {
     return items;
   }
 
-  // Search across every public share. The index lives in Valkey; results are
-  // edge-cached for a minute. A missing/blank query returns an empty list.
+  // Search across every public share. The index lives in Valkey and results
+  // are edge-cached. The query string makes the edge key unbounded, so this
+  // route keeps its own visitor bucket instead of being completely open.
   @Get("search")
-  @SkipThrottle({ default: true })
+  @Throttle({ default: { limit: 300, ttl: 60 * 1000 } })
   async search(
     @Query("q") q: string,
     @Query("limit") limit: string,
@@ -230,20 +231,27 @@ export class ShareController {
       typeof q === "string" ? q : "",
       Number.isFinite(parsedLimit) ? parsedLimit : undefined,
     );
-    // Search results are stable for a while; keep them at the edge for an hour
-    // to absorb repeat queries. A transient empty result is never pinned.
-    response.set(items.length ? getEdgeCacheHeaders(3600) : NO_STORE_HEADERS);
+    // Repeated searches stay at the edge. Five minutes matches the search
+    // index TTL, so a deleted/protected share cannot remain discoverable for
+    // an hour through a stale result page.
+    response.set(items.length ? getEdgeCacheHeaders(300) : NO_STORE_HEADERS);
     void this.fileService.warmShareThumbnails(items.map((item) => item.id));
     return items;
   }
 
   // Lightweight existence check used by external monitors and the share page
-  // SSR so missing shares get a real 404 without recording a view.
+  // SSR so missing shares get a real 404 without recording a view. The answer
+  // is public and cheap, so cache it briefly at the edge; random-id scans
+  // still get their own bounded bucket instead of the shared visitor budget.
   @Head(":id")
-  @SkipThrottle({ default: true })
-  async exists(@Param("id") id: string) {
+  @Throttle({ default: { limit: 300, ttl: 60 * 1000 } })
+  async exists(
+    @Param("id") id: string,
+    @Res({ passthrough: true }) response: Response,
+  ) {
     if (!(await this.shareService.shareExists(id)))
       throw new NotFoundException();
+    response.set(getEdgeCacheHeaders(60));
   }
 
   @Get(":id")
@@ -294,7 +302,10 @@ export class ShareController {
     return { counted: true };
   }
 
-  @SkipThrottle({ default: true })
+  // A public share id is enough to request a thumbnail, and the `v` query
+  // gives the edge an unbounded key space. Keep a generous route bucket so a
+  // fast-scrolling listing still loads, while random-id scans stay bounded.
+  @Throttle({ default: { limit: 1200, ttl: 60 * 1000 } })
   @Get(":id/thumbnail")
   @UseGuards(IdValidation, ShareSecurityGuard)
   async getThumbnail(
@@ -358,8 +369,8 @@ export class ShareController {
    * version instead of a stale edge entry. Protected shares are never stored
    * by Cloudflare.
    */
+  @Throttle({ default: { limit: 600, ttl: 60 * 1000 } })
   @Get(":id/comments")
-  @SkipThrottle({ default: true })
   @UseGuards(IdValidation, ShareSecurityGuard)
   async getComments(
     @Param("id") id: string,
@@ -369,8 +380,13 @@ export class ShareController {
   ) {
     const isPublic = (request as Request & { shareIsPublic?: boolean })
       .shareIsPublic;
+    // Only the versioned URL is safe to keep for a day. A caller that omits
+    // `v` would otherwise pin the current comment page at the edge, hiding
+    // later edits/deletions until the TTL expires.
+    const versioned =
+      typeof request.query.v === "string" && /^\d+$/.test(request.query.v);
     response.set(
-      isPublic
+      isPublic && versioned
         ? getEdgeCacheHeaders(COMMENTS_EDGE_CACHE_SECONDS)
         : NO_STORE_HEADERS,
     );

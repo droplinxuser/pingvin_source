@@ -43,21 +43,35 @@ const cachedShareList = (
   ttlMs: number,
 ) => {
   let cache: CachedShareList | undefined;
+  const pending = new Map<number, Promise<TrendingShare[]>>();
+
+  const load = async (requested: number): Promise<TrendingShare[]> => {
+    const items = (await api.get(endpoint, { params: { limit: requested } }))
+      .data as TrendingShare[];
+    // An empty response can be a transient backend/cache miss; retry next time
+    // instead of keeping the page empty for the rest of the browser session.
+    // Keep the largest copy so a small concurrent request cannot evict the
+    // list that the next page needs.
+    if (items.length > 0 && (!cache || requested >= cache.limit))
+      cache = { at: Date.now(), limit: requested, items };
+    return items.slice(0, requested);
+  };
 
   return async (limit?: number): Promise<TrendingShare[]> => {
     const requested = limit && limit > 0 ? limit : defaultLimit;
     if (cache && Date.now() - cache.at < ttlMs && cache.limit >= requested)
       return cache.items.slice(0, requested);
 
-    const items = (await api.get(endpoint, { params: { limit: requested } }))
-      .data as TrendingShare[];
-    // An empty response can be a transient backend/cache miss; retry next time
-    // instead of keeping the page empty for the rest of the browser session.
-    cache =
-      items.length > 0
-        ? { at: Date.now(), limit: requested, items }
-        : undefined;
-    return items.slice(0, requested);
+    // A React remount or two listing components can ask for the same endpoint
+    // in the same tick. Share one request instead of sending duplicates.
+    const inFlight = pending.get(requested);
+    if (inFlight) return inFlight;
+
+    const request = load(requested).finally(() => {
+      if (pending.get(requested) === request) pending.delete(requested);
+    });
+    pending.set(requested, request);
+    return request;
   };
 };
 
