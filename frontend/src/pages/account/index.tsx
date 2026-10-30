@@ -213,7 +213,7 @@ const Account = () => {
           <Title order={2} size="h5" mb="xs">
             <FormattedMessage id="account.card.info.title" />
             {user?.isLdap ? (
-              <Badge style={{ marginLeft: "1em" }}>LDAP</Badge>
+              <Badge style={{ marginLeft: "1em" }}>Directory</Badge>
             ) : null}
           </Title>
           <Group position="apart" align="center" mb="lg">

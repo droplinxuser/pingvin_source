@@ -56,6 +56,7 @@ export default {
   // Navbar
   "navbar.upload": "Upload",
   "navbar.new": "New",
+  "navbar.trending": "Trending",
   "navbar.newMedia": "New media",
   "navbar.newFiles": "New files",
   "navbar.signin": "Sign in",
@@ -976,9 +977,9 @@ export default {
   "share.notify.copied-link": "File link copied to clipboard",
 
   // VirusTotal per-file indicator (fork-only)
-  "share.custom.virustotal.safe": "Scanned by VirusTotal — no threats found",
+  "share.custom.virustotal.safe": "Malware scan — no threats found",
   "share.custom.virustotal.suspicious":
-    "Scanned by VirusTotal — flagged as suspicious",
+    "Malware scan — flagged as suspicious",
   "share.custom.virustotal.summary":
     "{malicious} malicious · {suspicious} suspicious · {undetected} undetected",
   "share.custom.virustotal.hash": "Hash {hash}",

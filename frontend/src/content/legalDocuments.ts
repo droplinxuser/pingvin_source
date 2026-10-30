@@ -69,12 +69,12 @@ features are:
 - **Uploads:** drag-and-drop and file-picker uploads, multi-file and folder
   selection, clipboard paste, resumable chunked uploads, upload cancellation,
   progress reporting, per-file and per-share size limits, and optional direct
-  S3 uploads.
+  object-storage uploads.
 - **Upload from URL:** direct links are downloaded by the visitor's browser and
   then uploaded normally. Supported file-host pages (for example MediaFire,
   Bunkr, Dropbox, Google Drive, OneDrive, pCloud, Pixeldrain and tmpfiles) are
   resolved by the server, and allowlisted video/audio platforms can be
-  imported with yt-dlp.
+  imported through server-side media extraction.
 - **Share pages:** short links, custom names and descriptions, file lists,
   image/video galleries with keyboard navigation, PDF/text/audio previews,
   per-file copy-link actions, individual downloads, bulk selection and streamed
@@ -86,20 +86,21 @@ features are:
   breakdowns, newest media, newest files, share thumbnails and Open Graph
   previews.
 - **Accounts:** registration and sign-in, email verification, password reset,
-  optional TOTP two-factor authentication, OAuth and LDAP sign-in, profiles,
-  avatars, personal share/received/reverse-share dashboards and storage quotas.
+  optional TOTP two-factor authentication, external identity-provider and
+  directory sign-in, profiles, avatars, personal share/received/reverse-share
+  dashboards and storage quotas.
 - **Community and safety:** comments with owner/admin moderation, abuse
-  reporting, ClamAV scanning, VirusTotal background checks and per-file
+  reporting, automated antivirus and malware-analysis checks, and per-file
   malware badges.
 - **Administration:** configuration management, user/share/referrer
-  administration, error logs, VirusTotal queue, server dependency checks,
-  SQLite metrics and Valkey metrics.
+  administration, error logs, malware-scan queue, server dependency checks and
+  infrastructure metrics.
 - **Front-end experience:** responsive mobile/desktop layouts, light and dark
   themes, keyboard-accessible controls, reduced layout shift, lazy-loaded
   galleries and listings, localized dates and numbers, PWA manifest/service
   worker support, and guest advertising on public share and 404 pages.
-- **Delivery and SEO:** Cloudflare-compatible cache headers, public sitemap and
-  robots endpoints, canonical URLs, structured data, and social-media metadata.
+- **Delivery and SEO:** edge-cache headers, public sitemap and robots endpoints,
+  canonical URLs, structured data, and social-media metadata.
 
 ## Responsibility for content
 

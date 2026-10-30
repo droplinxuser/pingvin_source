@@ -23,6 +23,7 @@ import authService from "../../services/auth.service";
 import Logo from "../Logo";
 import useHomeHref from "../../hooks/homeHref.hook";
 import ActionAvatar from "./ActionAvatar";
+import NavbarNewMenu from "./NavbarNewMenu";
 import NavbarSearch from "./NavbarSearch";
 import NavbarShareMenu from "./NavbarShareMenu";
 
@@ -35,7 +36,7 @@ type NavLink = {
   action?: () => Promise<void>;
 };
 
-type MobileMenuView = "root" | "shares" | "profile";
+type MobileMenuView = "root" | "shares" | "profile" | "new";
 
 const useStyles = createStyles((theme) => ({
   root: {
@@ -222,9 +223,16 @@ const Header = () => {
           },
         ]
       : []),
-    { link: "/trending", label: t("trending.custom.title") },
-    { link: "/new-media", label: t("navbar.newMedia") },
-    { link: "/new-files", label: t("navbar.newFiles") },
+    { link: "/trending", label: t("navbar.trending") },
+    {
+      component: (
+        <NavbarNewMenu
+          active={
+            currentRoute === "/new-media" || currentRoute === "/new-files"
+          }
+        />
+      ),
+    },
     {
       component: <NavbarShareMenu />,
     },
@@ -233,7 +241,7 @@ const Header = () => {
     },
   ];
 
-  const buildUnauthenticatedLinks = (): NavLink[] => {
+  const buildUnauthenticatedLinks = (desktop: boolean): NavLink[] => {
     const links: NavLink[] = [];
     if (config.get("general.showHomePage"))
       links.push({ link: "/", label: t("navbar.home") });
@@ -241,9 +249,20 @@ const Header = () => {
     if (config.get("security.allowUnauthenticatedShares"))
       links.push({ link: "/upload", label: t("navbar.upload") });
 
-    links.push({ link: "/trending", label: t("trending.custom.title") });
-    links.push({ link: "/new-media", label: t("navbar.newMedia") });
-    links.push({ link: "/new-files", label: t("navbar.newFiles") });
+    links.push({ link: "/trending", label: t("navbar.trending") });
+    links.push(
+      desktop
+        ? {
+            component: (
+              <NavbarNewMenu
+                active={
+                  currentRoute === "/new-media" || currentRoute === "/new-files"
+                }
+              />
+            ),
+          }
+        : { label: t("navbar.new") },
+    );
 
     if (!shouldHideAuthButtons)
       links.push({ link: "/auth/signIn", label: t("navbar.signin") });
@@ -254,7 +273,8 @@ const Header = () => {
     return links;
   };
 
-  const unauthenticatedLinks = buildUnauthenticatedLinks();
+  const unauthenticatedLinks = buildUnauthenticatedLinks(false);
+  const desktopUnauthenticatedLinks = buildUnauthenticatedLinks(true);
 
   const mobileRootLinks: NavLink[] = user
     ? [
@@ -268,15 +288,10 @@ const Header = () => {
           : []),
         {
           link: "/trending",
-          label: t("trending.custom.title"),
+          label: t("navbar.trending"),
         },
         {
-          link: "/new-media",
-          label: t("navbar.newMedia"),
-        },
-        {
-          link: "/new-files",
-          label: t("navbar.newFiles"),
+          label: t("navbar.new"),
         },
         {
           label: t("common.button.shares"),
@@ -306,6 +321,17 @@ const Header = () => {
       : []),
   ];
 
+  const mobileNewLinks: NavLink[] = [
+    {
+      link: "/new-media",
+      label: t("navbar.newMedia"),
+    },
+    {
+      link: "/new-files",
+      label: t("navbar.newFiles"),
+    },
+  ];
+
   const mobileProfileLinks: NavLink[] = [
     {
       link: "/account",
@@ -332,27 +358,29 @@ const Header = () => {
   const { classes, cx } = useStyles();
   const desktopItems = (
     <>
-      {(user ? authenticatedLinks : unauthenticatedLinks).map((link, i) => {
-        if (link.component) {
+      {(user ? authenticatedLinks : desktopUnauthenticatedLinks).map(
+        (link, i) => {
+          if (link.component) {
+            return (
+              <Box pl={5} py={12} key={i}>
+                {link.component}
+              </Box>
+            );
+          }
           return (
-            <Box pl={5} py={12} key={i}>
-              {link.component}
-            </Box>
+            <Link
+              key={link.label}
+              href={link.link ?? ""}
+              onClick={close}
+              className={cx(classes.link, {
+                [classes.linkActive]: currentRoute == link.link,
+              })}
+            >
+              {link.label}
+            </Link>
           );
-        }
-        return (
-          <Link
-            key={link.label}
-            href={link.link ?? ""}
-            onClick={close}
-            className={cx(classes.link, {
-              [classes.linkActive]: currentRoute == link.link,
-            })}
-          >
-            {link.label}
-          </Link>
-        );
-      })}
+        },
+      )}
     </>
   );
 
@@ -361,21 +389,27 @@ const Header = () => {
       ? mobileShareLinks
       : mobileMenuView === "profile"
         ? mobileProfileLinks
-        : mobileRootLinks;
+        : mobileMenuView === "new"
+          ? mobileNewLinks
+          : mobileRootLinks;
 
   const renderMobileEntry = (link: NavLink) => {
     const isSharesEntry =
       mobileMenuView === "root" && link.label === t("common.button.shares");
     const isProfileEntry =
       mobileMenuView === "root" && link.label === t("common.button.profile");
+    const isNewEntry =
+      mobileMenuView === "root" && link.label === t("navbar.new");
 
-    if (isSharesEntry || isProfileEntry) {
+    if (isSharesEntry || isProfileEntry || isNewEntry) {
       return (
         <UnstyledButton
           key={link.label}
           className={classes.mobileMenuButton}
           onClick={() =>
-            setMobileMenuView(isSharesEntry ? "shares" : "profile")
+            setMobileMenuView(
+              isSharesEntry ? "shares" : isProfileEntry ? "profile" : "new",
+            )
           }
         >
           <span className={classes.mobileMenuButtonContent}>
