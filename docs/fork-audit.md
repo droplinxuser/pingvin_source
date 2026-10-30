@@ -131,6 +131,15 @@ the matching `utils/*.util.ts` files.
   cookies/deprecations), while the app shell itself is error-free. Axe reports
   zero violations on guest, member and admin pages at 390 px.
 
+## Upstream sync
+
+- Last merge: `61101a1e` (`fix(oidc): spec-compliant token validation`) from
+  `upstream/main`. The branch is no longer behind upstream.
+- The only conflict was `backend/src/oauth/provider/genericOidc.provider.ts`.
+  The resolution keeps upstream's `jose` verification and deletes the fork's
+  now-redundant manual `sub`/`exp` checks, while retaining the fork's log
+  redaction and the discovery-URL normalisation in `oidc.provider.ts`.
+
 ## Merge checklist
 
 1. `git fetch upstream && git merge upstream/main` on a branch.
@@ -358,8 +367,12 @@ Origin responses set `Cache-Control`, `CDN-Cache-Control` and
   the same Argon2 cost; LDAP refuses empty passwords. Cookies are `Secure` when
   `general.appUrl` is HTTPS, share-token cookies are `SameSite=Lax`, and the
   refresh cookie is `HttpOnly`.
-- OAuth callbacks require state, ID tokens must have a subject and be unexpired,
-  and provider IDs cannot be empty. Tokens are never logged.
+- OAuth callbacks require state, and OIDC ID tokens are verified with `jose`
+  against the discovery issuer (tenant-aware for Microsoft), the configured
+  JWKS and client ID, including `azp`, `sub`, `exp`/`iat` and the nonce.
+  Provider IDs cannot be empty. The fork keeps the discovery-URL normalisation
+  in `oidc.provider.ts`, and redacts token fields/claims from every OIDC log
+  line, so tokens are never logged.
 - Reverse-share tokens cannot bypass `allowShare`/`maxShares`; a use is reserved
   atomically at share creation. `CreateShareGuard` is only on `POST /shares`;
   upload/complete/revert/file routes use `StrictShareOwnerGuard` so an
@@ -475,7 +488,10 @@ epoch/expiry rule and the overflowed-size fallback; `remote-fetch.test.js`
 covers IPv4-mapped/compatible IPv6 spellings; `throttler-config.test.js` pins
 the shared-vs-route bucket split; `jobs.test.js` covers reverse-share upload
 cleanup; `config-service.test.js` pins the config lookup reload; and the search
-suite covers ranking order. Keep this suite green before pushing; run the frontend production
+suite covers ranking order. A local mock-OIDC check signs RS256 ID tokens and
+verifies that a valid token is accepted while expired, wrong-issuer, wrong-nonce
+and tampered-signature tokens are rejected through the merged `jose` path.
+Keep this suite green before pushing; run the frontend production
 build and lint in the same pass. Playwright smoke checks should cover
 guest, member and mobile views of the public pages, upload/download/comment,
 URL upload, admin redirects and the share gallery with zero application console
