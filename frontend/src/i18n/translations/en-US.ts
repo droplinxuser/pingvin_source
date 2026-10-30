@@ -32,9 +32,9 @@ export default {
   "seo.custom.search.description":
     "Search every public share on {siteName} by name or description.",
   "seo.custom.privacy.description":
-    "Read how {siteName} handles data, cookies and uploaded files.",
+    "Read the {siteName} Privacy Policy: what data is processed, how cookies and uploads are handled, retention periods and your privacy rights.",
   "seo.custom.imprint.description":
-    "Legal and operator information for {siteName}.",
+    "Imprint and operator information for {siteName}, including contact details, file-sharing features, content rules and copyright reporting.",
   "seo.custom.contact.description":
     "Contact the {siteName} team about a share, a report, privacy or another question.",
   "seo.custom.defaultDescription":
