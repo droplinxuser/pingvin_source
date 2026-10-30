@@ -12,6 +12,63 @@ export class RemoteNotAFileError extends Error {
   }
 }
 
+/** The remote file is larger than the instance's per-file upload limit. */
+export class RemoteFileTooLargeError extends Error {
+  constructor() {
+    super("remote file is too large");
+    this.name = "RemoteFileTooLargeError";
+  }
+}
+
+/**
+ * Reads the response body with a hard byte cap. `response.blob()` would buffer
+ * an arbitrarily large (or endless) stream in the tab before Dropzone gets a
+ * chance to reject it.
+ */
+const readBodyWithLimit = async (
+  response: Response,
+  maxBytes: number,
+): Promise<Blob> => {
+  const contentType = response.headers.get("content-type") || "";
+  if (!response.body) {
+    const blob = await response.blob();
+    if (maxBytes > 0 && blob.size > maxBytes)
+      throw new RemoteFileTooLargeError();
+    return blob;
+  }
+
+  const reader = response.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let received = 0;
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      received += value.byteLength;
+      if (maxBytes > 0 && received > maxBytes) {
+        await reader.cancel().catch(() => undefined);
+        throw new RemoteFileTooLargeError();
+      }
+      chunks.push(value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+
+  // Copy into a fresh ArrayBuffer so the Blob constructor accepts the result
+  // under TypeScript's ArrayBufferLike/SharedArrayBuffer split.
+  const merged = new Uint8Array(received);
+  let offset = 0;
+  for (const chunk of chunks) {
+    merged.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+
+  return new Blob([merged], {
+    type: contentType || undefined,
+  });
+};
+
 /**
  * Downloads a remote file in the visitor's own browser and returns it as a
  * `File`, so it can be uploaded through the normal chunked path. Running the
@@ -23,6 +80,7 @@ export class RemoteNotAFileError extends Error {
 export const fetchRemoteAsFile = async (
   url: string,
   fallbackName: string,
+  maxBytes = 0,
 ): Promise<File> => {
   const response = await fetch(url, {
     mode: "cors",
@@ -42,7 +100,15 @@ export const fetchRemoteAsFile = async (
   )
     throw new RemoteNotAFileError();
 
-  const blob = await response.blob();
+  const declaredLength = Number(response.headers.get("content-length"));
+  if (
+    maxBytes > 0 &&
+    Number.isFinite(declaredLength) &&
+    declaredLength > maxBytes
+  )
+    throw new RemoteFileTooLargeError();
+
+  const blob = await readBodyWithLimit(response, maxBytes);
   const name =
     nameFromHeaders(response.headers) || nameFromUrl(url) || fallbackName;
   return new File([blob], sanitizeName(name), {

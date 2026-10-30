@@ -1,5 +1,5 @@
 import useConfig from "./config.hook";
-import { DEFAULT_SITE_NAME, normalizeBaseUrl } from "../utils/seo.util";
+import { DEFAULT_SITE_NAME, getPublicBaseUrl } from "../utils/seo.util";
 
 /**
  * The visible site name and public URL every page uses for titles, the logo
@@ -12,7 +12,7 @@ const useSiteMeta = () => {
     siteName:
       ((config.get("general.appName") as string) ?? "").trim() ||
       DEFAULT_SITE_NAME,
-    baseUrl: normalizeBaseUrl(config.get("general.appUrl") as string),
+    baseUrl: getPublicBaseUrl(config.get("general.appUrl") as string),
   };
 };
 

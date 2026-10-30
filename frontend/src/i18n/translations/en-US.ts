@@ -782,6 +782,8 @@ export default {
     "Couldn't download this URL. The link may be invalid or temporarily unavailable.",
   "upload.url.error.notAFile":
     "That link is a web page, not a file. Paste a direct download link instead.",
+  "upload.url.error.tooLarge":
+    "That file is larger than the maximum upload size of {maxSize}.",
   "upload.url.error.cors":
     "This host doesn't allow browser downloads (CORS), so the file can't be fetched here. Use a direct link from a host that allows it, download the file and upload it directly, or paste a supported file-host or video link.",
   "upload.url.error.hostUnsupported":
@@ -984,6 +986,8 @@ export default {
   "share.modal.file-preview.custom.previous": "Previous file",
   "share.modal.file-preview.custom.next": "Next file",
   "share.modal.file-preview.custom.position": "{current} of {total}",
+  "share.modal.file-preview.custom.too-large":
+    "This file is too large to preview. Download it to view the content.",
   "share.modal.file-preview.error.not-supported.title": "Preview not supported",
   "share.modal.file-preview.error.not-supported.description":
     "Previews are not supported for this file type. Download the file to view it.",

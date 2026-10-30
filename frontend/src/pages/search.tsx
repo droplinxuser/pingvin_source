@@ -7,43 +7,24 @@ import Meta from "../components/Meta";
 import TrendingToday from "../components/share/TrendingToday";
 import useTranslate from "../hooks/useTranslate.hook";
 import shareService from "../services/share.service";
-import { TrendingShare } from "../types/share.type";
 import { setNoStoreHeaders } from "../utils/httpCache.util";
 
 export async function getServerSideProps({
   query,
   res,
 }: GetServerSidePropsContext) {
-  const apiURL = process.env.API_URL || "http://localhost:8080";
   const term = typeof query.q === "string" ? query.q.trim() : "";
-  let initialItems: TrendingShare[] | null = [];
-  if (term) {
-    try {
-      const response = await fetch(
-        `${apiURL}/api/shares/search?q=${encodeURIComponent(term)}&limit=200`,
-        { cache: "no-store", signal: AbortSignal.timeout(2000) },
-      );
-      initialItems = response.ok
-        ? ((await response.json()) as TrendingShare[])
-        : null;
-    } catch {
-      initialItems = null;
-    }
-  }
 
-  // Search result pages depend on a query string and are never cached by the
-  // CDN; this also keeps a failed backend response out of any intermediate.
+  // Results are query-dependent and the page is noindex, so there is nothing
+  // for crawlers to gain from a server-side fetch. Keeping it off the Next
+  // server also stops share-page traffic and search traffic from competing for
+  // the backend's shared per-IP request bucket. TrendingToday performs the
+  // lookup in the browser (and skips the API entirely for an empty query).
   setNoStoreHeaders(res);
-  return { props: { query: term, initialItems: initialItems ?? [] } };
+  return { props: { query: term } };
 }
 
-const Search = ({
-  query,
-  initialItems = [],
-}: {
-  query: string;
-  initialItems?: TrendingShare[];
-}) => {
+const Search = ({ query }: { query: string }) => {
   const t = useTranslate();
   const router = useRouter();
   const [term, setTerm] = useState(query);
@@ -98,7 +79,6 @@ const Search = ({
         embedded
         limit={200}
         previewBlur={2}
-        initialItems={initialItems}
         loadItems={loadSearchItems}
         showMediaTypeBadge
         fileOnlyLayout="centered"

@@ -4,9 +4,14 @@ import { TbLink } from "react-icons/tb";
 import { FormattedMessage } from "react-intl";
 import useTranslate from "../../hooks/useTranslate.hook";
 import { FileUpload } from "../../types/File.type";
+import { byteToHumanSizeString } from "../../utils/fileSize.util";
 import { classifyFileHost } from "../../utils/fileHost.util";
 import toast from "../../utils/toast.util";
-import { fetchRemoteAsFile, RemoteNotAFileError } from "../../utils/upload.util";
+import {
+  fetchRemoteAsFile,
+  RemoteFileTooLargeError,
+  RemoteNotAFileError,
+} from "../../utils/upload.util";
 
 const resolveRemoteName = (url: URL): string => {
   const segment = url.pathname.split("/").filter(Boolean).pop();
@@ -31,9 +36,11 @@ const resolveRemoteName = (url: URL): string => {
 const UploadFromUrlButton = ({
   onFiles,
   disabled,
+  maxFileSize = 0,
 }: {
   onFiles: (files: FileUpload[]) => void;
   disabled?: boolean;
+  maxFileSize?: number;
 }) => {
   const t = useTranslate();
   const [opened, setOpened] = useState(false);
@@ -90,6 +97,7 @@ const UploadFromUrlButton = ({
       const file = (await fetchRemoteAsFile(
         url.toString(),
         resolveRemoteName(url),
+        maxFileSize,
       )) as FileUpload;
       file.uploadingProgress = 0;
       onFiles([file]);
@@ -99,15 +107,23 @@ const UploadFromUrlButton = ({
       // A cross-origin (CORS) failure rejects with a TypeError before the body
       // can be read; an HTML response means the URL is a page, not a file;
       // anything else is a bad/unavailable link.
-      toast.error(
-        t(
-          error instanceof RemoteNotAFileError
-            ? "upload.url.error.notAFile"
-            : error instanceof TypeError
-              ? "upload.url.error.cors"
-              : "upload.url.error.fetch",
-        ),
-      );
+      if (error instanceof RemoteFileTooLargeError) {
+        toast.error(
+          t("upload.url.error.tooLarge", {
+            maxSize: byteToHumanSizeString(maxFileSize),
+          }),
+        );
+      } else {
+        toast.error(
+          t(
+            error instanceof RemoteNotAFileError
+              ? "upload.url.error.notAFile"
+              : error instanceof TypeError
+                ? "upload.url.error.cors"
+                : "upload.url.error.fetch",
+          ),
+        );
+      }
     } finally {
       setLoading(false);
     }

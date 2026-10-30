@@ -223,7 +223,7 @@ const ShareList = ({
   fileNameLimit = 6,
   testId = "share-list",
 }: {
-  initialItems?: TrendingShare[];
+  initialItems?: TrendingShare[] | null;
   limit?: number;
   title?: string;
   description?: string;
@@ -244,9 +244,11 @@ const ShareList = ({
   const emptyText = emptyOverride ?? t("newFiles.custom.empty");
   const titleId = `${testId}-title`;
 
+  const hasInitialData = Array.isArray(initialItems);
   const [items, setItems] = useState<TrendingShare[]>(initialItems ?? []);
-  const [isLoading, setIsLoading] = useState(!initialItems?.length);
-  const [shouldLoad, setShouldLoad] = useState(!!initialItems?.length);
+  const [hasServerData, setHasServerData] = useState(hasInitialData);
+  const [isLoading, setIsLoading] = useState(!hasInitialData);
+  const [shouldLoad, setShouldLoad] = useState(hasInitialData);
   const [visibleCount, setVisibleCount] = useState(ROW_BATCH_SIZE);
   const sectionRef = useRef<HTMLElement>(null);
   const moreRef = useRef<HTMLDivElement>(null);
@@ -256,6 +258,7 @@ const ShareList = ({
     // listing, while `undefined` keeps the widget's lazy loader in charge.
     if (!Array.isArray(initialItems)) return;
     setItems(initialItems);
+    setHasServerData(true);
     setIsLoading(false);
     setShouldLoad(true);
   }, [initialItems]);
@@ -285,7 +288,7 @@ const ShareList = ({
   }, [shouldLoad]);
 
   useEffect(() => {
-    if (!shouldLoad || items.length > 0) return;
+    if (hasServerData || !shouldLoad || items.length > 0) return;
 
     let cancelled = false;
     setIsLoading(true);
@@ -301,9 +304,9 @@ const ShareList = ({
     return () => {
       cancelled = true;
     };
-  }, [shouldLoad, limit, loadItems]);
+  }, [hasServerData, shouldLoad, limit, loadItems]);
 
-  const showPlaceholder = isLoading || !shouldLoad;
+  const showPlaceholder = isLoading || (!shouldLoad && !hasServerData);
 
   useEffect(() => {
     setVisibleCount(ROW_BATCH_SIZE);

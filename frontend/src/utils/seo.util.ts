@@ -13,6 +13,22 @@ export const normalizeBaseUrl = (value?: string): string =>
   (value ?? "").trim().replace(/\/+$/, "");
 
 /**
+ * A configured localhost URL is a development placeholder, not a public site
+ * address. Production metadata must not publish `http://localhost:3000` as its
+ * canonical/OG URL; returning an empty base makes those tags relative to the
+ * page the visitor actually opened.
+ */
+export const getPublicBaseUrl = (value?: string): string => {
+  const base = normalizeBaseUrl(value);
+  if (
+    process.env.NODE_ENV === "production" &&
+    /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(base)
+  )
+    return "";
+  return base;
+};
+
+/**
  * Search results and social cards cut long descriptions off mid-sentence.
  * Keep the SEO text within the usual 160-character window and break on a word
  * boundary so the fallback metadata stays readable.

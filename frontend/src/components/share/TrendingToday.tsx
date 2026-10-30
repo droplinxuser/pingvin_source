@@ -335,7 +335,7 @@ const TrendingToday = ({
   showMediaTypeBadge = false,
   fileOnlyLayout = "files",
 }: {
-  initialItems?: TrendingShare[];
+  initialItems?: TrendingShare[] | null;
   embedded?: boolean;
   limit?: number;
   previewBlur?: 2 | 4 | 6;
@@ -365,9 +365,11 @@ const TrendingToday = ({
         ? ` ${classes.mediaSoftest}`
         : ""
   }`;
+  const hasInitialData = Array.isArray(initialItems);
   const [items, setItems] = useState<TrendingShare[]>(initialItems ?? []);
-  const [isLoading, setIsLoading] = useState(!initialItems?.length);
-  const [shouldLoad, setShouldLoad] = useState(!!initialItems?.length);
+  const [hasServerData, setHasServerData] = useState(hasInitialData);
+  const [isLoading, setIsLoading] = useState(!hasInitialData);
+  const [shouldLoad, setShouldLoad] = useState(hasInitialData);
   const [visibleCount, setVisibleCount] = useState(CARD_BATCH_SIZE);
   const sectionRef = useRef<HTMLElement>(null);
   const moreRef = useRef<HTMLDivElement>(null);
@@ -377,6 +379,7 @@ const TrendingToday = ({
     // array (including an empty result set) is the authoritative server data.
     if (!Array.isArray(initialItems)) return;
     setItems(initialItems);
+    setHasServerData(true);
     setIsLoading(false);
     setShouldLoad(true);
   }, [initialItems]);
@@ -412,11 +415,12 @@ const TrendingToday = ({
   }, [shouldLoad]);
 
   useEffect(() => {
-    if (!shouldLoad || items.length > 0) return;
+    if (hasServerData || !shouldLoad || items.length > 0) return;
 
     // An SSR timeout or an empty edge response must not lock the page into the
     // empty state. Retry in the browser and only show "empty" once that
-    // request has completed.
+    // request has completed. A server-provided empty array is authoritative
+    // and skips this branch.
     let cancelled = false;
     setIsLoading(true);
     loadItems(limit)
@@ -431,9 +435,9 @@ const TrendingToday = ({
     return () => {
       cancelled = true;
     };
-  }, [shouldLoad, limit, loadItems]);
+  }, [hasServerData, shouldLoad, limit, loadItems]);
 
-  const showPlaceholder = isLoading || !shouldLoad;
+  const showPlaceholder = isLoading || (!shouldLoad && !hasServerData);
 
   // A new result set always starts with one batch; changing the page/listing
   // must not inherit the number of cards revealed on the previous list.

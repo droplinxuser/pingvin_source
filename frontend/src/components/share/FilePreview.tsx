@@ -24,16 +24,22 @@ import LazyVideo from "../core/LazyVideo";
 // and the action row so images and videos never make the dialog scroll.
 const MEDIA_MAX_HEIGHT = "calc(90dvh - 160px)";
 
+// Text previews parse markdown synchronously; a large log or text file would
+// freeze the tab. Larger files stay downloadable instead.
+const TEXT_PREVIEW_MAX_BYTES = 1024 * 1024;
+
 const FilePreviewContext = React.createContext<{
   shareId: string;
   fileId: string;
   fileName: string;
+  fileSize: string;
   mimeType: string;
   setIsNotSupported: Dispatch<SetStateAction<boolean>>;
 }>({
   shareId: "",
   fileId: "",
   fileName: "",
+  fileSize: "",
   mimeType: "",
   setIsNotSupported: () => {},
 });
@@ -42,11 +48,13 @@ const FilePreview = ({
   shareId,
   fileId,
   fileName,
+  fileSize,
   mimeType,
 }: {
   shareId: string;
   fileId: string;
   fileName: string;
+  fileSize: string;
   mimeType: string;
 }) => {
   const t = useTranslate();
@@ -95,7 +103,14 @@ const FilePreview = ({
   return (
     <Stack>
       <FilePreviewContext.Provider
-        value={{ shareId, fileId, fileName, mimeType, setIsNotSupported }}
+        value={{
+          shareId,
+          fileId,
+          fileName,
+          fileSize,
+          mimeType,
+          setIsNotSupported,
+        }}
       >
         <FileDecider />
       </FilePreviewContext.Provider>
@@ -199,13 +214,15 @@ const ImagePreview = () => {
 };
 
 const TextPreview = () => {
-  const { shareId, fileId } = React.useContext(FilePreviewContext);
+  const { shareId, fileId, fileSize } = React.useContext(FilePreviewContext);
   const [text, setText] = useState<string>("");
   const [failed, setFailed] = useState(false);
   const { colorScheme } = useMantineTheme();
   const t = useTranslate();
+  const tooLarge = parseInt(fileSize, 10) > TEXT_PREVIEW_MAX_BYTES;
 
   useEffect(() => {
+    if (tooLarge) return;
     const controller = new AbortController();
     setFailed(false);
     api
@@ -217,8 +234,14 @@ const TextPreview = () => {
         if (!controller.signal.aborted) setFailed(true);
       });
     return () => controller.abort();
-  }, [shareId, fileId]);
+  }, [shareId, fileId, tooLarge]);
 
+  if (tooLarge)
+    return (
+      <Text color="dimmed">
+        {t("share.modal.file-preview.custom.too-large")}
+      </Text>
+    );
   if (failed) return <Text color="dimmed">{t("common.error")}</Text>;
 
   const options: MarkdownToJSX.Options = {

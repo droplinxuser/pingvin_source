@@ -1,10 +1,6 @@
 import type { IncomingMessage } from "http";
 import Config from "../types/config.type";
-import {
-  ShareSeo,
-  TrendingCountry,
-  TrendingShare,
-} from "../types/share.type";
+import { ShareSeo, TrendingCountry, TrendingShare } from "../types/share.type";
 import { getConfiguredSiteUrl, normalizeBaseUrl } from "./seo.util";
 
 const ERROR_CACHE_MS = 5_000;
@@ -85,9 +81,9 @@ export async function fetchShareList(
     const response = await fetch(
       `${apiUrl}/api/shares/${path}?limit=${limit}`,
       {
-        // The API response is already public and edge-cacheable; reuse it in
-        // Next's data cache too when the HTML cache is bypassed.
-        next: { revalidate: 60 },
+        // The API response is public and edge-cacheable. getServerSideProps
+        // does not populate Next's fetch cache, so this is a plain request;
+        // the backend/edge TTL is the actual cache.
         signal: AbortSignal.timeout(2000),
       },
     );
@@ -110,7 +106,6 @@ export async function fetchTrendingCountries(
 ): Promise<TrendingCountry[] | null> {
   try {
     const response = await fetch(`${apiUrl}/api/shares/trending/countries`, {
-      next: { revalidate: 300 },
       signal: AbortSignal.timeout(2000),
     });
     if (!response.ok) return null;

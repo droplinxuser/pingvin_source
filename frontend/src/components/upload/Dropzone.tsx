@@ -225,7 +225,11 @@ const Dropzone = ({
               />
             </Button>
           )}
-          <UploadFromUrlButton onFiles={handleFiles} disabled={isUploading} />
+          <UploadFromUrlButton
+            onFiles={handleFiles}
+            disabled={isUploading}
+            maxFileSize={maxFileSize}
+          />
         </Group>
       </Center>
     </div>

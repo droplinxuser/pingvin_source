@@ -20,19 +20,19 @@ export async function getServerSideProps({
   // deployment would otherwise make every client transition render an error.
   // A failed backend request (`null`) is never cached either.
   setListingCacheHeaders(req, res, initialItems !== null);
-  return { props: { initialItems: initialItems ?? [] } };
+  return { props: { initialItems } };
 }
 
 const NewMedia = ({
-  initialItems = [],
+  initialItems,
 }: {
-  initialItems?: TrendingShare[];
+  initialItems?: TrendingShare[] | null;
 }) => {
   const t = useTranslate();
   const { siteName, baseUrl } = useSiteMeta();
   const description = t("seo.custom.newMedia.description");
   const jsonLd = buildShareListCollectionPage({
-    items: initialItems,
+    items: initialItems ?? [],
     name: t("newMedia.custom.title"),
     description,
     path: "/new-media",

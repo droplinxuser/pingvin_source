@@ -16,19 +16,19 @@ export async function getServerSideProps({
   const apiURL = process.env.API_URL || "http://localhost:8080";
   const initialItems = await fetchShareList(apiURL, "recent-files", 200);
   setListingCacheHeaders(req, res, initialItems !== null);
-  return { props: { initialItems: initialItems ?? [] } };
+  return { props: { initialItems } };
 }
 
 const NewFiles = ({
-  initialItems = [],
+  initialItems,
 }: {
-  initialItems?: TrendingShare[];
+  initialItems?: TrendingShare[] | null;
 }) => {
   const t = useTranslate();
   const { siteName, baseUrl } = useSiteMeta();
   const description = t("seo.custom.newFiles.description");
   const jsonLd = buildShareListCollectionPage({
-    items: initialItems,
+    items: initialItems ?? [],
     name: t("newFiles.custom.title"),
     description,
     path: "/new-files",

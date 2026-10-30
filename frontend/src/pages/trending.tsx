@@ -33,24 +33,24 @@ export async function getServerSideProps({
   );
   return {
     props: {
-      initialItems: initialItems ?? [],
+      initialItems,
       initialCountries: initialCountries ?? [],
     },
   };
 }
 
 const Trending = ({
-  initialItems = [],
+  initialItems,
   initialCountries = [],
 }: {
-  initialItems?: TrendingShare[];
+  initialItems?: TrendingShare[] | null;
   initialCountries?: TrendingCountry[];
 }) => {
   const t = useTranslate();
   const { siteName, baseUrl } = useSiteMeta();
   const description = t("seo.custom.trending.description");
   const jsonLd = buildShareListCollectionPage({
-    items: initialItems,
+    items: initialItems ?? [],
     name: t("trending.custom.title"),
     description,
     path: "/trending",

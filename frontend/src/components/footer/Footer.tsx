@@ -164,13 +164,30 @@ const Footer = () => {
     let timeout: ReturnType<typeof setTimeout> | undefined;
 
     // Hash-only changes are the same page; keep the current numbers instead
-    // of flashing the skeleton and sending another page view.
-    const path = router.asPath.split("#")[0];
-    if (lastTrackedPath.current === path) return;
-    lastTrackedPath.current = path;
+    // of flashing the skeleton and sending another page view. The one-shot
+    // `file` download hint and `recipient` link marker are not page identity
+    // either: stripping them after a /d/ download must not count a second view.
+    const asPath = router.asPath.split("#")[0];
+    let path = asPath;
+    try {
+      const url = new URL(asPath, "http://internal.invalid");
+      url.searchParams.delete("file");
+      url.searchParams.delete("recipient");
+      path = `${url.pathname}${url.search}`;
+    } catch {
+      // Keep the raw path when Next returns something URL() cannot parse.
+    }
 
     const loadStats = async () => {
       if (cancelled) return;
+      // Mark the path only once the beacon actually runs. The /d/ page
+      // replaces its URL shortly after mount, and the cleanup for that route
+      // change cancels a still-pending idle callback; if the marker were set
+      // before the callback, the replacement URL would look "already counted"
+      // and the visit would never be recorded.
+      if (lastTrackedPath.current === path) return;
+      lastTrackedPath.current = path;
+
       let result: SystemStats | null = null;
       try {
         result = await systemService.recordPageView();

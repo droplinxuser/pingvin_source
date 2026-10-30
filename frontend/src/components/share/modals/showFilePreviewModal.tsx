@@ -102,6 +102,7 @@ const FilePreviewDialog = ({
           shareId={shareId}
           fileId={activeFile.id}
           fileName={activeFile.name}
+          fileSize={activeFile.size}
           mimeType={getFileMimeType(activeFile.name)}
         />
         {canNavigate && (
