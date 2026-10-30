@@ -237,19 +237,28 @@ const getFileText = async (
   ).data as string;
 };
 
+const downloadCacheBuster = (url: string, enabled: boolean): string => {
+  if (!enabled) return url;
+  return `${url}${url.includes("?") ? "&" : "?"}t=${Date.now()}-${Math.random()
+    .toString(36)
+    .slice(2, 8)}`;
+};
+
 const downloadFile = async (
   shareId: string,
   fileId: string,
   recipientId?: string,
   fileName?: string,
+  cacheBust = false,
 ) => {
   const link = document.createElement("a");
-  link.href = `${window.location.origin}${getShareFileUrl(shareId, fileId, {
-    download: true,
-    recipientId,
-  })}`;
-  // The explicit attribute keeps a blocked/pending download from becoming a
-  // navigation that reloads the share page or opens extra tabs.
+  link.href = `${window.location.origin}${downloadCacheBuster(
+    getShareFileUrl(shareId, fileId, {
+      download: true,
+      recipientId,
+    }),
+    cacheBust,
+  )}`;
   link.setAttribute("download", fileName || "");
   link.rel = "noopener";
   link.style.display = "none";
@@ -286,12 +295,16 @@ const downloadZip = async (
   shareId: string,
   recipientId?: string,
   fileIds?: string[],
+  cacheBust = false,
 ) => {
   const link = document.createElement("a");
-  link.href = `${window.location.origin}${getShareZipUrl(shareId, {
-    recipientId,
-    fileIds,
-  })}`;
+  link.href = `${window.location.origin}${downloadCacheBuster(
+    getShareZipUrl(shareId, {
+      recipientId,
+      fileIds,
+    }),
+    cacheBust,
+  )}`;
   link.setAttribute("download", "");
   link.rel = "noopener";
   link.style.display = "none";

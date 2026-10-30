@@ -11,10 +11,11 @@ export const openFilePreview = (
   file: FileMetaData,
   modals: ModalsContextProps,
   files?: FileMetaData[],
+  cacheBust = false,
 ) => {
   void import("../components/share/modals/showFilePreviewModal").then(
     ({ default: showFilePreviewModal }) => {
-      showFilePreviewModal(shareId, file, modals, files);
+      showFilePreviewModal(shareId, file, modals, files, cacheBust);
     },
   );
 };

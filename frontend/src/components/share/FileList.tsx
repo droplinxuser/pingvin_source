@@ -410,6 +410,7 @@ const FileList = ({
                 labelId="share.custom.files.download-selected"
                 size="xs"
                 disabled={downloadLimitReached}
+                cacheBust={!!maxDownloads}
               />
             )}
           </Group>
@@ -585,7 +586,13 @@ const FileList = ({
                           size={28}
                           aria-label={t("common.button.preview")}
                           onClick={() =>
-                            openFilePreview(share.id, file, modals, mediaFiles)
+                            openFilePreview(
+                              share.id,
+                              file,
+                              modals,
+                              mediaFiles,
+                              !!maxDownloads,
+                            )
                           }
                         >
                           <TbEye size={16} />
@@ -630,6 +637,7 @@ const FileList = ({
                             file.id,
                             recipientId,
                             file.name,
+                            !!maxDownloads,
                           );
                         }}
                       >

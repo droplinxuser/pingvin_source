@@ -1,10 +1,29 @@
 import { Anchor, Title, useMantineTheme } from "@mantine/core";
 import Markdown from "markdown-to-jsx";
+import { HTMLAttributes, ReactNode } from "react";
 import { FormattedMessage } from "react-intl";
 import Meta from "../Meta";
 import useSiteMeta from "../../hooks/siteMeta.hook";
 import useTranslate from "../../hooks/useTranslate.hook";
 import { buildBreadcrumbList } from "../../utils/seo.util";
+
+/** Wide markdown tables scroll inside the legal page instead of widening it. */
+const LegalTable = ({
+  children,
+  ...props
+}: HTMLAttributes<HTMLTableElement> & { children?: ReactNode }) => (
+  <div
+    style={{
+      maxWidth: "100%",
+      overflowX: "auto",
+      WebkitOverflowScrolling: "touch",
+    }}
+  >
+    <table {...props} className="md">
+      {children}
+    </table>
+  </div>
+);
 
 /**
  * Shared layout for the configured imprint and privacy texts. Both pages only
@@ -62,9 +81,7 @@ const LegalDocument = ({
               },
             },
             table: {
-              props: {
-                className: "md",
-              },
+              component: LegalTable,
             },
             a: {
               props: {

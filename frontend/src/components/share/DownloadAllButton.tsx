@@ -21,6 +21,7 @@ const DownloadAllButton = ({
   labelId = "share.button.download-all",
   size,
   disabled = false,
+  cacheBust = false,
 }: {
   shareId: string;
   recipientId?: string;
@@ -28,6 +29,7 @@ const DownloadAllButton = ({
   labelId?: string;
   size?: MantineSize;
   disabled?: boolean;
+  cacheBust?: boolean;
 }) => {
   const config = useConfig();
   const modals = useModals();
@@ -63,6 +65,7 @@ const DownloadAllButton = ({
           shareId,
           recipientId,
           files.map((file) => file.id),
+          cacheBust,
         );
         return;
       }
@@ -72,6 +75,7 @@ const DownloadAllButton = ({
           file.id,
           recipientId,
           file.name,
+          cacheBust,
         );
         if (index < files.length - 1) {
           await new Promise((resolve) => setTimeout(resolve, DOWNLOAD_GAP_MS));

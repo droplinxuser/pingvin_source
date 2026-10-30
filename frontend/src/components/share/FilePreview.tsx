@@ -50,12 +50,14 @@ const FilePreview = ({
   fileName,
   fileSize,
   mimeType,
+  cacheBust = false,
 }: {
   shareId: string;
   fileId: string;
   fileName: string;
   fileSize: string;
   mimeType: string;
+  cacheBust?: boolean;
 }) => {
   const t = useTranslate();
   const [isNotSupported, setIsNotSupported] = useState(false);
@@ -83,7 +85,13 @@ const FilePreview = ({
           size="lg"
           aria-label={t("common.button.download")}
           onClick={() =>
-            void shareService.downloadFile(shareId, fileId, undefined, fileName)
+            void shareService.downloadFile(
+              shareId,
+              fileId,
+              undefined,
+              fileName,
+              cacheBust,
+            )
           }
         >
           <TbDownload size={18} />

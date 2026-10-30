@@ -196,6 +196,7 @@ const ShareActions = ({
               recipientId={recipientId}
               files={share.files}
               disabled={downloadLimitReached}
+              cacheBust={!!maxDownloads}
             />
           )
         : (fileCount ?? 0) > 1 && (

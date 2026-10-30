@@ -447,7 +447,13 @@ const SharePage = ({
     );
     if (!file) return;
     autoDownloadedRef.current = true;
-    void shareService.downloadFile(share.id, file.id, recipientId, file.name);
+    void shareService.downloadFile(
+      share.id,
+      file.id,
+      recipientId,
+      file.name,
+      !!share.maxDownloads,
+    );
     const params = new URLSearchParams();
     if (recipientId) params.set("recipient", recipientId);
     const suffix = params.toString();

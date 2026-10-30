@@ -122,7 +122,8 @@ the matching `utils/*.util.ts` files.
   JSON-LD is built once by `buildShareListCollectionPage`; listing cache
   headers are set by `setListingCacheHeaders`.
 - The footer uses slightly larger muted text and vertical padding on links for
-  comfortable touch targets.
+  comfortable touch targets. Legal markdown tables scroll inside their own
+  container, so the cookie table cannot widen a 390 px privacy page.
 - Large shares (>12 files) get a compact search field above the file table.
   Filtering is client-side and uses `useDeferredValue`, so typing stays
   responsive while a few thousand rows are compared. The table header, empty
@@ -383,7 +384,10 @@ Origin responses set `Cache-Control`, `CDN-Cache-Control` and
   path: their files and ZIPs are `no-store`, their thumbnails/previews are
   private, and `publicShareWhere()`/`isPublicShare()` keep them out of recent,
   trending, search, sitemaps and SEO. The cap must be checked at the origin, so
-  it cannot be bypassed by an edge hit.
+  it cannot be bypassed by an edge hit. The browser download URL also gets a
+  per-click `t=` value: the CDN's browser-cache-TTL setting can rewrite the
+  browser-facing `Cache-Control`, and a stable URL would otherwise let a second
+  click come from the browser cache without consuming a slot.
 - Share thumbnails and avatars are public for one day, versioned through the
   URL (`?v=<updatedAt>` / `<avatarUpdatedAt>`) and `no-store`/`private` when the
   content is protected. The proxy may lengthen browser TTLs for image-looking
