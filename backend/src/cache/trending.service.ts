@@ -17,15 +17,14 @@ import { ValkeyClient, ValkeyService } from "./valkey.service";
 const META_KEY_PREFIX = "pingvin:trending:meta:";
 const RANK_KEY_PREFIX = "pingvin:trending:rank:";
 const GEO_KEY_PREFIX = "pingvin:trending:geo:hour:";
-const WINDOW_DAYS = 30;
-// Views and country shares both use the same 24 hourly geo hashes. The 30-day
-// window below still controls which shares may appear at all.
+// Views and country shares both use the same 24 hourly geo hashes. A share can
+// be any age; only a view inside this window makes it eligible.
 const HOUR_WINDOW = 24;
 const UNKNOWN_COUNTRY = "XX";
-const DAY_MS = 24 * 60 * 60 * 1000;
 const HOUR_MS = 60 * 60 * 1000;
-const META_TTL_SECONDS = (WINDOW_DAYS + 1) * 24 * 60 * 60;
-const MAX_SHARE_AGE_MS = WINDOW_DAYS * DAY_MS;
+// Refreshed on every view, so a share that is still being viewed keeps its
+// card metadata while it remains inside the 24-hour ranking window.
+const META_TTL_SECONDS = (HOUR_WINDOW + 1) * 60 * 60;
 const MAX_DESCRIPTION_LENGTH = 240;
 const CANDIDATE_LIMIT = 400;
 const DEFAULT_RESULT_LIMIT = 12;
@@ -109,9 +108,10 @@ type TrendingSource = {
 };
 
 /**
- * Ranks public shares from the last thirty days by their total view count.
- * Both the counters and the ranking are kept in Valkey. SQLite is only read
- * once to backfill metadata written before a field was added.
+ * Ranks public shares by views from the last 24 hours. A share can be any age;
+ * only a view inside the window makes it eligible. Both the counters and the
+ * ranking are kept in Valkey. SQLite is only read once to backfill metadata
+ * written before a field was added.
  */
 @Injectable()
 export class TrendingService {
@@ -129,13 +129,11 @@ export class TrendingService {
 
   async recordView(share: TrendingSource, country?: string): Promise<void> {
     const code = normalizeCountryCode(country);
-    const recent =
-      Date.now() - new Date(share.createdAt).getTime() <= MAX_SHARE_AGE_MS;
-    const media = recent ? findPreview(share.files) : undefined;
+    const media = findPreview(share.files);
     const preview = media?.preview;
-    // A country-only view still updates the country total even when the share
-    // has no preview or has left the thirty-day window. The per-share ranking
-    // remains limited to shares that can actually be rendered.
+    // A country-only view still updates the country total when the share has
+    // no preview. The per-share ranking remains limited to shares that can
+    // actually be rendered, regardless of when they were created.
     if (!preview && !code) return;
 
     const meta: TrendingMeta | undefined = preview
@@ -151,11 +149,13 @@ export class TrendingService {
         // One metadata entry per share instead of one copy in every hour
         // bucket. The card payload is immutable until the share is edited
         // (which deletes the key), so NX avoids rewriting it on every view.
-        // The thirty-one-day TTL still covers the thirty-day ranking window.
-        multi.set(metaKeyFor(share.id), JSON.stringify(meta), {
+        // EXPIRE still refreshes the 25-hour TTL on each view.
+        const metaKey = metaKeyFor(share.id);
+        multi.set(metaKey, JSON.stringify(meta), {
           EX: META_TTL_SECONDS,
           NX: true,
         });
+        multi.expire(metaKey, META_TTL_SECONDS);
       }
       if (meta || code) {
         // One hourly hash carries both the country totals and the per-share
@@ -185,7 +185,7 @@ export class TrendingService {
     if (this.cached && Date.now() - this.cached.at < RESULT_CACHE_MS)
       return this.cached.items.slice(0, resultLimit);
 
-    // Coalesce a cold-cache burst into one Valkey read. The 30-second result
+    // Coalesce a cold-cache burst into one Valkey read. The 60-second result
     // cache normally makes this a non-issue, but a restart or expiry can
     // otherwise produce one union per concurrent request.
     const pendingItems = await (this.pendingRanking ?? this.startRankingRead());
@@ -415,7 +415,7 @@ export class TrendingService {
 
     const ranked = [...views.entries()]
       .map(([value, score]) => ({ value, score }))
-      .sort((a, b) => b.score - a.score || b.value.localeCompare(a.value))
+      .sort((a, b) => b.score - a.score || a.value.localeCompare(b.value))
       .slice(0, CANDIDATE_LIMIT);
     if (ranked.length === 0) return [];
 
@@ -440,12 +440,10 @@ export class TrendingService {
     const legacyIds = legacyMetaIds(ids, metas);
     if (legacyIds.length > 0) await this.backfill(client, legacyIds, metas);
 
-    const now = Date.now();
     const items: { item: TrendingShare; downloads: number }[] = [];
     for (const { value: id, score } of ranked) {
       const meta = metas.get(id);
       if (!meta) continue;
-      if (now - new Date(meta.createdAt).getTime() > MAX_SHARE_AGE_MS) continue;
 
       items.push({
         item: toTrendingShare(meta, Number(score)),
@@ -465,14 +463,30 @@ export class TrendingService {
     client: ValkeyClient,
   ): Promise<TrendingCountry[]> {
     const hour = currentHour();
+    const downloadRankKey = `${RANK_KEY_PREFIX}country-downloads:${process.pid}:${Date.now()}:${Math.random()
+      .toString(36)
+      .slice(2)}`;
     const multi = client.multi();
     for (let offset = 0; offset < HOUR_WINDOW; offset++)
       multi.hGetAll(geoKeyFor(hour - offset));
+    multi.zUnionStore(downloadRankKey, recentDownloadHourKeys(), {
+      AGGREGATE: "SUM",
+    });
+    multi.zRangeWithScores(downloadRankKey, 0, -1);
+    multi.del(downloadRankKey);
+    const replies = await multi.exec();
 
-    const buckets = (await multi.exec()) as unknown as (Record<
-      string,
-      string
-    > | null)[];
+    const buckets = (replies?.slice(0, HOUR_WINDOW) ??
+      []) as unknown as (Record<string, string> | null)[];
+    const downloadRanked = replies?.[HOUR_WINDOW + 1] as unknown as
+      | {
+          value: string;
+          score: number;
+        }[]
+      | null;
+    const downloads = new Map(
+      (downloadRanked ?? []).map((item) => [item.value, Number(item.score)]),
+    );
     const views = new Map<string, number>();
     const shares = new Map<string, Map<string, number>>();
 
@@ -521,7 +535,9 @@ export class TrendingService {
       ]
         .sort(
           ([aId, aViews], [bId, bViews]) =>
-            bViews - aViews || aId.localeCompare(bId),
+            bViews - aViews ||
+            (downloads.get(bId) ?? 0) - (downloads.get(aId) ?? 0) ||
+            aId.localeCompare(bId),
         )
         .slice(0, GEO_SHARE_CANDIDATES)
         .map(([id, count]) => ({ id, views: count }));
@@ -545,7 +561,6 @@ export class TrendingService {
     const legacyIds = legacyMetaIds([...ids], metas);
     if (legacyIds.length > 0) await this.backfill(client, legacyIds, metas);
 
-    const now = Date.now();
     return rankedCountries
       .map(({ country, views: countryViews, shares: candidates }) => ({
         country,
@@ -554,8 +569,6 @@ export class TrendingService {
           .flatMap(({ id, views: shareViews }) => {
             const meta = metas.get(id);
             if (!meta) return [];
-            if (now - new Date(meta.createdAt).getTime() > MAX_SHARE_AGE_MS)
-              return [];
             return [toTrendingShare(meta, shareViews)];
           })
           .slice(0, GEO_SHARE_LIMIT),
@@ -592,7 +605,6 @@ export class TrendingService {
     const multi = client.multi();
     const found = new Set<string>();
     let writes = 0;
-    const now = Date.now();
 
     const remove = (id: string) => {
       metas.delete(id);
@@ -606,7 +618,7 @@ export class TrendingService {
         share.uploadLocked && !share.removedReason
           ? findPreview(share.files)
           : undefined;
-      if (!media || now - share.createdAt.getTime() > MAX_SHARE_AGE_MS) {
+      if (!media) {
         remove(share.id);
         continue;
       }
@@ -623,7 +635,7 @@ export class TrendingService {
       writes += 1;
     }
 
-    // Deleted shares may leave a ranking score behind until the daily buckets
+    // Deleted shares may leave a ranking count behind until the hourly buckets
     // expire; drop their metadata while the IDs are already known.
     for (const id of ids) if (!found.has(id)) remove(id);
 

@@ -62,6 +62,10 @@ function readReplies(buckets, downloads = []) {
   return [...buckets, 1, downloads, 1];
 }
 
+function readCountryReplies(buckets, downloads = []) {
+  return [...buckets, 1, downloads, 1];
+}
+
 const now = Date.now();
 const recent = new Date(now - 60 * 60 * 1000).toISOString();
 const old = new Date(now - 31 * 24 * 60 * 60 * 1000).toISOString();
@@ -82,7 +86,7 @@ function meta(id, _views, createdAt, kind = "image") {
   });
 }
 
-test("ranks the last 24 hours by views and filters stale shares", async () => {
+test("ranks the last 24 hours by views and includes old shares", async () => {
   const mock = createMockValkey(
     () =>
       readReplies(
@@ -106,12 +110,14 @@ test("ranks the last 24 hours by views and filters stale shares", async () => {
 
   assert.deepEqual(
     items.map((item) => item.id),
-    ["a", "b"],
+    ["a", "old", "b"],
   );
   assert.equal(items[0].views, 40);
-  assert.equal(items[1].views, 20);
-  assert.equal(items[1].previewKind, "video");
-  assert.equal(items[1].previewFileId, "file-b");
+  assert.equal(items[1].views, 30);
+  assert.equal(items[1].createdAt, old);
+  assert.equal(items[2].views, 20);
+  assert.equal(items[2].previewKind, "video");
+  assert.equal(items[2].previewFileId, "file-b");
   assert.equal(items[0].description, "Description for a");
   assert.equal(items[0].fileCount, 3);
   assert.equal(items[0].size, 1234);
@@ -212,7 +218,7 @@ test("returns twelve by default and caps the full list at two hundred", async ()
   assert.equal(capped.at(-1).id, "s119");
 });
 
-test("records only recent public shares with image or video media", async () => {
+test("records public shares with image or video media regardless of age", async () => {
   const mock = createMockValkey(() => []);
   const service = createService(mock);
   const base = {
@@ -231,10 +237,10 @@ test("records only recent public shares with image or video media", async () => 
 
   await service.recordView({
     ...base,
-    createdAt: new Date(Date.now() - 31 * 24 * 60 * 60 * 1000),
-    files: [{ id: "image", name: "photo.jpg", size: 10 }],
+    createdAt: new Date(Date.now() - 365 * 24 * 60 * 60 * 1000),
+    files: [{ id: "old-image", name: "old.jpg", size: 10 }],
   });
-  assert.equal(mock.calls.length, 0);
+  assert.equal(mock.calls.length, 1);
 
   await service.recordView({
     ...base,
@@ -243,24 +249,26 @@ test("records only recent public shares with image or video media", async () => 
       { id: "image", name: "photo.jpg", size: 3400 },
     ],
   });
-  assert.equal(mock.calls.length, 1);
+  assert.equal(mock.calls.length, 2);
 
-  const methods = mock.calls[0].map(([method]) => method);
-  assert.deepEqual(methods, ["set", "hIncrBy", "expire"]);
+  const queue = mock.calls[1];
+  const methods = queue.map(([method]) => method);
+  assert.deepEqual(methods, ["set", "expire", "hIncrBy", "expire"]);
   const hour = Math.floor(Date.now() / (60 * 60 * 1000));
-  assert.equal(mock.calls[0][0][1][2].EX, 31 * 24 * 60 * 60);
-  assert.equal(mock.calls[0][0][1][2].NX, true);
-  assert.deepEqual(mock.calls[0][1][1], [
+  assert.equal(queue[0][1][2].EX, 25 * 60 * 60);
+  assert.equal(queue[0][1][2].NX, true);
+  assert.deepEqual(queue[1][1], ["pingvin:trending:meta:share", 25 * 60 * 60]);
+  assert.deepEqual(queue[2][1], [
     `pingvin:trending:geo:hour:${hour}`,
     "XX:share",
     1,
   ]);
-  assert.deepEqual(mock.calls[0][2][1], [
+  assert.deepEqual(queue[3][1], [
     `pingvin:trending:geo:hour:${hour}`,
     25 * 60 * 60,
   ]);
 
-  const stored = JSON.parse(mock.calls[0][0][1][1]);
+  const stored = JSON.parse(queue[0][1][1]);
   assert.equal(stored.previewFileId, "video");
   assert.equal(stored.previewKind, "video");
   assert.equal(stored.description, "First line second line");
@@ -492,7 +500,7 @@ test("returns the ranked countries and their top shares", async () => {
   };
   buckets[1] = { "PH:b": "2", "US:a": "1" };
   const mock = createMockValkey(
-    () => buckets,
+    () => readCountryReplies(buckets),
     [
       meta("a", 10, recent),
       meta("b", 5, recent),
@@ -525,6 +533,45 @@ test("returns the ranked countries and their top shares", async () => {
   assert.equal(countries[4].shares[0].id, "e");
 });
 
+test("includes old shares with recent country views", async () => {
+  const buckets = Array.from({ length: 24 }, () => null);
+  buckets[0] = { "c:PH": "1", "PH:old": "1" };
+  const mock = createMockValkey(
+    () => readCountryReplies(buckets),
+    [meta("old", 1, old)],
+  );
+  const service = createService(mock);
+
+  const countries = await service.getTrendingCountries();
+
+  assert.equal(countries[0].country, "PH");
+  assert.deepEqual(
+    countries[0].shares.map((share) => share.id),
+    ["old"],
+  );
+});
+
+test("uses 24-hour downloads for country tie-breaks", async () => {
+  const buckets = Array.from({ length: 24 }, () => null);
+  buckets[0] = { "c:PH": "2", "PH:a": "5", "PH:b": "5" };
+  const mock = createMockValkey(
+    () =>
+      readCountryReplies(buckets, [
+        { value: "a", score: 1 },
+        { value: "b", score: 3 },
+      ]),
+    [meta("a", 5, recent), meta("b", 5, recent)],
+  );
+  const service = createService(mock);
+
+  const [country] = await service.getTrendingCountries();
+
+  assert.deepEqual(
+    country.shares.map((share) => share.id),
+    ["b", "a"],
+  );
+});
+
 test("keeps country panels filled when cached shares disappear", async () => {
   const buckets = Array.from({ length: 24 }, () => null);
   const gone = Array.from({ length: 10 }, (_, index) => `gone-${index}`);
@@ -541,7 +588,7 @@ test("keeps country panels filled when cached shares disappear", async () => {
   // Only the live shares still have metadata; the deleted ones leave their
   // higher scores behind until the daily buckets expire.
   const mock = createMockValkey(
-    () => buckets,
+    () => readCountryReplies(buckets),
     live.map((id, index) => meta(id, index, recent)),
   );
   const service = createService(mock);
@@ -578,7 +625,7 @@ test("caps the country list at ten", async () => {
     ]),
   );
   const mock = createMockValkey(
-    () => buckets,
+    () => readCountryReplies(buckets),
     codes.map((_, index) => meta(`s${index}`, 1, recent)),
   );
   const service = createService(mock);
@@ -606,7 +653,7 @@ test("limits each country to ten shares", async () => {
   const metas = Array.from({ length: 10 }, (_, index) =>
     meta(`s${index}`, 100 - index, recent),
   );
-  const mock = createMockValkey(() => buckets, metas);
+  const mock = createMockValkey(() => readCountryReplies(buckets), metas);
   const service = createService(mock);
 
   const [country] = await service.getTrendingCountries();
@@ -618,7 +665,9 @@ test("limits each country to ten shares", async () => {
 });
 
 test("caches the country aggregate for five minutes", async () => {
-  const mock = createMockValkey(() => Array.from({ length: 24 }, () => null));
+  const mock = createMockValkey(() =>
+    readCountryReplies(Array.from({ length: 24 }, () => null)),
+  );
   const service = createService(mock);
 
   assert.deepEqual(await service.getTrendingCountries(), []);
