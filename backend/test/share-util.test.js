@@ -4,6 +4,7 @@ const {
   isShareExpired,
   isPublicShare,
   isAccessPublicShare,
+  isShareLimitReached,
   parseSizeLimit,
   resolveShareSizeLimit,
 } = require("../dist/src/share/share.util.js");
@@ -69,4 +70,22 @@ test("passwords, view caps and private reverse shares block public access", () =
   );
   assert.equal(isPublicShare({}), true);
   assert.equal(isAccessPublicShare({}), true);
+});
+
+test("detects exhausted view and download caps, including one-time links", () => {
+  assert.equal(isShareLimitReached({ views: 1, maxViews: 2 }), false);
+  assert.equal(isShareLimitReached({ views: 2, maxViews: 2 }), true);
+  assert.equal(
+    isShareLimitReached({ downloadCount: 1, maxDownloads: 2 }),
+    false,
+  );
+  assert.equal(
+    isShareLimitReached({ downloadCount: 2, maxDownloads: 2 }),
+    true,
+  );
+  assert.equal(
+    isShareLimitReached({ downloadCount: 1, maxDownloads: 1 }),
+    true,
+  );
+  assert.equal(isShareLimitReached({ views: 99, maxViews: 0 }), false);
 });

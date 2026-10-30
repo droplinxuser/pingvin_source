@@ -14,6 +14,10 @@ export const shareWriteLock = new KeyedLock();
 // uploads expire much sooner.
 export const SHARE_EXPIRATION = "100-days";
 export const GUEST_SHARE_EXPIRATION = "10-days";
+// A share that reaches a view/download cap keeps serving the action that
+// consumed the final slot, then expires. The short grace lets an in-flight
+// ZIP/file stream and the last visitor's preview requests finish.
+export const SHARE_LIMIT_GRACE_MS = 5 * 60 * 1000;
 
 type ShareCreatorSource = {
   creatorId?: string | null;
@@ -49,6 +53,25 @@ export function isShareExpired(
       ? expiration.getTime()
       : new Date(expiration).getTime();
   return time !== 0 && Number.isFinite(time) && time <= now;
+}
+
+/**
+ * A share has reached a hard access limit when its view or download counter is
+ * at the configured maximum. The epoch expiration is irrelevant here: reaching
+ * a limit always burns the share.
+ */
+export function isShareLimitReached(share: {
+  views?: number | null;
+  maxViews?: number | null;
+  maxDownloads?: number | null;
+  downloadCount?: number | null;
+}): boolean {
+  const maxViews = Number(share.maxViews ?? 0);
+  const maxDownloads = Number(share.maxDownloads ?? 0);
+  return (
+    (maxViews > 0 && Number(share.views ?? 0) >= maxViews) ||
+    (maxDownloads > 0 && Number(share.downloadCount ?? 0) >= maxDownloads)
+  );
 }
 
 type ShareVisibility = {

@@ -43,8 +43,10 @@ import {
   getShareExpiration,
   isPublicShare,
   isShareExpired,
+  isShareLimitReached,
   isViewLimitExceeded,
   resolveShareSizeLimit,
+  SHARE_LIMIT_GRACE_MS,
   shareWriteLock,
   sumFileSizes,
 } from "./share.util";
@@ -641,7 +643,12 @@ export class ShareService {
   }
 
   async get(id: string): Promise<any> {
-    return this.shareState.getShare(id);
+    const share = await this.shareState.getShare(id);
+    if (isShareLimitReached(share)) {
+      await this.burnShare(id, 0);
+      throw new NotFoundException(this.i18n.t("share.notFound"));
+    }
+    return share;
   }
 
   async getGuardShare(id: string): Promise<GuardShare | null> {
@@ -649,7 +656,20 @@ export class ShareService {
   }
 
   async shareExists(id: string): Promise<boolean> {
-    return this.shareState.shareExists(id);
+    const share = await this.shareState.getGuardShare(id);
+    if (!share || isShareExpired(share.expiration)) return false;
+    if (
+      isShareLimitReached({
+        views: share.views,
+        maxViews: share.security?.maxViews,
+        maxDownloads: share.security?.maxDownloads,
+        downloadCount: share.security?.downloadCount,
+      })
+    ) {
+      await this.burnShare(id, 0);
+      return false;
+    }
+    return true;
   }
 
   async getCurrentViews(id: string): Promise<number> {
@@ -672,6 +692,18 @@ export class ShareService {
     // not run a second full share query just to read one flag.
     const share = await this.shareState.getGuardShare(id);
     if (!share) throw new NotFoundException(this.i18n.t("share.notFound"));
+
+    if (
+      isShareLimitReached({
+        views: share.views,
+        maxViews: share.security?.maxViews,
+        maxDownloads: share.security?.maxDownloads,
+        downloadCount: share.security?.downloadCount,
+      })
+    ) {
+      await this.burnShare(id, 0);
+      throw new NotFoundException(this.i18n.t("share.notFound"));
+    }
 
     return { id: share.id, isZipReady: share.isZipReady };
   }
@@ -716,11 +748,13 @@ export class ShareService {
         uploadLocked: true,
         removedReason: true,
         expiration: true,
+        views: true,
         security: {
           select: {
             password: true,
             maxViews: true,
             maxDownloads: true,
+            downloadCount: true,
             restrictToRecipients: true,
           },
         },
@@ -741,6 +775,18 @@ export class ShareService {
 
     if (isShareExpired(share.expiration))
       throw new NotFoundException(this.i18n.t("share.notFound"));
+
+    if (
+      isShareLimitReached({
+        views: share.views,
+        maxViews: share.security?.maxViews,
+        maxDownloads: share.security?.maxDownloads,
+        downloadCount: share.security?.downloadCount,
+      })
+    ) {
+      await this.burnShare(id, 0);
+      throw new NotFoundException(this.i18n.t("share.notFound"));
+    }
 
     if (!isPublicShare(share) || share._count.files === 0)
       return {
@@ -1017,11 +1063,44 @@ export class ShareService {
   }
 
   /**
+   * Burns a share through the normal expiration path: the row is not deleted
+   * synchronously, so an in-flight file/ZIP stream can finish, but every page,
+   * SEO and new-download request sees a 404 as soon as the grace period ends
+   * (and page requests are rejected immediately by the limit checks).
+   * Existing cleanup later removes the files and row.
+   */
+  async burnShare(shareId: string, graceMs = 0): Promise<void> {
+    try {
+      await this.prisma.share.updateMany({
+        where: { id: shareId },
+        data: { expiration: new Date(Date.now() + graceMs) },
+      });
+    } catch (error) {
+      this.logger.warn(`Could not burn share ${shareId}: ${error}`);
+    }
+
+    await this.shareState.invalidateData(shareId);
+    try {
+      await this.fileService.removeShareThumbnail(shareId);
+    } catch (error) {
+      this.logger.warn(`Could not remove burned share thumbnail: ${error}`);
+    }
+    try {
+      await this.searchService.invalidate();
+    } catch (error) {
+      this.logger.warn(
+        `Could not invalidate search after burning a share: ${error}`,
+      );
+    }
+  }
+
+  /**
    * Atomically consumes one download from a share's optional cap. Uncapped
    * shares return immediately, so the common path stays a single guard-cache
    * read. Capped shares use one conditional UPDATE, which makes two concurrent
-   * downloads unable to both pass the last slot. The share payload/guard caches
-   * are dropped so the next page view shows the new remaining count.
+   * downloads unable to both pass the last slot. A final allowed download
+   * burns the share after a short grace period; an exhausted share burns it
+   * immediately and returns 404.
    */
   async reserveDownload(
     shareId: string,
@@ -1043,12 +1122,16 @@ export class ShareService {
       RETURNING "downloadCount"
     `;
     if (rows.length === 0) {
-      throw new ForbiddenException(
-        this.i18n.t("share.maxDownloadsExceeded"),
-        "share_max_downloads_exceeded",
-      );
+      await this.burnShare(shareId, SHARE_LIMIT_GRACE_MS);
+      throw new NotFoundException(this.i18n.t("share.notFound"));
     }
-    await this.shareState.invalidateDataCache(shareId);
+
+    const downloadCount = Number(rows[0].downloadCount);
+    if (downloadCount >= maxDownloads) {
+      await this.burnShare(shareId, SHARE_LIMIT_GRACE_MS);
+    } else {
+      await this.shareState.invalidateDataCache(shareId);
+    }
   }
 
   /**

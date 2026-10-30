@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Delete,
+  ForbiddenException,
   Get,
   Head,
   HttpCode,
@@ -68,6 +69,7 @@ import { ShareSecurityGuard } from "./guard/shareSecurity.guard";
 import { ShareTokenSecurity } from "./guard/shareTokenSecurity.guard";
 import { IdValidation } from "./guard/shareIdValidation.guard";
 import { ShareService } from "./share.service";
+import { SHARE_LIMIT_GRACE_MS } from "./share.util";
 import { CompletedShareDTO } from "./dto/shareComplete.dto";
 
 // A ZIP can attribute one download to many files; cap the list so a beacon
@@ -258,15 +260,36 @@ export class ShareController {
   @UseGuards(IdValidation, ShareSecurityGuard)
   async get(@Param("id") id: string, @Req() request: Request) {
     const share = await this.shareService.get(id);
-    const { views, uploaderInfo } = await this.shareService.recordView(
-      id,
-      request,
-      share.maxViews,
-    );
+
+    let view;
+    try {
+      view = await this.shareService.recordView(id, request, share.maxViews);
+    } catch (error) {
+      // A legacy/racing exhausted share is burned immediately and hidden as a
+      // normal missing share instead of exposing a 403 limit reason.
+      if (
+        error instanceof ForbiddenException &&
+        (error.getResponse() as { error?: string })?.error ===
+          "share_max_views_exceeded"
+      ) {
+        await this.shareService.burnShare(id, SHARE_LIMIT_GRACE_MS);
+        throw new NotFoundException();
+      }
+      throw error;
+    }
+
+    const { views, uploaderInfo } = view;
+    // The final permitted view still renders; after a short grace the cleanup
+    // job removes the share. Subsequent page/open requests are already
+    // rejected by the limit check in ShareService.get().
+    if (share.maxViews && views >= share.maxViews)
+      await this.shareService.burnShare(id, SHARE_LIMIT_GRACE_MS);
+
     if ((request as Request & { shareIsPublic?: boolean }).shareIsPublic)
       void this.trending
         .recordView({ ...share, views }, getRequestCountry(request))
         .catch(() => {});
+
     // Download counters are public (they ride the share payload) and cached
     // for a few seconds in DownloadService so this stays off the hot path.
     const downloads = await this.downloadService.getShareDownloads(id);

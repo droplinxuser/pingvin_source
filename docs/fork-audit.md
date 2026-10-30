@@ -24,11 +24,12 @@ the suggested order for future features.
 | Cloudflare edge caching | Public search results and share images live at the edge for a short window: `GET /api/shares/search` and `/api/shares/:id/thumbnail` send `s-maxage=300` / `s-maxage=3600` respectively (`backend/src/utils/cache.util.ts` `getImageCacheHeaders`, `share.controller.ts`), the inline WebP preview in `file.controller.ts` uses the same image headers, and the search page shell is still `no-store` (query-dependent). Trending/recent listings keep a 60 s edge TTL. |
 | Admin pagination, search and sorting | `backend/src/share/share.service.ts`, `backend/src/user/user.service.ts` (quota columns paged in SQL), `frontend/src/pages/admin/*`, `frontend/src/components/core/SortIcon.tsx` |
 | Share reports | `backend/src/share/dto/reportShare.dto.ts`, `backend/src/email/email.service.ts`, `frontend/src/components/share/showReportShareModal.tsx` |
+| View-limit burn | `backend/src/share/share.controller.ts` (`GET /shares/:id`), `backend/src/share/share.service.ts` (`burnShare`, `isShareLimitReached`), `backend/src/share/shareState.service.ts` (`recordLimitedView`, rolling-expiration guard). The final allowed view renders; after a five-minute grace the share expires. Any subsequent page/SEO/HEAD request is a 404, while the last visitor's preview/file requests can finish during the grace. A rolling-expiration write is conditional on the previously read value so it cannot revive a burned share. |
 | Uploader metadata / visitors | `backend/src/utils/uploaderInfo.util.ts`, `ShareDTO.uploaderInfo`, `frontend/src/components/share/UploaderInfoBadges.tsx`, `ShareStats.tsx`; view counts stay in `Share.views`, written in five-second batches for unlimited shares and atomically for limited ones (`shareState.service.ts`). Geo labels are clamped before storage. The recent-visitor list is shown to every visitor. |
 | Reverse-share use limits | `backend/src/reverseShare/reverseShare.service.ts` (`reserveUse`), `backend/src/share/share.service.ts` (reserve at create, reject invalid cookies, no refund on revert) |
 | Inline media gallery | `frontend/src/components/share/MediaPreviewGallery.tsx` (up to 100 image/video cards, 12-card lazy batches, single-media square card, full-size previous/next modal), `frontend/src/components/core/LazySection.tsx` |
 | Individual downloads / legacy ZIP | `frontend/src/components/share/DownloadAllButton.tsx`, `frontend/src/services/share.service.ts`; `backend/src/share/share.service.ts` no longer creates archives. Existing `archive.zip` files remain served by the legacy API. The preview modal downloads through `shareService.downloadFile` too, so its clicks reach the download counters. |
-| Download caps / one-time links | `ShareSecurity.maxDownloads` + `downloadCount` in `backend/prisma/schema.prisma`, migration `20261031000000_add_download_limit`, `shareSecurity.dto.ts` / `updateShare.dto.ts`, `ShareService.reserveDownload`, `file.controller.ts` (`getFile` / `getZip`), share create/edit modals, `ShareStats` and the disabled download actions. Capped shares are not public/cacheable and are excluded from listings and SEO. |
+| Download caps / one-time links | `ShareSecurity.maxDownloads` + `downloadCount` in `backend/prisma/schema.prisma`, migration `20261031000000_add_download_limit`, `shareSecurity.dto.ts` / `updateShare.dto.ts`, `ShareService.reserveDownload` / `burnShare`, `file.controller.ts` (`getFile` / `getZip`), share create/edit modals, `ShareStats` and the disabled download actions. Capped shares are not public/cacheable and are excluded from listings and SEO. The final allowed download burns the share: page/SEO/HEAD and new downloads return 404, while the active file/ZIP stream continues; the row/files are removed by the normal expiry cleanup after a five-minute grace. An exhausted/in-flight cap request also returns 404 instead of a 403 limit message. |
 | Native share / PWA share target | `frontend/src/components/share/ShareButton.tsx` (Web Share API with copy fallback), `CopyTextField.tsx`, `ShareActions.tsx`, `frontend/src/pages/manifest.json.tsx`, `frontend/worker/index.js`, `frontend/src/utils/shareTarget.util.ts`, `frontend/src/pages/upload/index.tsx`. The worker stores OS-shared files in Cache Storage (512 MB/file, 5 GB total, 24-hour cleanup) and redirects to `/upload?shared=...`, where the normal upload flow picks them up. |
 | Resumable uploads | `frontend/src/utils/uploadSession.util.ts`, `frontend/src/components/upload/ResumeUploads.tsx`, `frontend/src/pages/upload/index.tsx`. Only metadata (share/file ids, name, size, chunk size, completed chunk count) is kept in IndexedDB; the visitor reselects the same file and only missing chunks are sent. Direct multipart/S3 uploads are not resumed. |
 | Password tools | `frontend/src/utils/password.util.ts`, `showCreateUploadModal.tsx` (CSPRNG-generated 16-character password with generate/copy actions, avoiding look-alike characters). |
@@ -271,6 +272,15 @@ the matching `utils/*.util.ts` files.
   concurrent downloads cannot both take the last slot. Capped shares are
   omitted from `publicShareWhere()` and `isPublicShare()`, and their file/ZIP
   responses are `no-store`; thumbnails and previews remain private.
+- Reaching either hard limit calls `ShareService.burnShare`: it sets the share
+  expiration to now + `SHARE_LIMIT_GRACE_MS` (five minutes), invalidates the
+  share/guard/SEO/trending/search caches and removes the thumbnail. Page, SEO
+  and HEAD requests are 404 immediately because `ShareService.get()` checks the
+  limit; new file/ZIP starts are 404 too. The final view/download and any open
+  range/file stream can finish during the grace, after which the existing
+  expiry cleanup deletes the row/files. The rolling-expiration write is
+  conditional on the previously read expiration, so an in-flight refresh cannot
+  revive a burned share.
 - Resumable uploads keep only a small manifest in IndexedDB (no file bytes and
   no server/Valkey storage). The server's existing chunk endpoint reports the
   expected index, so resume skips completed chunks and keeps its existing
@@ -554,9 +564,14 @@ Also check that a versioned comments URL is `s-maxage=86400`, an unversioned
 one is `no-store`, `HEAD /api/shares/:id` is `s-maxage=60`, search results are
 `s-maxage=300`, and the search/comments/thumbnail/HEAD route buckets throttle
 independently from the shared visitor bucket. Feature-specific checks:
-download-capped shares return one `200` then a `403`
-(`share_max_downloads_exceeded`) for both single files and ZIPs, are absent from
-recent/search/sitemap, and render the limit + disabled download actions; a
+download-capped shares return one `200` then a `404`
+(`Share not found`) for page, SEO, HEAD and new downloads, while an in-flight
+range/file stream can finish; `share-limit-burn.test.js` covers the burn
+without deleting files, the grace expiration, concurrent final-slot requests
+and a stream that completes after burn; view-limit smoke checks show the last
+view continues to serve files during grace and the next page request is 404.
+Download-capped shares are absent from
+recent/search/sitemap; the final page request is 404. A
 pre-seeded IndexedDB upload manifest resumes after the same file is reselected
 and completes the original share; the PWA share target POST stores a file and
 opens the normal share modal; the native Share button passes the correct short

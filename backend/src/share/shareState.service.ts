@@ -38,6 +38,7 @@ import {
   getShareExpiration,
   isMemberShare,
   isShareExpired,
+  isShareLimitReached,
   sumFileSizes,
 } from "./share.util";
 
@@ -70,6 +71,7 @@ const GUARD_INCLUDE = {
       password: true,
       maxViews: true,
       maxDownloads: true,
+      downloadCount: true,
       restrictToRecipients: true,
     },
   },
@@ -199,13 +201,29 @@ export class ShareStateService implements OnApplicationShutdown {
     }
     // Shares with the epoch expiration never expire and keep that value.
     if (share.expiration.getTime() !== 0) {
-      // The rolling window follows the share's owner: member shares keep 100
-      // days, guest uploads expire after 10 days without a visit.
-      share.expiration = getShareExpiration(isMemberShare(share));
-      // The fresh expiration is already in the response. Persisting it is a
-      // best-effort side effect: a transient SQLite busy/locked error must not
-      // turn a valid share page into a 500.
-      void this.persistExpiration(share.id, share.expiration);
+      // Never revive a share that has exhausted a hard limit. A rolling write
+      // that was already in flight is also guarded by the previous-expiration
+      // condition in persistExpiration(), so it cannot overwrite a burn.
+      const limitReached = isShareLimitReached({
+        views: share.views,
+        maxViews: share.security?.maxViews,
+        maxDownloads: share.security?.maxDownloads,
+        downloadCount: share.security?.downloadCount,
+      });
+      if (!limitReached) {
+        const previousExpiration = share.expiration;
+        // The rolling window follows the share's owner: member shares keep 100
+        // days, guest uploads expire after 10 days without a visit.
+        share.expiration = getShareExpiration(isMemberShare(share));
+        // The fresh expiration is already in the response. Persisting it is a
+        // best-effort side effect: a transient SQLite busy/locked error must
+        // not turn a valid share page into a 500.
+        void this.persistExpiration(
+          share.id,
+          share.expiration,
+          previousExpiration,
+        );
+      }
     }
 
     const { security, files, ...shareData } = share;
@@ -239,7 +257,11 @@ export class ShareStateService implements OnApplicationShutdown {
     return result;
   }
 
-  private async persistExpiration(shareId: string, expiration: Date) {
+  private async persistExpiration(
+    shareId: string,
+    expiration: Date,
+    previousExpiration?: Date,
+  ) {
     const now = Date.now();
     const lastWrite = this.expirationWrites.get(shareId) ?? 0;
     if (now - lastWrite < EXPIRATION_WRITE_INTERVAL_MS) return;
@@ -258,7 +280,12 @@ export class ShareStateService implements OnApplicationShutdown {
     this.expirationWrites.set(shareId, now);
     try {
       await this.prisma.share.updateMany({
-        where: { id: shareId },
+        // Only extend the window that was read. If a limit burn (or an admin
+        // takedown) changed the expiration while this update was in flight,
+        // the conditional write is a no-op instead of reviving the share.
+        where: previousExpiration
+          ? { id: shareId, expiration: previousExpiration }
+          : { id: shareId },
         data: { expiration },
       });
     } catch (error) {
