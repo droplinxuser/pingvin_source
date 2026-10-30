@@ -14,11 +14,11 @@ the suggested order for future features.
 |---|---|
 | Environment loading / production config | `backend/src/constants.ts`, `backend/src/config/config.service.ts`, `backend/src/main.ts`, `backend/.env.example` |
 | Rolling expiration (member 100 days / guest 10 days) | `backend/src/share/share.util.ts` (`SHARE_EXPIRATION`, `GUEST_SHARE_EXPIRATION`, `getShareExpiration`, `isMemberShare`), `share.service.ts` (create), `shareState.service.ts` (renew on visit), migrations `20261016000000` / `20261016000001`, share create/edit modals |
-| Public-content search | `backend/src/cache/search.service.ts` (Valkey-backed index, no SQLite table/FTS), `GET /api/shares/search`, `frontend/src/components/header/NavbarSearch.tsx` (desktop form beside the logo, mobile icon on the right), `frontend/src/pages/search.tsx`. The stored index keeps only display fields; the lowercase search text is derived in process memory on load, so the Valkey value does not duplicate every name and description. The page memoizes its `loadItems` callback and keys the listing by query, so an empty result set cannot refetch in a render loop and a new query cannot keep the previous cards. |
+| Public-content search | `backend/src/cache/search.service.ts` (Valkey-backed index, no SQLite table/FTS), `GET /api/shares/search`, `frontend/src/components/header/NavbarSearch.tsx` (desktop form beside the logo, mobile icon on the right), `frontend/src/pages/search.tsx`. The stored index keeps only display fields; the lowercase search text is derived in process memory on load, so the Valkey value does not duplicate every name and description. `/search` is `noindex`, so it does not SSR-fetch results: the client widget loads them (and a blank query never calls the API). The page memoizes its `loadItems` callback and keys the listing by query, so an empty result set cannot refetch in a render loop and a new query cannot keep the previous cards. An authoritative empty server listing is passed as `[]` and is never retried; only `null`/`undefined` (backend unavailable) falls back to the client loader. |
 | Header discovery icons | `frontend/src/components/header/NavbarIconLink.tsx` renders the desktop "New media"/"New files" entries as icon links (matching `NavbarShareMenu`); the mobile menu keeps text links |
 | Member-only create options | In the create-share modal (`frontend/src/components/upload/modals/showCreateUploadModal.tsx`) the **Email recipients** and **Security options** accordions render only when `isUserSignedIn` is true; a guest upload gets just the link and name/description. |
 | New-media / new-files / search listings | `backend/src/cache/trending.service.ts` (`getRecent` media-only, `getRecentFiles` no-media, both derived from one shared newest-shares SQLite scan), `GET /api/shares/recent-files`, `GET /api/shares/search`, `frontend/src/pages/new-media.tsx` and `search.tsx` (square preview cards via `TrendingToday.tsx`; on search, file-only cards use `fileOnlyLayout="centered"` — no file names, title + description centered), `new-files.tsx` (polished row/list layout via `frontend/src/components/share/ShareList.tsx`), `/new` 308-redirects to `/new-media` |
-| Upload from URL (browser-fetched) | Direct URLs are downloaded by the visitor's browser (`frontend/src/utils/upload.util.ts` `fetchRemoteAsFile`), so the remote host never sees the server IP; the file is then uploaded through the normal chunked path. This requires the host to allow CORS. The fetch rejects an HTML/XHTML body (`RemoteNotAFileError`) so a landing page is never uploaded as a "file", and resolves the name from `Content-Disposition`, `X-Filename` headers or the URL path. `frontend/src/components/upload/UploadFromUrlButton.tsx` queues a real `File`, wired in `Dropzone.tsx` and the upload/edit flows |
+| Upload from URL (browser-fetched) | Direct URLs are downloaded by the visitor's browser (`frontend/src/utils/upload.util.ts` `fetchRemoteAsFile`), so the remote host never sees the server IP; the file is then uploaded through the normal chunked path. The stream is capped at `share.maxFileSize` (declared `Content-Length` first, then a running byte count) so a huge or endless response cannot exhaust tab memory. This requires the host to allow CORS. The fetch rejects an HTML/XHTML body (`RemoteNotAFileError`) so a landing page is never uploaded as a "file", and resolves the name from `Content-Disposition`, `X-Filename` headers or the URL path. `frontend/src/components/upload/UploadFromUrlButton.tsx` queues a real `File`, wired in `Dropzone.tsx` and the upload/edit flows |
 | File-host import (Bunkr, MediaFire, Dropbox, Google Drive, OneDrive, pCloud, Pixeldrain, tmpfiles) | `backend/src/utils/fileHosts.util.ts` resolves a page URL to direct download URLs (`detectFileHost`/`resolveFileHost`); Bunkr reads `jsCDN` + `signUrl` from the page and signs the CDN link through an allowlisted `*.cdn.cr` host, MediaFire extracts the `download####.mediafire.com` link (base64 `data-scrambled-url` or plain), Dropbox appends `dl=1`, Google Drive/OneDrive build their public download API URLs, pCloud walks the public-link JSON, and Pixeldrain/tmpfiles rewrite to their `/api/file/` and `/dl/` links. These pages cannot be read cross-origin, so the server resolves and downloads them (`FileService.importFromUrl`), guarded by `backend/src/utils/remoteFetch.util.ts` (http/https only, ports 80/443, DNS validated and pinned, IP-literal check, redirect cap, size/time caps). `POST /api/shares/:id/files/from-url` now **only accepts allowlisted hosts** (`detectFileHost`/`detectMediaHost`), so the server never fetches an arbitrary URL. Gofile is intentionally rejected (`FileHostError` code `gofile`). Tests: `backend/test/file-hosts.test.js`, `backend/test/remote-fetch.test.js` |
 | Media/video import (yt-dlp) | `backend/src/utils/mediaHosts.util.ts` allowlists well-known public platforms (YouTube, Vimeo, Dailymotion, Twitch, Streamable, Facebook, Instagram, TikTok, X/Twitter, Reddit, SoundCloud, Mixcloud, Imgur, Bilibili, NicoNico, TED, Bandcamp, Odysee, Rumble, BitChute, archive.org) and runs `yt-dlp` (single item, `--no-playlist`, `--ignore-config`, size cap, hard timeout, `--` before the URL, optional `YTDLP_COOKIES_FILE`). `FileService.importMediaFromUrl` downloads into a per-file temp dir, then feeds the bytes through the same chunk pipeline. Gated by `share.enableMediaImport` (admin config) and by the `yt-dlp` binary being present. Tests: `backend/test/media-hosts.test.js` |
 | Cloudflare edge caching | Public search results and share images live at the edge for an hour: `GET /api/shares/search` and `/api/shares/:id/thumbnail` send `s-maxage=3600` (`backend/src/utils/cache.util.ts` `getImageCacheHeaders`, `share.controller.ts`), the inline WebP preview in `file.controller.ts` uses the same image headers, and the search page shell is still `no-store` (query-dependent). Trending/recent listings keep a 60 s edge TTL. |
@@ -61,6 +61,11 @@ Shared fork-only backend helpers live in `backend/src/utils/`:
 atomic rename, and `remoteFetch.util.ts` is the only allowed outbound downloader
 (SSRF-guarded; `backend/test/remote-fetch.test.js` covers the address blocks).
 Reuse them instead of adding another lock, temp-file block or raw `fetch(url)`.
+`share.util.ts` exports `shareWriteLock`, the single per-share lock used by local
+and S3 chunk writes plus `complete`/`revertComplete`; keep every path that
+publishes a `File` row inside it so completion cannot snapshot a half-finished
+upload. Share thumbnails and per-file WebP previews use separate bounded queues
+(a thumbnail may call the preview builder; one shared queue would deadlock).
 Public-share predicates live in `share.util.ts` (`publicShareWhere`,
 `activeShareWhere`, `isPublicShare`) and must be reused by new queries.
 Cross-cutting pagination, country, referrer, storage-quota and MIME logic live in
@@ -263,6 +268,12 @@ the matching `utils/*.util.ts` files.
   share read path; a transient SQLite error is logged and retried on the next
   cache miss instead of failing the page. `revertComplete` invalidates the
   public search index, so an un-completed share cannot stay searchable.
+- In-flight upload bytes are tracked per share and per quota owner. They are
+  returned when the file completes, when the share is deleted, or when the
+  daily cleanup removes an abandoned `.tmp-chunk`/`.remote` file, so a dropped
+  upload cannot hold another account's quota until a restart. Share deletion
+  only removes a share directory when no `Share` row owns that id, so a losing
+  concurrent create cannot delete the winner's files.
 - Only the first uploaded chunk removes the legacy `archive.zip`; later chunks
   skip the guaranteed-ENOENT unlink. The SEO loader computes the share size
   from the already-loaded first 50 files and only runs the `SUM` query for
@@ -333,12 +344,20 @@ Origin responses set `Cache-Control`, `CDN-Cache-Control` and
   .util.ts`: http/https on ports 80/443 only, DNS results validated and pinned
   to a public address (and IP-literal hostnames rejected before connecting, so
   Node's lookup-skip cannot bypass the check), a short redirect chain that is
-  re-validated per hop, and body/time caps. Bytes then flow through the same
-  chunk pipeline, so quota, share/file limits and the VirusTotal/ClamAV hooks
-  all still apply. Media hosts are extracted by `yt-dlp` only when the host is
-  on the allowlist and `share.enableMediaImport` is on; a hard timeout, a size
-  cap and the absence of user config bound the process, and the downloaded
-  bytes still pass through the same chunk pipeline.
+  re-validated per hop, and body/time caps. IPv6 literals are accepted only in
+  the global-unicast `2000::/3` block (with documentation, Teredo and 6to4
+  excluded), which also blocks IPv4-mapped/compatible spellings such as
+  `::ffff:7f00:1`. Bytes then flow through the same chunk pipeline, so quota,
+  share/file limits and the VirusTotal/ClamAV hooks all still apply. Media
+  hosts are extracted by `yt-dlp` only when the host is on the allowlist and
+  `share.enableMediaImport` is on; a hard timeout, a size cap and the absence
+  of user config bound the process, and the downloaded bytes still pass
+  through the same chunk pipeline.
+- The public download beacon (`POST /api/shares/:id/download`) accepts at most
+  500 well-formed ids and keeps only file ids that belong to that share, so it
+  cannot create Valkey fields for arbitrary ids; the reserved `total` field is
+  rejected as a file id. Guest ads are never mounted on a non-indexable
+  (password/recipient/view-limited) share.
 - Local uploads reserve in-flight bytes per share and per user. Completion
   re-checks the aggregate share size and the user quota. Completed shares reject
   further uploads. Expired shares cannot be revived through the owner path.
@@ -352,8 +371,13 @@ Origin responses set `Cache-Control`, `CDN-Cache-Control` and
   Organization/WebSite plus page-specific `SoftwareApplication`,
   `CollectionPage`, `ItemList`, `BreadcrumbList` and `DigitalDocument`.
   Query strings and trailing slashes are stripped from canonicals; `/s/:id`
-  permanently redirects to `/share/:id`. Protected shares return only
-  `{ indexable: false, id }` from the SEO endpoint and never derive labels.
+  permanently redirects to `/share/:id`. A configured localhost `general.appUrl`
+  is treated as unset in production builds, so pages emit relative
+  canonical/OG URLs instead of `http://localhost:3000`. Protected shares return
+  only `{ indexable: false, id }` from the SEO endpoint and never derive labels.
+  The SEO endpoint keeps the visitor bucket off and uses a larger 1,200/min
+  default bucket, so Next SSR traffic from one host IP cannot exhaust the
+  ordinary request bucket while random share ids are still rate-limited.
 - Share metadata is auto-generated when the owner leaves title/description
   empty; owner-written text wins and is followed by a short count/size summary.
   The same label is used for H1, breadcrumb and JSON-LD; protected shares never
@@ -414,15 +438,18 @@ trending/recent/country ranking and cache behavior, public search index
 storage/matching/versioning, share thumbnails, sitemap
 index/chunks/robots, comments, archive-encryption detection, VirusTotal
 audit/queue/filter/removal/notification flows, reverse-share guard wiring,
-referrers and avatars. `share-util.test.js` pins the epoch/expiry rule. Keep
-this suite green before pushing; run the frontend production build and lint in
-the same pass. Playwright smoke checks should cover
+referrers and avatars. `share-util.test.js` pins the epoch/expiry rule and the
+overflowed-size fallback; `remote-fetch.test.js` covers IPv4-mapped/compatible
+IPv6 spellings. Keep this suite green before pushing; run the frontend production
+build and lint in the same pass. Playwright smoke checks should cover
 guest, member and mobile views of the public pages, upload/download/comment,
-admin redirects and the share gallery with zero application console errors or
-warnings (the intentional 404 document status is excluded). Also verify that
-`/search` sends no API request for an empty query, that a zero-result query
-clears the previous cards, and that a preview-modal download sends the
-`POST /api/shares/:id/download` beacon. Axe checks at 390 px
+URL upload, admin redirects and the share gallery with zero application console
+errors or warnings (the intentional 404 document status is excluded). Also
+verify that `/search` sends no API request for an empty query, that a zero-result
+query clears the previous cards, that a preview-modal download sends the
+`POST /api/shares/:id/download` beacon, that `/d/` counts one page view, that a
+protected share mounts no ad scripts, and that a browser URL upload streams a
+small file correctly. Axe checks at 390 px
 should report zero WCAG A/AA and best-practice violations for the public pages,
 member account pages and every admin page; the temporary local admin promotion
 used for that check must be reverted afterwards.
