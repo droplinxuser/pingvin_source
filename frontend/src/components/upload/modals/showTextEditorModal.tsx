@@ -1,6 +1,7 @@
 import { ModalsContextProps } from "@mantine/modals/lib/context";
-import mime from "mime-types";
+import { translateOutsideContext } from "../../../hooks/useTranslate.hook";
 import { FileListItem, FileUpload } from "../../../types/File.type";
+import { getFileMimeType } from "../../../utils/mime.util";
 import TextEditor from "../TextEditor";
 
 const showTextEditorModal = <T extends FileListItem>(
@@ -10,19 +11,25 @@ const showTextEditorModal = <T extends FileListItem>(
   text: string,
   modals: ModalsContextProps,
 ) => {
+  const t = translateOutsideContext();
   const originalFile = files[index] as unknown as File;
-  const mimeType = (mime.contentType(originalFile.name) || "").split(";")[0];
+  const mimeType = getFileMimeType(originalFile.name) || "text/plain";
 
-  modals.openModal({
-    title: `Editing ${originalFile.name}`,
+  // Assigned right after openModal returns; the handlers below only run once
+  // the modal is on screen, so there is no race with this reference.
+  let modalId = "";
+  const close = () => modals.closeModal(modalId);
+
+  modalId = modals.openModal({
+    title: t("upload.text.edit.title", { name: originalFile.name }),
     size: "xl",
     children: (
       <TextEditor
         initialText={text}
-        onCancel={() => modals.closeAll()}
+        onCancel={close}
         onSave={(newText) => {
           const newFile = new File([newText], originalFile.name, {
-            type: mimeType || "text/plain",
+            type: mimeType,
           });
 
           const fileUpload = newFile as FileUpload;
@@ -31,7 +38,7 @@ const showTextEditorModal = <T extends FileListItem>(
           const updatedFiles = [...files];
           updatedFiles[index] = fileUpload as unknown as T;
           setFiles(updatedFiles);
-          modals.closeAll();
+          close();
         }}
       />
     ),

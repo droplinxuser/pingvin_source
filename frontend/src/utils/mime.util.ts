@@ -187,3 +187,10 @@ export const doesFileSupportPreview = (fileName: string) => {
 
 export const isShareTextFile = (fileName: string) =>
   getFileMimeType(fileName).startsWith("text/");
+
+// Only these extensions are parsed as Markdown. Everything else that is text
+// is shown verbatim, so a .log or .csv never loses its line breaks.
+const MARKDOWN_EXTENSIONS = new Set(["md", "markdown", "mdown", "mkd", "mdx"]);
+
+export const isMarkdownFile = (fileName: string) =>
+  MARKDOWN_EXTENSIONS.has(getFileExtension(fileName));

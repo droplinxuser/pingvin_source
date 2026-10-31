@@ -12,6 +12,7 @@ import {
 import { useModals } from "@mantine/modals";
 import { getCookie } from "cookies-next/client";
 import { GetServerSidePropsContext } from "next";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { ReactNode, useEffect, useMemo, useRef, useState } from "react";
@@ -46,7 +47,10 @@ import {
   setNoStoreHeaders,
   setPublicCacheHeaders,
 } from "../../../utils/httpCache.util";
-import { isLikelyGalleryMedia } from "../../../utils/mime.util";
+import {
+  isLikelyGalleryMedia,
+  isShareTextFile,
+} from "../../../utils/mime.util";
 import { getQueryString } from "../../../utils/router.util";
 import { fetchShareSeo } from "../../../utils/seo.server.util";
 import {
@@ -58,6 +62,13 @@ import {
   getShareSubject,
   truncateMetaText,
 } from "../../../utils/seo.util";
+
+// Markdown parsing is only needed on text shares, so it stays out of the main
+// share page bundle.
+const ShareTextPreview = dynamic(
+  () => import("../../../components/share/ShareTextPreview"),
+  { ssr: false },
+);
 
 export async function getServerSideProps(context: GetServerSidePropsContext) {
   const shareId = context.params!.shareId as string;
@@ -196,6 +207,14 @@ const SharePage = ({
   // or text preview would otherwise consume the one-time slot before the
   // visitor chose to download.
   const downloadLimited = !!share?.maxDownloads;
+  // A single text file reads like a gist. Mixed or download-capped shares keep
+  // the file list as the only entry point.
+  const textPreviewFile =
+    !downloadLimited &&
+    share?.files?.length === 1 &&
+    isShareTextFile(share.files[0].name)
+      ? (share.files[0] as FileMetaData)
+      : undefined;
   const hasGalleryMedia = !downloadLimited && galleryPlaceholderCount > 0;
   const fileSkeletonCount = displayFileCount || 5;
   const metaTitle = indexable
@@ -656,6 +675,10 @@ const SharePage = ({
           onDeleted={() => router.replace(homeHref)}
         />
       </Box>
+
+      {textPreviewFile && (
+        <ShareTextPreview shareId={shareId} file={textPreviewFile} />
+      )}
 
       {!downloadLimited && (
         <LazySection

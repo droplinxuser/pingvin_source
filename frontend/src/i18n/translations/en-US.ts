@@ -757,17 +757,17 @@ export default {
   // Dropzone.tsx
   "upload.dropzone.title": "Upload files",
   "upload.dropzone.description.mobile":
-    "Tap here to select individual files, photos, or videos. To upload a folder, use the button below. Maximum total upload size: {maxSize}.",
+    "Tap here to select individual files, photos, or videos. Use the buttons below to add a folder, a link or text. Maximum total upload size: {maxSize}.",
   "upload.dropzone.description.mobile.no-folder":
-    "Tap here to select individual files, photos, or videos. Maximum total upload size: {maxSize}.",
+    "Tap here to select individual files, photos, or videos. Use the buttons below to add a link or text. Maximum total upload size: {maxSize}.",
   "upload.dropzone.description.desktop":
-    "Click here or drag and drop individual files, photos, or videos. Use the button below to upload a folder, or press {shortcut} to upload from your clipboard. Maximum total upload size: {maxSize}.",
+    "Click here or drag and drop individual files, photos, or videos. Use the buttons below to add a folder, a link or text, or press {shortcut} to upload from your clipboard. Maximum total upload size: {maxSize}.",
   "upload.dropzone.description.desktop.no-folder":
-    "Click here or drag and drop individual files, photos, or videos, or press {shortcut} to upload from your clipboard. Maximum total upload size: {maxSize}.",
+    "Click here or drag and drop individual files, photos, or videos. Use the buttons below to add a link or text, or press {shortcut} to upload from your clipboard. Maximum total upload size: {maxSize}.",
   "upload.dropzone.description.desktop.firefox":
-    "Click here or drag and drop individual files, photos, or videos. Use the button below to upload a folder, or press {shortcut} to paste a single file or folder from your clipboard. Maximum total upload size: {maxSize}.",
+    "Click here or drag and drop individual files, photos, or videos. Use the buttons below to add a folder, a link or text, or press {shortcut} to paste a single file or folder from your clipboard. Maximum total upload size: {maxSize}.",
   "upload.dropzone.description.desktop.firefox.no-folder":
-    "Click here or drag and drop individual files, photos, or videos, or press {shortcut} to paste a single file or folder from your clipboard. Maximum total upload size: {maxSize}.",
+    "Click here or drag and drop individual files, photos, or videos. Use the buttons below to add a link or text, or press {shortcut} to paste a single file or folder from your clipboard. Maximum total upload size: {maxSize}.",
   "upload.dropzone.notify.file-too-big":
     "Your files exceed the maximum share size of {maxSize}.",
   "upload.dropzone.custom.max-file-size": "Maximum file size: {maxFileSize}.",
@@ -775,6 +775,8 @@ export default {
     "{name} is larger than the maximum file size of {maxSize}.",
   "upload.button.folder": "Upload folder",
   "upload.button.folder.append": "Append folder",
+  "upload.button.files": "Upload files",
+  "upload.button.files.append": "Add files",
   "upload.button.add": "Add to upload",
 
   // Upload from URL (fork-only; fetched in the visitor's own browser)
@@ -796,6 +798,20 @@ export default {
     "This host doesn't allow browser downloads (CORS), so the file can't be fetched here. Use a direct link from a host that allows it, download the file and upload it directly, or paste a supported file-host or video link.",
   "upload.url.error.hostUnsupported":
     "That file host isn't supported yet. Paste a direct file link, a link from MediaFire, Bunkr, Dropbox, Google Drive, OneDrive, pCloud, Pixeldrain or tmpfiles, or a video/media link.",
+
+  // Upload text or Markdown (fork-only; a gist-style text share)
+  "upload.text.button": "Text",
+  "upload.text.title": "Add text or Markdown",
+  "upload.text.markdown": "Markdown",
+  "upload.text.plain": "Plain text",
+  "upload.text.add": "Add to upload",
+  "upload.text.hint":
+    "Markdown is formatted on the share page. Raw HTML and BBCode are shown as plain text.",
+  "upload.text.notify.added": "Added {name} to the upload",
+  "upload.text.error.empty": "Type or paste some text first.",
+  "upload.text.error.too-large":
+    "This text is larger than the maximum upload size of {maxSize}.",
+  "upload.text.edit.title": "Edit {name}",
 
   // FileList.tsx
   "upload.filelist.name": "Name",
@@ -1021,6 +1037,10 @@ export default {
   "share.custom.files.download-count":
     "{count, plural, one {# download} other {# downloads}}",
   "share.notify.copied-link": "File link copied to clipboard",
+
+  // Inline text/Markdown share preview (fork-only)
+  "share.custom.text-preview.expand": "Show full text",
+  "share.custom.text-preview.collapse": "Show less",
 
   // VirusTotal per-file indicator (fork-only)
   "share.custom.virustotal.safe": "Malware scan — no threats found",

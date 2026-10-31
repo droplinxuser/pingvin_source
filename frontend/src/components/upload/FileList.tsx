@@ -65,6 +65,7 @@ const FileListRow = ({
                   color="blue"
                   variant="light"
                   size={25}
+                  aria-label={t("common.button.edit")}
                   onClick={onEdit}
                 >
                   <TbEdit />
@@ -116,6 +117,7 @@ const FileListRow = ({
                   color="victoria"
                   variant="light"
                   size={25}
+                  aria-label={t("common.button.undo")}
                   onClick={onRestore}
                 >
                   <GrUndo />

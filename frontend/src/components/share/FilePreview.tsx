@@ -6,9 +6,7 @@ import {
   Stack,
   Text,
   Title,
-  useMantineTheme,
 } from "@mantine/core";
-import Markdown, { MarkdownToJSX } from "markdown-to-jsx";
 import React, { Dispatch, SetStateAction, useEffect, useState } from "react";
 import { FormattedMessage } from "react-intl";
 import { TbDownload, TbExternalLink } from "react-icons/tb";
@@ -19,6 +17,7 @@ import { getShareFileUrl } from "../../utils/file.util";
 import { HoverTip } from "../core/HoverTip";
 import LazyImage from "../core/LazyImage";
 import LazyVideo from "../core/LazyVideo";
+import TextContent from "./TextContent";
 
 // The modal itself is capped at 90dvh. Leave room for its header, body padding
 // and the action row so images and videos never make the dialog scroll.
@@ -224,10 +223,10 @@ const ImagePreview = () => {
 };
 
 const TextPreview = () => {
-  const { shareId, fileId, fileSize } = React.useContext(FilePreviewContext);
+  const { shareId, fileId, fileName, fileSize } =
+    React.useContext(FilePreviewContext);
   const [text, setText] = useState<string>("");
   const [failed, setFailed] = useState(false);
-  const { colorScheme } = useMantineTheme();
   const t = useTranslate();
   const tooLarge = parseInt(fileSize, 10) > TEXT_PREVIEW_MAX_BYTES;
 
@@ -254,29 +253,6 @@ const TextPreview = () => {
     );
   if (failed) return <Text color="dimmed">{t("common.error")}</Text>;
 
-  const options: MarkdownToJSX.Options = {
-    disableParsingRawHTML: true,
-    overrides: {
-      pre: {
-        props: {
-          style: {
-            backgroundColor:
-              colorScheme == "dark"
-                ? "rgba(50, 50, 50, 0.5)"
-                : "rgba(220, 220, 220, 0.5)",
-            padding: "0.75em",
-            whiteSpace: "pre-wrap",
-          },
-        },
-      },
-      table: {
-        props: {
-          className: "md",
-        },
-      },
-    },
-  };
-
   return (
     <Box
       sx={{
@@ -285,7 +261,7 @@ const TextPreview = () => {
         overflowWrap: "anywhere",
       }}
     >
-      <Markdown options={options}>{text}</Markdown>
+      <TextContent text={text} fileName={fileName} />
     </Box>
   );
 };

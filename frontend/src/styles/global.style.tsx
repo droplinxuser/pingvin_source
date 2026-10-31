@@ -15,6 +15,18 @@ const GlobalStyle = () => {
                 ? "rgba(50, 50, 50, 0.5)"
                 : "rgba(220, 220, 220, 0.5)",
           },
+        // Markdown tables arrive without borders, so alternate cells were
+        // invisible against the page background.
+        "table.md": {
+          borderCollapse: "collapse",
+        },
+        "table.md th, table.md td": {
+          border: `1px solid ${
+            theme.colorScheme === "dark"
+              ? theme.colors.dark[4]
+              : theme.colors.gray[3]
+          }`,
+        },
         "table.md td": {
           paddingLeft: "0.5em",
           paddingRight: "0.5em",

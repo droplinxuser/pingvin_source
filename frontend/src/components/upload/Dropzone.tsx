@@ -17,6 +17,7 @@ import { byteToHumanSizeString } from "../../utils/fileSize.util";
 import { getFilesFromEvent } from "../../utils/file.util";
 import toast from "../../utils/toast.util";
 import UploadFromUrlButton from "./UploadFromUrlButton";
+import UploadTextButton from "./UploadTextButton";
 
 const useStyles = createStyles((theme) => ({
   wrapper: {
@@ -27,6 +28,11 @@ const useStyles = createStyles((theme) => ({
   dropzone: {
     borderWidth: 1,
     paddingBottom: 50,
+    // Phones stack the action buttons below the drop zone instead of hanging
+    // them off the bottom edge, so four buttons never overlap the file list.
+    [theme.fn.smallerThan("sm")]: {
+      paddingBottom: 16,
+    },
   },
 
   icon: {
@@ -39,6 +45,13 @@ const useStyles = createStyles((theme) => ({
   control: {
     position: "absolute",
     bottom: -20,
+    flexWrap: "wrap",
+    maxWidth: "calc(100% - 32px)",
+    [theme.fn.smallerThan("sm")]: {
+      position: "static",
+      maxWidth: "100%",
+      marginTop: theme.spacing.md,
+    },
   },
 
   mobileDescription: {
@@ -207,15 +220,31 @@ const Dropzone = ({
       </MantineDropzone>
       <Center>
         <Group className={classes.control} spacing="sm" position="center">
+          <Button
+            variant={dark ? "filled" : "light"}
+            size="sm"
+            radius="xl"
+            leftIcon={<TbCloudUpload size={16} />}
+            disabled={isUploading}
+            onClick={() => openRef.current?.()}
+          >
+            <FormattedMessage
+              id={
+                currentFilesSize > 0
+                  ? "upload.button.files.append"
+                  : "upload.button.files"
+              }
+            />
+          </Button>
           {isFolderUploadSupported && (
             <Button
               variant={dark ? "filled" : "light"}
               size="sm"
               radius="xl"
+              leftIcon={<TbFolder size={16} />}
               disabled={isUploading}
               onClick={() => folderInputRef.current?.click()}
             >
-              <TbFolder style={{ marginRight: 6 }} />
               <FormattedMessage
                 id={
                   currentFilesSize > 0
@@ -226,6 +255,11 @@ const Dropzone = ({
             </Button>
           )}
           <UploadFromUrlButton
+            onFiles={handleFiles}
+            disabled={isUploading}
+            maxFileSize={maxFileSize}
+          />
+          <UploadTextButton
             onFiles={handleFiles}
             disabled={isUploading}
             maxFileSize={maxFileSize}
