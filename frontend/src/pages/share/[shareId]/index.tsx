@@ -4,6 +4,7 @@ import {
   Breadcrumbs,
   Button,
   Center,
+  Paper,
   Skeleton,
   Stack,
   Text,
@@ -67,7 +68,16 @@ import {
 // share page bundle.
 const ShareTextPreview = dynamic(
   () => import("../../../components/share/ShareTextPreview"),
-  { ssr: false },
+  {
+    ssr: false,
+    // Reserve the preview card while the small Markdown/text chunk loads, so
+    // the file list does not jump down after hydration on a text share.
+    loading: () => (
+      <Paper withBorder radius="md" p="md" mb="lg" aria-hidden>
+        <Skeleton height={96} radius="sm" />
+      </Paper>
+    ),
+  },
 );
 
 export async function getServerSideProps(context: GetServerSidePropsContext) {
