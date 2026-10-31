@@ -16,9 +16,13 @@ const GlobalStyle = () => {
                 : "rgba(220, 220, 220, 0.5)",
           },
         // Markdown tables arrive without borders, so alternate cells were
-        // invisible against the page background.
+        // invisible against the page background. They also collapse to a tiny
+        // box when the cells hold short text, so they fill the card and keep
+        // their natural width (the container scrolls) when a table is wide.
         "table.md": {
           borderCollapse: "collapse",
+          width: "100%",
+          minWidth: "max-content",
         },
         "table.md th, table.md td": {
           border: `1px solid ${

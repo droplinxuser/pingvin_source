@@ -258,6 +258,7 @@ const TextPreview = () => {
       sx={{
         maxHeight: MEDIA_MAX_HEIGHT,
         overflowY: "auto",
+        overflowX: "auto",
         overflowWrap: "anywhere",
       }}
     >

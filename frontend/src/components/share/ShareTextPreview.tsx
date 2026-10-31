@@ -84,7 +84,10 @@ const ShareTextPreview = ({
         ref={contentRef}
         sx={{
           maxHeight: expanded ? undefined : COLLAPSED_HEIGHT,
-          overflow: "hidden",
+          // A wide table scrolls inside the card instead of being clipped by
+          // the collapsed height.
+          overflowX: "auto",
+          overflowY: "hidden",
         }}
       >
         <TextContent text={text} fileName={file.name} />
