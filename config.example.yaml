@@ -4,7 +4,7 @@
 
 general:
   #Name of the application
-  appName: DropMB
+  appName: Pingvin Share X
   #On which URL Pingvin Share is available
   appUrl: http://localhost:3000
   #Whether to show the home page

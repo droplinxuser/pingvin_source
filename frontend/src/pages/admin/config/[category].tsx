@@ -44,7 +44,6 @@ const configCategories = [
   "oauth",
   "ldap",
   "s3",
-  "legal",
   "cache",
 ];
 

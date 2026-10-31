@@ -18,7 +18,6 @@ import {
   TbLock,
   TbMail,
   TbPalette,
-  TbScale,
   TbServerBolt,
   TbSettings,
   TbShare,
@@ -37,7 +36,6 @@ export const categories = [
   { name: "LDAP", icon: <TbBinaryTree /> },
   { name: "S3", icon: <TbBucket /> },
   { name: "Cache", icon: <TbServerBolt /> },
-  { name: "Legal", icon: <TbScale /> },
 ];
 
 const useStyles = createStyles((theme) => ({

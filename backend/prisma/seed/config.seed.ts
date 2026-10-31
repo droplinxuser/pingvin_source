@@ -12,7 +12,7 @@ export const configVariables = {
   general: {
     appName: {
       type: "string",
-      defaultValue: "DropMB",
+      defaultValue: "Pingvin Share X",
       secret: false,
     },
     appUrl: {

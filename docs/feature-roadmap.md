@@ -6,7 +6,7 @@ from the perspective of an operator who values low maintenance, upstream
 alignment, privacy and search traffic — not of a site that copies every
 growth hack of an ad-funded host.
 
-The short version: DropMB already wins on the things that make people leave
+The short version: the site already wins on the things that make people leave
 gofile and bunkr (no forced wait, no fake download page, no account required,
 expiring links, comments, reverse shares, password/view limits, malware
 scanning, galleries and SEO). The creator-workflow items (search, bulk
@@ -15,7 +15,7 @@ remaining gap is the **public API**.
 
 ## Current comparison
 
-| Capability | gofile.io | bunkr.cr | DropMB today |
+| Capability | gofile.io | bunkr.cr | This instance |
 |---|---|---|---|
 | Share without an account | Yes | No (uploader account) | Yes (configurable) |
 | Storage limit | Advertised unlimited | Album quotas / paid tiers | 5 GB per share, 512 MB per file |

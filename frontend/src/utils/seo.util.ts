@@ -2,7 +2,7 @@ import Config from "../types/config.type";
 import { getBaseName, getShareThumbnailUrl } from "./file.util";
 import { getFileMimeType } from "./mime.util";
 
-export const DEFAULT_SITE_NAME = "DropMB";
+export const DEFAULT_SITE_NAME = "Pingvin Share X";
 
 export const DEFAULT_SITE_DESCRIPTION =
   "Fast, private file sharing with short links, previews and download controls.";

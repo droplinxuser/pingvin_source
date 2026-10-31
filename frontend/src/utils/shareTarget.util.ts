@@ -1,4 +1,4 @@
-const CACHE_NAME = "dropmb-shared-files-v1";
+const CACHE_NAME = "pingvin-shared-files-v1";
 const PREFIX = "/__shared/";
 
 export type SharedTargetPayload = {

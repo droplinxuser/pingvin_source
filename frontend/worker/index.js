@@ -1,7 +1,7 @@
 /* eslint-env serviceworker */
 // Custom Workbox service-worker additions. next-pwa imports this file into the
 // generated worker, so it must stay dependency-free.
-const SHARED_CACHE = "dropmb-shared-files-v1";
+const SHARED_CACHE = "pingvin-shared-files-v1";
 const SHARED_PREFIX = "/__shared/";
 const MAX_FILE_BYTES = 512 * 1024 * 1024;
 const MAX_TOTAL_BYTES = 5 * 1024 * 1024 * 1024;
