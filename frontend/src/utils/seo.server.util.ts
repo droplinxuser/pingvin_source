@@ -140,7 +140,14 @@ export async function fetchShareSeo(
       `${apiUrl}/api/shares/${encodeURIComponent(shareId)}/seo`,
       { cache: "no-store", signal: AbortSignal.timeout(1500) },
     );
-    if (response.status === 404) {
+    // The backend rejects malformed share ids with 400 before looking them up.
+    // Treat that exactly like a missing share so a hand-edited URL renders the
+    // 404 page instead of a 503 that suggests the whole site is down.
+    if (
+      response.status === 400 ||
+      response.status === 404 ||
+      response.status === 410
+    ) {
       const value: ShareSeoResult = { status: "not-found" };
       cacheSeo(shareId, { at: Date.now(), value, error: true });
       return value;
