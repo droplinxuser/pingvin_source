@@ -101,7 +101,16 @@ const TurnstileWidget = ({
     };
   }, [siteKey, colorScheme]);
 
-  return <div ref={containerRef} data-testid="contact-turnstile" />;
+  return (
+    <div
+      ref={containerRef}
+      data-testid="contact-turnstile"
+      // The widget is a fixed 300px iframe. Let it scroll inside its own
+      // container on the narrowest foldable screens instead of widening the
+      // whole contact page.
+      style={{ maxWidth: "100%", overflowX: "auto", overflowY: "hidden" }}
+    />
+  );
 };
 
 export default TurnstileWidget;

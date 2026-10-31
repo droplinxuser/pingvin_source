@@ -428,7 +428,14 @@ function App({ Component, pageProps }: AppProps) {
                   },
                 }}
               >
-                <ModalsProvider>
+                <ModalsProvider
+                  modalProps={{
+                    closeButtonProps: {
+                      "aria-label": "Close",
+                      title: "Close",
+                    },
+                  }}
+                >
                   <a className="skip-link" href="#main-content">
                     <FormattedMessage id="common.custom.skip-to-content" />
                   </a>

@@ -57,6 +57,7 @@ const Body = ({
             placeholder={t("share.modal.password")}
             aria-label={t("share.modal.password")}
             autoFocus
+            data-autofocus
             error={passwordWrong && t("share.modal.error.invalid-password")}
             onFocus={() => setPasswordWrong(false)}
             onChange={(e) => setPassword(e.target.value)}
