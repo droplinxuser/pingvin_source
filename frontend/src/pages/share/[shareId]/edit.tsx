@@ -2,7 +2,9 @@ import { LoadingOverlay, Title } from "@mantine/core";
 import { useModals } from "@mantine/modals";
 import { GetServerSidePropsContext } from "next";
 import { useEffect, useState } from "react";
+import { FormattedMessage } from "react-intl";
 import Meta from "../../../components/Meta";
+import ShareLoadError from "../../../components/share/ShareLoadError";
 import showErrorModal from "../../../components/share/showErrorModal";
 import EditableUpload from "../../../components/upload/EditableUpload";
 import useConfirmLeave from "../../../hooks/confirm-leave.hook";
@@ -23,6 +25,9 @@ const Share = ({ shareId }: { shareId: string }) => {
 
   const [isLoading, setIsLoading] = useState(true);
   const [share, setShare] = useState<ShareType>();
+  const [loadError, setLoadError] = useState<"not-found" | "generic" | null>(
+    null,
+  );
   const [isDirty, setIsDirty] = useState(false);
 
   // Ask before leaving only when there are unsaved file changes.
@@ -35,6 +40,7 @@ const Share = ({ shareId }: { shareId: string }) => {
     let cancelled = false;
     setIsLoading(true);
     setShare(undefined);
+    setLoadError(null);
     setIsDirty(false);
 
     shareService
@@ -46,6 +52,7 @@ const Share = ({ shareId }: { shareId: string }) => {
         if (cancelled) return;
         if (!e.response) {
           toast.axiosError(e);
+          setLoadError("generic");
           return;
         }
         if (e.response.status == 429) {
@@ -55,11 +62,13 @@ const Share = ({ shareId }: { shareId: string }) => {
             t("common.custom.rate-limit.description"),
             "go-home",
           );
+          setLoadError("generic");
           return;
         }
 
         const { error } = e.response.data;
         if (e.response.status == 404) {
+          setLoadError("not-found");
           if (error == "share_removed") {
             showErrorModal(
               modals,
@@ -74,12 +83,14 @@ const Share = ({ shareId }: { shareId: string }) => {
             );
           }
         } else if (e.response.status == 403 && error == "share_removed") {
+          setLoadError("generic");
           showErrorModal(
             modals,
             t("share.error.access-denied.title"),
             t("share.error.access-denied.description"),
           );
         } else {
+          setLoadError("generic");
           showErrorModal(modals, t("common.error"), t("common.error.unknown"));
         }
       })
@@ -93,6 +104,34 @@ const Share = ({ shareId }: { shareId: string }) => {
   }, [shareId]);
 
   if (isLoading) return <LoadingOverlay visible />;
+
+  if (loadError) {
+    return (
+      <>
+        <Meta title={t("share.edit.title", { shareId })} />
+        <ShareLoadError
+          title={
+            <FormattedMessage
+              id={
+                loadError === "not-found"
+                  ? "share.error.not-found.title"
+                  : "common.error"
+              }
+            />
+          }
+          description={
+            <FormattedMessage
+              id={
+                loadError === "not-found"
+                  ? "share.error.not-found.description"
+                  : "common.error.unknown"
+              }
+            />
+          }
+        />
+      </>
+    );
+  }
 
   return (
     <>
