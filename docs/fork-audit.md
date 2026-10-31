@@ -462,6 +462,14 @@ Origin responses set `Cache-Control`, `CDN-Cache-Control` and
 
 ## Security and SEO notes
 
+- Public output never uses the upstream product name. Neutral `File Share`
+  defaults are used for the site-name fallback, admin copy, translations,
+  email signatures, PWA/worker cache identifiers and internal DOM flags.
+  Upstream GitHub/docs links were removed from the admin UI. Migration
+  `20261101000000_scrub_upstream_brand` rewrites existing `Config` values and
+  defaults (including email templates) on deploy, and `update.sh` deletes old
+  worker/build artifacts before rebuilding so a stale bundle cannot remain
+  publicly reachable.
 - Public share/file reads skip JWT authentication; protected shares still run
   the full token/password/recipient/max-view checks. Comment mutations,
   uploads, account and admin routes authenticate normally.
