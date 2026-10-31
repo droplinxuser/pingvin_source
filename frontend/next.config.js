@@ -44,7 +44,12 @@ const withPWA = require("next-pwa")({
   ],
   runtimeCaching: [
     {
-      urlPattern: /^(?!.*\/api(\/|$)).*/,
+      // Only same-origin, non-API traffic needs the pass-through route. A
+      // catch-all RegExp also matched third-party ad and Turnstile requests,
+      // so a blocked host surfaced as a service-worker error in the console
+      // (and every external request paid the routing cost).
+      urlPattern: ({ url, sameOrigin }) =>
+        sameOrigin && !url.pathname.startsWith("/api/"),
       handler: "NetworkOnly",
     },
   ],
