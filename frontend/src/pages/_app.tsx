@@ -402,25 +402,33 @@ function App({ Component, pageProps }: AppProps) {
             <GlobalStyle />
             <RouteProgress />
             <Notifications />
-            <ModalsProvider>
-              <ConfigContext.Provider
+            {/* Modals render through a portal owned by ModalsProvider. Keep
+                the providers outside it so modal content (copy fields, share
+                buttons, file previews) can still read the public config and
+                the signed-in user. Android Chrome exposes the Web Share API,
+                which makes the share button render inside the completed-upload
+                modal; before this order was corrected that path threw
+                "Config variable general.appName not found" and blanked the
+                page. */}
+            <ConfigContext.Provider
+              value={{
+                configVariables,
+                refresh: async () => {
+                  setConfigVariables(await configService.list());
+                },
+              }}
+            >
+              <UserContext.Provider
                 value={{
-                  configVariables,
-                  refresh: async () => {
-                    setConfigVariables(await configService.list());
+                  user,
+                  refreshUser: async () => {
+                    const user = await userService.getCurrentUser();
+                    setUser(user);
+                    return user;
                   },
                 }}
               >
-                <UserContext.Provider
-                  value={{
-                    user,
-                    refreshUser: async () => {
-                      const user = await userService.getCurrentUser();
-                      setUser(user);
-                      return user;
-                    },
-                  }}
-                >
+                <ModalsProvider>
                   <a className="skip-link" href="#main-content">
                     <FormattedMessage id="common.custom.skip-to-content" />
                   </a>
@@ -447,9 +455,9 @@ function App({ Component, pageProps }: AppProps) {
                       <Footer />
                     </Stack>
                   )}
-                </UserContext.Provider>
-              </ConfigContext.Provider>
-            </ModalsProvider>
+                </ModalsProvider>
+              </UserContext.Provider>
+            </ConfigContext.Provider>
           </ColorSchemeProvider>
         </MantineProvider>
       </IntlProvider>
