@@ -1,7 +1,7 @@
 const ENDPOINT = "/api/logs/client";
 const DEDUPE_MS = 15_000;
 const MAX_SEEN = 50;
-const INSTALL_FLAG = "__pingvinErrorReporterInstalled";
+const INSTALL_FLAG = "__fileShareErrorReporterInstalled";
 
 type ClientErrorPayload = {
   message: string;

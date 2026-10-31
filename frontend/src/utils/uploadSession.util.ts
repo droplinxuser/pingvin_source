@@ -4,7 +4,7 @@
  * file to be selected again; completed chunk indexes tell the client where to
  * continue.
  */
-const DB_NAME = "pingvin-uploads";
+const DB_NAME = "file-share-uploads";
 const DB_VERSION = 1;
 const STORE = "sessions";
 const MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;

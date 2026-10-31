@@ -4,8 +4,8 @@
 
 general:
   #Name of the application
-  appName: Pingvin Share X
-  #On which URL Pingvin Share is available
+  appName: File Share
+  #On which URL File Share is available
   appUrl: http://localhost:3000
   #Whether to show the home page
   showHomePage: "true"
@@ -78,10 +78,10 @@ share:
   #How long files are kept after a share expires or gets deleted. Only useful if the 'Allow admin access to all shares' is also enabled. Set to -1 to keep files forever.
   fileRetentionPeriod: 0 days
 cache:
-  #Normally Pingvin Share caches information in memory. If you run multiple instances of Pingvin Share, you need to enable Redis caching to share the cache between the instances.
+  #Normally File Share caches information in memory. If you run multiple instances of File Share, you need to enable Redis caching to share the cache between the instances.
   redis-enabled: "false"
   #Url to connect to the Redis instance used for caching.
-  redis-url: redis://pingvin-redis:6379
+  redis-url: redis://file-share-redis:6379
   #Time in second to keep information inside the cache.
   ttl: "60"
   #Maximum number of items inside the cache.
@@ -114,7 +114,7 @@ email:
     Note: {desc}
 
 
-    Shared securely with Pingvin Share 🐧
+    Shared securely with File Share
   #Subject of the sent email when someone created a share with your reverse share link.
   reverseShareSubject: Reverse share link used
   #Message which gets sent when someone created a share with your reverse share link. {name} will be replaced with the creator's name and {shareUrl} with the share URL.
@@ -123,9 +123,9 @@ email:
 
     A share was just created with your reverse share link: {shareUrl}
 
-    Shared securely with Pingvin Share 🐧
+    Shared securely with File Share
   #Subject of the sent email when a user requests a password reset.
-  resetPasswordSubject: Pingvin Share password reset
+  resetPasswordSubject: File Share password reset
   #Message which gets sent when a user requests a password reset. {name} will be replaced with the user's name and {url} with the reset password URL.
   resetPasswordMessage: >-
     Hey {name}!
@@ -137,22 +137,22 @@ email:
     The link expires in an hour.
 
 
-    Pingvin Share 🐧
+    File Share
   #Subject of the sent email when an admin invites a user.
-  inviteSubject: Pingvin Share invite
+  inviteSubject: File Share invite
   #Message which gets sent when an admin invites a user. {name} will be replaced with the user's name, {url} with the invite URL, {email} with the email and {password} with the users password.
   inviteMessage: >-
     Hey {name}!
 
 
-    You were invited to Pingvin Share. Click this link to accept the invite:
+    You were invited to File Share. Click this link to accept the invite:
     {url}
 
 
     You can use the email "{email}" and the password "{password}" to sign in.
 
 
-    Pingvin Share 🐧
+    File Share
   #Subject of the email which gets sent to the share creator when a recipient downloads a file.
   shareDownloadNotificationSubject: Your file was downloaded
   #Message which gets sent to the share creator when a recipient downloads a file. Available variables:
@@ -164,22 +164,22 @@ email:
 
     {recipient} downloaded {fileName} from your share: {shareUrl}
 
-    Pingvin Share 🐧
+    File Share
   #Subject of the email which gets sent to the user when they sign up.
-  verificationSubject: Verify your Pingvin Share account
+  verificationSubject: Verify your File Share account
   #Message which gets sent to the user when they sign up. {name} will be replaced with the user's name and {url} with the verification URL.
   verificationMessage: >-
     Hey {name}!
 
 
-    You just signed up for Pingvin Share. Click this link to verify your
+    You just signed up for File Share. Click this link to verify your
     account: {url}
 
 
     The link expires in 24 hours.
 
 
-    Pingvin Share 🐧
+    File Share
 smtp:
   #Whether SMTP is enabled. Only set this to true if you entered the host, port, email, user and password of your SMTP server.
   enabled: "false"

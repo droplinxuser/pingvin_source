@@ -1,6 +1,5 @@
 import {
   Alert,
-  Anchor,
   AppShell,
   Box,
   Button,
@@ -295,20 +294,7 @@ export default function AppShellDemo() {
                       </Title>
                       {categoryId.toLowerCase() === "s3" && (
                         <Text color="dimmed" size="sm" mb="md">
-                          <FormattedMessage
-                            id="admin.config.s3.docs-link"
-                            values={{
-                              wikiLink: (
-                                <Anchor
-                                  href="https://smp46.github.io/pingvin-share-x/v2/setup/s3#cors-configuration"
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                >
-                                  wiki
-                                </Anchor>
-                              ),
-                            }}
-                          />
+                          <FormattedMessage id="admin.config.s3.custom.docs" />
                         </Text>
                       )}
                       {visibleConfigVariables.map((configVariable) => {

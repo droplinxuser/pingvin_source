@@ -19,7 +19,7 @@ declare global {
   }
 }
 
-const SCRIPT_SELECTOR = "script[data-pingvin-turnstile]";
+const SCRIPT_SELECTOR = "script[data-file-share-turnstile]";
 
 /**
  * Cloudflare Turnstile widget. The script is loaded only on the contact page,
@@ -74,7 +74,7 @@ const TurnstileWidget = ({
           "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
         script.async = true;
         script.defer = true;
-        script.dataset.pingvinTurnstile = "true";
+        script.dataset.fileShareTurnstile = "true";
         document.head.appendChild(script);
       }
       script.addEventListener("load", render);

@@ -179,15 +179,6 @@ const DatabaseMetricsCard = () => {
               })}
             </Text>
           )}
-          {metrics.file && (
-            <Text
-              size="xs"
-              color="dimmed"
-              sx={{ wordBreak: "break-all" }}
-            >
-              {t("admin.database.custom.file", { file: metrics.file })}
-            </Text>
-          )}
           {error && (
             <Text size="xs" color="red">
               {t("admin.database.custom.load-error")}

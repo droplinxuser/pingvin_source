@@ -1,4 +1,4 @@
-const CACHE_NAME = "pingvin-shared-files-v1";
+const CACHE_NAME = "file-share-shared-files-v1";
 const PREFIX = "/__shared/";
 
 export type SharedTargetPayload = {

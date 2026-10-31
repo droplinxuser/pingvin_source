@@ -675,7 +675,9 @@ export class SystemService {
       ]);
 
       return buildDatabaseMetrics({
-        file,
+        // The absolute path can contain deployment-specific names; keep it
+        // internal and expose only storage/page health to the admin panel.
+        file: null,
         sizeBytes,
         walSizeBytes,
         shmSizeBytes,

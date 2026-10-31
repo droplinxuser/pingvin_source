@@ -12,7 +12,7 @@ export const configVariables = {
   general: {
     appName: {
       type: "string",
-      defaultValue: "Pingvin Share X",
+      defaultValue: "File Share",
       secret: false,
     },
     appUrl: {
@@ -208,7 +208,7 @@ export const configVariables = {
     },
     "redis-url": {
       type: "string",
-      defaultValue: "redis://pingvin-redis:6379",
+      defaultValue: "redis://file-share-redis:6379",
       secret: true,
     },
     ttl: {
@@ -237,7 +237,7 @@ export const configVariables = {
     shareRecipientsMessage: {
       type: "text",
       defaultValue:
-        "Hey!\n\n{creator} ({creatorEmail}) shared some files with you. You can view or download the files with this link: {shareUrl}\n\nThe share will expire {expires}.\n\nNote: {desc}\n\nShared securely with Pingvin Share 🐧",
+        "Hey!\n\n{creator} ({creatorEmail}) shared some files with you. You can view or download the files with this link: {shareUrl}\n\nThe share will expire {expires}.\n\nNote: {desc}\n\nShared securely with File Share",
     },
     reverseShareSubject: {
       type: "string",
@@ -246,25 +246,25 @@ export const configVariables = {
     reverseShareMessage: {
       type: "text",
       defaultValue:
-        "Hey {name}!\n\nA share was just created with your reverse share link: {shareUrl}\n\nShared securely with Pingvin Share 🐧",
+        "Hey {name}!\n\nA share was just created with your reverse share link: {shareUrl}\n\nShared securely with File Share",
     },
     resetPasswordSubject: {
       type: "string",
-      defaultValue: "Pingvin Share password reset",
+      defaultValue: "File Share password reset",
     },
     resetPasswordMessage: {
       type: "text",
       defaultValue:
-        "Hey {name}!\n\nYou requested a password reset. Click this link to reset your password: {url}\nThe link expires in an hour.\n\nPingvin Share 🐧",
+        "Hey {name}!\n\nYou requested a password reset. Click this link to reset your password: {url}\nThe link expires in an hour.\n\nFile Share",
     },
     inviteSubject: {
       type: "string",
-      defaultValue: "Pingvin Share invite",
+      defaultValue: "File Share invite",
     },
     inviteMessage: {
       type: "text",
       defaultValue:
-        'Hey {name}!\n\nYou were invited to Pingvin Share. Click this link to accept the invite: {url}\n\nYou can use the email "{email}" and the password "{password}" to sign in.\n\nPingvin Share 🐧',
+        'Hey {name}!\n\nYou were invited to File Share. Click this link to accept the invite: {url}\n\nYou can use the email "{email}" and the password "{password}" to sign in.\n\nFile Share',
     },
     shareDownloadNotificationSubject: {
       type: "string",
@@ -273,16 +273,16 @@ export const configVariables = {
     shareDownloadNotificationMessage: {
       type: "text",
       defaultValue:
-        "Hey!\n\n{recipientEmail} downloaded {fileName} from your share: {shareUrl}\n\nPingvin Share 🐧",
+        "Hey!\n\n{recipientEmail} downloaded {fileName} from your share: {shareUrl}\n\nFile Share",
     },
     verificationSubject: {
       type: "string",
-      defaultValue: "Verify your Pingvin Share account",
+      defaultValue: "Verify your File Share account",
     },
     verificationMessage: {
       type: "text",
       defaultValue:
-        "Hey {name}!\n\nYou just signed up for Pingvin Share. Click this link to verify your account: {url}\n\nThe link expires in 24 hours.\n\nPingvin Share 🐧",
+        "Hey {name}!\n\nYou just signed up for File Share. Click this link to verify your account: {url}\n\nThe link expires in 24 hours.\n\nFile Share",
     },
   },
   smtp: {

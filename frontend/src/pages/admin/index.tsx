@@ -9,10 +9,9 @@ import {
   Title,
 } from "@mantine/core";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   TbLink,
-  TbRefresh,
   TbSettings,
   TbUsers,
   TbVirus,
@@ -25,7 +24,6 @@ import ValkeyMetricsCard from "../../components/admin/ValkeyMetricsCard";
 import ServerDependenciesCard from "../../components/admin/ServerDependenciesCard";
 import DatabaseMetricsCard from "../../components/admin/DatabaseMetricsCard";
 import useTranslate from "../../hooks/useTranslate.hook";
-import configService from "../../services/config.service";
 
 const useStyles = createStyles((theme) => ({
   item: {
@@ -78,28 +76,6 @@ const Admin = () => {
       route: "/admin/config/general",
     },
   ]);
-
-  useEffect(() => {
-    configService
-      .isNewReleaseAvailable()
-      .then((isNewReleaseAvailable) => {
-        if (!isNewReleaseAvailable) return;
-        setManagementOptions((options) =>
-          options.some((option) => option.icon === TbRefresh)
-            ? options
-            : [
-                ...options,
-                {
-                  title: "Update",
-                  icon: TbRefresh,
-                  route:
-                    "https://github.com/smp46/pingvin-share-x/releases/latest",
-                },
-              ],
-        );
-      })
-      .catch(() => {});
-  }, []);
 
   return (
     <>

@@ -1,12 +1,4 @@
-import {
-  Anchor,
-  Button,
-  Center,
-  Container,
-  Stack,
-  Text,
-  Title,
-} from "@mantine/core";
+import { Button, Center, Container, Stack, Text, Title } from "@mantine/core";
 import Link from "next/link";
 import Logo from "../../components/Logo";
 import Meta from "../../components/Meta";
@@ -25,39 +17,20 @@ const Intro = () => {
           </Center>
           <Center>
             <Title order={1} size="h2">
-              Welcome to Pingvin Share X
+              Welcome to your file-sharing platform
             </Title>
           </Center>
           <Text>
-            If you enjoy Pingvin Share X please ⭐️ it on{" "}
-            <Anchor
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{ textDecoration: "underline" }}
-              href="https://github.com/smp46/pingvin-share-x"
-            >
-              GitHub
-            </Anchor>{" "}
+            This administration area lets you configure sharing, security,
+            storage and email for this site.
           </Text>
-          <Text>
-            You can also support development via{" "}
-            <Anchor
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{ textDecoration: "underline" }}
-              href="https://github.com/sponsors/smp46"
-            >
-              GitHub Sponsors ❤️
-            </Anchor>{" "}
-          </Text>
-          <Text>Enough talked, have fun with Pingvin Share X!</Text>
-          <Text mt="lg">How to you want to continue?</Text>
-          <Stack>
+          <Text>You're all set. Choose how you want to continue.</Text>
+          <Stack mt="lg">
             <Button href="/admin/config/general" component={Link}>
               Customize configuration
             </Button>
             <Button href={homeRef} component={Link} variant="light">
-              Explore Pingvin Share X
+              Explore the site
             </Button>
           </Stack>
         </Stack>

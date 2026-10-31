@@ -1,4 +1,3 @@
-import axios from "axios";
 import Config, { AdminConfig, UpdateConfig } from "../types/config.type";
 import { getConfig } from "../utils/config.util";
 import { withBuildVersion } from "../utils/version.util";
@@ -52,15 +51,6 @@ const testRedisConnection = async () => {
   };
 };
 
-const isNewReleaseAvailable = async () => {
-  const response = (
-    await axios.get(
-      "https://api.github.com/repos/smp46/pingvin-share-x/releases/latest",
-    )
-  ).data;
-  return response.tag_name.replace("v", "") != process.env.VERSION;
-};
-
 const changeLogo = async (file: File) => {
   const form = new FormData();
   form.append("file", file);
@@ -82,7 +72,6 @@ export default {
   finishSetup,
   sendTestEmail,
   testRedisConnection,
-  isNewReleaseAvailable,
   changeLogo,
   changeDarkLogo,
 };

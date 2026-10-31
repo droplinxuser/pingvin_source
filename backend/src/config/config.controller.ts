@@ -117,7 +117,7 @@ export class ConfigController {
             new Error(this.i18n.t("config.redisConnectionFailed")),
         },
       } as any,
-      { namespace: "pingvin" },
+      { namespace: "file-share" },
     );
     const testKey = `connection-test:${Date.now()}`;
 

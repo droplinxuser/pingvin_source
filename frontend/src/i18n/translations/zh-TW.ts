@@ -402,7 +402,7 @@ export default {
 
   // /admin/config
   "admin.config.config-file-warning.title": "已偵測到設定檔",
-  "admin.config.config-file-warning.description": "由於您已使用設定檔配置 Pingvin Share，因此無法透過介面變更設定。",
+  "admin.config.config-file-warning.description": "由於您已使用設定檔配置 File Share，因此無法透過介面變更設定。",
   "admin.config.title": "配置管理",
   "admin.config.category.general": "通用",
   "admin.config.category.appearance": "外觀",
@@ -436,7 +436,7 @@ export default {
   "admin.config.appearance.upload-progress-style.circle-percentage": "含百分比的圓形",
   "admin.config.appearance.upload-progress-style.percentage-time": "百分比與剩餘時間",
   "admin.config.general.app-url": "App 網址",
-  "admin.config.general.app-url.description": "Pingvin Share 的 URL",
+  "admin.config.general.app-url.description": "File Share 的 URL",
   "admin.config.security.secure-cookies": "安全 cookies",
   "admin.config.security.secure-cookies.description": "是否要在cookies中設定安全標籤。若啟用，這個網站將無法透過HTTP瀏覽。",
   "admin.config.general.show-home-page": "顯示首頁",
@@ -465,7 +465,7 @@ export default {
   "admin.config.cache.max-items": "最大項目數",
   "admin.config.cache.max-items.description": "快取中的最大項目數。",
   "admin.config.cache.redis-enabled": "已啟用 Redis",
-  "admin.config.cache.redis-enabled.description": "預設情況下，Pingvin Share 會將資訊快取於記憶體中。若您執行多個 Pingvin Share 執行個體，則需要啟用 Redis 快取，讓各個執行個體共用快取資料。",
+  "admin.config.cache.redis-enabled.description": "預設情況下，File Share 會將資訊快取於記憶體中。若您執行多個 File Share 執行個體，則需要啟用 Redis 快取，讓各個執行個體共用快取資料。",
   "admin.config.cache.redis-url": "Redis URL",
   "admin.config.cache.redis-url.description": "用於快取的 Redis 連線 URL。",
   "admin.config.cache.button.test-redis": "測試 Redis 連線",
