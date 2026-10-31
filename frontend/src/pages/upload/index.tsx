@@ -12,7 +12,7 @@ import { hideNotification } from "@mantine/notifications";
 import { AxiosError } from "axios";
 import pLimit from "p-limit";
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { TbShieldLock } from "react-icons/tb";
 import { FormattedMessage } from "react-intl";
 import Meta from "../../components/Meta";
@@ -82,10 +82,6 @@ const Upload = ({
   maxShareSize ??= user?.shareSizeLimit
     ? parseInt(user.shareSizeLimit)
     : parseInt(config.get("share.maxSize"));
-
-  const currentFilesSize = useMemo(() => {
-    return files.reduce((acc, file) => acc + file.size, 0);
-  }, [files]);
 
   const autoOpenCreateUploadModal = config.get("share.autoOpenShareModal");
 
@@ -469,7 +465,6 @@ const Upload = ({
         }
         maxShareSize={maxShareSize}
         maxFileSize={maxFileSize}
-        currentFilesSize={currentFilesSize}
         onFilesChanged={handleDropzoneFilesChanged}
         isUploading={isUploading}
       />

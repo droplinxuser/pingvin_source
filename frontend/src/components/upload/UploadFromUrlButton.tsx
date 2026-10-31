@@ -7,6 +7,7 @@ import { FileUpload } from "../../types/File.type";
 import { byteToHumanSizeString } from "../../utils/fileSize.util";
 import { classifyFileHost } from "../../utils/fileHost.util";
 import toast from "../../utils/toast.util";
+import { HoverTip } from "../core/HoverTip";
 import {
   fetchRemoteAsFile,
   RemoteFileTooLargeError,
@@ -130,16 +131,18 @@ const UploadFromUrlButton = ({
 
   return (
     <>
-      <Button
-        variant="light"
-        size="sm"
-        radius="xl"
-        leftIcon={<TbLink size={16} />}
-        disabled={disabled}
-        onClick={() => setOpened(true)}
-      >
-        <FormattedMessage id="upload.url.button" />
-      </Button>
+      <HoverTip label={t("upload.url.hint.button")} position="top">
+        <Button
+          variant="light"
+          size="sm"
+          radius="xl"
+          leftIcon={<TbLink size={16} />}
+          disabled={disabled}
+          onClick={() => setOpened(true)}
+        >
+          <FormattedMessage id="upload.url.button" />
+        </Button>
+      </HoverTip>
 
       <Modal
         opened={opened}

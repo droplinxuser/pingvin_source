@@ -9,6 +9,7 @@ import {
 import { useState } from "react";
 import { TbFileText } from "react-icons/tb";
 import { FormattedMessage } from "react-intl";
+import { HoverTip } from "../core/HoverTip";
 import useTranslate from "../../hooks/useTranslate.hook";
 import { FileUpload } from "../../types/File.type";
 import { byteToHumanSizeString } from "../../utils/fileSize.util";
@@ -23,6 +24,11 @@ const TEXT_KINDS: Record<TextKind, { name: string; mimeType: string }> = {
   markdown: { name: "note.md", mimeType: "text/markdown" },
   plain: { name: "note.txt", mimeType: "text/plain" },
 };
+
+// Same width as the page container, so the editor lines up with the rest of
+// the site instead of sitting in a narrower dialog.
+const MODAL_WIDTH = 960;
+const FIELD_ID = "share-text-input";
 
 /**
  * Adds a text "gist" to the upload queue. The text becomes a regular file, so
@@ -76,24 +82,28 @@ const UploadTextButton = ({
 
   return (
     <>
-      <Button
-        variant="light"
-        size="sm"
-        radius="xl"
-        leftIcon={<TbFileText size={16} />}
-        disabled={disabled}
-        onClick={() => setOpened(true)}
-      >
-        <FormattedMessage id="upload.text.button" />
-      </Button>
+      <HoverTip label={t("upload.text.hint.button")} position="top">
+        <Button
+          variant="light"
+          size="sm"
+          radius="xl"
+          leftIcon={<TbFileText size={16} />}
+          disabled={disabled}
+          onClick={() => setOpened(true)}
+        >
+          <FormattedMessage id="upload.text.button" />
+        </Button>
+      </HoverTip>
 
       <Modal
         opened={opened}
         onClose={close}
         title={t("upload.text.title")}
-        size="xl"
+        size={MODAL_WIDTH}
         centered
       >
+        {/* The editor renders its own <form>, so this dialog has a real form
+            with a named textarea for browser extensions and grammar tools. */}
         <Stack spacing="sm">
           <SegmentedControl
             fullWidth
@@ -105,7 +115,13 @@ const UploadTextButton = ({
             ]}
           />
           <Text size="xs" color="dimmed">
-            <FormattedMessage id="upload.text.hint" />
+            <FormattedMessage
+              id={
+                kind === "markdown"
+                  ? "upload.text.hint"
+                  : "upload.text.hint.plain"
+              }
+            />
           </Text>
           <TextEditor
             key={kind}
@@ -114,12 +130,16 @@ const UploadTextButton = ({
             onCancel={close}
             onChange={setDraft}
             preview={kind === "markdown" ? "live" : "edit"}
+            hideToolbar={kind === "plain"}
+            fieldId={FIELD_ID}
+            fieldLabel={t("upload.text.field")}
+            placeholder={t("upload.text.placeholder")}
             renderActions={(text) => (
               <Group position="right" mt="md">
-                <Button variant="default" onClick={close}>
+                <Button type="button" variant="default" onClick={close}>
                   <FormattedMessage id="common.button.cancel" />
                 </Button>
-                <Button onClick={() => add(text)} disabled={!text.trim()}>
+                <Button type="submit" disabled={!text.trim()}>
                   <FormattedMessage id="upload.text.add" />
                 </Button>
               </Group>

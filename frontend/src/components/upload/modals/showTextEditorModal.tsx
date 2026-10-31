@@ -22,11 +22,13 @@ const showTextEditorModal = <T extends FileListItem>(
 
   modalId = modals.openModal({
     title: t("upload.text.edit.title", { name: originalFile.name }),
-    size: "xl",
+    // Match the page container so the editor lines up with the rest of the site.
+    size: 960,
     children: (
       <TextEditor
         initialText={text}
         onCancel={close}
+        fieldLabel={t("upload.text.field")}
         onSave={(newText) => {
           const newFile = new File([newText], originalFile.name, {
             type: mimeType,

@@ -773,14 +773,15 @@ export default {
   "upload.dropzone.custom.max-file-size": "Maximum file size: {maxFileSize}.",
   "upload.dropzone.custom.file-too-big":
     "{name} is larger than the maximum file size of {maxSize}.",
-  "upload.button.folder": "Upload folder",
-  "upload.button.folder.append": "Append folder",
-  "upload.button.files": "Upload files",
-  "upload.button.files.append": "Add files",
+  "upload.button.folder": "Folder",
+  "upload.button.folder.hint": "Add a whole folder and keep its structure",
+  "upload.button.files": "Files",
+  "upload.button.files.hint": "Add files from your device",
   "upload.button.add": "Add to upload",
 
   // Upload from URL (fork-only; fetched in the visitor's own browser)
-  "upload.url.button": "From URL",
+  "upload.url.button": "URL",
+  "upload.url.hint.button": "Add a file from a link",
   "upload.url.title": "Add a file from a URL",
   "upload.url.placeholder": "https://example.com/file.zip",
   "upload.url.add": "Add to upload",
@@ -801,12 +802,17 @@ export default {
 
   // Upload text or Markdown (fork-only; a gist-style text share)
   "upload.text.button": "Text",
+  "upload.text.hint.button": "Write or paste text or Markdown",
   "upload.text.title": "Add text or Markdown",
   "upload.text.markdown": "Markdown",
   "upload.text.plain": "Plain text",
   "upload.text.add": "Add to upload",
+  "upload.text.field": "Text or Markdown content",
+  "upload.text.placeholder": "Paste or type your text here…",
   "upload.text.hint":
     "Markdown is formatted on the share page. Raw HTML and BBCode are shown as plain text.",
+  "upload.text.hint.plain":
+    "Plain text is shown exactly as written. Switch to Markdown to format headings, lists, links and tables.",
   "upload.text.notify.added": "Added {name} to the upload",
   "upload.text.error.empty": "Type or paste some text first.",
   "upload.text.error.too-large":

@@ -18,12 +18,20 @@ type TextEditorProps = {
   // parent does not have to mirror the editor state.
   actions?: ReactNode;
   renderActions?: (text: string) => ReactNode;
-  // Plain-text uploads hide the Markdown preview pane, which would otherwise
-  // show formatting the share page never renders.
+  // Plain-text uploads hide the Markdown toolbar and preview pane: neither has
+  // anything to do with plain text.
   preview?: "live" | "edit" | "preview";
+  hideToolbar?: boolean;
   // Reports the body so a parent can remount the editor with another pane mode
   // without losing what the user typed.
   onChange?: (text: string) => void;
+  // The editor's textarea is what browser extensions and password/grammar
+  // assistants look for. MDEditor renders it without a name, id or label and
+  // with spellcheck disabled, so those tools skip it; give it a real field
+  // identity and let the browser spell checker run.
+  fieldId?: string;
+  fieldLabel?: string;
+  placeholder?: string;
 };
 
 const TextEditor = ({
@@ -33,7 +41,11 @@ const TextEditor = ({
   actions,
   renderActions,
   preview = "live",
+  hideToolbar = false,
   onChange,
+  fieldId = "share-text-input",
+  fieldLabel,
+  placeholder,
 }: TextEditorProps) => {
   const [text, setText] = useState<string | undefined>(initialText);
   const { colorScheme } = useMantineTheme();
@@ -56,17 +68,25 @@ const TextEditor = ({
     ? renderActions(text ?? "")
     : (actions ?? (
         <Group position="right" mt="md">
-          <Button variant="default" onClick={onCancel}>
+          <Button type="button" variant="default" onClick={onCancel}>
             <FormattedMessage id="common.button.cancel" />
           </Button>
-          <Button onClick={() => onSave(text || "")}>
+          <Button type="submit">
             <FormattedMessage id="common.button.save" />
           </Button>
         </Group>
       ));
 
   return (
-    <Box>
+    // A real <form> around a named textarea is what browser extensions and
+    // grammar assistants look for; MDEditor's bare textarea is not recognised
+    // as a field on its own.
+    <form
+      onSubmit={(event) => {
+        event.preventDefault();
+        onSave(text || "");
+      }}
+    >
       <Box
         data-color-mode={colorScheme}
         // Custom styles to make the toolbar usable on mobile
@@ -100,10 +120,21 @@ const TextEditor = ({
           }}
           height={editorHeight}
           preview={editorPreview}
+          hideToolbar={hideToolbar}
+          textareaProps={{
+            id: fieldId,
+            name: fieldId,
+            "aria-label": fieldLabel,
+            placeholder,
+            spellCheck: true,
+            autoComplete: "off",
+            autoCorrect: "on",
+            autoCapitalize: "sentences",
+          }}
         />
       </Box>
       {actionRow}
-    </Box>
+    </form>
   );
 };
 

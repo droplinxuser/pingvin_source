@@ -16,6 +16,7 @@ import { FileUpload } from "../../types/File.type";
 import { byteToHumanSizeString } from "../../utils/fileSize.util";
 import { getFilesFromEvent } from "../../utils/file.util";
 import toast from "../../utils/toast.util";
+import { HoverTip } from "../core/HoverTip";
 import UploadFromUrlButton from "./UploadFromUrlButton";
 import UploadTextButton from "./UploadTextButton";
 
@@ -74,14 +75,12 @@ const Dropzone = ({
   isUploading,
   maxShareSize,
   maxFileSize,
-  currentFilesSize = 0,
   onFilesChanged,
 }: {
   title?: string;
   isUploading: boolean;
   maxShareSize: number;
   maxFileSize: number;
-  currentFilesSize?: number;
   onFilesChanged: (files: FileUpload[]) => void;
 }) => {
   const t = useTranslate();
@@ -220,46 +219,41 @@ const Dropzone = ({
       </MantineDropzone>
       <Center>
         <Group className={classes.control} spacing="sm" position="center">
-          <Button
-            variant={dark ? "filled" : "light"}
-            size="sm"
-            radius="xl"
-            leftIcon={<TbCloudUpload size={16} />}
-            disabled={isUploading}
-            onClick={() => openRef.current?.()}
-          >
-            <FormattedMessage
-              id={
-                currentFilesSize > 0
-                  ? "upload.button.files.append"
-                  : "upload.button.files"
-              }
-            />
-          </Button>
-          {isFolderUploadSupported && (
+          {/* Ordered Files / Folder / Text / URL: alphabetical and each label
+              is short enough to sit in one row, with the tooltip carrying the
+              detail. */}
+          <HoverTip label={t("upload.button.files.hint")} position="top">
             <Button
               variant={dark ? "filled" : "light"}
               size="sm"
               radius="xl"
-              leftIcon={<TbFolder size={16} />}
+              leftIcon={<TbCloudUpload size={16} />}
               disabled={isUploading}
-              onClick={() => folderInputRef.current?.click()}
+              onClick={() => openRef.current?.()}
             >
-              <FormattedMessage
-                id={
-                  currentFilesSize > 0
-                    ? "upload.button.folder.append"
-                    : "upload.button.folder"
-                }
-              />
+              <FormattedMessage id="upload.button.files" />
             </Button>
+          </HoverTip>
+          {isFolderUploadSupported && (
+            <HoverTip label={t("upload.button.folder.hint")} position="top">
+              <Button
+                variant={dark ? "filled" : "light"}
+                size="sm"
+                radius="xl"
+                leftIcon={<TbFolder size={16} />}
+                disabled={isUploading}
+                onClick={() => folderInputRef.current?.click()}
+              >
+                <FormattedMessage id="upload.button.folder" />
+              </Button>
+            </HoverTip>
           )}
-          <UploadFromUrlButton
+          <UploadTextButton
             onFiles={handleFiles}
             disabled={isUploading}
             maxFileSize={maxFileSize}
           />
-          <UploadTextButton
+          <UploadFromUrlButton
             onFiles={handleFiles}
             disabled={isUploading}
             maxFileSize={maxFileSize}
