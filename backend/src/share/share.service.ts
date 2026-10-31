@@ -46,6 +46,7 @@ import {
   isShareLimitReached,
   isViewLimitExceeded,
   resolveShareSizeLimit,
+  SHARE_DOWNLOAD_CAPABILITY_TTL_SECONDS,
   SHARE_LIMIT_GRACE_MS,
   shareWriteLock,
   sumFileSizes,
@@ -1237,6 +1238,33 @@ export class ShareService {
         this.i18n.t("share.maxViewsExceeded"),
         "share_max_views_exceeded",
       );
+    }
+  }
+
+  /**
+   * Capped shares set this cookie on the page payload response. File and ZIP
+   * handlers require it before consuming a slot, so Cloudflare's HEAD-to-GET
+   * conversion (or a direct probe of a copied file URL) cannot burn the cap.
+   */
+  generateDownloadCapability(shareId: string) {
+    return this.jwtService.sign(
+      { shareDownload: shareId },
+      {
+        secret: this.config.get("internal.jwtSecret"),
+        expiresIn: SHARE_DOWNLOAD_CAPABILITY_TTL_SECONDS,
+      },
+    );
+  }
+
+  verifyDownloadCapability(shareId: string, token?: string): boolean {
+    if (!token) return false;
+    try {
+      const claims = this.jwtService.verify<{ shareDownload?: string }>(token, {
+        secret: this.config.get("internal.jwtSecret"),
+      });
+      return claims.shareDownload === shareId;
+    } catch {
+      return false;
     }
   }
 

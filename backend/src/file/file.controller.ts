@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Delete,
+  ForbiddenException,
   Get,
   HttpStatus,
   Param,
@@ -174,6 +175,19 @@ export class FileController {
       return;
     }
 
+    if (
+      (req as FileRequest).shareDownloadLimited &&
+      !this.shareService.verifyDownloadCapability(
+        shareId,
+        req.cookies?.[`share_${shareId}_download`],
+      )
+    ) {
+      throw new ForbiddenException(
+        "Open the share page before downloading this file.",
+        "share_download_capability_required",
+      );
+    }
+
     // An optional comma-separated list streams only the selected files, which
     // backs the bulk-selection download. Ids that do not belong to the share
     // are simply not matched by the query.
@@ -244,6 +258,22 @@ export class FileController {
     }
 
     const isDownload = download === "true";
+    const shareDownloadLimited = (req as FileRequest).shareDownloadLimited;
+    // The share page sets this capability cookie. Without it, a copied file
+    // URL (or Cloudflare's HEAD-to-GET conversion) cannot consume a capped
+    // download slot. Generated WebP previews above stay available.
+    if (
+      shareDownloadLimited &&
+      !this.shareService.verifyDownloadCapability(
+        shareId,
+        req.cookies?.[`share_${shareId}_download`],
+      )
+    ) {
+      throw new ForbiddenException(
+        "Open the share page before downloading this file.",
+        "share_download_capability_required",
+      );
+    }
     // The file guard already loaded the share, so its storage provider comes
     // from the request instead of another SQLite lookup.
     const storageProvider =

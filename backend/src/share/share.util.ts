@@ -18,6 +18,10 @@ export const GUEST_SHARE_EXPIRATION = "10-days";
 // consumed the final slot, then expires. The short grace lets an in-flight
 // ZIP/file stream and the last visitor's preview requests finish.
 export const SHARE_LIMIT_GRACE_MS = 5 * 60 * 1000;
+// A capped share issues a short-lived capability cookie when its page loads.
+// Capped file/ZIP requests must present it, so a bare HEAD/link-preview probe
+// cannot consume a one-time slot before the visitor opens the share.
+export const SHARE_DOWNLOAD_CAPABILITY_TTL_SECONDS = 6 * 60 * 60;
 
 type ShareCreatorSource = {
   creatorId?: string | null;

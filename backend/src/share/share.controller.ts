@@ -69,7 +69,10 @@ import { ShareSecurityGuard } from "./guard/shareSecurity.guard";
 import { ShareTokenSecurity } from "./guard/shareTokenSecurity.guard";
 import { IdValidation } from "./guard/shareIdValidation.guard";
 import { ShareService } from "./share.service";
-import { SHARE_LIMIT_GRACE_MS } from "./share.util";
+import {
+  SHARE_DOWNLOAD_CAPABILITY_TTL_SECONDS,
+  SHARE_LIMIT_GRACE_MS,
+} from "./share.util";
 import { CompletedShareDTO } from "./dto/shareComplete.dto";
 
 // A ZIP can attribute one download to many files; cap the list so a beacon
@@ -260,8 +263,29 @@ export class ShareController {
 
   @Get(":id")
   @UseGuards(IdValidation, ShareSecurityGuard)
-  async get(@Param("id") id: string, @Req() request: Request) {
+  async get(
+    @Param("id") id: string,
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ) {
     const share = await this.shareService.get(id);
+
+    // Download-capped shares need an explicit page visit before any file byte
+    // can be streamed. The cookie also stops Cloudflare's HEAD-to-GET
+    // conversion from consuming a one-time slot for a bare probe.
+    if (share.maxDownloads) {
+      response.cookie(
+        `share_${id}_download`,
+        this.shareService.generateDownloadCapability(id),
+        {
+          path: `/api/shares/${id}`,
+          httpOnly: true,
+          sameSite: "lax",
+          secure: useSecureCookies(this.config),
+          maxAge: SHARE_DOWNLOAD_CAPABILITY_TTL_SECONDS * 1000,
+        },
+      );
+    }
 
     let view;
     try {
