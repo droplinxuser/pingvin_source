@@ -38,7 +38,7 @@ the suggested order for future features.
 | Trending today / new shares | `backend/src/cache/trending.service.ts` (`getTrending`, `getTrendingCountries`, `getRecent`, `getRecentFiles`), `GET /api/shares/trending`, `/trending/countries`, `/recent`, `/recent-files`; `frontend/src/components/share/TrendingToday.tsx`, `TrendingCountries.tsx`, `ShareList.tsx` (row/list layout for `/new-files`, showing up to three file names), `frontend/src/pages/trending.tsx`, `new-media.tsx`, `new-files.tsx`, `search.tsx`. The main ranking counts only the last 24 hourly view buckets, ordered by 24-hour views then 24-hour downloads; shares still have to be public, completed and previewable, but there is no creation-age limit, so an older share with a recent view can appear. The country panel applies the same views-then-downloads order per country. Without Valkey, or on a fresh install with no 24-hour views yet, trending falls back to the newest-media scan ordered by lifetime views. Empty results are `no-store` so a transient dependency failure is never pinned at the edge. The API result is cached 60 seconds in process and 60 seconds at the edge, and the frontend/SSR URL carries the build version as a cache-buster. Trending and the new listings cap at 200; rows/cards reveal in lazy batches with skeletons (infinite scroll). |
 | Shared UI polish | `frontend/src/components/core/RelativeTime.tsx`, `RouteProgress.tsx`, `LazyImage.tsx`, `LazyVideo.tsx`, `LazySection.tsx`, `frontend/src/utils/filePreview.util.ts`; `frontend/src/components/share/FileList.tsx` adds client-side file search for shares with 12+ files (`SEARCH_MIN_FILES`), filtering the rendered batches and the preview navigation without a backend request. The share page replaces the loading skeleton with an explicit “Password required” prompt when the visitor closes the password gate, uses the SEO `requiresRecipient` hint to show the sign-in prompt to guests without a guaranteed 403, and the title/action grid keeps the title full-width on phones. |
 | Profile pictures | `backend/prisma/schema.prisma` (`User.avatarUpdatedAt`), migration `20261028010000_add_user_avatar`, `backend/src/user/avatar.service.ts` (5 MB/40 MP limits, EXIF rotate, 256px centre-crop, metadata-stripped WebP, atomic 0600 write), `user.controller.ts` (`POST`/`DELETE /api/users/me/avatar`, public versioned `GET /api/users/:id/avatar.webp` with ETag/304), `frontend/src/components/core/UserAvatar.tsx`, `frontend/src/utils/avatar.util.ts` |
-| Legal pages | `frontend/src/content/legalDocuments.ts` (built-in imprint/privacy markdown that ships with the app), `frontend/src/components/legal/LegalDocument.tsx` (one shared layout). `/imprint` and `/privacy` server-render the text with the current site name/URL, upload limits, ZIP limit and guest-upload setting, then remain edge-cacheable. The public text is user-facing only: it does not name hosting, storage, delivery, security, malware-analysis or other backend providers, and it carries a visible last-updated date. Legacy admin legal text is ignored; `_app` still strips it from the shared payload for old installs. |
+| Legal pages | `frontend/src/content/legalDocuments.ts` (built-in imprint/privacy markdown that ships with the app), `frontend/src/components/legal/LegalDocument.tsx` (one shared layout). `/imprint` and `/privacy` server-render the text with the current site name/URL, upload limits, ZIP limit and guest-upload setting, then remain edge-cacheable. The public text is user-facing only: it does not name hosting, storage, delivery, security, malware-analysis or other backend providers, and it carries a visible last-updated date. The inert Legal admin category is no longer linked; legacy admin legal text is ignored and `_app` still strips it from the shared payload for old installs. |
 | Contact page and Cloudflare Turnstile | `frontend/src/pages/contact.tsx`, `frontend/src/components/contact/TurnstileWidget.tsx`, `backend/src/contact/*`, `EmailService.sendContactEmail`. `CFT_KEY`/`CFT_SECRET` verify the widget server-side; the validated message is emailed to `REPORT_EMAIL` (falling back to `smtp.email`) in the background. The public config endpoint exposes only the site key. |
 | Upload paste and folder picks | Upstream `useClipboardPaste.hook.ts`, `file.util.ts`, `folder.util.ts`; the fork keeps only `share.maxFileSize` validation in `Dropzone.tsx`, the folder button and upload DTO bounds |
 | Share thumbnails / OG | `backend/src/file/file.service.ts` (share-level 300px WebP, ordered preview fallbacks, background queue, 32-day cleanup), `backend/src/share/preview.util.ts`, `GET /api/shares/:id/thumbnail`, listing cards and `Meta.tsx` |
@@ -206,6 +206,11 @@ the matching `utils/*.util.ts` files.
   `CFT_SECRET` from Cloudflare Turnstile to enable the public contact form; the
   key is exposed through `GET /api/contact/config`, the secret never leaves the
   server. The message is queued in the background after verification.
+  The challenge iframe on `challenges.cloudflare.com` emits its own WebGL and
+  CSP console messages in some browsers (`data:,` fetch, adapter/WebGL
+  warnings). They come from Cloudflare's frame, not the page bundle, and cannot
+  be suppressed by the site CSP; the widget still renders and the server still
+  verifies the token.
 - Video/media URL import (`share.enableMediaImport=true`) needs the `yt-dlp`
   binary on `PATH`. `update.sh` does not install it; install it with the
   distribution package (`sudo apt install yt-dlp`) or `pipx`. Platforms that
@@ -353,9 +358,11 @@ the matching `utils/*.util.ts` files.
   `creatorId` NULL and normal shares leave `reverseShareId` NULL. This keeps
   lookups indexed without storing thousands of empty keys. Migration
   `20261029000000_optimize_share_indexes` applies the change.
-  `backend/scripts/maintain-db.js` runs `VACUUM` while the backend is stopped;
-  `update.sh` calls it after `prisma migrate deploy`. It logs and skips on
-  failure, so a full disk cannot break an update.
+  `backend/scripts/maintain-db.js` checkpoints the WAL and runs `VACUUM` while
+  the backend is stopped; `update.sh` calls it after `prisma migrate deploy`.
+  The trailing checkpoint leaves an empty `-wal` file instead of one full of
+  freed pages. It logs and skips on failure, so a full disk cannot break an
+  update.
 - A database audit found no orphaned rows (`File`, `ShareSecurity`,
   `ShareRecipient`, `ShareUserRecipient`, `RefreshToken`, `OAuthUser`) and no
   obsolete tables or columns. The remaining size is almost entirely legitimate
@@ -441,6 +448,10 @@ Origin responses set `Cache-Control`, `CDN-Cache-Control` and
   sitemap/robots and public files; bypass requests carrying an `access_token`
   cookie. Bypass cache for `/sw.js` and purge old HTML/service-worker responses
   after deployments.
+- The generated Workbox service worker only registers its NetworkOnly runtime
+  route for same-origin, non-`/api/` GETs. A catch-all pattern also controlled
+  third-party ad and Turnstile requests, so an unreachable host surfaced as a
+  service-worker error in the browser console.
 
 ## Security and SEO notes
 
