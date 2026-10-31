@@ -174,9 +174,10 @@ export class JobsService {
 
         if (isOlderThanOneDay) {
           await fs.promises.rm(filePath, { recursive: true, force: true });
-          // A partially uploaded chunk reserved in-flight bytes; return them
-          // to the share/user quota as soon as its temp file is gone.
-          if (stats.isFile())
+          // Only upload temp files reserved in-flight bytes. An atomic
+          // metadata write (`*.tmp`) in the same directory must not release
+          // another upload's quota.
+          if (stats.isFile() && /\.(?:tmp-chunk|remote|media)$/.test(file))
             this.fileService.releaseTempBytes(share.name, stats.size);
           filesDeleted++;
         }

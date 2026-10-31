@@ -42,7 +42,9 @@ import { FileSecurityGuard } from "./guard/fileSecurity.guard";
 const VALID_ID_REGEX = /^[a-zA-Z0-9-]*={0,2}$/;
 // A ZIP subset is a user-controlled query value. Bound it so one request
 // cannot build an arbitrarily large archive selection.
-const MAX_ZIP_FILE_IDS = 500;
+// Keep the query string under the proxy's request-line limit: 150 UUIDs
+// plus commas is about 5.6 KB. Larger selections use per-file downloads.
+const MAX_ZIP_FILE_IDS = 150;
 
 type FileRequest = Request & {
   shareIsPublic?: boolean;
@@ -191,13 +193,17 @@ export class FileController {
     // An optional comma-separated list streams only the selected files, which
     // backs the bulk-selection download. Ids that do not belong to the share
     // are simply not matched by the query.
-    const fileIds = files
-      ? [
-          ...new Set(
-            files.split(",").filter((id) => id && VALID_ID_REGEX.test(id)),
-          ),
-        ].slice(0, MAX_ZIP_FILE_IDS)
-      : undefined;
+    // `?files=a&files=b` is parsed as an array by Express. Treat anything
+    // other than a single comma-separated string as "all files" instead of
+    // letting `.split` throw a 500.
+    const fileIds =
+      typeof files === "string"
+        ? [
+            ...new Set(
+              files.split(",").filter((id) => id && VALID_ID_REGEX.test(id)),
+            ),
+          ].slice(0, MAX_ZIP_FILE_IDS)
+        : undefined;
 
     const zipStream = await this.fileService.getZip(
       shareId,
@@ -230,11 +236,12 @@ export class FileController {
           : getZipCacheHeaders((req as FileRequest).shareIsPublic === true),
     );
 
-    void this.fileService.notifyRecipientDownload(
-      shareId,
-      `${shareId}.zip`,
-      getValidRecipientId(recipientId),
-    );
+    if (req.method !== "HEAD")
+      void this.fileService.notifyRecipientDownload(
+        shareId,
+        `${shareId}.zip`,
+        getValidRecipientId(recipientId),
+      );
 
     return new StreamableFile(zipStream);
   }
@@ -261,7 +268,9 @@ export class FileController {
     const shareDownloadLimited = (req as FileRequest).shareDownloadLimited;
     // The share page sets this capability cookie. Without it, a copied file
     // URL (or Cloudflare's HEAD-to-GET conversion) cannot consume a capped
-    // download slot. Generated WebP previews above stay available.
+    // download slot. Capped shares also skip the generated-preview branch
+    // below: a 300px WebP must not reveal image content without consuming the
+    // one-time slot. A preview request falls through to the counted download.
     if (
       shareDownloadLimited &&
       !this.shareService.verifyDownloadCapability(
@@ -282,7 +291,11 @@ export class FileController {
 
     // Inline image previews are converted to a smaller WebP once and served
     // from the private preview cache. Downloads keep the original format.
-    if ((webp === "true" || webp === "300") && !isDownload) {
+    if (
+      (webp === "true" || webp === "300") &&
+      !isDownload &&
+      !shareDownloadLimited
+    ) {
       const preview = await this.fileService.getWebpPreview(
         shareId,
         fileId,
@@ -321,8 +334,8 @@ export class FileController {
         storageProvider,
       );
       // The name is only needed for the download notification; an inline
-      // preview must not pay for another metadata query.
-      if (isDownload) {
+      // preview or a HEAD probe must not pay for another metadata query.
+      if (isDownload && req.method !== "HEAD") {
         const fileName = await this.fileService.getFileName(shareId, fileId);
         void this.fileService.notifyRecipientDownload(
           shareId,
@@ -420,7 +433,7 @@ export class FileController {
 
     res.set(headers);
 
-    if (isDownload && !file.range) {
+    if (isDownload && !file.range && req.method !== "HEAD") {
       void this.fileService.notifyRecipientDownload(
         shareId,
         file.metaData.name,

@@ -14,7 +14,7 @@ import * as yup from "yup";
 import useTranslate from "../../hooks/useTranslate.hook";
 import useUser from "../../hooks/user.hook";
 import authService from "../../services/auth.service";
-import { safeRedirectPath } from "../../utils/router.util";
+import { getQueryString, safeRedirectPath } from "../../utils/router.util";
 import toast from "../../utils/toast.util";
 
 function TotpForm({ redirectPath }: { redirectPath: string }) {
@@ -44,7 +44,7 @@ function TotpForm({ redirectPath }: { redirectPath: string }) {
     try {
       await authService.signInTotp(
         form.values.code,
-        router.query.loginToken as string,
+        getQueryString(router.query.loginToken) || "",
       );
       await refreshUser();
       window.location.replace(safeRedirectPath(redirectPath));
@@ -67,7 +67,7 @@ function TotpForm({ redirectPath }: { redirectPath: string }) {
             <PinInput
               length={6}
               oneTimeCode
-              aria-label="One time code"
+              aria-label={t("account.modal.totp.code")}
               autoFocus={true}
               onComplete={onSubmit}
               {...form.getInputProps("code")}

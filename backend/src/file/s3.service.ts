@@ -310,13 +310,23 @@ export class S3FileService {
 
     const s3Instance = this.getS3Instance();
     const key = `${this.getS3Path()}${shareId}/${fileName}`;
-    const response = await s3Instance.send(
-      new GetObjectCommand({
-        Bucket: this.config.get("s3.bucketName"),
-        Key: key,
-        Range: rangeString,
-      }),
-    );
+    let response;
+    try {
+      response = await s3Instance.send(
+        new GetObjectCommand({
+          Bucket: this.config.get("s3.bucketName"),
+          Key: key,
+          Range: rangeString,
+        }),
+      );
+    } catch (error) {
+      // A database row can outlive its object after a partial bucket cleanup;
+      // surface that as the same 404 as a missing local file.
+      const name = (error as { name?: string })?.name;
+      if (name === "NoSuchKey" || name === "NotFound")
+        throw new NotFoundException(this.i18n.t("file.notFound"));
+      throw error;
+    }
 
     return {
       metaData: {

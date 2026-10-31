@@ -181,10 +181,22 @@ export class ConfigService extends EventEmitter {
   private async migrateInitUser(): Promise<void> {
     if (!this.yamlConfig.initUser?.enabled) return;
 
-    const userCount = await this.prisma.user.count({
-      where: { isAdmin: true },
-    });
-    if (userCount === 1) {
+    const [adminCount, existingInitUser] = await Promise.all([
+      this.prisma.user.count({ where: { isAdmin: true } }),
+      this.prisma.user.findFirst({
+        where: {
+          OR: [
+            { email: this.yamlConfig.initUser.email },
+            { username: this.yamlConfig.initUser.username },
+          ],
+        },
+        select: { id: true },
+      }),
+    ]);
+    // Any existing admin means setup has already happened. Also skip when the
+    // configured init account exists but was created as a non-admin; retrying
+    // would only hit the unique email/username constraint on every start.
+    if (adminCount >= 1 || existingInitUser) {
       this.logger.log(
         "Skip initial user creation. Admin user is already existent.",
       );
@@ -207,7 +219,13 @@ export class ConfigService extends EventEmitter {
 
     if (!configVariable) throw new Error(`Config variable ${key} not found`);
 
-    const value = configVariable.value ?? configVariable.defaultValue;
+    let value = configVariable.value ?? configVariable.defaultValue;
+
+    // Every consumer concatenates paths or builds an origin from this value.
+    // Normalize here as well so a config.yaml/legacy row with a trailing slash
+    // cannot produce `//share/...`.
+    if (key === "general.appUrl" && typeof value === "string")
+      value = value.trim().replace(/\/+$/, "");
 
     if (configVariable.type == "number" || configVariable.type == "filesize")
       return parseInt(value);
@@ -286,6 +304,11 @@ export class ConfigService extends EventEmitter {
         this.t("config.variableNotFound", "Config variable not found"),
       );
 
+    // The public URL is concatenated with paths and stored in every email.
+    // Normalize it once so a trailing slash cannot produce `//share/...`.
+    if (key === "general.appUrl" && typeof value === "string")
+      value = value.trim().replace(/\/+$/, "");
+
     if (value === "") {
       value = null;
     } else if (
@@ -324,11 +347,13 @@ export class ConfigService extends EventEmitter {
     const validations = [
       {
         key: "share.shareIdLength",
+        // Keep this in step with CreateShareDTO's @Length(3, 50); a shorter
+        // configured value would generate ids the create endpoint rejects.
         condition: (value: unknown) =>
-          typeof value === "number" && value >= 2 && value <= 50,
+          typeof value === "number" && value >= 3 && value <= 50,
         message: this.t(
           "config.shareIdLengthValidation",
-          "Share ID length must be between 2 and 50",
+          "Share ID length must be between 3 and 50",
         ),
       },
       {

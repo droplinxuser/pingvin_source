@@ -83,7 +83,6 @@ const UploadFromUrlButton = ({
       const file = new File([], name) as FileUpload;
       file.uploadingProgress = 0;
       file.remoteUrl = url.toString();
-      file.remoteViaServer = true;
 
       onFiles([file]);
       toast.success(t("upload.url.notify.added", { name }));

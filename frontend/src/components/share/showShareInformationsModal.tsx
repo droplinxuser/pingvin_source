@@ -334,6 +334,7 @@ const EditShareBody = ({
         )}
         <NumberInput
           min={1}
+          precision={0}
           type="number"
           variant="filled"
           placeholder={t(
@@ -344,6 +345,7 @@ const EditShareBody = ({
         />
         <NumberInput
           min={1}
+          precision={0}
           type="number"
           variant="filled"
           placeholder={t(

@@ -68,6 +68,9 @@ const ARCHIVE_EXTENSION = /\.(zip|rar|7z|tar|gz|bz2|xz)$/i;
 const FILE_BATCH_SIZE = 50;
 // A search field only earns its space once the list is long enough to scan.
 const SEARCH_MIN_FILES = 12;
+// The copy action loads the whole text into the tab, so keep it to the same
+// size range as the markdown preview.
+const MAX_TEXT_COPY_BYTES = 1024 * 1024;
 
 // Accents and case should not decide whether a file is found, so compare a
 // normalized form while keeping the original name for display.
@@ -218,8 +221,8 @@ const FileList = ({
   isLoading: boolean;
   recipientId?: string;
   skeletonCount?: number;
-  // Owner-only per-file download counts (rolling 30 days). Undefined for
-  // visitors so the public table never shows analytics.
+  // Rolling 30-day per-file download counts from the public share payload.
+  // The same numbers are shown to every visitor of the share.
   downloadCounts?: Record<string, number>;
 }) => {
   const clipboard = useClipboard();
@@ -411,7 +414,7 @@ const FileList = ({
                 files={selectedFiles}
                 labelId="share.custom.files.download-selected"
                 size="xs"
-                disabled={downloadLimitReached}
+                disabled={downloadLimitReached || selectedFiles.length === 0}
                 cacheBust={!!maxDownloads}
               />
             )}
@@ -551,35 +554,37 @@ const FileList = ({
                     {file.virustotal && (
                       <VirusTotalBadge report={file.virustotal} />
                     )}
-                    {isShareTextFile(file.name) && !maxDownloads && (
-                      <HoverTip label={t("share.copy-text-contents")}>
-                        <ActionIcon
-                          color="blue"
-                          variant="light"
-                          size={28}
-                          aria-label={t("share.copy-text-contents")}
-                          onClick={() => {
-                            if (!window.isSecureContext) {
-                              toast.error(
-                                t("share.notify.copy-not-supported-error"),
-                              );
-                              return;
-                            }
-                            shareService
-                              .getFileText(share.id, file.id)
-                              .then((text) => {
-                                clipboard.copy(text);
-                                toast.success(
-                                  t("share.notify.copied-contents"),
+                    {isShareTextFile(file.name) &&
+                      !maxDownloads &&
+                      (parseInt(file.size, 10) || 0) <= MAX_TEXT_COPY_BYTES && (
+                        <HoverTip label={t("share.copy-text-contents")}>
+                          <ActionIcon
+                            color="blue"
+                            variant="light"
+                            size={28}
+                            aria-label={t("share.copy-text-contents")}
+                            onClick={() => {
+                              if (!window.isSecureContext) {
+                                toast.error(
+                                  t("share.notify.copy-not-supported-error"),
                                 );
-                              })
-                              .catch(toast.axiosError);
-                          }}
-                        >
-                          <TbClipboard size={16} />
-                        </ActionIcon>
-                      </HoverTip>
-                    )}
+                                return;
+                              }
+                              shareService
+                                .getFileText(share.id, file.id)
+                                .then((text) => {
+                                  clipboard.copy(text);
+                                  toast.success(
+                                    t("share.notify.copied-contents"),
+                                  );
+                                })
+                                .catch(toast.axiosError);
+                            }}
+                          >
+                            <TbClipboard size={16} />
+                          </ActionIcon>
+                        </HoverTip>
+                      )}
                     {doesFileSupportPreview(file.name) && !maxDownloads && (
                       <HoverTip label={t("common.button.preview")}>
                         <ActionIcon

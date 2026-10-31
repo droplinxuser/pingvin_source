@@ -1,5 +1,12 @@
-import { forwardRef, Inject, Injectable, Logger } from "@nestjs/common";
+import {
+  ForbiddenException,
+  forwardRef,
+  Inject,
+  Injectable,
+  Logger,
+} from "@nestjs/common";
 import { User } from "@prisma/client";
+import { I18nService } from "nestjs-i18n";
 import { nanoid } from "nanoid";
 import { AuthService } from "../auth/auth.service";
 import { ConfigService } from "../config/config.service";
@@ -17,6 +24,7 @@ export class OAuthService {
     @Inject("OAUTH_PLATFORMS") private platforms: string[],
     @Inject("OAUTH_PROVIDERS")
     private oAuthProviders: Record<string, OAuthProvider<unknown>>,
+    private readonly i18n: I18nService,
   ) {}
   private readonly logger = new Logger(OAuthService.name);
 
@@ -120,22 +128,32 @@ export class OAuthService {
         provider,
       },
     });
-    if (oauthUser) {
-      await this.prisma.oAuthUser.delete({
-        where: {
-          id: oauthUser.id,
-        },
-      });
-    } else {
+    if (!oauthUser)
       throw new ErrorPageException("not_linked", "/account", [provider]);
+
+    const oauthCount = await this.prisma.oAuthUser.count({
+      where: { userId: user.id },
+    });
+    // Never remove the last way to sign in. A stored password only counts when
+    // password sign-in is enabled, and LDAP only when that provider is on.
+    const passwordLogin =
+      !!user.password && !this.config.get("oauth.disablePassword");
+    const ldapLogin = !!user.ldapDN && this.config.get("ldap.enabled") === true;
+    if (!passwordLogin && !ldapLogin && oauthCount <= 1) {
+      throw new ForbiddenException(this.i18n.t("auth.lastAuthMethod"));
     }
+
+    await this.prisma.oAuthUser.delete({ where: { id: oauthUser.id } });
   }
 
   private async getAvailableUsername(preferredUsername: string) {
     // Only keep letters, numbers, dots, and underscores. Truncate to 20 characters.
-    let username = preferredUsername
+    let username = String(preferredUsername ?? "")
       .replace(/[^a-zA-Z0-9._]/g, "")
       .substring(0, 20);
+    // A provider name that contains no (or too few) allowed characters must
+    // not create an account that the normal username form could never produce.
+    if (username.length < 3) username = `user_${nanoid(8)}`;
     while (true) {
       const user = await this.prisma.user.findFirst({
         where: {
@@ -164,9 +182,10 @@ export class OAuthService {
       ]);
     }
 
+    const email = user.email.toLowerCase().trim();
     const existingUser: User = await this.prisma.user.findFirst({
       where: {
-        email: user.email,
+        email,
       },
     });
 
@@ -178,7 +197,7 @@ export class OAuthService {
 
     const result = await this.auth.signUp(
       {
-        email: user.email,
+        email,
         username: await this.getAvailableUsername(user.providerUsername),
         password: null,
       },

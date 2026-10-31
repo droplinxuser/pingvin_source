@@ -2,6 +2,7 @@ import useTranslate from "../../../hooks/useTranslate.hook";
 import Meta from "../../../components/Meta";
 import TotpForm from "../../../components/auth/TotpForm";
 import { useRouter } from "next/router";
+import { getQueryString } from "../../../utils/router.util";
 
 const Totp = () => {
   const t = useTranslate();
@@ -10,7 +11,9 @@ const Totp = () => {
   return (
     <>
       <Meta title={t("totp.title")} />
-      <TotpForm redirectPath={(router.query.redirect as string) || "/upload"} />
+      <TotpForm
+        redirectPath={getQueryString(router.query.redirect) || "/upload"}
+      />
     </>
   );
 };

@@ -50,6 +50,7 @@ export default {
   "common.custom.unit": "Unit",
   "common.custom.pagination.previous": "Previous page",
   "common.custom.pagination.next": "Next page",
+  "navbar.custom.home-logo": "{siteName} home",
   "navbar.custom.primary": "Primary navigation",
   "navbar.custom.open-menu": "Open navigation menu",
   "navbar.custom.back": "Back",
@@ -166,11 +167,11 @@ export default {
   // Fork-specific home page copy (English only; other locales fall back to it)
   "home.custom.title": "<h>{siteName}</h> — big files, short links, zero fuss.",
   "home.custom.description":
-    "A free file-sharing platform for sending shares up to 5 GB with one link. Each file can be up to 512 MB. Sign in with Google, GitHub or Discord; recipients just open the link — no app, and no account needed for standard downloads.",
+    "A free file-sharing platform for sending shares up to {maxSize} with one link. Each file can be up to {maxFileSize}. Sign in with Google, GitHub or Discord; recipients just open the link — no app, and no account needed for standard downloads.",
   "home.custom.metaTitle": "Big files, short links",
   "home.custom.metaDescription":
-    "{siteName} is a free file-sharing platform. Share up to 5 GB per link (512 MB per file) with short links, previews, passwords, QR codes and email. No app needed.",
-  "home.custom.bullet.a.name": "5 GB per share, 512 MB per file",
+    "{siteName} is a free file-sharing platform. Share up to {maxSize} per link ({maxFileSize} per file) with short links, previews, passwords, QR codes and email. No app needed.",
+  "home.custom.bullet.a.name": "{maxSize} per share, {maxFileSize} per file",
   "home.custom.bullet.a.description":
     "Upload files or whole folders, preview photos, videos, audio, PDFs and text, and download every file individually at full speed.",
   "home.custom.bullet.b.name": "Short links, your way",
@@ -258,6 +259,8 @@ export default {
   "account.card.info.displayName": "Display name",
   "account.card.info.username": "Username",
   "account.card.info.email": "Email",
+  "account.custom.email-managed":
+    "Contact your administrator to change your email address.",
   "account.custom.avatar.title": "Profile picture",
   "account.custom.avatar.description":
     "PNG, JPEG or WebP, up to 5 MB. Saved as a 256px WebP.",
@@ -901,6 +904,7 @@ export default {
   "share.custom.stats.download-limit": "Download limit",
   "share.custom.download-limit.reached":
     "This share has reached its download limit.",
+  "share.custom.password.enter": "Enter password",
   "share.custom.download-limit.remaining":
     "{remaining} of {max} downloads remaining.",
   "share.custom.share.button": "Share",

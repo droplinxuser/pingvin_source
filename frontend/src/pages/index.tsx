@@ -14,9 +14,11 @@ import { TbCheck } from "react-icons/tb";
 import { FormattedMessage } from "react-intl";
 import Logo from "../components/Logo";
 import Meta from "../components/Meta";
+import useConfig from "../hooks/config.hook";
 import useSiteMeta from "../hooks/siteMeta.hook";
 import useHomeHref from "../hooks/homeHref.hook";
 import useTranslate from "../hooks/useTranslate.hook";
+import { byteToHumanSizeString } from "../utils/fileSize.util";
 import { absoluteUrl, buildWebsiteRef } from "../utils/seo.util";
 
 const useStyles = createStyles((theme) => ({
@@ -73,9 +75,19 @@ const useStyles = createStyles((theme) => ({
 
 export default function Home() {
   const { classes } = useStyles();
+  const config = useConfig();
   const homeHref = useHomeHref();
   const t = useTranslate();
   const { siteName, baseUrl } = useSiteMeta();
+  // Keep the public copy in step with the admin-configured limits instead of
+  // advertising the seed values after an operator changes them.
+  const maxSize = byteToHumanSizeString(
+    parseInt(config.get("share.maxSize") || "0"),
+  );
+  const maxFileSize = byteToHumanSizeString(
+    parseInt(config.get("share.maxFileSize") || "0"),
+  );
+  const limitValues = { maxSize, maxFileSize };
 
   // Never render the home page when a higher-priority destination exists
   // (signed in or home page disabled): redirect straight to it. `_app` already
@@ -91,7 +103,10 @@ export default function Home() {
     if (redirectTarget) window.location.replace(redirectTarget);
   }, [redirectTarget]);
 
-  const description = t("home.custom.metaDescription", { siteName });
+  const description = t("home.custom.metaDescription", {
+    siteName,
+    ...limitValues,
+  });
   const aboutHref = "/imprint";
   const jsonLd = {
     "@context": "https://schema.org",
@@ -135,7 +150,10 @@ export default function Home() {
                 />
               </Title>
               <Text color="dimmed" mt="md">
-                <FormattedMessage id="home.custom.description" />
+                <FormattedMessage
+                  id="home.custom.description"
+                  values={limitValues}
+                />
               </Text>
 
               <List
@@ -151,7 +169,10 @@ export default function Home() {
                 <List.Item>
                   <div>
                     <b>
-                      <FormattedMessage id="home.custom.bullet.a.name" />
+                      <FormattedMessage
+                        id="home.custom.bullet.a.name"
+                        values={limitValues}
+                      />
                     </b>{" "}
                     - <FormattedMessage id="home.custom.bullet.a.description" />
                   </div>

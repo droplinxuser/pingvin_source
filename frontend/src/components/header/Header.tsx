@@ -465,7 +465,9 @@ const Header = () => {
             <Link
               href={homeHref}
               passHref
-              aria-label={`${config.get("general.appName")} home`}
+              aria-label={t("navbar.custom.home-logo", {
+                siteName: config.get("general.appName"),
+              })}
             >
               <Group spacing="xs">
                 <Logo height={30} width={30} />

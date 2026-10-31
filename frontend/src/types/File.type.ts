@@ -5,7 +5,6 @@ export type FileUpload = File & {
   // other URL is fetched by the visitor's browser before upload, so the server
   // IP is never exposed to the remote host.
   remoteUrl?: string;
-  remoteViaServer?: boolean;
 };
 
 export type FileUploadResponse = { id: string; name: string };

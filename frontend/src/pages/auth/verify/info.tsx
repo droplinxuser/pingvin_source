@@ -6,10 +6,11 @@ import authService from "../../../services/auth.service";
 import toast from "../../../utils/toast.util";
 import useTranslate from "../../../hooks/useTranslate.hook";
 import Meta from "../../../components/Meta";
+import { getQueryString } from "../../../utils/router.util";
 
 export default function VerificationInfo() {
   const router = useRouter();
-  const { email } = router.query;
+  const email = getQueryString(router.query.email);
   const t = useTranslate();
   const [loading, setLoading] = useState(false);
 
@@ -17,7 +18,7 @@ export default function VerificationInfo() {
     if (!email) return;
     setLoading(true);
     authService
-      .resendVerification(email as string)
+      .resendVerification(email)
       .then(() => {
         toast.success(t("verify.info.resend.success"));
       })

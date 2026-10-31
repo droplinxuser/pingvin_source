@@ -16,7 +16,7 @@ import { useModals } from "@mantine/modals";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import {
-  TbPlusMinus,
+  TbFilePlus,
   TbInfoCircle,
   TbLink,
   TbLock,
@@ -118,7 +118,9 @@ const MyShares = () => {
                       <Group spacing="xs">
                         {share.id}{" "}
                         {share.security?.passwordProtected && (
-                          <HoverTip label="Password Protected">
+                          <HoverTip
+                            label={t("account.shares.table.password-protected")}
+                          >
                             <span style={{ display: "inline-flex" }}>
                               <TbLock
                                 color="orange"
@@ -131,7 +133,11 @@ const MyShares = () => {
                         )}
                         {config.get("share.enableUserRecipients") &&
                           (share.security?.restrictToRecipients ? (
-                            <HoverTip label="Recipients Only">
+                            <HoverTip
+                              label={t(
+                                "account.shares.table.restricted-to-recipients",
+                              )}
+                            >
                               <span style={{ display: "inline-flex" }}>
                                 <FaUserLock
                                   color={theme.colors.gray[6]}
@@ -142,7 +148,11 @@ const MyShares = () => {
                               </span>
                             </HoverTip>
                           ) : share.recipients?.length ? (
-                            <HoverTip label="Sent to Recipients">
+                            <HoverTip
+                              label={t(
+                                "account.shares.table.shared-with-recipients",
+                              )}
+                            >
                               <span style={{ display: "inline-flex" }}>
                                 <TbUsers
                                   color={theme.colors.gray[6]}
@@ -178,16 +188,16 @@ const MyShares = () => {
                     </td>
                     <td>
                       <Group position="right">
-                        <HoverTip label={t("account.shares.button.edit")}>
+                        <HoverTip label={t("share.custom.manage-files")}>
                           <ActionIcon
                             component={Link}
                             href={`/share/${share.id}/edit`}
                             color="orange"
                             variant="light"
                             size={25}
-                            aria-label={t("account.shares.button.edit")}
+                            aria-label={t("share.custom.manage-files")}
                           >
-                            <TbPlusMinus />
+                            <TbFilePlus />
                           </ActionIcon>
                         </HoverTip>
                         <HoverTip label={t("common.button.info")}>

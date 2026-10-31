@@ -9,14 +9,17 @@ import useTranslate, {
 const showEnterPasswordModal = (
   modals: ModalsContextProps,
   submitCallback: (password: string) => Promise<void>,
+  onClose?: () => void,
 ) => {
   const t = translateOutsideContext();
   return modals.openModal({
     // The gate is not a trap: visitors who do not know the password can close
-    // it and use the normal site navigation.
+    // it and use the normal site navigation. The caller uses `onClose` to
+    // replace the loading skeleton with an explicit locked prompt.
     closeOnClickOutside: true,
     withCloseButton: true,
     closeOnEscape: true,
+    onClose,
     title: t("share.modal.password.title"),
     children: <Body submitCallback={submitCallback} />,
   });

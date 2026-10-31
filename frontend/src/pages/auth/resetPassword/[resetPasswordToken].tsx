@@ -17,6 +17,7 @@ import useTranslate from "../../../hooks/useTranslate.hook";
 import authService from "../../../services/auth.service";
 import toast from "../../../utils/toast.util";
 import useConfig from "../../../hooks/config.hook";
+import { getQueryString } from "../../../utils/router.util";
 
 const useStyles = createStyles((theme) => ({
   control: {
@@ -81,7 +82,8 @@ const ResetPassword = () => {
     ),
   });
 
-  const resetPasswordToken = router.query.resetPasswordToken as string;
+  const resetPasswordToken =
+    getQueryString(router.query.resetPasswordToken) || "";
 
   return (
     <Container size={460} my={30}>

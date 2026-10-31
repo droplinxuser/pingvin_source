@@ -64,11 +64,11 @@ export class AuthController {
       result.accessToken,
     );
 
-    // Never echo the Prisma user row (password hash and other secrets) back to
-    // the client. The browser only needs the token cookies and, when e-mail
-    // verification is on, the verification flag.
+    // Never echo the Prisma user row (password hash and other secrets) or the
+    // refresh token back to the client. The refresh token is only a scoped
+    // HttpOnly cookie; returning it in JSON would defeat that protection.
     if ("user" in result) {
-      const { user: _user, ...tokens } = result;
+      const { user: _user, refreshToken: _refreshToken, ...tokens } = result;
       return tokens;
     }
 
@@ -98,6 +98,12 @@ export class AuthController {
       );
     }
 
+    // The refresh token lives only in its scoped HttpOnly cookie. Keep it out
+    // of the JSON body so page scripts cannot read it.
+    if ("refreshToken" in result) {
+      const { refreshToken: _refreshToken, ...tokens } = result;
+      return tokens;
+    }
     return result;
   }
 

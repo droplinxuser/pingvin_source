@@ -13,6 +13,15 @@ export class CreateShareGuard extends JwtGuard {
   }
 
   /**
+   * Share creation is the only route that intentionally accepts an anonymous
+   * caller; JwtGuard is strict everywhere else so a missing login cannot reach
+   * a handler that expects a user object.
+   */
+  protected get allowUnauthenticated(): boolean {
+    return true;
+  }
+
+  /**
    * Only guards share creation. A reverse-share use is reserved during that
    * request, so later upload/complete/removal routes must rely on
    * StrictShareOwnerGuard (which matches the linked token) instead; calling

@@ -189,7 +189,11 @@ export class TrendingService {
     // cache normally makes this a non-issue, but a restart or expiry can
     // otherwise produce one union per concurrent request.
     const pendingItems = await (this.pendingRanking ?? this.startRankingRead());
-    if (!pendingItems) return this.getTrendingFallback(resultLimit);
+    // A fresh deploy with Valkey enabled but no 24-hour views yet would
+    // otherwise show an empty trending page even though public media shares
+    // exist. Use the newest-media fallback until the first ranking appears.
+    if (!pendingItems || pendingItems.length === 0)
+      return this.getTrendingFallback(resultLimit);
     return pendingItems.slice(0, resultLimit);
   }
 
@@ -405,6 +409,9 @@ export class TrendingService {
       AGGREGATE: "SUM",
     });
     multi.zRangeWithScores(downloadRankKey, 0, -1);
+    // The explicit TTL is only a safety net for a transaction that never
+    // reaches its DEL (the normal path deletes it in the same MULTI).
+    multi.expire(downloadRankKey, 60);
     multi.del(downloadRankKey);
     const replies = await multi.exec();
 
@@ -487,6 +494,8 @@ export class TrendingService {
       AGGREGATE: "SUM",
     });
     multi.zRangeWithScores(downloadRankKey, 0, -1);
+    // Same safety TTL as the main ranking read.
+    multi.expire(downloadRankKey, 60);
     multi.del(downloadRankKey);
     const replies = await multi.exec();
 

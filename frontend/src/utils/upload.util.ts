@@ -55,16 +55,9 @@ const readBodyWithLimit = async (
     reader.releaseLock();
   }
 
-  // Copy into a fresh ArrayBuffer so the Blob constructor accepts the result
-  // under TypeScript's ArrayBufferLike/SharedArrayBuffer split.
-  const merged = new Uint8Array(received);
-  let offset = 0;
-  for (const chunk of chunks) {
-    merged.set(chunk, offset);
-    offset += chunk.byteLength;
-  }
-
-  return new Blob([merged], {
+  // Let Blob concatenate the chunks itself. Copying them into one additional
+  // buffer first doubled peak memory for a large remote file.
+  return new Blob(chunks as ConstructorParameters<typeof Blob>[0], {
     type: contentType || undefined,
   });
 };

@@ -96,6 +96,7 @@ export type ShareSeo = {
   id: string;
   requiresPassword?: boolean;
   requiresToken?: boolean;
+  requiresRecipient?: boolean;
   name?: string;
   description?: string;
   createdAt?: string;

@@ -362,6 +362,14 @@ export class ShareController {
     @Req() request: Request,
     @Res({ passthrough: true }) response: Response,
   ) {
+    // A download-capped share is download-only. The 300px thumbnail is still
+    // share content, so it must not be readable without consuming a slot.
+    if (
+      (request as Request & { shareDownloadLimited?: boolean })
+        .shareDownloadLimited
+    )
+      throw new NotFoundException();
+
     const thumbnail = await this.fileService.getShareThumbnail(id);
     if (!thumbnail) {
       const placeholder = await this.fileService.getThumbnailPlaceholder();
@@ -615,7 +623,7 @@ export class ShareController {
     @GetUser() user: User,
     @GetShare() share: Share,
   ) {
-    await this.shareService.expire(id, share, user?.id);
+    await this.shareService.expire(id, share, user?.id, user?.isAdmin === true);
   }
 
   @Throttle({
@@ -675,8 +683,11 @@ export class ShareController {
    */
   private clearShareTokenCookies(request: Request, response: Response) {
     const now = moment().unix();
+    // Only touch names this app can have issued. A crafted Cookie header must
+    // not be able to make `clearCookie` write an invalid Set-Cookie header.
+    const shareTokenCookieName = /^share_[A-Za-z0-9_-]+_token$/;
     const shareTokenCookies = Object.entries(request.cookies)
-      .filter(([key]) => key.startsWith("share_") && key.endsWith("_token"))
+      .filter(([key]) => shareTokenCookieName.test(key))
       .map(([key, value]) => {
         try {
           const payload = this.jwtService.decode(value) as {
@@ -698,8 +709,15 @@ export class ShareController {
       .forEach((cookie) => response.clearCookie(cookie.key));
 
     if (validTokens.length > 10) {
+      // Tokens without an `exp` belong to never-expiring shares. Sort them
+      // last so trimming the oldest expiring cookies cannot log those shares
+      // out despite the comment above.
       validTokens
-        .sort((a, b) => (a.exp ?? 0) - (b.exp ?? 0))
+        .sort(
+          (a, b) =>
+            (a.exp ?? Number.MAX_SAFE_INTEGER) -
+            (b.exp ?? Number.MAX_SAFE_INTEGER),
+        )
         .slice(0, -10)
         .forEach((cookie) => response.clearCookie(cookie.key));
     }

@@ -58,18 +58,23 @@ trap restore_branding EXIT
 # backend/.env used to be tracked and is now ignored. Keep the server copy
 # (which may contain local values) safe across the pull that removes it from
 # the index: back it up, drop local modifications so the pull cannot refuse,
-# and restore it afterwards.
+# and restore it afterwards. The trap also restores it when the pull fails.
 ENV_BACKUP=""
+restore_env() {
+  if [ -n "$ENV_BACKUP" ]; then
+    cp -p "$ENV_BACKUP" backend/.env
+    rm -f "$ENV_BACKUP"
+    ENV_BACKUP=""
+  fi
+}
+trap 'restore_branding; restore_env' EXIT
 if [ -f backend/.env ]; then
   ENV_BACKUP="$(mktemp)"
   cp backend/.env "$ENV_BACKUP"
   git checkout -- backend/.env 2>/dev/null || true
 fi
 git pull --ff-only
-if [ -n "$ENV_BACKUP" ]; then
-  cp -p "$ENV_BACKUP" backend/.env
-  rm -f "$ENV_BACKUP"
-fi
+restore_env
 restore_branding
 trap - EXIT
 # An untracked manifest.json from older builds would shadow the dynamic route.

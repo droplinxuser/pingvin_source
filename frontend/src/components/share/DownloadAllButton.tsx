@@ -11,6 +11,10 @@ const DOWNLOAD_GAP_MS = 1000;
 const MODAL_SETTLE_MS = 400;
 // Fallback when the config key is not present yet (e.g. an older backend).
 const DEFAULT_MAX_ZIP_SIZE = 512_000_000;
+// Keep this in step with FileController.MAX_ZIP_FILE_IDS. A larger selection
+// must use the per-file loop; the id list also has to stay within proxy URL
+// limits.
+const MAX_ZIP_FILES = 150;
 
 type DownloadableFile = { id: string; name: string; size?: string };
 
@@ -54,6 +58,7 @@ const DownloadAllButton = ({
   // else keeps the reliable per-file sequence.
   const useZip =
     files.length > 1 &&
+    files.length <= MAX_ZIP_FILES &&
     totalSize > 0 &&
     (maxZipSize <= 0 || totalSize <= maxZipSize);
 

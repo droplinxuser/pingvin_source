@@ -86,7 +86,7 @@ export function sanitizeCommentContent(input: unknown): string {
   const text = input
     // Pasted text can contain binary control bytes; keep newlines and tabs.
     // eslint-disable-next-line no-control-regex
-    .replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, "")
+    .replace(/[\u0000-\u0008\u000b-\u001f\u007f]/g, "")
     .replace(/<[^>]*>/g, " ")
     .replace(URL_PATTERN, " ")
     .replace(/[ \t]{2,}/g, " ")

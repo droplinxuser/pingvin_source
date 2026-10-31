@@ -86,7 +86,7 @@ const LegalDocument = ({
             a: {
               props: {
                 target: "_blank",
-                rel: "noreferrer",
+                rel: "noopener noreferrer",
               },
               component: Anchor,
             },

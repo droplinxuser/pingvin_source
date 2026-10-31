@@ -34,9 +34,22 @@ export class ContactService {
     return process.env.CFT_SECRET?.trim() || "";
   }
 
+  private get adminEmail(): string {
+    return (
+      process.env.REPORT_EMAIL?.trim() ||
+      ((this.config.get("smtp.email") as string | undefined)?.trim() ?? "")
+    );
+  }
+
   publicConfig() {
+    // Do not show a form that `send()` would reject because SMTP or the
+    // destination address is not configured.
     return {
-      enabled: !!this.siteKey && !!this.secret,
+      enabled:
+        !!this.siteKey &&
+        !!this.secret &&
+        this.config.get("smtp.enabled") === true &&
+        !!this.adminEmail,
       siteKey: this.siteKey,
     };
   }
@@ -48,10 +61,7 @@ export class ContactService {
       );
     }
 
-    const adminEmail =
-      process.env.REPORT_EMAIL?.trim() ||
-      (this.config.get("smtp.email") as string | undefined)?.trim();
-    if (!this.config.get("smtp.enabled") || !adminEmail) {
+    if (!this.config.get("smtp.enabled") || !this.adminEmail) {
       throw new ServiceUnavailableException(
         "Contact email is not configured yet.",
       );

@@ -176,6 +176,7 @@ const MyShares = () => {
                                 <Anchor
                                   href={`${appUrl !== defaultAppUrl ? appUrl : window.location.origin}/share/${share.id}`}
                                   target="_blank"
+                                  rel="noopener noreferrer"
                                 >
                                   <Text maw={120} truncate>
                                     {share.id}

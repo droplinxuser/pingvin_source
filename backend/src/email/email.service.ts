@@ -39,7 +39,10 @@ export class EmailService {
   }
 
   private getFromAddress(): string | { name: string; address: string } {
-    const appName = this.config.get("general.appName")?.trim();
+    const appName = this.config
+      .get("general.appName")
+      ?.replace(/[\r\n]+/g, " ")
+      .trim();
     const address = this.config.get("smtp.email");
     return appName ? { name: appName, address } : address;
   }
@@ -89,13 +92,18 @@ export class EmailService {
     recipientName?: string,
   ) {
     const isHtml = this.config.get("email.sendHtmlEmails");
-    const recipient = recipientName?.trim();
+    // OAuth-provided names are not covered by the local display-name pattern;
+    // strip CRLF before they reach a header-adjacent display name.
+    const recipient = recipientName?.replace(/[\r\n]+/g, " ").trim();
+    // Share names and file names are user-controlled and can reach a subject
+    // template. Strip line breaks so they cannot inject extra mail headers.
+    const safeSubject = subject.replace(/[\r\n]+/g, " ").trim();
 
     await this.getTransporter()
       .sendMail({
         from: this.getFromAddress(),
         to: recipient ? { name: recipient, address: email } : email,
-        subject: subject,
+        subject: safeSubject,
         [isHtml ? "html" : "text"]: text,
         ...(replyTo && { replyTo }),
       })
@@ -131,7 +139,10 @@ export class EmailService {
       this.config.get("email.shareRecipientsReplyToCreator") &&
       creator?.email
     ) {
-      const creatorName = creator.displayName || creator.username;
+      const creatorName = (creator.displayName || creator.username)?.replace(
+        /[\r\n]+/g,
+        " ",
+      );
       replyTo = creatorName
         ? { name: creatorName, address: creator.email }
         : creator.email;

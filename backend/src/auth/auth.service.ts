@@ -115,6 +115,10 @@ export class AuthService {
           );
         }
       }
+      // Never swallow an unexpected create/email error and return undefined:
+      // the controller would then dereference a missing result and return a
+      // confusing 500 with no useful log.
+      throw e;
     }
   }
 
@@ -158,7 +162,7 @@ export class AuthService {
        * in whatever format it is provided.
        */
       const ldapUsername = dto.username || dto.email;
-      this.logger.debug(`Trying LDAP login for user ${ldapUsername}`);
+      this.logger.debug(`Trying LDAP login for user ${logValue(ldapUsername)}`);
       const ldapUser = await this.ldapService.authenticateUser(
         ldapUsername,
         dto.password,
@@ -173,7 +177,9 @@ export class AuthService {
     }
 
     this.logger.log(
-      `Failed login attempt for user ${dto.email || dto.username} from IP ${ip}`,
+      `Failed login attempt for user ${logValue(
+        dto.email || dto.username,
+      )} from IP ${ip}`,
     );
     throw new UnauthorizedException(this.i18n.t("auth.wrongCredentials"));
   }
@@ -552,7 +558,8 @@ export class AuthService {
   }
 
   async verifyPassword(user: User, password: string) {
-    if (!user.password && this.config.get("ldap.enabled")) {
+    if (!user.password) {
+      if (!this.config.get("ldap.enabled")) return false;
       return !!(await this.ldapService.authenticateUser(
         user.username,
         password,
@@ -561,4 +568,11 @@ export class AuthService {
 
     return argon.verify(user.password, password);
   }
+}
+
+/** Keep attacker-supplied login names from forging extra log lines. */
+function logValue(value: unknown): string {
+  return String(value ?? "")
+    .replace(/[\r\n]+/g, " ")
+    .slice(0, 254);
 }

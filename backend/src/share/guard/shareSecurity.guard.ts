@@ -122,6 +122,14 @@ export class ShareSecurityGuard extends JwtGuard {
     // authenticate so comment authors and admin previews keep working.
     if (accessPublic && request.method === "GET" && !expired) return true;
 
+    // Expiry is a hard stop for every visitor, including admins: the page and
+    // SEO paths already return 404, and an admin branch before this check
+    // would leave the file route able to stream expired content. Check it
+    // before the account lookup so an expired id costs no refresh-token query.
+    if (expired) {
+      throw new NotFoundException(this.i18n.t("share.notFound"));
+    }
+
     const user = await this.authenticateUser(context);
 
     // If admin access is enabled and user is admin, allow access
@@ -130,10 +138,6 @@ export class ShareSecurityGuard extends JwtGuard {
       this.configService.get("security.allowAdminAccessAllShares")
     ) {
       return true;
-    }
-
-    if (expired) {
-      throw new NotFoundException(this.i18n.t("share.notFound"));
     }
 
     // If user sharing is enabled, check if the authenticated user is a recipient

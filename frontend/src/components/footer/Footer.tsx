@@ -15,9 +15,9 @@ import { useRouter } from "next/router";
 import { useEffect, useRef, useState } from "react";
 import { useIntl } from "react-intl";
 import { TbEye } from "react-icons/tb";
+import useHomeHref from "../../hooks/homeHref.hook";
 import useSiteMeta from "../../hooks/siteMeta.hook";
 import useTranslate from "../../hooks/useTranslate.hook";
-import useUser from "../../hooks/user.hook";
 import systemService, { SystemStats } from "../../services/system.service";
 import { countryCodeToFlag, getCountryName } from "../../utils/country.util";
 import { byteToHumanSizeString } from "../../utils/fileSize.util";
@@ -156,7 +156,7 @@ const Footer = () => {
   const t = useTranslate();
   const intl = useIntl();
   const router = useRouter();
-  const { user } = useUser();
+  const homeHref = useHomeHref();
   const { classes } = useStyles();
   const { siteName } = useSiteMeta();
   const [stats, setStats] = useState<SystemStats | null>(null);
@@ -227,8 +227,13 @@ const Footer = () => {
     };
   }, [router.asPath]);
 
-  const primaryHref = user ? "/upload" : "/";
-  const primaryLabel = user ? t("navbar.upload") : t("navbar.home");
+  const primaryHref = homeHref;
+  const primaryLabel =
+    homeHref === "/upload"
+      ? t("navbar.upload")
+      : homeHref === "/auth/signIn"
+        ? t("navbar.signin")
+        : t("navbar.home");
 
   const compact = (value?: number) =>
     value == null ? "—" : getCompactNumberFormat(intl.locale).format(value);
@@ -342,7 +347,7 @@ const Footer = () => {
             <Text className={classes.heading}>{t("footer.custom.links")}</Text>
             <Box
               component="nav"
-              aria-label={t("footer.custom.navigation")}
+              aria-label={t("footer.custom.links")}
               className={classes.legalLinks}
             >
               <Anchor

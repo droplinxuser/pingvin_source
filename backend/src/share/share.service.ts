@@ -108,6 +108,9 @@ export type ShareSeo = {
   // A view-limited share needs its page token before the payload can load.
   // Exposing the hint avoids a guaranteed 403 in the browser console.
   requiresToken?: boolean;
+  // A recipient-restricted share can skip the guaranteed guest 403 and show
+  // the sign-in prompt directly.
+  requiresRecipient?: boolean;
   name?: string;
   description?: string;
   createdAt?: Date;
@@ -481,12 +484,21 @@ export class ShareService {
       : undefined;
 
     if (notifyReverseShareCreator) {
-      await this.emailService.sendMailToReverseShareCreator(
-        share.reverseShare.creator.email,
-        share.id,
-        share.reverseShare.creator.displayName ||
-          share.reverseShare.creator.username,
-      );
+      // A slow or misconfigured SMTP server must not turn a completed upload
+      // into an error (the files are already stored). Notify the owner in the
+      // background, like the per-recipient messages above.
+      void this.emailService
+        .sendMailToReverseShareCreator(
+          share.reverseShare.creator.email,
+          share.id,
+          share.reverseShare.creator.displayName ||
+            share.reverseShare.creator.username,
+        )
+        .catch((error) =>
+          this.logger.warn(
+            `Could not notify reverse-share owner for ${share.id}: ${error}`,
+          ),
+        );
     }
 
     // Check if any file is malicious with ClamAV
@@ -826,6 +838,9 @@ export class ShareService {
         id: share.id,
         requiresPassword: !!share.security?.password,
         requiresToken: !!share.security?.maxViews,
+        requiresRecipient:
+          !!share.security?.restrictToRecipients &&
+          this.configService.get("share.enableUserRecipients") === true,
       };
 
     // The first 50 files are already loaded. A share at or below that limit
@@ -942,6 +957,7 @@ export class ShareService {
       reverseShare?: { creatorId: string | null } | null;
     },
     actorId?: string,
+    isActorAdmin = false,
   ) {
     const share =
       knownShare ??
@@ -957,7 +973,7 @@ export class ShareService {
 
     const isReverseShareOwner =
       !!actorId && share.reverseShare?.creatorId === actorId;
-    if (!share.creatorId && !isReverseShareOwner) {
+    if (!share.creatorId && !isReverseShareOwner && !isActorAdmin) {
       throw new ForbiddenException(this.i18n.t("share.anonymousNoExpire"));
     }
 
@@ -1028,6 +1044,19 @@ export class ShareService {
     body: UpdateShareDTO,
     currentSecurity?: ShareSecurity,
   ) {
+    // A recipient-restricted share cannot also require a password (create()
+    // enforces the same rule). Reject the combination instead of silently
+    // creating a share that asks recipients for two credentials.
+    if (
+      currentSecurity?.restrictToRecipients &&
+      body.security.password &&
+      !body.security.removePassword
+    ) {
+      throw new BadRequestException(
+        "Cannot set a password on a share restricted to recipients.",
+      );
+    }
+
     const nextPassword = body.security.removePassword
       ? null
       : body.security.password

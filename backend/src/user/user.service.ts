@@ -183,6 +183,25 @@ export class UserSevice {
         throw new BadRequestException(this.i18n.t("auth.passwordPolicyNotMet"));
       }
 
+      // Deleting the last admin is blocked; demoting the last one has the same
+      // effect (nobody can reach the admin UI or restore access).
+      if (user.isAdmin === false) {
+        const target = await this.prisma.user.findUnique({
+          where: { id },
+          select: { isAdmin: true },
+        });
+        if (target?.isAdmin) {
+          const adminCount = await this.prisma.user.count({
+            where: { isAdmin: true },
+          });
+          if (adminCount <= 1) {
+            throw new BadRequestException(
+              this.i18n.t("auth.cannotDemoteLastAdmin"),
+            );
+          }
+        }
+      }
+
       const hash = user.password && (await argon.hash(user.password));
       const { displayName, isActivated, ...rest } = user;
 

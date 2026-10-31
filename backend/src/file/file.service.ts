@@ -369,7 +369,25 @@ export class FileService implements OnModuleInit {
       for (let index = 0; index < total; index++) {
         const length = Math.min(chunkSize, size - index * chunkSize);
         const buffer = Buffer.alloc(Math.max(length, 0));
-        if (length > 0) await handle.read(buffer, 0, length, index * chunkSize);
+        if (length > 0) {
+          // `read` is allowed to return fewer bytes than requested. Fill the
+          // whole chunk, otherwise an imported file would gain zero padding.
+          let read = 0;
+          while (read < length) {
+            const result = await handle.read(
+              buffer,
+              read,
+              length - read,
+              index * chunkSize + read,
+            );
+            if (result.bytesRead === 0) break;
+            read += result.bytesRead;
+          }
+          if (read !== length)
+            throw new Error(
+              `Short read while importing ${shareId}/${fileId}: ${read}/${length}`,
+            );
+        }
         await this.create(
           buffer.toString("base64"),
           { index, total },

@@ -256,7 +256,12 @@ export const buildShareListCollectionPage = ({
   siteName,
   baseUrl,
 }: {
-  items: { id: string; name?: string; updatedAt?: string }[];
+  items: {
+    id: string;
+    name?: string;
+    updatedAt?: string;
+    previewFileId?: string;
+  }[];
   name: string;
   description: string;
   path: string;
@@ -273,7 +278,11 @@ export const buildShareListCollectionPage = ({
       items.slice(0, 50).map((item) => ({
         name: item.name?.trim() || item.id,
         path: `/share/${item.id}`,
-        image: getShareThumbnailUrl(item.id, item.updatedAt),
+        // File-only cards have no generated thumbnail. Pointing structured
+        // data at a 404 image is worse than omitting the property.
+        image: item.previewFileId
+          ? getShareThumbnailUrl(item.id, item.updatedAt)
+          : undefined,
       })),
       baseUrl,
     ),

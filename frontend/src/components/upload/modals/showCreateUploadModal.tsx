@@ -390,6 +390,7 @@ const CreateUploadModalBody = ({
                     )}
                     <NumberInput
                       min={1}
+                      precision={0}
                       type="number"
                       variant="filled"
                       placeholder={t(
@@ -402,6 +403,7 @@ const CreateUploadModalBody = ({
                     />
                     <NumberInput
                       min={1}
+                      precision={0}
                       type="number"
                       variant="filled"
                       placeholder={t(
@@ -454,6 +456,10 @@ const SimplifiedCreateUploadModalModal = ({
       .transform((value) => value || undefined)
       .min(3, t("common.error.too-short", { length: 3 }))
       .max(30, t("common.error.too-long", { length: 30 })),
+    description: yup
+      .string()
+      .optional()
+      .max(512, t("common.error.too-long", { length: 512 })),
   });
 
   const form = useForm({

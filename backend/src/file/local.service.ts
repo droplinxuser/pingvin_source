@@ -103,6 +103,10 @@ export class LocalFileService {
       },
     });
 
+    // The share can be deleted between the owner guard and the chunk write
+    // (for example an expiry cleanup). Return the same 404 as a missing share
+    // instead of dereferencing null.
+    if (!share) throw new NotFoundException(this.i18n.t("share.notFound"));
     if (share.uploadLocked)
       throw new BadRequestException(this.i18n.t("file.alreadyCompleted"));
 
@@ -347,7 +351,9 @@ export class LocalFileService {
       throw new NotFoundException(this.i18n.t("file.notFound"));
 
     const filePath = this.getSafeFilePath(shareId, fileId);
-    await fs.unlink(filePath);
+    // Deleting an already missing byte file should still remove its stale row;
+    // a database row can outlive the bytes after a partial cleanup/disk repair.
+    await fs.rm(filePath, { force: true });
 
     await this.prisma.file.delete({ where: { id: fileId } });
   }

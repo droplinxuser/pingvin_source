@@ -10,6 +10,7 @@ import {
   Title,
 } from "@mantine/core";
 import { useModals } from "@mantine/modals";
+import { getCookie } from "cookies-next/client";
 import { GetServerSidePropsContext } from "next";
 import Link from "next/link";
 import { useRouter } from "next/router";
@@ -106,7 +107,7 @@ const ShareMessage = ({
 }: {
   title: ReactNode;
   description: ReactNode;
-  action: { href: string; label: ReactNode };
+  action: { href?: string; label: ReactNode; onClick?: () => void };
 }) => (
   <Center style={{ height: "70vh" }}>
     <Stack align="center" spacing="md">
@@ -116,9 +117,13 @@ const ShareMessage = ({
       <Text color="dimmed" align="center">
         {description}
       </Text>
-      <Button component={Link} href={action.href}>
-        {action.label}
-      </Button>
+      {action.href ? (
+        <Button component={Link} href={action.href}>
+          {action.label}
+        </Button>
+      ) : (
+        <Button onClick={action.onClick}>{action.label}</Button>
+      )}
     </Stack>
   </Center>
 );
@@ -142,6 +147,9 @@ const SharePage = ({
 
   const [share, setShare] = useState<ShareType>();
   const [isRestricted, setIsRestricted] = useState(false);
+  // Closing the password gate must not leave a blank skeleton page behind.
+  // The locked state below renders a normal prompt with an unlock button.
+  const [isLocked, setIsLocked] = useState(false);
   const [pageError, setPageError] = useState<{
     title: string;
     description: string;
@@ -310,11 +318,28 @@ const SharePage = ({
       "go-home",
     );
 
+  function hasReadyHint() {
+    try {
+      return !!window.localStorage.getItem(`share_ready_${shareId}`);
+    } catch {
+      // Privacy modes can throw on localStorage access; treat it as absent.
+      return false;
+    }
+  }
+
+  function showPasswordGate() {
+    setIsLocked(false);
+    showEnterPasswordModal(modals, getShareToken, () => setIsLocked(true));
+  }
+
   const getShareToken = async (password?: string) => {
     await shareService
       .getShareToken(shareId, password)
       .then(() => {
         modals.closeAll();
+        // Run after closeAll so the modal's onClose (which sets the locked
+        // prompt) cannot overwrite a successful unlock.
+        setIsLocked(false);
         // Non-sensitive browser hint: this visitor already unlocked the share,
         // so a reload can call the API directly instead of showing the modal
         // and logging a guaranteed 403.
@@ -349,8 +374,7 @@ const SharePage = ({
         ) {
           // An initial probe opens the form; a submitted password rejects so
           // the same form can render its inline error.
-          if (password === undefined)
-            showEnterPasswordModal(modals, getShareToken);
+          if (password === undefined) showPasswordGate();
           else throw e;
         } else {
           toast.axiosError(e);
@@ -410,10 +434,9 @@ const SharePage = ({
             t("share.error.access-denied.description"),
           );
         } else if (error == "share_password_required") {
-          showEnterPasswordModal(modals, getShareToken);
+          showPasswordGate();
         } else if (error == "share_token_required") {
-          if (seo?.requiresPassword)
-            showEnterPasswordModal(modals, getShareToken);
+          if (seo?.requiresPassword) showPasswordGate();
           else getShareToken();
         } else {
           showErrorModal(
@@ -429,24 +452,26 @@ const SharePage = ({
   useEffect(() => {
     if (initialNotFound) return;
 
+    // A guest on a recipient-restricted share must sign in. Skipping the
+    // guaranteed 403 keeps the console clean; a visitor with a session cookie
+    // still calls the API so an already-linked recipient stays frictionless.
+    if (seo?.requiresRecipient && !getCookie("access_token")) {
+      setIsRestricted(true);
+      return;
+    }
+
     // The SEO payload already tells us whether the share is password
     // protected. Open the gate directly instead of issuing a GET that is
     // guaranteed to fail with 403 (and show up as a console error).
-    if (
-      seo?.requiresPassword &&
-      !window.localStorage.getItem(`share_ready_${shareId}`)
-    ) {
-      showEnterPasswordModal(modals, getShareToken);
+    if (seo?.requiresPassword && !hasReadyHint()) {
+      showPasswordGate();
       return;
     }
 
     // A view-limited share needs a token before its payload can load. The SEO
     // payload exposes this hint so the first request does not have to fail
     // with a 403 that browsers report as a console error.
-    if (
-      seo?.requiresToken &&
-      !window.localStorage.getItem(`share_ready_${shareId}`)
-    ) {
+    if (seo?.requiresToken && !hasReadyHint()) {
       void getShareToken();
       return;
     }
@@ -480,6 +505,25 @@ const SharePage = ({
       { shallow: true },
     );
   }, [share, autoFileId, recipientId, router, shareId]);
+
+  if (isLocked && !share) {
+    return (
+      <>
+        {shareMeta}
+        <ShareMessage
+          title={<FormattedMessage id="share.modal.password.title" />}
+          description={
+            <FormattedMessage id="share.modal.password.description" />
+          }
+          action={{
+            label: <FormattedMessage id="share.custom.password.enter" />,
+            onClick: showPasswordGate,
+          }}
+        />
+        <Ads />
+      </>
+    );
+  }
 
   if (isRestricted) {
     return (
@@ -560,7 +604,14 @@ const SharePage = ({
           },
         })}
       >
-        <Box style={{ maxWidth: "70%" }}>
+        <Box
+          sx={(theme) => ({
+            // The action buttons sit next to the title on tablets/desktop.
+            // On phones the title block owns the full row, otherwise the
+            // uploader badges and long file names wrap at 70% width.
+            [theme.fn.largerThan("sm")]: { maxWidth: "70%" },
+          })}
+        >
           <Title
             order={1}
             size="h3"

@@ -7,6 +7,9 @@ const PUBLIC_PATH = "../frontend/public";
 const IMAGES_PATH = `${PUBLIC_PATH}/img`;
 const PWA_ICON_SIZES = [48, 72, 96, 128, 144, 152, 192, 384, 512];
 const WEBP_OPTIONS = { quality: 86, effort: 5 };
+// Admin uploads are capped at 5 MB by the controller, but a small PNG can
+// still decode into a huge bitmap.
+const MAX_INPUT_PIXELS = 40_000_000;
 
 @Injectable()
 export class LogoService {
@@ -25,11 +28,14 @@ export class LogoService {
 
   private async writeLogo(file: Buffer, name: string) {
     const [png, webp] = await Promise.all([
-      sharp(file)
+      sharp(file, { limitInputPixels: MAX_INPUT_PIXELS })
         .resize(400)
         .png({ compressionLevel: 9, palette: true, quality: 90 })
         .toBuffer(),
-      sharp(file).resize(400).webp(WEBP_OPTIONS).toBuffer(),
+      sharp(file, { limitInputPixels: MAX_INPUT_PIXELS })
+        .resize(400)
+        .webp(WEBP_OPTIONS)
+        .toBuffer(),
     ]);
     await Promise.all([
       fs.promises.writeFile(`${IMAGES_PATH}/${name}.png`, png),
@@ -38,14 +44,16 @@ export class LogoService {
   }
 
   async createFavicon(file: Buffer) {
-    const resized = await sharp(file).resize(16).toBuffer();
+    const resized = await sharp(file, { limitInputPixels: MAX_INPUT_PIXELS })
+      .resize(16)
+      .toBuffer();
     await fs.promises.writeFile(`${PUBLIC_PATH}/favicon.ico`, resized);
   }
 
   async createPWAIcons(file: Buffer) {
     await Promise.all(
       PWA_ICON_SIZES.flatMap((size) => [
-        sharp(file)
+        sharp(file, { limitInputPixels: MAX_INPUT_PIXELS })
           .resize(size, size, { fit: "cover" })
           .png({ compressionLevel: 9, palette: true, quality: 90 })
           .toBuffer()
@@ -55,7 +63,7 @@ export class LogoService {
               icon,
             ),
           ),
-        sharp(file)
+        sharp(file, { limitInputPixels: MAX_INPUT_PIXELS })
           .resize(size, size, { fit: "cover" })
           .webp(WEBP_OPTIONS)
           .toBuffer()
@@ -70,7 +78,7 @@ export class LogoService {
   }
 
   private async createOgImage(file: Buffer) {
-    const logo = await sharp(file)
+    const logo = await sharp(file, { limitInputPixels: MAX_INPUT_PIXELS })
       .resize(430, 430, {
         fit: "contain",
         background: { r: 0, g: 0, b: 0, alpha: 0 },

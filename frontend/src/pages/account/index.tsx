@@ -273,7 +273,7 @@ const Account = () => {
                 disabled={user?.isLdap}
                 {...accountForm.getInputProps("username")}
               />
-              <HoverTip label="Contact your administrator to change your email address">
+              <HoverTip label={t("account.custom.email-managed")}>
                 <div>
                   <TextInput
                     label={t("account.card.info.email")}

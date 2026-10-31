@@ -147,7 +147,11 @@ export class ConfigController {
   }
 
   @Post("admin/logo")
-  @UseInterceptors(FileInterceptor("file"))
+  @UseInterceptors(
+    FileInterceptor("file", {
+      limits: { fileSize: 5 * 1024 * 1024, files: 1 },
+    }),
+  )
   @UseGuards(JwtGuard, AdministratorGuard)
   async uploadLogo(
     @UploadedFile(
@@ -161,7 +165,11 @@ export class ConfigController {
   }
 
   @Post("admin/logoDark")
-  @UseInterceptors(FileInterceptor("file"))
+  @UseInterceptors(
+    FileInterceptor("file", {
+      limits: { fileSize: 5 * 1024 * 1024, files: 1 },
+    }),
+  )
   @UseGuards(JwtGuard, AdministratorGuard)
   async uploadDarkLogo(
     @UploadedFile(

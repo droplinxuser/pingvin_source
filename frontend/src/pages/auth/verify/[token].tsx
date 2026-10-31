@@ -15,10 +15,11 @@ import authService from "../../../services/auth.service";
 import toast from "../../../utils/toast.util";
 import useTranslate from "../../../hooks/useTranslate.hook";
 import Meta from "../../../components/Meta";
+import { getQueryString } from "../../../utils/router.util";
 
 export default function VerifyAccount() {
   const router = useRouter();
-  const { token } = router.query;
+  const token = getQueryString(router.query.token);
   const t = useTranslate();
   const [status, setStatus] = useState<"loading" | "success" | "error">(
     "loading",
@@ -28,7 +29,7 @@ export default function VerifyAccount() {
     if (!token) return;
 
     authService
-      .verifyAccount(token as string)
+      .verifyAccount(token)
       .then(() => setStatus("success"))
       .catch((e) => {
         toast.axiosError(e);

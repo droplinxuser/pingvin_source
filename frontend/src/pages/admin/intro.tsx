@@ -32,6 +32,7 @@ const Intro = () => {
             If you enjoy Pingvin Share X please ⭐️ it on{" "}
             <Anchor
               target="_blank"
+              rel="noopener noreferrer"
               style={{ textDecoration: "underline" }}
               href="https://github.com/smp46/pingvin-share-x"
             >
@@ -42,6 +43,7 @@ const Intro = () => {
             You can also support development via{" "}
             <Anchor
               target="_blank"
+              rel="noopener noreferrer"
               style={{ textDecoration: "underline" }}
               href="https://github.com/sponsors/smp46"
             >
