@@ -14,6 +14,7 @@ const SCRIPTS = [
 const Ads = ({ gallery = false }: { gallery?: boolean }) => {
   const bannerRef = useRef<HTMLDivElement>(null);
   const [collapsed, setCollapsed] = useState(false);
+  const [hasContent, setHasContent] = useState(false);
   const [isGuest, setIsGuest] = useState(false);
   const { user } = useUser();
 
@@ -40,6 +41,7 @@ const Ads = ({ gallery = false }: { gallery?: boolean }) => {
     let a11yTimer: ReturnType<typeof setInterval> | undefined;
     let scripts: HTMLScriptElement[] = [];
     setCollapsed(false);
+    setHasContent(false);
 
     const hasAdContent = () => {
       const banner = bannerRef.current;
@@ -57,6 +59,12 @@ const Ads = ({ gallery = false }: { gallery?: boolean }) => {
         const rect = element.getBoundingClientRect();
         return rect.width > 0 && rect.height > 0;
       });
+    };
+
+    const refreshContent = () => {
+      const content = hasAdContent();
+      setHasContent(content);
+      if (content) setCollapsed(false);
     };
 
     // Ad networks inject iframes and full-page anchors without names. Label
@@ -100,7 +108,7 @@ const Ads = ({ gallery = false }: { gallery?: boolean }) => {
 
     if (typeof MutationObserver !== "undefined" && bannerRef.current) {
       observer = new MutationObserver(() => {
-        if (!cancelled && hasAdContent()) setCollapsed(false);
+        if (!cancelled) refreshContent();
       });
       observer.observe(bannerRef.current, { childList: true, subtree: true });
     }
@@ -138,19 +146,26 @@ const Ads = ({ gallery = false }: { gallery?: boolean }) => {
       data-testid={gallery ? "share-gallery-ad" : undefined}
       role="complementary"
       aria-label="Advertisement"
-      withBorder={gallery}
+      withBorder={gallery && hasContent}
       radius={gallery ? "md" : undefined}
-      p={gallery ? "sm" : 0}
-      mb={gallery ? "xl" : 0}
+      p={gallery && hasContent ? "sm" : 0}
+      mb={gallery ? (hasContent ? "xl" : 0) : hasContent ? "md" : 0}
       sx={{
         display: collapsed ? "none" : "flex",
         justifyContent: "center",
         alignItems: "center",
         width: "100%",
-        minHeight: collapsed ? 0 : 90,
+        // Do not reserve height for an empty slot. The container stays in the
+        // DOM (so banner scripts can fill it), but takes no space until an ad
+        // actually arrives. This avoids both an empty gap and a late collapse.
+        minHeight: collapsed || !hasContent ? 0 : undefined,
         ...(gallery
           ? {}
-          : { margin: "24px auto", background: "transparent", border: 0 }),
+          : {
+              margin: "0 auto",
+              background: "transparent",
+              border: 0,
+            }),
       }}
     >
       <span style={{ display: "none" }} />

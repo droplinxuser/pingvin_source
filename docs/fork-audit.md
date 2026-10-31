@@ -133,6 +133,13 @@ the matching `utils/*.util.ts` files.
 - The footer uses slightly larger muted text and vertical padding on links for
   comfortable touch targets. Legal markdown tables scroll inside their own
   container, so the cookie table cannot widen a 390 px privacy page.
+- The guest ad slot takes no layout space until an ad actually fills. It stays
+  mounted so banner scripts can still inject, but the old 90 px placeholder
+  (and its five-second collapse) is gone; a filled slot gets its border,
+  padding and bottom margin at that point. The comments skeleton matches the
+  compact guest sign-in row instead of three comment rows, which removes the
+  largest cold-share shift on short text shares (local CLS dropped from about
+  0.17 to 0.01).
 - Large shares (>12 files) get a compact search field above the file table.
   Filtering is client-side and uses `useDeferredValue`, so typing stays
   responsive while a few thousand rows are compared. The table header, empty

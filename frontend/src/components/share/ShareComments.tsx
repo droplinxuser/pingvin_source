@@ -570,18 +570,11 @@ export const ShareCommentsSkeleton = () => (
       <Skeleton height={14} width={140} radius="sm" />
     </Group>
     <Divider my="sm" />
+    {/* Match the compact guest/empty state. The old three-row comment
+        skeleton was ~200px taller than the sign-in prompt, so replacing it
+        with the real content pulled the file list and stats up and counted as
+        a large layout shift on short text shares. */}
     <Skeleton height={58} radius="sm" />
-    <Group position="apart" align="center" mt="xs">
-      <Skeleton height={10} width={150} radius="sm" />
-      <Skeleton height={36} width={96} radius="sm" />
-    </Group>
-    <Box mt="sm">
-      <Stack spacing="xs">
-        {[0, 1, 2].map((index) => (
-          <Skeleton key={index} height={44} radius="sm" />
-        ))}
-      </Stack>
-    </Box>
   </Paper>
 );
 
