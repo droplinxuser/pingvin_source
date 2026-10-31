@@ -448,15 +448,16 @@ const Upload = ({
         {t("upload.title")}
       </Title>
       {!isReverseShare && <ResumeUploads />}
-      <Group position="right" mb={20}>
-        <Button
-          loading={isUploading}
-          disabled={files.length <= 0}
-          onClick={() => showCreateUploadModalCallback(files)}
-        >
-          <FormattedMessage id="common.button.share" />
-        </Button>
-      </Group>
+      {files.length > 0 && (
+        <Group position="right" mb={20}>
+          <Button
+            loading={isUploading}
+            onClick={() => showCreateUploadModalCallback(files)}
+          >
+            <FormattedMessage id="common.button.share" />
+          </Button>
+        </Group>
+      )}
       <Dropzone
         title={
           !autoOpenCreateUploadModal && files.length > 0

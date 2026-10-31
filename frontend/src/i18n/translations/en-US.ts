@@ -1507,23 +1507,6 @@ export default {
     "CORS must be reconfigured on your bucket, see the {wikiLink} for details.",
   "admin.config.s3.custom.docs":
     "Ensure your S3 bucket's CORS policy allows uploads and downloads from this site.",
-  "admin.config.category.legal": "Legal",
-  "admin.config.legal.enabled": "Enable legal notices",
-  "admin.config.legal.enabled.description":
-    "Whether to show links to the imprint and privacy policy in the footer.",
-  "admin.config.legal.imprint-text": "Imprint text",
-  "admin.config.legal.imprint-text.description":
-    "The text which should be shown in the imprint. Supports Markdown. Leave blank to link to an external imprint page.",
-  "admin.config.legal.imprint-url": "Imprint URL",
-  "admin.config.legal.imprint-url.description":
-    "Link to an existing imprint page instead of using the text field.",
-  "admin.config.legal.privacy-policy-text": "Privacy policy text",
-  "admin.config.legal.privacy-policy-text.description":
-    "The text which should be shown in the privacy policy. Supports Markdown. Leave blank to link to an external privacy policy page.",
-  "admin.config.legal.privacy-policy-url": "Privacy policy URL",
-  "admin.config.legal.privacy-policy-url.description":
-    "Link to an existing privacy policy instead of using the text field.",
-
   // 404
   "404.title": "Not found",
   "404.description": "Oops, this page doesn’t exist.",

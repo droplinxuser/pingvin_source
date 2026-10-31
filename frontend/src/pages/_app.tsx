@@ -51,20 +51,6 @@ const TrendingToday = dynamic(
 
 const excludeDefaultLayoutRoutes = ["/admin/config/[category]"];
 
-// Legacy legal documents can still be tens of kilobytes in old installs. The
-// imprint/privacy pages now render built-in application content; every shared
-// page only needs the config marker, so strip any legacy text from the payload.
-const LEGAL_TEXT_KEYS = new Set([
-  "legal.imprintText",
-  "legal.privacyPolicyText",
-]);
-
-const stripLegalText = (config: Config[]): Config[] =>
-  config.map((variable) => {
-    if (!LEGAL_TEXT_KEYS.has(variable.key)) return variable;
-    return { ...variable, value: variable.value ? "1" : "" };
-  });
-
 // Install before hydration so early client errors are reported too. The guard
 // inside the helper keeps hot reloads from registering duplicate listeners.
 if (typeof window !== "undefined") installGlobalErrorReporter();
@@ -527,9 +513,7 @@ App.getInitialProps = async ({
     }
 
     const { config, fallback } = await configRequest;
-    // Legal pages receive their own markdown as a page prop, so the shared
-    // config only needs a presence marker everywhere.
-    pageProps.configVariables = stripLegalText(config);
+    pageProps.configVariables = config;
     pageProps.isConfigFallback = fallback;
 
     const requestLanguage = i18nUtil.getLanguageFromAcceptHeader(
