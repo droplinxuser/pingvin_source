@@ -67,9 +67,13 @@ fallback rather than the upstream copy.
 Shared fork-only backend helpers live in `backend/src/utils/`:
 `keyedLock.util.ts` serializes per-share read-modify-write tasks,
 `fileWrite.util.ts` writes JSON/state files through a unique temporary file plus
-atomic rename, and `remoteFetch.util.ts` is the only allowed outbound downloader
-(SSRF-guarded; `backend/test/remote-fetch.test.js` covers the address blocks).
-Reuse them instead of adding another lock, temp-file block or raw `fetch(url)`.
+atomic rename, `hourBucket.util.ts` is the single hourly clock
+(`HOUR_MS`/`HOUR_WINDOW`/`currentHour`/`hourBucketTtlSeconds`) shared by the
+page-view, download and trending counters, so no reader can drift into a
+different window, and `remoteFetch.util.ts` is the only allowed outbound
+downloader (SSRF-guarded; `backend/test/remote-fetch.test.js` covers the address
+blocks). Reuse them instead of adding another lock, temp-file block, hour
+calculation or raw `fetch(url)`.
 `share.util.ts` exports `shareWriteLock`, the single per-share lock used by local
 and S3 chunk writes plus `complete`/`revertComplete`; keep every path that
 publishes a `File` row inside it so completion cannot snapshot a half-finished
@@ -166,6 +170,14 @@ the matching `utils/*.util.ts` files.
      (`npm run test:unit:fast` skips the rebuild for quick iterations)
    - frontend: `npm ci && npm run build`
    - lint: `npm run lint` in both packages (backend warnings are upstream-only)
+   - With npm 12 the bundled install scripts of `prisma`, `@prisma/client`,
+     `@prisma/engines`, `argon2`, `esbuild`, `sharp` and `unrs-resolver` are
+     blocked by default, which breaks the Prisma client, Argon2 and image
+     handling at runtime. Approve them once per machine with
+     `npm install-scripts approve <pkg>` followed by `npm rebuild <pkg>`
+     (npm 10/11, the version on the server, still runs them automatically). Do
+     not commit the generated `allowScripts` block: it pins exact versions and
+     silently stops matching after a dependency bump.
 5. Smoke-test locally: home, sign-in, upload, share page, comments, gallery,
    admin shares/users/referrers/VirusTotal/Valkey/logs pages, missing share
    (404), trending widget, `/trending`, `/new-media`, `/new-files`, `/search`,
@@ -249,6 +261,10 @@ the matching `utils/*.util.ts` files.
   `frontend/src/utils/config.util.ts`) that is rebuilt only when the config
   array is replaced. This keeps the many `config.get()` calls per request off
   the linear scan without caching typed values, so admin edits are immediate.
+  Fork-only keys that an instance may not have seeded yet (for example
+  `share.enableMediaImport` on a database created before the feature) are read
+  through `ConfigService.getOptional`, which treats a missing row as "feature
+  off" instead of throwing; `get()` stays strict for required upstream keys.
 - Public search scores each matching entry once before sorting instead of
   lowercasing the name and description again inside every comparator.
 - Trending reuses the 24 hourly geo hashes for views. Each renderable share

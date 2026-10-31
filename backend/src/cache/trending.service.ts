@@ -11,6 +11,11 @@ import {
   isCountryCode,
   normalizeCountryCode,
 } from "src/utils/country.util";
+import {
+  currentHour,
+  HOUR_WINDOW as HOUR_WINDOW_SIZE,
+  hourBucketTtlSeconds,
+} from "src/utils/hourBucket.util";
 import { recentDownloadHourKeys } from "./download.service";
 import { ValkeyClient, ValkeyService } from "./valkey.service";
 
@@ -19,12 +24,11 @@ const RANK_KEY_PREFIX = "pingvin:trending:rank:";
 const GEO_KEY_PREFIX = "pingvin:trending:geo:hour:";
 // Views and country shares both use the same 24 hourly geo hashes. A share can
 // be any age; only a view inside this window makes it eligible.
-const HOUR_WINDOW = 24;
+const HOUR_WINDOW = HOUR_WINDOW_SIZE;
 const UNKNOWN_COUNTRY = "XX";
-const HOUR_MS = 60 * 60 * 1000;
 // Refreshed on every view, so a share that is still being viewed keeps its
 // card metadata while it remains inside the 24-hour ranking window.
-const META_TTL_SECONDS = (HOUR_WINDOW + 1) * 60 * 60;
+const META_TTL_SECONDS = hourBucketTtlSeconds();
 const MAX_DESCRIPTION_LENGTH = 240;
 const CANDIDATE_LIMIT = 400;
 const DEFAULT_RESULT_LIMIT = 12;
@@ -40,7 +44,7 @@ const MAX_CARD_FILE_NAMES = 3;
 // The country ranking is read from hourly hashes. Twenty-four HGETALL replies
 // are aggregated in one round trip and the result is reused for five minutes,
 // matching the edge TTL on the API response.
-const GEO_TTL_SECONDS = (HOUR_WINDOW + 1) * 60 * 60;
+const GEO_TTL_SECONDS = hourBucketTtlSeconds();
 const GEO_COUNTRY_LIMIT = 10;
 const GEO_SHARE_LIMIT = 10;
 // Deleted/expired shares can leave high-scoring entries without metadata.
@@ -774,10 +778,6 @@ function legacyMetaIds(ids: string[], metas: Map<string, TrendingMeta>) {
         meta.previewVersion !== PREVIEW_VERSION)
     );
   });
-}
-
-function currentHour() {
-  return Math.floor(Date.now() / HOUR_MS);
 }
 
 function geoKeyFor(hour: number) {

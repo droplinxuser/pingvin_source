@@ -219,6 +219,23 @@ export class ConfigService extends EventEmitter {
 
     if (!configVariable) throw new Error(`Config variable ${key} not found`);
 
+    return this.toConfigValue(key, configVariable);
+  }
+
+  /**
+   * Reads a fork-only key whose row may not exist yet (an instance that has
+   * not run the config seed since the feature was added). Returns `undefined`
+   * instead of throwing so an optional feature simply reports as disabled
+   * instead of failing the request that reads it.
+   */
+  getOptional(key: `${string}.${string}`): any {
+    const configVariable = this.findConfigVariable(key);
+    if (!configVariable) return undefined;
+
+    return this.toConfigValue(key, configVariable);
+  }
+
+  private toConfigValue(key: string, configVariable: Config): any {
     let value = configVariable.value ?? configVariable.defaultValue;
 
     // Every consumer concatenates paths or builds an origin from this value.

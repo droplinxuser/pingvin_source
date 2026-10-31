@@ -315,7 +315,7 @@ export class FileService implements OnModuleInit {
     url: string,
     name?: string,
   ) {
-    if (!this.configService.get("share.enableMediaImport"))
+    if (!this.configService.getOptional("share.enableMediaImport"))
       throw new BadRequestException(this.i18n.t("file.mediaImportDisabled"));
     if (!(await isYtDlpAvailable()))
       throw new BadRequestException(this.i18n.t("file.mediaImportUnavailable"));

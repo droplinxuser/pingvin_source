@@ -56,3 +56,6 @@ yarn-error.log*
 
 # Temp folder for generative work
 /temp/**
+
+# Local backend run output
+/backend/server.log

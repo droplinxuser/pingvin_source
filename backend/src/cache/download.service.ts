@@ -1,4 +1,9 @@
 import { Injectable } from "@nestjs/common";
+import {
+  currentHour,
+  HOUR_WINDOW,
+  hourBucketTtlSeconds,
+} from "src/utils/hourBucket.util";
 import { ValkeyClient, ValkeyService } from "./valkey.service";
 
 // One small hash per share per day, so reading a share's counters never scans
@@ -10,9 +15,7 @@ const WINDOW_DAYS = 30;
 const BUCKET_TTL_SECONDS = (WINDOW_DAYS + 1) * 24 * 60 * 60;
 // Trending only needs the last 24 hours for its download tie-break. One
 // sorted set per hour keeps that read to 24 keys and expires on its own.
-const HOUR_MS = 60 * 60 * 1000;
-const HOUR_WINDOW = 24;
-const HOUR_TTL_SECONDS = (HOUR_WINDOW + 1) * 60 * 60;
+const HOUR_TTL_SECONDS = hourBucketTtlSeconds();
 const TOTAL_FIELD = "total";
 // The share payload is read on every view, so a short in-process cache removes
 // the 30-bucket read from the hot path. It is dropped on every new download so
@@ -157,10 +160,6 @@ function currentDay() {
   return Math.floor(Date.now() / 86_400_000);
 }
 
-function currentHour() {
-  return Math.floor(Date.now() / HOUR_MS);
-}
-
 function bucketKey(day: number, shareId: string) {
   return `${DOWNLOAD_KEY_PREFIX}${day}:${shareId}`;
 }
@@ -174,7 +173,7 @@ function hourBucketKey(hour: number) {
  * next to the writer so the key format cannot drift.
  */
 export function recentDownloadHourKeys(now = Date.now()) {
-  const hour = Math.floor(now / HOUR_MS);
+  const hour = currentHour(now);
   return Array.from({ length: HOUR_WINDOW }, (_, offset) =>
     hourBucketKey(hour - offset),
   );

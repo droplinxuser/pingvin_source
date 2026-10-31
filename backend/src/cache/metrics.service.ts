@@ -3,11 +3,16 @@ import {
   COUNTRY_FIELD_PREFIX,
   normalizeCountryCode,
 } from "src/utils/country.util";
+import {
+  currentHour,
+  HOUR_WINDOW,
+  hourBucketTtlSeconds,
+} from "src/utils/hourBucket.util";
 import { ValkeyClient, ValkeyService } from "./valkey.service";
 
 const METRICS_PREFIX = "pingvin:metrics:pageviews:hour:";
-const WINDOW_HOURS = 24;
-const BUCKET_TTL_SECONDS = (WINDOW_HOURS + 1) * 60 * 60;
+const WINDOW_HOURS = HOUR_WINDOW;
+const BUCKET_TTL_SECONDS = hourBucketTtlSeconds(WINDOW_HOURS);
 // Page-view counters do not need second-by-second freshness in the footer, so
 // one aggregate read serves all page views in this window instead of reading
 // 24 hourly hashes every ten seconds.
@@ -235,10 +240,6 @@ export class MetricsService {
 
     return toMetrics({ total, countries });
   }
-}
-
-function currentHour() {
-  return Math.floor(Date.now() / 3_600_000);
 }
 
 function bucketKey(hour: number) {

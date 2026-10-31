@@ -621,7 +621,7 @@ export class SystemService {
     ]);
 
     const mediaImportEnabled =
-      this.configService.get("share.enableMediaImport") === true;
+      this.configService.getOptional("share.enableMediaImport") === true;
 
     return [
       {
