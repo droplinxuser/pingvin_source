@@ -124,10 +124,12 @@ the matching `utils/*.util.ts` files.
 - Interactive elements are not nested: icon links use
   `ActionIcon component={Link}` (or `component="a"`) instead of an icon inside
   an `<a>`, so one control is one tab stop. The share breadcrumb is wrapped in
-  a `nav[aria-label="Breadcrumb"]`, and view-count badges carry `role="img"`
-  so their count label is not ignored on a generic span. Public listing
-  JSON-LD is built once by `buildShareListCollectionPage`; listing cache
-  headers are set by `setListingCacheHeaders`.
+  a `nav[aria-label="Breadcrumb"]` and holds only the real hierarchy (`Home` →
+  share name, matching the `BreadcrumbList` JSON-LD); a share is not a child of
+  `/trending`, so the trail no longer claims that parent. View-count badges
+  carry `role="img"` so their count label is not ignored on a generic span.
+  Public listing JSON-LD is built once by `buildShareListCollectionPage`;
+  listing cache headers are set by `setListingCacheHeaders`.
 - The footer uses slightly larger muted text and vertical padding on links for
   comfortable touch targets. Legal markdown tables scroll inside their own
   container, so the cookie table cannot widen a 390 px privacy page.

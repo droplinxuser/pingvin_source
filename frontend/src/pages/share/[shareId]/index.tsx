@@ -295,7 +295,6 @@ const SharePage = ({
           buildBreadcrumbList(
             [
               { name: t("seo.custom.breadcrumb.home"), path: "/" },
-              { name: t("trending.custom.title"), path: "/trending" },
               { name: displayName, path: `/share/${shareId}` },
             ],
             baseUrl,
@@ -601,9 +600,6 @@ const SharePage = ({
         <Breadcrumbs mb="md">
           <Anchor component={Link} href={homeHref}>
             {t("seo.custom.breadcrumb.home")}
-          </Anchor>
-          <Anchor component={Link} href="/trending">
-            {t("trending.custom.title")}
           </Anchor>
           <Text truncate maw={{ base: 160, sm: 420 }}>
             {displayName}
