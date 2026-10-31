@@ -101,6 +101,11 @@ cd "$SRC_DIR/frontend"
 # Stopping first means the edge sees a connection error, which is never cached.
 systemctl stop pingvin-front.service 2>/dev/null || true
 npm ci --no-audit --no-fund
+# Remove generated workers and the previous build before rebuilding. Stale
+# chunk or worker files under public/ would otherwise stay publicly reachable
+# with an old bundle (and old branding) after a deploy.
+rm -f public/worker-*.js public/workbox-*.js public/sw.js public/sw.js.map
+rm -rf .next
 # Rebuild WebP logos/icons and the OG image from the restored branding (or the
 # tracked defaults) after dependencies are installed.
 npm run assets:brand
