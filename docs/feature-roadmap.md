@@ -105,7 +105,7 @@ remaining gap is the **public API**.
     S3 bucket or disk is the bottleneck. Cloudflare already handles edge
     delivery; keep the single origin until transfer volume justifies it.
 12. **Premium tiers / payouts.** Adds payments, tax and refund obligations.
-    The current ad slot is a much cheaper monetization experiment.
+    The current guest-only ad units are a much cheaper monetization experiment.
 
 ## What not to copy
 
@@ -116,9 +116,9 @@ remaining gap is the **public API**.
   also payment-processor, CDN and legal risk (CSAM reporting, DMCA, age
   verification). The report modal and VirusTotal/ClamAV pipeline are the right
   foundation; do not optimize the product for that audience.
-- **Forced waits, fake "download" buttons, pop-unders or ad-gated downloads.**
-  They are the main reason users look for an alternative. The guest-only,
-  collapsible ad slot is the correct compromise.
+- **Forced waits, fake "download" buttons or ad-gated downloads.** They are
+  the main reason users look for an alternative. Guest-only, non-blocking ad
+  units on share/404 pages are the correct compromise.
 - **Account walls for uploads.** Anonymous sharing plus reverse shares is a
   genuine differentiator; keep it configurable but default-on where abuse
   controls allow.

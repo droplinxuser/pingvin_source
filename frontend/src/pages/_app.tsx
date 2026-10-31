@@ -42,6 +42,7 @@ import AdminNoticeModal, {
 import adminNoticeService from "../services/adminNotice.service";
 import SiteStructuredData from "../components/SiteStructuredData";
 import RouteProgress from "../components/core/RouteProgress";
+import { PageBottomAds } from "../components/Ads";
 
 const TrendingToday = dynamic(
   () => import("../components/share/TrendingToday"),
@@ -460,6 +461,9 @@ function App({ Component, pageProps }: AppProps) {
                         {showTrending && <TrendingToday />}
                       </Box>
                       <Footer />
+                      {showTrending && (
+                        <PageBottomAds key={router.asPath.split("?")[0]} />
+                      )}
                     </Stack>
                   )}
                 </ModalsProvider>

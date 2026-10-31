@@ -53,7 +53,7 @@ the suggested order for future features.
 | Valkey metrics and error logs | `backend/src/cache/valkeyMetrics.util.ts`, `backend/src/logs/*`, `GET /api/system/valkey`, `frontend/src/components/admin/ValkeyMetricsCard.tsx`, `frontend/src/pages/admin/logs.tsx`, `frontend/src/utils/errorReporter.util.ts` |
 | Server dependency panel | `backend/src/utils/dependencies.util.ts` (bounded binary/TCP probes plus the shared `getFfmpegCandidates`), `SystemService.getDependencies` and `GET /api/system/dependencies` (admin-only), `frontend/src/components/admin/ServerDependenciesCard.tsx` (rendered below the Valkey card on `/admin`). Reports Node.js, sharp, ffmpeg, the SQLite connection, Valkey, yt-dlp and ClamAV with version, required/optional and an availability badge, so a moved server is easy to audit. |
 | SQLite metrics panel | `backend/src/utils/sqlite.util.ts` (`DatabaseMetrics` + fragmentation), `SystemService.getDatabaseMetrics` and `GET /api/system/database` (admin-only), `frontend/src/components/admin/DatabaseMetricsCard.tsx` (below the dependency card on `/admin`). Reads `PRAGMA database_list/page_size/page_count/freelist_count/journal_mode` and the on-disk `.db`/`-wal`/`-shm` sizes (admin-only) to show size, pages, free pages, journal mode and the SQLite version; a fragmentation hint recommends the `maintain-db.js` VACUUM. |
-| Home copy and ads | `frontend/src/pages/index.tsx`, `home.custom.*` keys in `en-US.ts`, `frontend/src/components/Ads.tsx` (guest-only; shown on every guest share/404 request including protected, view-limited and private shares; skipped for signed-in visitors and while a reverse-share upload cookie is active). The visible/meta copy interpolates the live `share.maxSize` and `share.maxFileSize` values instead of hardcoding the seed limits. Upstream `useHomeHref` owns every "go home" target. |
+| Home copy and ads | `frontend/src/pages/index.tsx`, `home.custom.*` keys in `en-US.ts`, `frontend/src/components/Ads.tsx`. Guest-only units on share/404 pages: `PageBottomAds` loads the social bar and popunder once after `load` + idle and appends them to the end of `<body>`; `AfterGalleryAd` loads the Profiton banner after the gallery; `AfterCommentsAd` loads the Clickadu banner (with its `data-cl-spot`) below the comments. Signed-in visitors and reverse-share uploaders never load them. Empty slots take no height. The visible/meta copy interpolates the live `share.maxSize` and `share.maxFileSize` values instead of hardcoding the seed limits. Upstream `useHomeHref` owns every "go home" target. |
 | Fork branding / deployment | `frontend/public/img/**`, `frontend/public/favicon.ico`, `frontend/src/pages/manifest.json.tsx`, `pingvin-*.service`, `update.sh` |
 | SEO / crawlers | `frontend/src/components/Meta.tsx`, `SiteStructuredData.tsx`, `frontend/src/hooks/siteMeta.hook.ts`, `frontend/src/pages/robots.txt.tsx`, `sitemap.xml.tsx`, `frontend/src/utils/seo.util.ts`, `seo.server.util.ts`, `backend/src/share/share.service.ts` (`getSeo`), `backend/src/system/system.service.ts` (disk-backed robots/sitemap), `frontend/src/pages/_app.tsx` (default-locale message trimming). `fetchShareSeo` maps a backend 400/410 (malformed or gone share id) to the same not-found branch as 404, so a hand-edited URL renders the 404 page instead of a 503. |
 | Failed edit / reverse-share links | `frontend/src/components/share/ShareLoadError.tsx`; `pages/share/[shareId]/edit.tsx` and `pages/upload/[reverseShareToken].tsx` stop rendering an unusable form after the owner/reverse-share lookup fails and show the normal not-found/invalid-link message instead. |
@@ -133,13 +133,13 @@ the matching `utils/*.util.ts` files.
 - The footer uses slightly larger muted text and vertical padding on links for
   comfortable touch targets. Legal markdown tables scroll inside their own
   container, so the cookie table cannot widen a 390 px privacy page.
-- The guest ad slot takes no layout space until an ad actually fills. It stays
-  mounted so banner scripts can still inject, but the old 90 px placeholder
-  (and its five-second collapse) is gone; a filled slot gets its border,
-  padding and bottom margin at that point. The comments skeleton matches the
-  compact guest sign-in row instead of three comment rows, which removes the
-  largest cold-share shift on short text shares (local CLS dropped from about
-  0.17 to 0.01).
+- Guest ad units take no layout space until an ad actually fills. The social
+  bar and popunder load only after the page's `load` event and an idle slice,
+  at the end of `<body>`; the Profiton and Clickadu banners load after idle in
+  their gallery/comment slots. The old 90 px placeholder and its five-second
+  collapse are gone. The comments skeleton matches the compact guest sign-in
+  row instead of three comment rows, which removes the largest cold-share
+  shift on short text shares (local CLS dropped from about 0.17 to 0.01).
 - Large shares (>12 files) get a compact search field above the file table.
   Filtering is client-side and uses `useDeferredValue`, so typing stays
   responsive while a few thousand rows are compared. The table header, empty

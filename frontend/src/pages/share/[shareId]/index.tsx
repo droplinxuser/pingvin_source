@@ -32,7 +32,10 @@ import ShareStats, {
   ShareStatsSkeleton,
 } from "../../../components/share/ShareStats";
 import UploaderInfoBadges from "../../../components/share/UploaderInfoBadges";
-import Ads from "../../../components/Ads";
+import {
+  AfterCommentsAd,
+  AfterGalleryAd,
+} from "../../../components/Ads";
 import showEnterPasswordModal from "../../../components/share/showEnterPasswordModal";
 import showErrorModal from "../../../components/share/showErrorModal";
 import useHomeHref from "../../../hooks/homeHref.hook";
@@ -225,7 +228,6 @@ const SharePage = ({
     isShareTextFile(share.files[0].name)
       ? (share.files[0] as FileMetaData)
       : undefined;
-  const hasGalleryMedia = !downloadLimited && galleryPlaceholderCount > 0;
   const fileSkeletonCount = displayFileCount || 5;
   const metaTitle = indexable
     ? subject
@@ -548,7 +550,6 @@ const SharePage = ({
             onClick: showPasswordGate,
           }}
         />
-        <Ads />
       </>
     );
   }
@@ -580,7 +581,6 @@ const SharePage = ({
                 }
           }
         />
-        <Ads />
       </>
     );
   }
@@ -597,7 +597,6 @@ const SharePage = ({
             label: <FormattedMessage id="common.button.go-home" />,
           }}
         />
-        <Ads />
       </>
     );
   }
@@ -715,7 +714,7 @@ const SharePage = ({
         </LazySection>
       )}
 
-      <Ads gallery={hasGalleryMedia} />
+      <AfterGalleryAd />
 
       <LazySection
         placeholder={<FileListSkeleton count={fileSkeletonCount} />}
@@ -746,6 +745,8 @@ const SharePage = ({
           <ShareCommentsSkeleton />
         )}
       </LazySection>
+
+      <AfterCommentsAd />
 
       <LazySection
         placeholder={<ShareStatsSkeleton />}
