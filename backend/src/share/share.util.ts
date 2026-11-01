@@ -230,3 +230,57 @@ export function isViewLimitExceeded(
   if (!maxViews) return false;
   return allowAtLimit ? views > maxViews : views >= maxViews;
 }
+
+const SHARE_SUBJECT_MAX_LENGTH = 48;
+
+function truncateShareSubject(value: string): string {
+  const text = value.replace(/\s+/g, " ").trim();
+  if (text.length <= SHARE_SUBJECT_MAX_LENGTH) return text;
+  const cut = text.slice(0, SHARE_SUBJECT_MAX_LENGTH - 1);
+  const lastSpace = cut.lastIndexOf(" ");
+  return `${(lastSpace > SHARE_SUBJECT_MAX_LENGTH / 2
+    ? cut.slice(0, lastSpace)
+    : cut
+  ).trimEnd()}…`;
+}
+
+function shareFileBaseName(fileName: string): string {
+  const normalized = fileName.replace(/\\/g, "/").replace(/\/+$/, "");
+  const slash = normalized.lastIndexOf("/");
+  return slash === -1 ? normalized : normalized.slice(slash + 1);
+}
+
+/**
+ * Stable, human-readable label for shares without an owner-written name.
+ * Matches the frontend SEO subject so listing cards never fall back to the
+ * random share id: a single file uses its name, a folder upload uses the
+ * folder, and bulk files drop the extension and numeric suffix.
+ */
+export function getShareSubject(share?: {
+  name?: string | null;
+  files?: { name: string }[];
+}): string | undefined {
+  const named = share?.name?.trim();
+  if (named) return truncateShareSubject(named);
+
+  const files = share?.files ?? [];
+  if (files.length === 0) return undefined;
+
+  const firstName = shareFileBaseName(files[0].name);
+  if (files.length === 1) return truncateShareSubject(firstName);
+
+  const folders = files.map((file) => {
+    const normalized = file.name.replace(/\\/g, "/").replace(/^\/+/, "");
+    const slash = normalized.indexOf("/");
+    return slash === -1 ? "" : normalized.slice(0, slash);
+  });
+  const folder = folders[0];
+  if (folder && folders.every((value) => value === folder))
+    return truncateShareSubject(folder);
+
+  const label = firstName
+    .replace(/\.[^.]+$/, "")
+    .replace(/\s*\(\d+\)$/, "")
+    .trim();
+  return truncateShareSubject(label || firstName);
+}

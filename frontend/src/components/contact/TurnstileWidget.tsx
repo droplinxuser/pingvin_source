@@ -1,5 +1,6 @@
 import { useMantineColorScheme } from "@mantine/core";
 import { useEffect, useRef } from "react";
+import { scheduleAfterLoad } from "../../utils/idle.util";
 
 type TurnstileOptions = {
   sitekey: string;
@@ -67,28 +68,38 @@ const TurnstileWidget = ({
     if (window.turnstile) {
       render();
     } else {
-      let script = document.querySelector<HTMLScriptElement>(SCRIPT_SELECTOR);
-      if (!script) {
-        script = document.createElement("script");
-        script.src =
-          "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
-        script.async = true;
-        script.defer = true;
-        script.dataset.fileShareTurnstile = "true";
-        document.head.appendChild(script);
-      }
-      script.addEventListener("load", render);
-      // Some browsers expose window.turnstile before the script's load event
-      // fires. Poll briefly so the widget is not silently skipped on slow or
-      // cached third-party loads.
-      pollTimer = setInterval(() => {
-        if (window.turnstile) {
-          render();
-          if (widgetId && pollTimer) clearInterval(pollTimer);
+      let script: HTMLScriptElement | undefined;
+      // Turnstile is only third-party code on this page. Wait for the page's
+      // own load event and an idle slice before downloading it, so the contact
+      // form never competes with the CAPTCHA iframe for the first paint.
+      const cancelLoad = scheduleAfterLoad(() => {
+        if (cancelled || !container) return;
+        script =
+          document.querySelector<HTMLScriptElement>(SCRIPT_SELECTOR) ??
+          undefined;
+        if (!script) {
+          script = document.createElement("script");
+          script.src =
+            "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
+          script.async = true;
+          script.defer = true;
+          script.dataset.fileShareTurnstile = "true";
+          document.head.appendChild(script);
         }
-      }, 250);
+        script.addEventListener("load", render);
+        // Some browsers expose window.turnstile before the script's load event
+        // fires. Poll briefly so the widget is not silently skipped on slow or
+        // cached third-party loads.
+        pollTimer = setInterval(() => {
+          if (window.turnstile) {
+            render();
+            if (widgetId && pollTimer) clearInterval(pollTimer);
+          }
+        }, 250);
+      });
       return () => {
         cancelled = true;
+        cancelLoad();
         if (pollTimer) clearInterval(pollTimer);
         script?.removeEventListener("load", render);
         if (widgetId && window.turnstile) window.turnstile.remove(widgetId);

@@ -55,7 +55,7 @@ test("stores the index without the duplicated lowercase search text or file name
 
   const setCall = mock.calls.find((call) => call[0] === "set");
   const payload = JSON.parse(setCall[2]);
-  assert.equal(payload.v, 5);
+  assert.equal(payload.v, 6);
   assert.equal(payload.items[0].w, undefined);
   assert.equal(payload.items[0].fn, undefined);
 });

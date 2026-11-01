@@ -391,7 +391,7 @@ const ShareList = ({
       ) : (
         <div className={classes.list} data-testid={testId}>
           {visibleItems.map((item) => {
-            const name = item.name || item.id;
+            const name = item.subject || item.name || item.id;
             const views = item.views.toLocaleString(intl.locale);
             const itemDescription = item.description?.trim();
             const fileNames = item.fileNames ?? [];

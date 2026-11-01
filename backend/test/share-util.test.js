@@ -1,6 +1,7 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const {
+  getShareSubject,
   isShareExpired,
   isPublicShare,
   isAccessPublicShare,
@@ -88,4 +89,25 @@ test("detects exhausted view and download caps, including one-time links", () =>
     true,
   );
   assert.equal(isShareLimitReached({ views: 99, maxViews: 0 }), false);
+});
+
+test("uses the owner name or an SEO-style subject for a share", () => {
+  assert.equal(getShareSubject({ name: "Holiday photos" }), "Holiday photos");
+  assert.equal(
+    getShareSubject({ files: [{ name: "holiday.mp4" }] }),
+    "holiday.mp4",
+  );
+  assert.equal(
+    getShareSubject({
+      files: [{ name: "album/a.jpg" }, { name: "album/b.jpg" }],
+    }),
+    "album",
+  );
+  assert.equal(
+    getShareSubject({
+      files: [{ name: "clip (1).mp4" }, { name: "clip (2).mp4" }],
+    }),
+    "clip",
+  );
+  assert.equal(getShareSubject({ files: [] }), undefined);
 });

@@ -15,21 +15,10 @@ import { GetServerSidePropsContext } from "next";
 import type { ReactNode } from "react";
 import { useIntl } from "react-intl";
 import {
-  TbBrandAndroid,
-  TbBrandApple,
-  TbBrandChrome,
-  TbBrandEdge,
-  TbBrandFirefox,
-  TbBrandOpera,
-  TbBrandSafari,
-  TbBrandUbuntu,
-  TbBrandWindows,
   TbBrowser,
   TbChartBar,
   TbDatabase,
   TbDeviceDesktop,
-  TbDeviceLaptop,
-  TbDeviceMobile,
   TbDownload,
   TbEye,
   TbFiles,
@@ -37,7 +26,6 @@ import {
   TbUsers,
   TbWorld,
 } from "react-icons/tb";
-import { SiBrave, SiSamsung } from "react-icons/si";
 import Meta from "../components/Meta";
 import RankedSharePanel from "../components/share/RankedSharePanel";
 import useSiteMeta from "../hooks/siteMeta.hook";
@@ -52,6 +40,7 @@ import type { SiteStats } from "../types/stats.type";
 import { countryCodeToFlag, getCountryName } from "../utils/country.util";
 import { byteToHumanSizeString } from "../utils/fileSize.util";
 import { getCompactNumberFormat } from "../utils/number.util";
+import { getBrowserIcon, getOsIcon } from "../utils/platformIcons";
 
 export async function getServerSideProps({ res }: GetServerSidePropsContext) {
   const apiURL = process.env.API_URL || "http://localhost:8080";
@@ -91,45 +80,6 @@ const SectionCard = ({
     {children}
   </Paper>
 );
-
-const osIcon = (name: string) => {
-  switch (name) {
-    case "Windows":
-      return <TbBrandWindows size={14} aria-hidden />;
-    case "macOS":
-    case "iOS":
-      return <TbBrandApple size={14} aria-hidden />;
-    case "Linux":
-      return <TbBrandUbuntu size={14} aria-hidden />;
-    case "Android":
-      return <TbBrandAndroid size={14} aria-hidden />;
-    case "ChromeOS":
-      return <TbDeviceLaptop size={14} aria-hidden />;
-    default:
-      return <TbDeviceDesktop size={14} aria-hidden />;
-  }
-};
-
-const browserIcon = (name: string) => {
-  switch (name) {
-    case "Chrome":
-      return <TbBrandChrome size={14} aria-hidden />;
-    case "Safari":
-      return <TbBrandSafari size={14} aria-hidden />;
-    case "Firefox":
-      return <TbBrandFirefox size={14} aria-hidden />;
-    case "Opera":
-      return <TbBrandOpera size={14} aria-hidden />;
-    case "Edge":
-      return <TbBrandEdge size={14} aria-hidden />;
-    case "Brave":
-      return <SiBrave size={13} aria-hidden />;
-    case "Samsung Internet":
-      return <SiSamsung size={13} aria-hidden />;
-    default:
-      return <TbBrowser size={14} aria-hidden />;
-  }
-};
 
 const RankList = ({
   items,
@@ -351,7 +301,7 @@ const StatsPage = ({ stats }: { stats: SiteStats | null }) => {
                     key: entry.name,
                     label: entry.name,
                     count: entry.count,
-                    icon: osIcon(entry.name),
+                    icon: getOsIcon(entry.name),
                   }))}
                   empty={t("stats.custom.empty")}
                 />
@@ -366,7 +316,7 @@ const StatsPage = ({ stats }: { stats: SiteStats | null }) => {
                     key: entry.name,
                     label: entry.name,
                     count: entry.count,
-                    icon: browserIcon(entry.name),
+                    icon: getBrowserIcon(entry.name),
                   }))}
                   empty={t("stats.custom.empty")}
                 />

@@ -398,7 +398,7 @@ const TrendingCountries = ({
                 breakpoints={[{ maxWidth: "sm", cols: 1 }]}
               >
                 {shares.map((item, index) => {
-                  const label = item.name || item.id;
+                  const label = item.subject || item.name || item.id;
                   return (
                     <UnstyledButton
                       key={item.id}

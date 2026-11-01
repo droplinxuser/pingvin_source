@@ -545,7 +545,7 @@ const TrendingToday = ({
       ) : (
         <div className={classes.grid} data-testid="trending-grid">
           {visibleItems.map((item, index) => {
-            const name = item.name || item.id;
+            const name = item.subject || item.name || item.id;
             const views = item.views.toLocaleString(intl.locale);
             const hasMedia = !!item.previewFileId;
             const thumbnailUrl = hasMedia

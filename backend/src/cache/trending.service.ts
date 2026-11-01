@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { PrismaService } from "src/prisma/prisma.service";
 import {
+  getShareSubject,
   sumFileSizes,
   isPublicShare,
   publicShareWhere,
@@ -61,6 +62,7 @@ const PREVIEW_VERSION = 2;
 export type TrendingShare = {
   id: string;
   name?: string;
+  subject?: string;
   description?: string;
   views: number;
   // Media listings (trending, new-media) always set these. File-only listings
@@ -690,6 +692,7 @@ function buildMeta(
   return {
     id: share.id,
     name: share.name || undefined,
+    subject: getShareSubject(share),
     description: normalizeDescription(share.description),
     previewFileId: preview.id,
     previewKind: preview.kind,
@@ -714,6 +717,7 @@ function buildFileCard(share: {
   return {
     id: share.id,
     name: share.name || undefined,
+    subject: getShareSubject(share),
     description: normalizeDescription(share.description),
     views: share.views,
     fileCount: share.files?.length ?? 0,
@@ -735,6 +739,7 @@ function toTrendingShare(meta: TrendingMeta, views: number): TrendingShare {
   return {
     id: meta.id,
     name: meta.name,
+    subject: meta.subject,
     description: meta.description,
     views,
     previewFileId: meta.previewFileId,
@@ -775,6 +780,7 @@ function legacyMetaIds(ids: string[], metas: Map<string, TrendingMeta>) {
         meta.size === undefined ||
         meta.updatedAt === undefined ||
         meta.hasVideo === undefined ||
+        meta.subject === undefined ||
         meta.previewVersion !== PREVIEW_VERSION)
     );
   });

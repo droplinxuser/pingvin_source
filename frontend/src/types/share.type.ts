@@ -115,6 +115,7 @@ export type ShareDownloadStats = {
 export type TrendingShare = {
   id: string;
   name?: string;
+  subject?: string;
   description?: string;
   views: number;
   // Present on media listings; file-only listings and search results omit it.

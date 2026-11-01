@@ -16,7 +16,7 @@ import { Share } from "../../types/share.type";
 import { HoverTip } from "../core/HoverTip";
 import RelativeTime from "../core/RelativeTime";
 import { countryCodeToFlag, getCountryName } from "../../utils/country.util";
-import { getBrowserIcon, getOsIcon, iconStyle } from "./UploaderInfoBadges";
+import { getBrowserIcon, getOsIcon, iconStyle } from "../../utils/platformIcons";
 
 const ShareStats = ({
   share,

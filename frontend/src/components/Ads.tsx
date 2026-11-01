@@ -12,6 +12,7 @@ import type { ReactNode, RefObject } from "react";
 import { TbSpeakerphone } from "react-icons/tb";
 import useTranslate from "../hooks/useTranslate.hook";
 import useUser from "../hooks/user.hook";
+import { scheduleAfterLoad } from "../utils/idle.util";
 
 // Ad units are only mounted on share and 404 pages. The first two are
 // page-level scripts and must not compete with the page's own requests, so
@@ -61,23 +62,6 @@ const createScript = (
   script.setAttribute("data-cfasync", "false");
   if (type) script.type = type;
   return script;
-};
-
-const scheduleIdle = (callback: () => void): (() => void) => {
-  if (typeof window === "undefined") return () => {};
-  let idleHandle: number | undefined;
-  let timeout: ReturnType<typeof setTimeout> | undefined;
-
-  if ("requestIdleCallback" in window) {
-    idleHandle = window.requestIdleCallback(callback, { timeout: 2000 });
-  } else {
-    timeout = setTimeout(callback, 800);
-  }
-
-  return () => {
-    if (idleHandle !== undefined) window.cancelIdleCallback(idleHandle);
-    if (timeout) clearTimeout(timeout);
-  };
 };
 
 /**
@@ -228,7 +212,7 @@ export const AfterGalleryAd = () => {
       container.appendChild(script);
       labelAdNodes();
     };
-    cancelIdle = scheduleIdle(load);
+    cancelIdle = scheduleAfterLoad(load);
 
     return () => {
       cancelIdle();
@@ -269,7 +253,7 @@ export const AfterCommentsAd = () => {
       container.appendChild(script);
       labelAdNodes();
     };
-    cancelIdle = scheduleIdle(load);
+    cancelIdle = scheduleAfterLoad(load);
 
     return () => {
       cancelIdle();
@@ -302,7 +286,6 @@ export const PageBottomAds = () => {
 
     let cancelled = false;
     let scripts: HTMLScriptElement[] = [];
-    let cancelIdle: () => void = () => {};
     let labelTimer: ReturnType<typeof setInterval> | undefined;
 
     const load = () => {
@@ -315,19 +298,11 @@ export const PageBottomAds = () => {
       labelAdNodes();
       labelTimer = setInterval(labelAdNodes, 2000);
     };
-
-    const start = () => {
-      cancelIdle = scheduleIdle(load);
-    };
-
-    const onLoad = () => start();
-    if (document.readyState === "complete") start();
-    else window.addEventListener("load", onLoad, { once: true });
+    const cancelLoad = scheduleAfterLoad(load);
 
     return () => {
       cancelled = true;
-      window.removeEventListener("load", onLoad);
-      cancelIdle();
+      cancelLoad();
       if (labelTimer) clearInterval(labelTimer);
       scripts.forEach((script) => script.remove());
     };

@@ -74,6 +74,7 @@ function meta(id, _views, createdAt, kind = "image") {
   return JSON.stringify({
     id,
     name: `Share ${id}`,
+    subject: `Share ${id}`,
     description: `Description for ${id}`,
     previewFileId: `file-${id}`,
     previewKind: kind,
@@ -686,6 +687,7 @@ function recentShare({
   return {
     id,
     name: `Share ${id}`,
+    subject: `Share ${id}`,
     description: `Description for ${id}`,
     createdAt: new Date(recent),
     views,

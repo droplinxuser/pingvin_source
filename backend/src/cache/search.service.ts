@@ -1,6 +1,10 @@
 import { Injectable } from "@nestjs/common";
 import { PrismaService } from "src/prisma/prisma.service";
-import { publicShareWhere, sumFileSizes } from "src/share/share.util";
+import {
+  getShareSubject,
+  publicShareWhere,
+  sumFileSizes,
+} from "src/share/share.util";
 import { findPreview } from "src/share/preview.util";
 import { TrendingShare } from "./trending.service";
 import { ValkeyService } from "./valkey.service";
@@ -14,7 +18,7 @@ const INDEX_TTL_SECONDS = 5 * 60;
 // Serve the in-process copy for a minute before re-reading Valkey. Long enough
 // to collapse a burst, short enough that an edit shows up quickly.
 const INDEX_FRESH_MS = 60 * 1000;
-const INDEX_CACHE_VERSION = 5;
+const INDEX_CACHE_VERSION = 6;
 const MAX_INDEXED_SHARES = 20_000;
 const MAX_RESULTS = 200;
 const MAX_QUERY_LENGTH = 100;
@@ -24,6 +28,7 @@ const MAX_NAME_LENGTH = 200;
 type SearchEntry = {
   id: string;
   n?: string;
+  sub?: string;
   d?: string;
   v: number;
   p?: { id: string; k: "image" | "video"; video?: boolean };
@@ -177,6 +182,7 @@ function buildEntry(share: {
   return {
     id: share.id,
     n: name || undefined,
+    sub: getShareSubject(share),
     d: description || undefined,
     v: share.views,
     p: media
@@ -218,6 +224,7 @@ function toTrendingShare(entry: SearchEntry): TrendingShare {
   return {
     id: entry.id,
     name: entry.n,
+    subject: entry.sub,
     description: entry.d,
     views: entry.v,
     previewFileId: entry.p?.id,
