@@ -23,8 +23,17 @@ const AD_SCRIPT_HOSTS =
   /(?:boxypluckunrelated|puceronplouky|grop\.net|wingsmob|cloudpiko|sowve|mamshirt|nresystems)\./i;
 
 const isAdScriptFailure = (reason: unknown): boolean => {
-  if (reason instanceof Error)
-    return AD_SCRIPT_HOSTS.test(`${reason.message}\n${reason.stack ?? ""}`);
+  if (reason && typeof reason === "object") {
+    const { name, message, stack } = reason as {
+      name?: unknown;
+      message?: unknown;
+      stack?: unknown;
+    };
+    const text = [name, message, stack]
+      .filter((value): value is string => typeof value === "string")
+      .join("\n");
+    if (text) return AD_SCRIPT_HOSTS.test(text);
+  }
   return AD_SCRIPT_HOSTS.test(stringifyReason(reason));
 };
 
