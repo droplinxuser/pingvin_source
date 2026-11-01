@@ -12,6 +12,7 @@ import {
   Title,
 } from "@mantine/core";
 import { GetServerSidePropsContext } from "next";
+import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { useIntl } from "react-intl";
 import {
@@ -155,6 +156,23 @@ const StatsPage = ({ stats }: { stats: SiteStats | null }) => {
   const description = t("stats.custom.description");
   const metaDescription = t("stats.custom.metaDescription", { siteName });
   const compact = getCompactNumberFormat(intl.locale);
+  // Intl.DisplayNames ships different ICU data in Node and browsers (for
+  // example HK is "Hong Kong SAR China" on the server and "Hong Kong" in
+  // Chromium). Render the stable code on the server/first client render, then
+  // replace it with the localized name after hydration. This avoids React
+  // hydration errors without forcing an English-only country table.
+  const [countryNames, setCountryNames] = useState<Record<string, string>>({});
+  useEffect(() => {
+    if (!stats) return;
+    setCountryNames(
+      Object.fromEntries(
+        stats.topCountries.map((entry) => [
+          entry.country,
+          getCountryName(entry.country, intl.locale),
+        ]),
+      ),
+    );
+  }, [stats, intl.locale]);
 
   const jsonLd = buildCollectionPage({
     name: t("stats.custom.title"),
@@ -282,10 +300,9 @@ const StatsPage = ({ stats }: { stats: SiteStats | null }) => {
                 <RankList
                   items={stats.topCountries.map((entry) => ({
                     key: entry.country,
-                    label: `${countryCodeToFlag(entry.country)} ${getCountryName(
-                      entry.country,
-                      intl.locale,
-                    )}`,
+                    label: `${countryCodeToFlag(entry.country)} ${
+                      countryNames[entry.country] ?? entry.country
+                    }`,
                     count: entry.count,
                   }))}
                   empty={t("stats.custom.empty")}
