@@ -188,6 +188,30 @@ export const doesFileSupportPreview = (fileName: string) => {
 export const isShareTextFile = (fileName: string) =>
   getFileMimeType(fileName).startsWith("text/");
 
+/**
+ * A text preview must only parse the file itself. A redirect, an error page or
+ * a proxy fallback answers with HTML, and feeding that into the Markdown
+ * renderer can freeze the tab, so the response type is checked before use.
+ */
+export const isPreviewableTextContentType = (contentType: string) => {
+  const value = (contentType ?? "").split(";")[0].trim().toLowerCase();
+  if (!value || value === "text/html" || value === "application/xhtml+xml")
+    return false;
+  return (
+    value.startsWith("text/") ||
+    value === "application/json" ||
+    value.endsWith("+json") ||
+    value === "application/xml" ||
+    value.endsWith("+xml") ||
+    value === "application/javascript" ||
+    value === "application/x-javascript" ||
+    value === "application/yaml" ||
+    value === "application/x-yaml" ||
+    value === "application/toml" ||
+    value === "application/sql"
+  );
+};
+
 // Only these extensions are parsed as Markdown. Everything else that is text
 // is shown verbatim, so a .log or .csv never loses its line breaks.
 const MARKDOWN_EXTENSIONS = new Set(["md", "markdown", "mdown", "mkd", "mdx"]);

@@ -13,6 +13,7 @@ import {
 } from "../types/share.type";
 import { generateUUID } from "../utils/crypto.util";
 import { getShareFileUrl, getShareZipUrl } from "../utils/file.util";
+import { isPreviewableTextContentType } from "../utils/mime.util";
 import {
   type UploadProgressHandler,
   withUploadInactivityTimeout,
@@ -223,18 +224,28 @@ const isShareIdAvailable = async (id: string): Promise<boolean> => {
   return (await api.get(`/shares/isShareIdAvailable/${id}`)).data.isAvailable;
 };
 
+const MAX_TEXT_BODY_BYTES = 1024 * 1024;
+
 const getFileText = async (
   shareId: string,
   fileId: string,
   signal?: AbortSignal,
 ): Promise<string> => {
   if (!isValidId(shareId) || !isValidId(fileId)) throw new Error("Invalid ID");
-  return (
-    await api.get(`shares/${shareId}/files/${fileId}`, {
-      params: { download: false },
-      signal,
-    })
-  ).data as string;
+  const response = await api.get(`shares/${shareId}/files/${fileId}`, {
+    params: { download: false },
+    signal,
+    responseType: "text",
+    // Keep JSON/YAML text verbatim instead of letting axios parse it into an
+    // object that the preview cannot render.
+    transformResponse: [(data) => data],
+  });
+  const contentType = String(response.headers?.["content-type"] ?? "");
+  if (!isPreviewableTextContentType(contentType))
+    throw new Error("Not a text file");
+  const body = typeof response.data === "string" ? response.data : "";
+  if (body.length > MAX_TEXT_BODY_BYTES) throw new Error("Text file too large");
+  return body;
 };
 
 const downloadCacheBuster = (url: string, enabled: boolean): string => {
