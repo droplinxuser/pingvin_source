@@ -108,15 +108,23 @@ export default {
   "stats.custom.totals.storage": "Storage",
   "stats.custom.totals.pageViews": "Page views",
   "stats.custom.totals.downloads": "Downloads",
-  "stats.custom.lastDay":
-    "{count, plural, one {{compact} page view in the last 24 hours} other {{compact} page views in the last 24 hours}}",
   "stats.custom.shareViews":
     "{count, plural, one {{compact} share view} other {{compact} share views}}",
   "stats.custom.topCountries": "Top countries",
   "stats.custom.topOperatingSystems": "Top operating systems",
   "stats.custom.topBrowsers": "Top browsers",
   "stats.custom.mostViewed": "Most viewed shares",
+  "stats.custom.mostViewedDescription":
+    "Public shares with the most lifetime views.",
   "stats.custom.mostDownloaded": "Most downloaded shares",
+  "stats.custom.mostDownloadedDescription":
+    "Public shares with the most tracked downloads.",
+  "stats.custom.allTime": "All time",
+  "stats.custom.views": "{count, plural, one {# view} other {# views}}",
+  "stats.custom.downloads":
+    "{count, plural, one {# download} other {# downloads}}",
+  "stats.custom.viewsCompact": "{count} views",
+  "stats.custom.downloadsCompact": "{count} downloads",
   "stats.custom.empty": "Not enough data yet.",
   "stats.custom.emptyDownloads": "No downloads have been tracked yet.",
   "stats.custom.files": "{count, plural, one {# file} other {# files}}",

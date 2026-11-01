@@ -19,6 +19,7 @@ import {
 } from "src/cache/valkeyMetrics.util";
 import { ValkeyService } from "src/cache/valkey.service";
 import { PrismaService } from "src/prisma/prisma.service";
+import { findPreview } from "src/share/preview.util";
 import { publicShareWhere } from "src/share/share.util";
 import { SystemInfoDTO } from "./dto/systemInfo.dto";
 import { ConfigService } from "src/config/config.service";
@@ -101,6 +102,10 @@ export type StatShare = {
   name?: string;
   fileCount: number;
   createdAt: string;
+  updatedAt?: string;
+  previewFileId?: string;
+  previewKind?: "image" | "video";
+  hasVideo?: boolean;
   views?: number;
   downloads?: number;
 };
@@ -111,7 +116,6 @@ export type SiteStats = {
     shareViews: number;
     downloads: number;
   };
-  pageViewsLastDay: number;
   topCountries: StatCountry[];
   topOperatingSystems: NameCount[];
   topBrowsers: NameCount[];
@@ -198,11 +202,10 @@ export class SystemService {
   }
 
   private async loadSiteStats(): Promise<SiteStats> {
-    const [base, overall, lastDay, shareViews, downloads, topDownloaded] =
+    const [base, overall, shareViews, downloads, topDownloaded] =
       await Promise.all([
         this.getBaseSystemStats(),
         this.metrics.getOverallStats(),
-        this.metrics.getLastDay(),
         this.prisma.share
           .aggregate({ _sum: { views: true } })
           .catch(() => null),
@@ -215,6 +218,12 @@ export class SystemService {
       name: true,
       views: true,
       createdAt: true,
+      updatedAt: true,
+      files: {
+        select: { id: true, name: true, size: true },
+        orderBy: { name: "asc" },
+        take: 50,
+      },
       _count: { select: { files: true } },
     } as const;
 
@@ -238,6 +247,25 @@ export class SystemService {
         : Promise.resolve([]),
     ]);
 
+    const toStatShare = (
+      share: (typeof mostViewedRows)[number],
+      extra: Pick<StatShare, "downloads"> = {},
+    ): StatShare => {
+      const preview = findPreview(share.files);
+      return {
+        id: share.id,
+        name: share.name || undefined,
+        fileCount: share._count.files,
+        createdAt: new Date(share.createdAt).toISOString(),
+        updatedAt: new Date(share.updatedAt ?? share.createdAt).toISOString(),
+        previewFileId: preview?.preview.id,
+        previewKind: preview?.preview.kind,
+        hasVideo: preview?.hasVideo === true,
+        views: share.views,
+        ...extra,
+      };
+    };
+
     const downloadedById = new Map(
       downloadedRows.map((share) => [share.id, share]),
     );
@@ -245,14 +273,7 @@ export class SystemService {
     for (const entry of topDownloaded) {
       const share = downloadedById.get(entry.shareId);
       if (!share) continue;
-      mostDownloaded.push({
-        id: share.id,
-        name: share.name || undefined,
-        fileCount: share._count.files,
-        createdAt: new Date(share.createdAt).toISOString(),
-        views: share.views,
-        downloads: entry.downloads,
-      });
+      mostDownloaded.push(toStatShare(share, { downloads: entry.downloads }));
       if (mostDownloaded.length >= 20) break;
     }
 
@@ -263,17 +284,10 @@ export class SystemService {
         shareViews: Number(shareViews?._sum.views ?? 0),
         downloads,
       },
-      pageViewsLastDay: lastDay.pageViewsLastDay,
       topCountries: overall.topCountries,
       topOperatingSystems: overall.topOperatingSystems,
       topBrowsers: overall.topBrowsers,
-      mostViewed: mostViewedRows.map((share) => ({
-        id: share.id,
-        name: share.name || undefined,
-        fileCount: share._count.files,
-        createdAt: new Date(share.createdAt).toISOString(),
-        views: share.views,
-      })),
+      mostViewed: mostViewedRows.map((share) => toStatShare(share)),
       mostDownloaded,
     };
 

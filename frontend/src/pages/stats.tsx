@@ -1,5 +1,4 @@
 import {
-  Anchor,
   Box,
   Container,
   Divider,
@@ -13,7 +12,6 @@ import {
   Title,
 } from "@mantine/core";
 import { GetServerSidePropsContext } from "next";
-import Link from "next/link";
 import type { ReactNode } from "react";
 import { useIntl } from "react-intl";
 import {
@@ -29,6 +27,7 @@ import {
   TbWorld,
 } from "react-icons/tb";
 import Meta from "../components/Meta";
+import RankedSharePanel from "../components/share/RankedSharePanel";
 import useSiteMeta from "../hooks/siteMeta.hook";
 import useTranslate from "../hooks/useTranslate.hook";
 import {
@@ -37,7 +36,7 @@ import {
 } from "../utils/httpCache.util";
 import { fetchSiteStats } from "../utils/seo.server.util";
 import { buildCollectionPage } from "../utils/seo.util";
-import type { SiteStats, StatShare } from "../types/stats.type";
+import type { SiteStats } from "../types/stats.type";
 import { countryCodeToFlag, getCountryName } from "../utils/country.util";
 import { byteToHumanSizeString } from "../utils/fileSize.util";
 import { getCompactNumberFormat } from "../utils/number.util";
@@ -128,75 +127,6 @@ const RankList = ({
             aria-label={`${item.label}: ${item.count}`}
           />
         </Box>
-      ))}
-    </Stack>
-  );
-};
-
-const ShareRankList = ({
-  items,
-  metric,
-  empty,
-}: {
-  items: StatShare[];
-  metric: "views" | "downloads";
-  empty: string;
-}) => {
-  const t = useTranslate();
-  const intl = useIntl();
-  const compact = getCompactNumberFormat(intl.locale);
-  const MetricIcon = metric === "views" ? TbEye : TbDownload;
-
-  if (items.length === 0)
-    return (
-      <Text size="sm" color="dimmed" py="sm">
-        {empty}
-      </Text>
-    );
-
-  return (
-    <Stack spacing="sm">
-      {items.slice(0, 20).map((share, index) => (
-        <Group
-          key={share.id}
-          position="apart"
-          align="flex-start"
-          noWrap
-          spacing="xs"
-        >
-          <Group spacing={6} align="flex-start" noWrap sx={{ minWidth: 0 }}>
-            <Text
-              size="xs"
-              color="dimmed"
-              sx={{ width: 18, flexShrink: 0, textAlign: "right" }}
-            >
-              {index + 1}
-            </Text>
-            <Box sx={{ minWidth: 0 }}>
-              <Anchor
-                component={Link}
-                href={`/share/${share.id}`}
-                size="sm"
-                weight={600}
-                display="block"
-                truncate
-              >
-                {share.name || share.id}
-              </Anchor>
-              <Text size="xs" color="dimmed" truncate>
-                {t("stats.custom.files", { count: share.fileCount })}
-              </Text>
-            </Box>
-          </Group>
-          <Group spacing={4} noWrap sx={{ flexShrink: 0 }}>
-            <MetricIcon size={14} aria-hidden />
-            <Text size="sm" weight={600}>
-              {compact.format(
-                (metric === "views" ? share.views : share.downloads) ?? 0,
-              )}
-            </Text>
-          </Group>
-        </Group>
       ))}
     </Stack>
   );
@@ -315,11 +245,6 @@ const StatsPage = ({ stats }: { stats: SiteStats | null }) => {
               {t("stats.custom.shareViews", {
                 count: totals!.shareViews,
                 compact: compact.format(totals!.shareViews),
-              })}{" "}
-              ·{" "}
-              {t("stats.custom.lastDay", {
-                count: stats.pageViewsLastDay,
-                compact: compact.format(stats.pageViewsLastDay),
               })}
             </Text>
 
@@ -375,33 +300,27 @@ const StatsPage = ({ stats }: { stats: SiteStats | null }) => {
               </SectionCard>
             </SimpleGrid>
 
-            <SimpleGrid
-              cols={1}
-              spacing="md"
-              mt="md"
-              breakpoints={[{ minWidth: "md", cols: 2 }]}
-            >
-              <SectionCard
+            <SimpleGrid cols={1} spacing="md" mt="lg">
+              <RankedSharePanel
+                titleId="stats-most-viewed-title"
                 title={t("stats.custom.mostViewed")}
-                icon={<TbEye size={16} />}
-              >
-                <ShareRankList
-                  items={stats.mostViewed}
-                  metric="views"
-                  empty={t("stats.custom.empty")}
-                />
-              </SectionCard>
-
-              <SectionCard
+                description={t("stats.custom.mostViewedDescription")}
+                windowLabel={t("stats.custom.allTime")}
+                icon={<TbEye size={18} aria-hidden />}
+                items={stats.mostViewed}
+                metric="views"
+                empty={t("stats.custom.empty")}
+              />
+              <RankedSharePanel
+                titleId="stats-most-downloaded-title"
                 title={t("stats.custom.mostDownloaded")}
-                icon={<TbDownload size={16} />}
-              >
-                <ShareRankList
-                  items={stats.mostDownloaded}
-                  metric="downloads"
-                  empty={t("stats.custom.emptyDownloads")}
-                />
-              </SectionCard>
+                description={t("stats.custom.mostDownloadedDescription")}
+                windowLabel={t("stats.custom.allTime")}
+                icon={<TbDownload size={18} aria-hidden />}
+                items={stats.mostDownloaded}
+                metric="downloads"
+                empty={t("stats.custom.emptyDownloads")}
+              />
             </SimpleGrid>
 
             <Text size="xs" color="dimmed" align="center" mt="lg">
