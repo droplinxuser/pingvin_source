@@ -301,7 +301,13 @@ const StatsPage = ({ stats }: { stats: SiteStats | null }) => {
                     <ThemeIcon size={28} radius="sm" variant="light" color="blue">
                       {item.icon}
                     </ThemeIcon>
-                    <Text size="xs" color="dimmed" weight={600} truncate>
+                    <Text
+                      size="xs"
+                      color="dimmed"
+                      weight={600}
+                      lineClamp={2}
+                      title={item.label}
+                    >
                       {item.label}
                     </Text>
                   </Group>
