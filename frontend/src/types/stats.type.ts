@@ -17,6 +17,7 @@ export type StatShare = {
   previewFileId?: string;
   previewKind?: "image" | "video";
   hasVideo?: boolean;
+  fileNames?: string[];
   views?: number;
   downloads?: number;
 };
@@ -27,10 +28,10 @@ export type SiteStats = {
     shareCount: number;
     fileCount: number;
     storageSizeBytes: number;
-    pageViews: number;
     shareViews: number;
     downloads: number;
   };
+  pageViewsLastDay: number;
   topCountries: StatCountry[];
   topOperatingSystems: StatName[];
   topBrowsers: StatName[];

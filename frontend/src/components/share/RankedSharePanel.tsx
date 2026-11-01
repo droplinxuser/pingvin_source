@@ -25,6 +25,7 @@ import {
   handleShareThumbnailError,
 } from "../../utils/file.util";
 import { getCompactNumberFormat } from "../../utils/number.util";
+import { getShareSubject } from "../../utils/seo.util";
 import LazyImage from "../core/LazyImage";
 
 const useStyles = createStyles((theme) => {
@@ -278,7 +279,13 @@ const RankedSharePanel = ({
           breakpoints={[{ maxWidth: "sm", cols: 1 }]}
         >
           {items.slice(0, 20).map((item, index) => {
-            const label = item.name || item.id;
+            const label =
+              getShareSubject({
+                name: item.name,
+                files: item.fileNames?.map((name) => ({ name })),
+              }) ||
+              item.name ||
+              item.id;
             const value = metric === "views" ? item.views : item.downloads;
             const rawValue = value ?? 0;
             const metricLabel =

@@ -106,16 +106,17 @@ export type StatShare = {
   previewFileId?: string;
   previewKind?: "image" | "video";
   hasVideo?: boolean;
+  fileNames?: string[];
   views?: number;
   downloads?: number;
 };
 
 export type SiteStats = {
   totals: BaseSystemStats & {
-    pageViews: number;
     shareViews: number;
     downloads: number;
   };
+  pageViewsLastDay: number;
   topCountries: StatCountry[];
   topOperatingSystems: NameCount[];
   topBrowsers: NameCount[];
@@ -202,10 +203,11 @@ export class SystemService {
   }
 
   private async loadSiteStats(): Promise<SiteStats> {
-    const [base, overall, shareViews, downloads, topDownloaded] =
+    const [base, overall, lastDay, shareViews, downloads, topDownloaded] =
       await Promise.all([
         this.getBaseSystemStats(),
         this.metrics.getOverallStats(),
+        this.metrics.getLastDay(),
         this.prisma.share
           .aggregate({ _sum: { views: true } })
           .catch(() => null),
@@ -261,6 +263,7 @@ export class SystemService {
         previewFileId: preview?.preview.id,
         previewKind: preview?.preview.kind,
         hasVideo: preview?.hasVideo === true,
+        fileNames: share.name ? undefined : share.files?.map((file) => file.name),
         views: share.views,
         ...extra,
       };
@@ -280,10 +283,10 @@ export class SystemService {
     const value: SiteStats = {
       totals: {
         ...base,
-        pageViews: overall.totalPageViews,
         shareViews: Number(shareViews?._sum.views ?? 0),
         downloads,
       },
+      pageViewsLastDay: lastDay.pageViewsLastDay,
       topCountries: overall.topCountries,
       topOperatingSystems: overall.topOperatingSystems,
       topBrowsers: overall.topBrowsers,

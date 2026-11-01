@@ -4,7 +4,6 @@ import {
   Divider,
   Group,
   Paper,
-  Text,
   ThemeIcon,
 } from "@mantine/core";
 import { getCookie } from "cookies-next/client";
@@ -170,7 +169,7 @@ const AdCard = ({
   return (
     <Paper
       component="section"
-      aria-labelledby={filled ? titleId : undefined}
+      aria-label={filled ? t("common.custom.ad") : undefined}
       radius="md"
       p={filled ? { base: "xs", sm: "sm" } : 0}
       mt={filled ? "lg" : 0}
@@ -180,25 +179,13 @@ const AdCard = ({
     >
       {filled && (
         <>
-          <Group position="apart" align="center" spacing="md">
-            <Group spacing="xs" align="center" noWrap>
-              <ThemeIcon size={32} radius="sm" variant="light" color="gray">
-                <TbSpeakerphone size={17} />
-              </ThemeIcon>
-              <Text
-                component="h2"
-                id={titleId}
-                size="md"
-                weight={700}
-                lh={1.2}
-                m={0}
-              >
-                {t("common.custom.sponsored")}
-              </Text>
-              <Badge size="sm" radius="sm" variant="light" color="gray">
-                {t("common.custom.ad")}
-              </Badge>
-            </Group>
+          <Group spacing="xs" align="center" noWrap>
+            <ThemeIcon size={32} radius="sm" variant="light" color="gray">
+              <TbSpeakerphone size={17} />
+            </ThemeIcon>
+            <Badge size="sm" radius="sm" variant="light" color="gray">
+              {t("common.custom.ad")}
+            </Badge>
           </Group>
           <Divider my="sm" />
         </>

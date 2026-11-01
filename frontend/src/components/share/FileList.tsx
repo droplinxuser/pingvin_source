@@ -634,26 +634,26 @@ const FileList = ({
                         <TbLink size={16} />
                       </ActionIcon>
                     </HoverTip>
-                    <HoverTip label={t("common.button.download")}>
-                      <ActionIcon
-                        color="cyan"
-                        variant="light"
-                        size={28}
-                        aria-label={t("common.button.download")}
-                        disabled={downloadLimitReached}
-                        onClick={async () => {
-                          await shareService.downloadFile(
-                            share.id,
-                            file.id,
-                            recipientId,
-                            file.name,
-                            !!maxDownloads,
-                          );
-                        }}
-                      >
-                        <TbDownload size={16} />
-                      </ActionIcon>
-                    </HoverTip>
+                    <Button
+                      color="cyan"
+                      variant="light"
+                      size="xs"
+                      radius="sm"
+                      leftIcon={<TbDownload size={16} />}
+                      aria-label={t("common.button.download")}
+                      disabled={downloadLimitReached}
+                      onClick={async () => {
+                        await shareService.downloadFile(
+                          share.id,
+                          file.id,
+                          recipientId,
+                          file.name,
+                          !!maxDownloads,
+                        );
+                      }}
+                    >
+                      {t("common.button.download")}
+                    </Button>
                   </Group>
                 </Box>
               );

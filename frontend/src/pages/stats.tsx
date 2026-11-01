@@ -15,10 +15,21 @@ import { GetServerSidePropsContext } from "next";
 import type { ReactNode } from "react";
 import { useIntl } from "react-intl";
 import {
+  TbBrandAndroid,
+  TbBrandApple,
+  TbBrandChrome,
+  TbBrandEdge,
+  TbBrandFirefox,
+  TbBrandOpera,
+  TbBrandSafari,
+  TbBrandUbuntu,
+  TbBrandWindows,
   TbBrowser,
   TbChartBar,
   TbDatabase,
   TbDeviceDesktop,
+  TbDeviceLaptop,
+  TbDeviceMobile,
   TbDownload,
   TbEye,
   TbFiles,
@@ -26,6 +37,7 @@ import {
   TbUsers,
   TbWorld,
 } from "react-icons/tb";
+import { SiBrave, SiSamsung } from "react-icons/si";
 import Meta from "../components/Meta";
 import RankedSharePanel from "../components/share/RankedSharePanel";
 import useSiteMeta from "../hooks/siteMeta.hook";
@@ -80,11 +92,50 @@ const SectionCard = ({
   </Paper>
 );
 
+const osIcon = (name: string) => {
+  switch (name) {
+    case "Windows":
+      return <TbBrandWindows size={14} aria-hidden />;
+    case "macOS":
+    case "iOS":
+      return <TbBrandApple size={14} aria-hidden />;
+    case "Linux":
+      return <TbBrandUbuntu size={14} aria-hidden />;
+    case "Android":
+      return <TbBrandAndroid size={14} aria-hidden />;
+    case "ChromeOS":
+      return <TbDeviceLaptop size={14} aria-hidden />;
+    default:
+      return <TbDeviceDesktop size={14} aria-hidden />;
+  }
+};
+
+const browserIcon = (name: string) => {
+  switch (name) {
+    case "Chrome":
+      return <TbBrandChrome size={14} aria-hidden />;
+    case "Safari":
+      return <TbBrandSafari size={14} aria-hidden />;
+    case "Firefox":
+      return <TbBrandFirefox size={14} aria-hidden />;
+    case "Opera":
+      return <TbBrandOpera size={14} aria-hidden />;
+    case "Edge":
+      return <TbBrandEdge size={14} aria-hidden />;
+    case "Brave":
+      return <SiBrave size={13} aria-hidden />;
+    case "Samsung Internet":
+      return <SiSamsung size={13} aria-hidden />;
+    default:
+      return <TbBrowser size={14} aria-hidden />;
+  }
+};
+
 const RankList = ({
   items,
   empty,
 }: {
-  items: { key: string; label: string; count: number }[];
+  items: { key: string; label: string; count: number; icon?: ReactNode }[];
   empty: string;
 }) => {
   const intl = useIntl();
@@ -111,6 +162,21 @@ const RankList = ({
               >
                 {index + 1}
               </Text>
+              {item.icon && (
+                <Box
+                  component="span"
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    width: 18,
+                    flexShrink: 0,
+                    color: "dimmed",
+                  }}
+                >
+                  {item.icon}
+                </Box>
+              )}
               <Text size="sm" weight={600} truncate>
                 {item.label}
               </Text>
@@ -174,7 +240,12 @@ const StatsPage = ({ stats }: { stats: SiteStats | null }) => {
         {
           icon: <TbEye size={18} />,
           label: t("stats.custom.totals.pageViews"),
-          value: compact.format(totals.pageViews),
+          value: compact.format(stats.pageViewsLastDay),
+        },
+        {
+          icon: <TbChartBar size={18} />,
+          label: t("stats.custom.totals.shareViews"),
+          value: compact.format(totals.shareViews),
         },
         {
           icon: <TbDownload size={18} />,
@@ -221,7 +292,7 @@ const StatsPage = ({ stats }: { stats: SiteStats | null }) => {
               mt="lg"
               breakpoints={[
                 { minWidth: "sm", cols: 3 },
-                { minWidth: "lg", cols: 6 },
+                { minWidth: "lg", cols: 4 },
               ]}
             >
               {summary.map((item) => (
@@ -241,18 +312,12 @@ const StatsPage = ({ stats }: { stats: SiteStats | null }) => {
               ))}
             </SimpleGrid>
 
-            <Text size="xs" color="dimmed" mt="sm">
-              {t("stats.custom.shareViews", {
-                count: totals!.shareViews,
-                compact: compact.format(totals!.shareViews),
-              })}
-            </Text>
-
             <SimpleGrid
               cols={1}
               spacing="md"
               mt="lg"
               breakpoints={[{ minWidth: "lg", cols: 3 }]}
+              sx={{ alignItems: "start" }}
             >
               <SectionCard
                 title={t("stats.custom.topCountries")}
@@ -280,6 +345,7 @@ const StatsPage = ({ stats }: { stats: SiteStats | null }) => {
                     key: entry.name,
                     label: entry.name,
                     count: entry.count,
+                    icon: osIcon(entry.name),
                   }))}
                   empty={t("stats.custom.empty")}
                 />
@@ -294,6 +360,7 @@ const StatsPage = ({ stats }: { stats: SiteStats | null }) => {
                     key: entry.name,
                     label: entry.name,
                     count: entry.count,
+                    icon: browserIcon(entry.name),
                   }))}
                   empty={t("stats.custom.empty")}
                 />
