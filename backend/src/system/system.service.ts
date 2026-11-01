@@ -7,9 +7,11 @@ import * as path from "path";
 import { CLAMAV_HOST, CLAMAV_PORT, DATA_DIRECTORY } from "src/constants";
 import {
   MetricsService,
+  NameCount,
   PageViewMetrics,
   ReferrerPage,
 } from "src/cache/metrics.service";
+import { DownloadService } from "src/cache/download.service";
 import {
   ValkeyMetrics,
   emptyValkeyMetrics,
@@ -89,6 +91,34 @@ type BaseSystemStats = {
 
 export type SystemStats = BaseSystemStats & PageViewMetrics;
 
+export type StatCountry = {
+  country: string;
+  count: number;
+};
+
+export type StatShare = {
+  id: string;
+  name?: string;
+  fileCount: number;
+  createdAt: string;
+  views?: number;
+  downloads?: number;
+};
+
+export type SiteStats = {
+  totals: BaseSystemStats & {
+    pageViews: number;
+    shareViews: number;
+    downloads: number;
+  };
+  pageViewsLastDay: number;
+  topCountries: StatCountry[];
+  topOperatingSystems: NameCount[];
+  topBrowsers: NameCount[];
+  mostViewed: StatShare[];
+  mostDownloaded: StatShare[];
+};
+
 type SitemapFileEntry = {
   name: string;
   version: string;
@@ -111,6 +141,8 @@ export class SystemService {
   private readonly logger = new Logger(SystemService.name);
   private baseStats?: { at: number; value: BaseSystemStats };
   private baseStatsPending?: Promise<BaseSystemStats>;
+  private siteStats?: { at: number; value: SiteStats };
+  private siteStatsPending?: Promise<SiteStats>;
   private readonly sitemapBuilds = new Map<string, Promise<SitemapManifest>>();
   // The manifest is small and changes at most every SITEMAP_REFRESH_MS, so a
   // validated copy avoids reading it and stats every chunk on each robots or
@@ -125,6 +157,7 @@ export class SystemService {
     private prisma: PrismaService,
     private readonly metrics: MetricsService,
     private readonly valkey: ValkeyService,
+    private readonly downloads: DownloadService,
   ) {}
 
   async getSystemStats(): Promise<SystemStats> {
@@ -135,12 +168,117 @@ export class SystemService {
     return { ...base, ...pageViews };
   }
 
-  async recordPageView(country?: string): Promise<SystemStats> {
+  async recordPageView(country?: string, os?: string, browser?: string): Promise<SystemStats> {
     const [base, pageViews] = await Promise.all([
       this.getBaseSystemStats(),
-      this.metrics.recordPageView(country),
+      this.metrics.recordPageView(country, os, browser),
     ]);
     return { ...base, ...pageViews };
+  }
+
+  /**
+   * Public /stats payload. Everything is aggregate: page-view counts, the
+   * normalized OS/browser/country rankings, lifetime share views and the
+   * tracked download ranking. The 60-second process cache matches the edge TTL
+   * so a cache miss cannot fan the SQLite/Valkey reads out per visitor.
+   */
+  async getSiteStats(): Promise<SiteStats> {
+    if (
+      this.siteStats &&
+      Date.now() - this.siteStats.at < SYSTEM_STATS_CACHE_TTL
+    ) {
+      return this.siteStats.value;
+    }
+
+    if (!this.siteStatsPending)
+      this.siteStatsPending = this.loadSiteStats().finally(() => {
+        this.siteStatsPending = undefined;
+      });
+    return this.siteStatsPending;
+  }
+
+  private async loadSiteStats(): Promise<SiteStats> {
+    const [base, overall, lastDay, shareViews, downloads, topDownloaded] =
+      await Promise.all([
+        this.getBaseSystemStats(),
+        this.metrics.getOverallStats(),
+        this.metrics.getLastDay(),
+        this.prisma.share
+          .aggregate({ _sum: { views: true } })
+          .catch(() => null),
+        this.downloads.getTotalDownloads(),
+        this.downloads.getTopShares(100),
+      ]);
+
+    const shareSelect = {
+      id: true,
+      name: true,
+      views: true,
+      createdAt: true,
+      _count: { select: { files: true } },
+    } as const;
+
+    const downloadIds = topDownloaded.map((item) => item.shareId);
+    const [mostViewedRows, downloadedRows] = await Promise.all([
+      this.prisma.share
+        .findMany({
+          where: publicShareWhere(),
+          select: shareSelect,
+          orderBy: [{ views: "desc" }, { createdAt: "desc" }],
+          take: 20,
+        })
+        .catch(() => []),
+      downloadIds.length
+        ? this.prisma.share
+            .findMany({
+              where: { ...publicShareWhere(), id: { in: downloadIds } },
+              select: shareSelect,
+            })
+            .catch(() => [])
+        : Promise.resolve([]),
+    ]);
+
+    const downloadedById = new Map(
+      downloadedRows.map((share) => [share.id, share]),
+    );
+    const mostDownloaded: StatShare[] = [];
+    for (const entry of topDownloaded) {
+      const share = downloadedById.get(entry.shareId);
+      if (!share) continue;
+      mostDownloaded.push({
+        id: share.id,
+        name: share.name || undefined,
+        fileCount: share._count.files,
+        createdAt: new Date(share.createdAt).toISOString(),
+        views: share.views,
+        downloads: entry.downloads,
+      });
+      if (mostDownloaded.length >= 20) break;
+    }
+
+    const value: SiteStats = {
+      totals: {
+        ...base,
+        pageViews: overall.totalPageViews,
+        shareViews: Number(shareViews?._sum.views ?? 0),
+        downloads,
+      },
+      pageViewsLastDay: lastDay.pageViewsLastDay,
+      topCountries: overall.topCountries,
+      topOperatingSystems: overall.topOperatingSystems,
+      topBrowsers: overall.topBrowsers,
+      mostViewed: mostViewedRows.map((share) => ({
+        id: share.id,
+        name: share.name || undefined,
+        fileCount: share._count.files,
+        createdAt: new Date(share.createdAt).toISOString(),
+        views: share.views,
+      })),
+      mostDownloaded,
+    };
+
+    this.siteStats = { at: Date.now(), value };
+    return value;
   }
 
   async getReferrers(page: number, pageSize: number): Promise<ReferrerPage> {
@@ -289,6 +427,7 @@ export class SystemService {
       "Allow: /trending",
       "Allow: /new-media",
       "Allow: /new-files",
+      "Allow: /stats",
       // The sitemap index and its versioned chunk files must stay crawlable
       // even though the generic /api tree and query strings are disallowed.
       "Allow: /sitemap.xml",
@@ -408,6 +547,7 @@ export class SystemService {
     entries.push(urlEntry(absoluteUrl("/trending", baseUrl)));
     entries.push(urlEntry(absoluteUrl("/new-media", baseUrl)));
     entries.push(urlEntry(absoluteUrl("/new-files", baseUrl)));
+    entries.push(urlEntry(absoluteUrl("/stats", baseUrl)));
     entries.push(urlEntry(absoluteUrl("/contact", baseUrl)));
     entries.push(urlEntry(absoluteUrl("/imprint", baseUrl)));
     entries.push(urlEntry(absoluteUrl("/privacy", baseUrl)));

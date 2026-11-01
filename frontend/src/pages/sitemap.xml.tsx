@@ -17,6 +17,7 @@ const buildFallbackSitemap = (
     absoluteUrl("/trending", baseUrl),
     absoluteUrl("/new-media", baseUrl),
     absoluteUrl("/new-files", baseUrl),
+    absoluteUrl("/stats", baseUrl),
     absoluteUrl("/contact", baseUrl),
     absoluteUrl("/imprint", baseUrl),
     absoluteUrl("/privacy", baseUrl),

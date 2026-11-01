@@ -13,9 +13,9 @@ import { Request, Response } from "express";
 import { SkipThrottle } from "@nestjs/throttler";
 import { AdministratorGuard } from "src/auth/guard/isAdmin.guard";
 import { JwtGuard } from "src/auth/guard/jwt.guard";
-import { SystemService, SystemStats } from "./system.service";
+import { SiteStats, SystemService, SystemStats } from "./system.service";
 import { getEdgeCacheHeaders } from "src/utils/cache.util";
-import { getRequestCountry } from "src/utils/uploaderInfo.util";
+import { getVisitorInfo } from "src/utils/uploaderInfo.util";
 import { parsePagination } from "src/utils/pagination.util";
 import { SystemInfoDTO } from "./dto/systemInfo.dto";
 
@@ -70,10 +70,25 @@ export class SystemController {
     return stats;
   }
 
+  @Get("site-stats")
+  @SkipThrottle({ default: true })
+  async getSiteStats(
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<SiteStats> {
+    const stats = await this.systemService.getSiteStats();
+    response.set(getEdgeCacheHeaders(60));
+    return stats;
+  }
+
   @Post("pageview")
   @HttpCode(200)
   async recordPageView(@Req() request: Request): Promise<SystemStats> {
-    return await this.systemService.recordPageView(getRequestCountry(request));
+    const visitor = getVisitorInfo(request);
+    return await this.systemService.recordPageView(
+      visitor.country,
+      visitor.os,
+      visitor.browser,
+    );
   }
 
   @Get("robots.txt")

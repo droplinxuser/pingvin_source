@@ -29,6 +29,16 @@ const REFERRER_MAX_ENTRIES = 2000;
 const REFERRER_MAX_LENGTH = 253;
 const MAX_REFERRER_PAGE_SIZE = 100;
 
+// All-time totals live in one small hash. Country codes and the normalized
+// OS/browser names are a finite vocabulary, so the hash cannot grow with
+// visitor traffic. There is deliberately no TTL: these are the "since launch"
+// numbers used by /stats.
+const OVERALL_KEY = "pingvin:metrics:all";
+const OS_FIELD_PREFIX = "o:";
+const BROWSER_FIELD_PREFIX = "b:";
+const MAX_TOP_COUNTRIES_ALL = 20;
+const MAX_TOP_NAMES = 20;
+
 type Bucket = {
   total: number;
   countries: Map<string, number>;
@@ -42,6 +52,18 @@ export type CountryCount = {
 export type PageViewMetrics = {
   pageViewsLastDay: number;
   topCountriesLastDay: CountryCount[];
+};
+
+export type NameCount = {
+  name: string;
+  count: number;
+};
+
+export type OverallMetrics = {
+  totalPageViews: number;
+  topCountries: CountryCount[];
+  topOperatingSystems: NameCount[];
+  topBrowsers: NameCount[];
 };
 
 export type ReferrerEntry = {
@@ -60,13 +82,22 @@ export type ReferrerPage = {
 export class MetricsService {
   private readonly memory = new Map<number, Bucket>();
   private readonly referrerMemory = new Map<string, number>();
+  private readonly overallMemory = new Map<string, number>();
   private aggregate?: { at: number; value: PageViewMetrics };
   private aggregatePending?: Promise<PageViewMetrics>;
+  private overallCache?: { at: number; value: OverallMetrics };
+  private overallPending?: Promise<OverallMetrics>;
 
   constructor(private readonly valkey: ValkeyService) {}
 
-  async recordPageView(country?: string): Promise<PageViewMetrics> {
+  async recordPageView(
+    country?: string,
+    os?: string,
+    browser?: string,
+  ): Promise<PageViewMetrics> {
     const code = normalizeCountryCode(country);
+    const osName = normalizeOs(os);
+    const browserName = normalizeBrowser(browser);
     const hour = currentHour();
 
     const incremented = await this.valkey.run(async (client) => {
@@ -75,13 +106,29 @@ export class MetricsService {
       multi.hIncrBy(key, TOTAL_FIELD, 1);
       if (code) multi.hIncrBy(key, `${COUNTRY_FIELD_PREFIX}${code}`, 1);
       multi.expire(key, BUCKET_TTL_SECONDS);
+
+      // All-time totals, written in the same round trip as the hourly bucket.
+      multi.hIncrBy(OVERALL_KEY, TOTAL_FIELD, 1);
+      if (code)
+        multi.hIncrBy(OVERALL_KEY, `${COUNTRY_FIELD_PREFIX}${code}`, 1);
+      multi.hIncrBy(
+        OVERALL_KEY,
+        `${OS_FIELD_PREFIX}${osName}`,
+        1,
+      );
+      multi.hIncrBy(
+        OVERALL_KEY,
+        `${BROWSER_FIELD_PREFIX}${browserName}`,
+        1,
+      );
       await multi.exec();
       return true;
     });
 
+    this.overallCache = undefined;
     if (incremented) return this.getLastDay();
     this.aggregate = undefined;
-    return this.recordMemory(code, hour);
+    return this.recordMemory(code, hour, osName, browserName);
   }
 
   /**
@@ -191,6 +238,38 @@ export class MetricsService {
     return this.readMemory(hour);
   }
 
+  /**
+   * All-time page-view totals plus the top countries, operating systems and
+   * browsers. Served from a 30-second process cache so /stats and its backend
+   * cache miss do not read the overall hash for every requester.
+   */
+  async getOverallStats(): Promise<OverallMetrics> {
+    if (
+      this.overallCache &&
+      Date.now() - this.overallCache.at < AGGREGATE_CACHE_MS
+    ) {
+      return this.overallCache.value;
+    }
+
+    if (!this.overallPending)
+      this.overallPending = this.loadOverall().finally(() => {
+        this.overallPending = undefined;
+      });
+    return this.overallPending;
+  }
+
+  private async loadOverall(): Promise<OverallMetrics> {
+    const remote = await this.valkey.run((client) =>
+      client.hGetAll(OVERALL_KEY),
+    );
+    // hGetAll returns {} for a fresh install; only `undefined` means Valkey
+    // was unavailable and the in-process fallback should be read.
+    const fields = remote ?? Object.fromEntries(this.overallMemory);
+    const value = toOverallMetrics(fields);
+    this.overallCache = { at: Date.now(), value };
+    return value;
+  }
+
   private async readValkey(
     client: ValkeyClient,
     hour: number,
@@ -209,6 +288,8 @@ export class MetricsService {
   private recordMemory(
     country: string | undefined,
     hour: number,
+    os: string,
+    browser: string,
   ): PageViewMetrics {
     for (const key of this.memory.keys()) {
       if (key <= hour - WINDOW_HOURS) this.memory.delete(key);
@@ -222,8 +303,23 @@ export class MetricsService {
     if (country)
       bucket.countries.set(country, (bucket.countries.get(country) ?? 0) + 1);
     this.memory.set(hour, bucket);
+    this.recordOverallMemory(country, os, browser);
 
     return this.readMemory(hour);
+  }
+
+  private recordOverallMemory(
+    country: string | undefined,
+    os: string,
+    browser: string,
+  ) {
+    const bump = (field: string) =>
+      this.overallMemory.set(field, (this.overallMemory.get(field) ?? 0) + 1);
+    bump(TOTAL_FIELD);
+    if (country) bump(`${COUNTRY_FIELD_PREFIX}${country}`);
+    bump(`${OS_FIELD_PREFIX}${os}`);
+    bump(`${BROWSER_FIELD_PREFIX}${browser}`);
+    this.overallCache = undefined;
   }
 
   private readMemory(hour: number): PageViewMetrics {
@@ -294,5 +390,91 @@ function toMetrics(aggregate: Bucket): PageViewMetrics {
   return {
     pageViewsLastDay: aggregate.total,
     topCountriesLastDay: countries,
+  };
+}
+
+/**
+ * Collapses the many OS strings reported by browsers into one small,
+ * comparable vocabulary. Android is checked before Linux because Android UAs
+ * also contain "Linux"; iOS is checked before macOS because iPads advertise
+ * "like Mac OS X".
+ */
+function normalizeOs(value?: string): string {
+  const text = (value ?? "").trim().toLowerCase();
+  if (!text || /bot|crawl|spider|slurp|headless/.test(text)) return "Other";
+  if (text.includes("android")) return "Android";
+  if (text.includes("ios") || text.includes("iphone") || text.includes("ipad"))
+    return "iOS";
+  if (text.includes("chrome os") || text.includes("chromeos")) return "ChromeOS";
+  if (text.includes("mac")) return "macOS";
+  if (text.includes("windows")) return "Windows";
+  if (text.includes("linux")) return "Linux";
+  return "Other";
+}
+
+/**
+ * Same idea for browsers. Edge/Opera/Brave/Samsung are checked first because
+ * their UA strings also contain Chrome or Safari.
+ */
+function normalizeBrowser(value?: string): string {
+  const text = (value ?? "").trim().toLowerCase();
+  if (!text || /bot|crawl|spider|slurp|headless/.test(text)) return "Other";
+  if (text.includes("edge") || text.includes("edg/")) return "Edge";
+  if (text.includes("opera") || text.includes("opr/")) return "Opera";
+  if (text.includes("samsung")) return "Samsung Internet";
+  if (text.includes("brave")) return "Brave";
+  if (text.includes("firefox")) return "Firefox";
+  if (text.includes("chrome") || text.includes("chromium")) return "Chrome";
+  if (text.includes("safari")) return "Safari";
+  return "Other";
+}
+
+function rankCounts(
+  counts: Map<string, number>,
+  limit: number,
+): [string, number][] {
+  return [...counts.entries()]
+    .sort(([aName, aCount], [bName, bCount]) => {
+      return bCount - aCount || aName.localeCompare(bName);
+    })
+    .slice(0, limit);
+}
+
+function toOverallMetrics(
+  fields: Record<string, string | number>,
+): OverallMetrics {
+  let totalPageViews = 0;
+  const countries = new Map<string, number>();
+  const operatingSystems = new Map<string, number>();
+  const browsers = new Map<string, number>();
+
+  for (const [field, rawValue] of Object.entries(fields)) {
+    const count = Number(rawValue);
+    if (!Number.isFinite(count) || count <= 0) continue;
+    if (field === TOTAL_FIELD) totalPageViews += count;
+    else if (field.startsWith(COUNTRY_FIELD_PREFIX)) {
+      const country = field.slice(COUNTRY_FIELD_PREFIX.length);
+      countries.set(country, (countries.get(country) ?? 0) + count);
+    } else if (field.startsWith(OS_FIELD_PREFIX)) {
+      const name = field.slice(OS_FIELD_PREFIX.length);
+      operatingSystems.set(name, (operatingSystems.get(name) ?? 0) + count);
+    } else if (field.startsWith(BROWSER_FIELD_PREFIX)) {
+      const name = field.slice(BROWSER_FIELD_PREFIX.length);
+      browsers.set(name, (browsers.get(name) ?? 0) + count);
+    }
+  }
+
+  return {
+    totalPageViews,
+    topCountries: rankCounts(countries, MAX_TOP_COUNTRIES_ALL).map(
+      ([country, count]) => ({ country, count }),
+    ),
+    topOperatingSystems: rankCounts(
+      operatingSystems,
+      MAX_TOP_NAMES,
+    ).map(([name, count]) => ({ name, count })),
+    topBrowsers: rankCounts(browsers, MAX_TOP_NAMES).map(
+      ([name, count]) => ({ name, count }),
+    ),
   };
 }

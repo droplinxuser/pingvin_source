@@ -17,6 +17,14 @@ const BUCKET_TTL_SECONDS = (WINDOW_DAYS + 1) * 24 * 60 * 60;
 // sorted set per hour keeps that read to 24 keys and expires on its own.
 const HOUR_TTL_SECONDS = hourBucketTtlSeconds();
 const TOTAL_FIELD = "total";
+// All-time ranking for /stats. One sorted set keeps the top-share query to a
+// single read; the member set is capped and the key expires slowly so an
+// abandoned deployment does not keep it forever.
+const RANK_KEY = "pingvin:downloads:shares:all";
+const TOTAL_KEY = "pingvin:downloads:total:all";
+const RANK_TTL_SECONDS = 400 * 24 * 60 * 60;
+const RANK_MAX_ENTRIES = 2000;
+const MAX_TOP_SHARES = 100;
 // The share payload is read on every view, so a short in-process cache removes
 // the 30-bucket read from the hot path. It is dropped on every new download so
 // the owner sees their own action immediately.
@@ -30,6 +38,11 @@ export type ShareDownloadStats = {
   files: Record<string, number>;
 };
 
+export type TopDownload = {
+  shareId: string;
+  downloads: number;
+};
+
 type DayBucket = { total: number; files: Map<string, number> };
 
 /**
@@ -41,6 +54,8 @@ type DayBucket = { total: number; files: Map<string, number> };
 @Injectable()
 export class DownloadService {
   private readonly memory = new Map<string, Map<number, DayBucket>>();
+  private readonly rankMemory = new Map<string, number>();
+  private totalMemory = 0;
   private readonly readCache = new Map<
     string,
     { at: number; value: ShareDownloadStats }
@@ -63,11 +78,27 @@ export class DownloadService {
       multi.expire(key, BUCKET_TTL_SECONDS);
       multi.zIncrBy(hourKey, 1, shareId);
       multi.expire(hourKey, HOUR_TTL_SECONDS);
+
+      // All-time stats: one total counter and one capped ranking set.
+      multi.incr(TOTAL_KEY);
+      multi.expire(TOTAL_KEY, RANK_TTL_SECONDS);
+      multi.zIncrBy(RANK_KEY, 1, shareId);
+      multi.zRemRangeByRank(RANK_KEY, 0, -(RANK_MAX_ENTRIES + 1));
+      multi.expire(RANK_KEY, RANK_TTL_SECONDS);
       await multi.exec();
       return true;
     });
 
     if (!stored) {
+      this.totalMemory++;
+      this.rankMemory.set(shareId, (this.rankMemory.get(shareId) ?? 0) + 1);
+      if (this.rankMemory.size > RANK_MAX_ENTRIES) {
+        const lowest = [...this.rankMemory.entries()].sort(
+          (a, b) => a[1] - b[1],
+        )[0];
+        if (lowest) this.rankMemory.delete(lowest[0]);
+      }
+
       const byShare = this.memory.get(shareId) ?? new Map<number, DayBucket>();
       const bucket = byShare.get(day) ?? { total: 0, files: new Map() };
       bucket.total++;
@@ -106,6 +137,43 @@ export class DownloadService {
     }
     this.readCache.set(shareId, { at: Date.now(), value });
     return value;
+  }
+
+  /**
+   * All-time top shares by downloads. The caller asks for more entries than it
+   * renders so removed/private shares can be skipped before trimming to the
+   * public twenty.
+   */
+  async getTopShares(limit = 20): Promise<TopDownload[]> {
+    const size = Math.min(
+      Math.max(1, Math.floor(limit) || 20),
+      MAX_TOP_SHARES,
+    );
+
+    const remote = await this.valkey.run(async (client) => {
+      const items = await client.zRangeWithScores(RANK_KEY, 0, size - 1, {
+        REV: true,
+      });
+      return items
+        .filter((item) => !!item.value)
+        .map((item) => ({
+          shareId: item.value,
+          downloads: Number(item.score) || 0,
+        }));
+    });
+    if (remote) return remote;
+
+    return [...this.rankMemory.entries()]
+      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+      .slice(0, size)
+      .map(([shareId, downloads]) => ({ shareId, downloads }));
+  }
+
+  /** All-time download counter used by the public statistics page. */
+  async getTotalDownloads(): Promise<number> {
+    const remote = await this.valkey.run((client) => client.get(TOTAL_KEY));
+    if (remote !== undefined && remote !== null) return Number(remote) || 0;
+    return this.totalMemory;
   }
 
   private async readValkey(

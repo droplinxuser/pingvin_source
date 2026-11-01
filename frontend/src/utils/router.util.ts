@@ -9,6 +9,7 @@ export function isPublicPageRoute(pathname: string) {
     pathname === "/trending" ||
     pathname === "/new-media" ||
     pathname === "/new-files" ||
+    pathname === "/stats" ||
     /^\/share\/[^/]+\/?$/.test(pathname) ||
     pathname === "/contact" ||
     pathname === "/imprint" ||

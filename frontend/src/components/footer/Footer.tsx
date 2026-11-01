@@ -15,7 +15,6 @@ import { useRouter } from "next/router";
 import { useEffect, useRef, useState } from "react";
 import { useIntl } from "react-intl";
 import { TbEye } from "react-icons/tb";
-import useHomeHref from "../../hooks/homeHref.hook";
 import useSiteMeta from "../../hooks/siteMeta.hook";
 import useTranslate from "../../hooks/useTranslate.hook";
 import systemService, { SystemStats } from "../../services/system.service";
@@ -156,7 +155,6 @@ const Footer = () => {
   const t = useTranslate();
   const intl = useIntl();
   const router = useRouter();
-  const homeHref = useHomeHref();
   const { classes } = useStyles();
   const { siteName } = useSiteMeta();
   const [stats, setStats] = useState<SystemStats | null>(null);
@@ -226,14 +224,6 @@ const Footer = () => {
       if (timeout) clearTimeout(timeout);
     };
   }, [router.asPath]);
-
-  const primaryHref = homeHref;
-  const primaryLabel =
-    homeHref === "/upload"
-      ? t("navbar.upload")
-      : homeHref === "/auth/signIn"
-        ? t("navbar.signin")
-        : t("navbar.home");
 
   const compact = (value?: number) =>
     value == null ? "—" : getCompactNumberFormat(intl.locale).format(value);
@@ -363,9 +353,9 @@ const Footer = () => {
               <Anchor
                 className={classes.link}
                 component={Link}
-                href={primaryHref}
+                href="/stats"
               >
-                {primaryLabel}
+                {t("stats.custom.title")}
               </Anchor>
               <Anchor
                 className={classes.link}

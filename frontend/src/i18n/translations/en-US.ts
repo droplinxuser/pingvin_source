@@ -95,6 +95,35 @@ export default {
 
   // END footer
 
+  // Public statistics
+  "stats.custom.title": "Statistics",
+  "stats.custom.heading": "{siteName} Statistics",
+  "stats.custom.description":
+    "Site-wide totals, top countries, operating systems, browsers and the most viewed or downloaded public shares.",
+  "stats.custom.metaDescription":
+    "Public statistics for {siteName}: total users, shares, files, storage, page views, downloads, top countries, operating systems, browsers and the most viewed or downloaded shares.",
+  "stats.custom.totals.users": "Users",
+  "stats.custom.totals.shares": "Shares",
+  "stats.custom.totals.files": "Files",
+  "stats.custom.totals.storage": "Storage",
+  "stats.custom.totals.pageViews": "Page views",
+  "stats.custom.totals.downloads": "Downloads",
+  "stats.custom.lastDay":
+    "{count, plural, one {{compact} page view in the last 24 hours} other {{compact} page views in the last 24 hours}}",
+  "stats.custom.shareViews":
+    "{count, plural, one {{compact} share view} other {{compact} share views}}",
+  "stats.custom.topCountries": "Top countries",
+  "stats.custom.topOperatingSystems": "Top operating systems",
+  "stats.custom.topBrowsers": "Top browsers",
+  "stats.custom.mostViewed": "Most viewed shares",
+  "stats.custom.mostDownloaded": "Most downloaded shares",
+  "stats.custom.empty": "Not enough data yet.",
+  "stats.custom.emptyDownloads": "No downloads have been tracked yet.",
+  "stats.custom.files": "{count, plural, one {# file} other {# files}}",
+  "stats.custom.privacy":
+    "Aggregated counters only — no visitor identifiers are stored.",
+  // END statistics
+
   // Trending today
   "trending.custom.title": "Trending today",
   "trending.custom.description":

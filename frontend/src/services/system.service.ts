@@ -1,3 +1,4 @@
+import { SiteStats } from "../types/stats.type";
 import api from "./api.service";
 
 export interface SystemInfo {
@@ -77,6 +78,10 @@ const getSystemStats = async (): Promise<SystemStats> => {
   return (await api.get("system/stats")).data;
 };
 
+const getSiteStats = async (): Promise<SiteStats> => {
+  return (await api.get("system/site-stats")).data;
+};
+
 const getValkeyMetrics = async (): Promise<ValkeyMetrics> => {
   return (await api.get("system/valkey")).data;
 };
@@ -105,6 +110,7 @@ const getReferrers = async (
 export default {
   getSystemInfo,
   getSystemStats,
+  getSiteStats,
   getValkeyMetrics,
   getDependencies,
   getDatabaseMetrics,

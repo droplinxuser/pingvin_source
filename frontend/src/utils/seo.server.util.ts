@@ -1,6 +1,7 @@
 import type { IncomingMessage } from "http";
 import Config from "../types/config.type";
 import { ShareSeo, TrendingCountry, TrendingShare } from "../types/share.type";
+import { SiteStats } from "../types/stats.type";
 import { getConfiguredSiteUrl, normalizeBaseUrl } from "./seo.util";
 import { withBuildVersion } from "./version.util";
 
@@ -116,6 +117,27 @@ export async function fetchTrendingCountries(
     if (!response.ok) return null;
     const data = (await response.json()) as unknown;
     return Array.isArray(data) ? (data as TrendingCountry[]) : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Server-renders the public statistics payload so /stats needs one HTML
+ * request. `null` marks a backend failure; the page must not cache that as a
+ * valid zeroed result.
+ */
+export async function fetchSiteStats(
+  apiUrl: string,
+): Promise<SiteStats | null> {
+  try {
+    const response = await fetch(
+      withBuildVersion(`${apiUrl}/api/system/site-stats`),
+      { signal: AbortSignal.timeout(3000) },
+    );
+    if (!response.ok) return null;
+    const data = (await response.json()) as unknown;
+    return data && typeof data === "object" ? (data as SiteStats) : null;
   } catch {
     return null;
   }

@@ -6,11 +6,19 @@ const { DownloadService } = require("../dist/src/cache/download.service.js");
 function createMockValkey({ enabled = true } = {}) {
   const hashes = new Map();
   const sortedSets = new Map();
+  const strings = new Map();
   const client = {
     multi() {
       const queue = [];
       const chain = {};
-      for (const method of ["hIncrBy", "expire", "hGetAll", "zIncrBy"]) {
+      for (const method of [
+        "hIncrBy",
+        "expire",
+        "hGetAll",
+        "zIncrBy",
+        "incr",
+        "zRemRangeByRank",
+      ]) {
         chain[method] = (...args) => {
           queue.push([method, args]);
           return chain;
@@ -31,6 +39,11 @@ function createMockValkey({ enabled = true } = {}) {
             sorted.set(member, (sorted.get(member) ?? 0) + by);
             sortedSets.set(key, sorted);
             out.push(sorted.get(member));
+          } else if (method === "incr") {
+            const key = args[0];
+            const next = (strings.get(key) ?? 0) + 1;
+            strings.set(key, next);
+            out.push(next);
           } else if (method === "hGetAll") {
             const hash = hashes.get(args[0]);
             out.push(
@@ -48,11 +61,22 @@ function createMockValkey({ enabled = true } = {}) {
       };
       return chain;
     },
+    async zRangeWithScores(key, start, stop) {
+      const sorted = sortedSets.get(key) ?? new Map();
+      return [...sorted.entries()]
+        .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+        .slice(start, stop + 1)
+        .map(([value, score]) => ({ value, score: String(score) }));
+    },
+    async get(key) {
+      return strings.has(key) ? String(strings.get(key)) : null;
+    },
   };
 
   return {
     hashes,
     sortedSets,
+    strings,
     valkey: {
       run: async (operation) => (enabled ? operation(client) : undefined),
     },
@@ -77,11 +101,22 @@ test("counts share and per-file downloads in Valkey", async () => {
     [...mock.hashes.keys()][0],
     /^pingvin:downloads:day:\d+:share-1$/,
   );
-  // The 24-hour tie-break uses one hourly sorted set for all shares.
-  assert.equal(mock.sortedSets.size, 1);
-  const [hourKey, scores] = [...mock.sortedSets.entries()][0];
+  // The 24-hour tie-break uses one hourly sorted set for all shares, plus the
+  // all-time ranking set used by /stats.
+  assert.equal(mock.sortedSets.size, 2);
+  const hourKey = [...mock.sortedSets.keys()].find((key) =>
+    key.startsWith("pingvin:downloads:hour:"),
+  );
+  const rankKey = [...mock.sortedSets.keys()].find(
+    (key) => key === "pingvin:downloads:shares:all",
+  );
   assert.match(hourKey, /^pingvin:downloads:hour:\d+$/);
-  assert.equal(scores.get("share-1"), 3);
+  assert.equal(mock.sortedSets.get(hourKey).get("share-1"), 3);
+  assert.equal(mock.sortedSets.get(rankKey).get("share-1"), 3);
+  assert.equal(await service.getTotalDownloads(), 3);
+  assert.deepEqual(await service.getTopShares(20), [
+    { shareId: "share-1", downloads: 3 },
+  ]);
 });
 
 test("keeps each share's counters isolated", async () => {
@@ -112,6 +147,10 @@ test("falls back to an in-process counter when Valkey is unavailable", async () 
     total: 2,
     files: { "file-a": 2 },
   });
+  assert.equal(await service.getTotalDownloads(), 2);
+  assert.deepEqual(await service.getTopShares(20), [
+    { shareId: "share-1", downloads: 2 },
+  ]);
 });
 
 test("reports zeros for a share with no downloads", async () => {
