@@ -874,9 +874,6 @@ export default {
   "upload.modal.link.error.s3-session-not-found": "S3 upload session not found",
   "upload.modal.link.error.s3-etag-missing":
     "Missing ETag header in S3 response. Ensure CORS exposes the ETag header.",
-  "upload.modal.not-signed-in": "You're not signed in",
-  "upload.modal.not-signed-in-description":
-    "You will not be able to delete your share or view its visitor count.",
 
   "upload.modal.expires.never": "never",
   "upload.modal.expires.never-long": "Permanent share",

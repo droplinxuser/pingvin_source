@@ -1,7 +1,6 @@
 import {
   Accordion,
   ActionIcon,
-  Alert,
   Button,
   Checkbox,
   Group,
@@ -18,7 +17,7 @@ import { useForm, yupResolver } from "@mantine/form";
 import { useModals } from "@mantine/modals";
 import { ModalsContextProps } from "@mantine/modals/lib/context";
 import React, { useState } from "react";
-import { TbAlertCircle, TbCopy, TbWand } from "react-icons/tb";
+import { TbCopy, TbWand } from "react-icons/tb";
 import { FormattedMessage } from "react-intl";
 import * as yup from "yup";
 import useTranslate, {
@@ -112,7 +111,6 @@ const CreateUploadModalBody = ({
 
   const generatedLink = generateShareId(options.shareIdLength);
 
-  const [showNotSignedInAlert, setShowNotSignedInAlert] = useState(true);
   const [emailSearch, setEmailSearch] = useState("");
 
   const validationSchema = yup.object().shape({
@@ -197,17 +195,6 @@ const CreateUploadModalBody = ({
 
   return (
     <>
-      {showNotSignedInAlert && !options.isUserSignedIn && (
-        <Alert
-          withCloseButton
-          onClose={() => setShowNotSignedInAlert(false)}
-          icon={<TbAlertCircle size={16} />}
-          title={t("upload.modal.not-signed-in")}
-          color="yellow"
-        >
-          <FormattedMessage id="upload.modal.not-signed-in-description" />
-        </Alert>
-      )}
       <form onSubmit={onSubmit}>
         <Stack align="stretch">
           <CustomUrlInput
@@ -218,7 +205,7 @@ const CreateUploadModalBody = ({
             defaultAppUrl={options.defaultAppUrl}
             pathPrefix="/s/"
           />
-          <Accordion>
+          <Accordion defaultValue="description">
             <Accordion.Item value="description" sx={{ borderBottom: "none" }}>
               <Accordion.Control>
                 <FormattedMessage id="upload.modal.accordion.name-and-description.title" />
@@ -227,6 +214,9 @@ const CreateUploadModalBody = ({
                 <Stack align="stretch">
                   <TextInput
                     variant="filled"
+                    aria-label={t(
+                      "upload.modal.accordion.name-and-description.name.placeholder",
+                    )}
                     placeholder={t(
                       "upload.modal.accordion.name-and-description.name.placeholder",
                     )}
@@ -234,6 +224,9 @@ const CreateUploadModalBody = ({
                   />
                   <Textarea
                     variant="filled"
+                    aria-label={t(
+                      "upload.modal.accordion.name-and-description.description.placeholder",
+                    )}
                     placeholder={t(
                       "upload.modal.accordion.name-and-description.description.placeholder",
                     )}
@@ -448,8 +441,6 @@ const SimplifiedCreateUploadModalModal = ({
   const modals = useModals();
   const t = useTranslate();
 
-  const [showNotSignedInAlert, setShowNotSignedInAlert] = useState(true);
-
   const validationSchema = yup.object().shape({
     name: yup
       .string()
@@ -500,22 +491,14 @@ const SimplifiedCreateUploadModalModal = ({
 
   return (
     <Stack>
-      {showNotSignedInAlert && !options.isUserSignedIn && (
-        <Alert
-          withCloseButton
-          onClose={() => setShowNotSignedInAlert(false)}
-          icon={<TbAlertCircle size={16} />}
-          title={t("upload.modal.not-signed-in")}
-          color="yellow"
-        >
-          <FormattedMessage id="upload.modal.not-signed-in-description" />
-        </Alert>
-      )}
       <form onSubmit={onSubmit}>
         <Stack align="stretch">
           <Stack align="stretch">
             <TextInput
               variant="filled"
+              aria-label={t(
+                "upload.modal.accordion.name-and-description.name.placeholder",
+              )}
               placeholder={t(
                 "upload.modal.accordion.name-and-description.name.placeholder",
               )}
@@ -523,6 +506,9 @@ const SimplifiedCreateUploadModalModal = ({
             />
             <Textarea
               variant="filled"
+              aria-label={t(
+                "upload.modal.accordion.name-and-description.description.placeholder",
+              )}
               placeholder={t(
                 "upload.modal.accordion.name-and-description.description.placeholder",
               )}
