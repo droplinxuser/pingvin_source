@@ -43,7 +43,12 @@ const Meta = ({
   const router = useRouter();
   const intl = useIntl();
   const { siteName, baseUrl } = useSiteMeta();
-  const metaTitle = title ? `${title.trim()} - ${siteName}` : siteName;
+  const trimmedTitle = title?.trim();
+  const metaTitle = trimmedTitle
+    ? trimmedTitle.toLowerCase().includes(siteName.toLowerCase())
+      ? trimmedTitle
+      : `${trimmedTitle} - ${siteName}`
+    : siteName;
   const metaDescription = truncateMetaText(
     description?.trim() ||
       intl.formatMessage({

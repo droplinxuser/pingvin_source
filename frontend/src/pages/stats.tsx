@@ -257,7 +257,7 @@ const StatsPage = ({ stats }: { stats: SiteStats | null }) => {
   return (
     <>
       <Meta
-        title={t("stats.custom.title")}
+        title={t("stats.custom.heading", { siteName })}
         description={metaDescription}
         canonicalPath="/stats"
         jsonLd={jsonLd}
