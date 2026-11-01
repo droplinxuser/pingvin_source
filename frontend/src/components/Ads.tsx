@@ -1,6 +1,17 @@
-import { Box } from "@mantine/core";
+import {
+  Badge,
+  Box,
+  Divider,
+  Group,
+  Paper,
+  Text,
+  ThemeIcon,
+} from "@mantine/core";
 import { getCookie } from "cookies-next/client";
 import { useEffect, useRef, useState } from "react";
+import type { ReactNode, RefObject } from "react";
+import { TbSpeakerphone } from "react-icons/tb";
+import useTranslate from "../hooks/useTranslate.hook";
 import useUser from "../hooks/user.hook";
 
 // Ad units are only mounted on share and 404 pages. The first two are
@@ -71,12 +82,152 @@ const scheduleIdle = (callback: () => void): (() => void) => {
 };
 
 /**
+ * The networks inject their banner markup asynchronously. Track whether a
+ * visible node actually landed so an unfilled or blocked slot can stay at zero
+ * height instead of reserving an empty card.
+ */
+const useAdFilled = (
+  containerRef: RefObject<HTMLDivElement>,
+  enabled: boolean,
+) => {
+  const [filled, setFilled] = useState(false);
+
+  useEffect(() => {
+    if (!enabled) {
+      setFilled(false);
+      return;
+    }
+    const container = containerRef.current;
+    if (!container) return;
+
+    const measure = () => {
+      const isVisible = (element: Element) => {
+        const rect = element.getBoundingClientRect();
+        return rect.width >= 20 && rect.height >= 10;
+      };
+      // Networks usually render an iframe/image/link. The one-pixel tracking
+      // div that Profiton inserts must not turn the empty card on by itself.
+      const hasVisibleContent =
+        Array.from(
+          container.querySelectorAll(
+            "iframe, img, video, canvas, object, embed, ins, a[href]",
+          ),
+        ).some(isVisible) ||
+        Array.from(container.querySelectorAll("[id], [class]")).some(
+          (element) =>
+            /(^|[-_ ])(ad|ads|advert|banner|sponsor)([-_ ]|$)/i.test(
+              `${element.id} ${element.getAttribute("class") ?? ""}`,
+            ) && isVisible(element),
+        );
+      setFilled(hasVisibleContent);
+    };
+
+    measure();
+    // Banner scripts resize their frame while it loads. Coalesce mutation
+    // bursts into one layout read per animation frame instead of one per
+    // attribute change.
+    let frame: number | undefined;
+    const schedule = () => {
+      if (frame !== undefined) return;
+      frame = window.requestAnimationFrame(() => {
+        frame = undefined;
+        measure();
+      });
+    };
+    const observer = new MutationObserver(schedule);
+    observer.observe(container, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+    });
+    return () => {
+      observer.disconnect();
+      if (frame !== undefined) window.cancelAnimationFrame(frame);
+    };
+  }, [containerRef, enabled]);
+
+  return filled;
+};
+
+/**
+ * Shared chrome for the two in-page banners. It mirrors the comments section:
+ * a bordered card, a small icon tile, an h2 and a light badge. The card itself
+ * only appears once the network has filled the slot.
+ */
+const AdCard = ({
+  titleId,
+  filled,
+  containerRef,
+  children,
+}: {
+  titleId: string;
+  filled: boolean;
+  containerRef: RefObject<HTMLDivElement>;
+  children?: ReactNode;
+}) => {
+  const t = useTranslate();
+
+  return (
+    <Paper
+      component="section"
+      aria-labelledby={filled ? titleId : undefined}
+      radius="md"
+      p={filled ? { base: "xs", sm: "sm" } : 0}
+      mt={filled ? "lg" : 0}
+      mb={filled ? "md" : 0}
+      withBorder={filled}
+      data-testid={titleId}
+    >
+      {filled && (
+        <>
+          <Group position="apart" align="center" spacing="md">
+            <Group spacing="xs" align="center" noWrap>
+              <ThemeIcon size={32} radius="sm" variant="light" color="gray">
+                <TbSpeakerphone size={17} />
+              </ThemeIcon>
+              <Text
+                component="h2"
+                id={titleId}
+                size="md"
+                weight={700}
+                lh={1.2}
+                m={0}
+              >
+                {t("common.custom.sponsored")}
+              </Text>
+              <Badge size="sm" radius="sm" variant="light" color="gray">
+                {t("common.custom.ad")}
+              </Badge>
+            </Group>
+          </Group>
+          <Divider my="sm" />
+        </>
+      )}
+      <Box
+        ref={containerRef}
+        sx={{
+          width: "100%",
+          // Keep the Clickadu spot as a normal block (a flex item would
+          // collapse its width) and center the rendered banner instead.
+          textAlign: "center",
+          "& iframe": { maxWidth: "100%", border: 0, margin: "0 auto" },
+          "& img": { maxWidth: "100%", height: "auto" },
+        }}
+      >
+        {children}
+      </Box>
+    </Paper>
+  );
+};
+
+/**
  * Profiton banner, placed immediately after the media gallery. The empty
  * wrapper takes no height until the network fills it.
  */
 export const AfterGalleryAd = () => {
   const isGuest = useAdsGuest();
   const containerRef = useRef<HTMLDivElement>(null);
+  const filled = useAdFilled(containerRef, isGuest);
 
   useEffect(() => {
     if (!isGuest) return;
@@ -101,9 +252,10 @@ export const AfterGalleryAd = () => {
   if (!isGuest) return null;
 
   return (
-    <Box
-      ref={containerRef}
-      sx={{ display: "flex", justifyContent: "center", width: "100%" }}
+    <AdCard
+      titleId="ad-gallery-title"
+      filled={filled}
+      containerRef={containerRef}
     />
   );
 };
@@ -115,6 +267,7 @@ export const AfterGalleryAd = () => {
 export const AfterCommentsAd = () => {
   const isGuest = useAdsGuest();
   const containerRef = useRef<HTMLDivElement>(null);
+  const filled = useAdFilled(containerRef, isGuest);
 
   useEffect(() => {
     if (!isGuest) return;
@@ -140,9 +293,13 @@ export const AfterCommentsAd = () => {
   if (!isGuest) return null;
 
   return (
-    <Box ref={containerRef} sx={{ width: "100%" }}>
+    <AdCard
+      titleId="ad-comments-title"
+      filled={filled}
+      containerRef={containerRef}
+    >
       <div data-cl-spot={CLICKADU_SPOT} />
-    </Box>
+    </AdCard>
   );
 };
 

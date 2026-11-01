@@ -47,6 +47,8 @@ export default {
     "Could not load this list. Check your connection and try again.",
   "common.custom.sort": "Sort",
   "common.custom.actions": "Actions",
+  "common.custom.sponsored": "Sponsored",
+  "common.custom.ad": "Ad",
   "common.custom.unit": "Unit",
   "common.custom.pagination.previous": "Previous page",
   "common.custom.pagination.next": "Next page",
@@ -1111,7 +1113,7 @@ export default {
   // /admin/config
   "admin.config.config-file-warning.title": "Configuration file present",
   "admin.config.config-file-warning.description":
-    "As you have configured File Share with a configuration file, these settings cannot be changed through the UI.",
+    "As this site is configured with a configuration file, these settings cannot be changed through the UI.",
   "admin.config.title": "Configuration",
   "admin.config.category.general": "General",
   "admin.config.category.appearance": "Appearance",
@@ -1158,7 +1160,7 @@ export default {
     "Percentage and time remaining",
   "admin.config.general.app-url": "App URL",
   "admin.config.general.app-url.description":
-    "URL where File Share is available.",
+    "Public URL where this site is available.",
   "admin.config.security.secure-cookies": "Secure cookies",
   "admin.config.security.secure-cookies.description":
     "Whether to set the secure flag on cookies. If enabled, the site will not function when accessed over HTTP.",
@@ -1202,7 +1204,7 @@ export default {
     "Maximum number of items inside the cache.",
   "admin.config.cache.redis-enabled": "Redis enabled",
   "admin.config.cache.redis-enabled.description":
-    "File Share caches data in memory by default. Enable Redis to share the cache across multiple instances.",
+    "The app caches data in memory by default. Enable Redis to share the cache across multiple instances.",
   "admin.config.cache.redis-url": "Redis URL",
   "admin.config.cache.redis-url.description":
     "URL of the Redis instance used for caching.",
