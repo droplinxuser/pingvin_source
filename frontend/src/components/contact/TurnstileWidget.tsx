@@ -69,37 +69,67 @@ const TurnstileWidget = ({
       render();
     } else {
       let script: HTMLScriptElement | undefined;
-      // Turnstile is only third-party code on this page. Wait for the page's
-      // own load event and an idle slice before downloading it, so the contact
-      // form never competes with the CAPTCHA iframe for the first paint.
-      const cancelLoad = scheduleAfterLoad(() => {
-        if (cancelled || !container) return;
-        script =
-          document.querySelector<HTMLScriptElement>(SCRIPT_SELECTOR) ??
-          undefined;
-        if (!script) {
-          script = document.createElement("script");
-          script.src =
-            "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
-          script.async = true;
-          script.defer = true;
-          script.dataset.fileShareTurnstile = "true";
-          document.head.appendChild(script);
-        }
-        script.addEventListener("load", render);
-        // Some browsers expose window.turnstile before the script's load event
-        // fires. Poll briefly so the widget is not silently skipped on slow or
-        // cached third-party loads.
-        pollTimer = setInterval(() => {
-          if (window.turnstile) {
-            render();
-            if (widgetId && pollTimer) clearInterval(pollTimer);
+      let cancelLoad: (() => void) | undefined;
+      // Turnstile is the only third-party script on this page. Do not download
+      // it until the visitor actually starts using the form: the submit button
+      // is disabled until verification anyway, and this keeps a page view from
+      // paying for the CAPTCHA (and its third-party console noise) up front.
+      const loadScript = () => {
+        cancelLoad = scheduleAfterLoad(() => {
+          if (cancelled || !container) return;
+          script =
+            document.querySelector<HTMLScriptElement>(SCRIPT_SELECTOR) ??
+            undefined;
+          if (!script) {
+            script = document.createElement("script");
+            script.src =
+              "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
+            script.async = true;
+            script.defer = true;
+            script.dataset.fileShareTurnstile = "true";
+            document.head.appendChild(script);
           }
-        }, 250);
-      });
+          script.addEventListener("load", render);
+          // Some browsers expose window.turnstile before the script's load
+          // event fires. Poll briefly so the widget is not silently skipped on
+          // slow or cached third-party loads.
+          pollTimer = setInterval(() => {
+            if (window.turnstile) {
+              render();
+              if (widgetId && pollTimer) clearInterval(pollTimer);
+            }
+          }, 250);
+        });
+      };
+
+      const interactionEvents = [
+        "pointerdown",
+        "keydown",
+        "focusin",
+        "touchstart",
+      ];
+      let started = false;
+      const onInteraction = () => {
+        if (started) return;
+        started = true;
+        interactionEvents.forEach((event) =>
+          window.removeEventListener(event, onInteraction),
+        );
+        loadScript();
+      };
+      interactionEvents.forEach((event) =>
+        window.addEventListener(event, onInteraction, {
+          once: true,
+          passive: true,
+        }),
+      );
+
       return () => {
         cancelled = true;
-        cancelLoad();
+        interactionEvents.forEach((event) =>
+          window.removeEventListener(event, onInteraction),
+        );
+        cancelLoad?.();
         if (pollTimer) clearInterval(pollTimer);
         script?.removeEventListener("load", render);
         if (widgetId && window.turnstile) window.turnstile.remove(widgetId);
