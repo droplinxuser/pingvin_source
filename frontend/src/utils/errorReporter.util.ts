@@ -15,6 +15,19 @@ const seen = new Map<string, number>();
 const truncate = (value: string, maxLength: number): string =>
   value.length > maxLength ? value.slice(0, maxLength) : value;
 
+// The four ad units are intentionally untrusted third-party scripts. Some of
+// them reject promises from their own loader (Clickadu's CBNL is the common
+// one); those failures are not application faults and should not pollute the
+// browser console or the admin log. Application errors still go through.
+const AD_SCRIPT_HOSTS =
+  /(?:boxypluckunrelated|puceronplouky|grop\.net|wingsmob|cloudpiko|sowve|mamshirt|nresystems)\./i;
+
+const isAdScriptFailure = (reason: unknown): boolean => {
+  if (reason instanceof Error)
+    return AD_SCRIPT_HOSTS.test(`${reason.message}\n${reason.stack ?? ""}`);
+  return AD_SCRIPT_HOSTS.test(stringifyReason(reason));
+};
+
 const isBlockedAutoplay = (reason: unknown): boolean => {
   if (!reason || typeof reason !== "object") return false;
   const { name, message } = reason as {
@@ -83,6 +96,10 @@ export function installGlobalErrorReporter() {
   window.addEventListener("error", (event) => {
     if (!event.message || event.message === "Script error.") return;
     const error = event.error instanceof Error ? event.error : undefined;
+    if (isAdScriptFailure(error) || AD_SCRIPT_HOSTS.test(event.filename ?? "")) {
+      event.preventDefault();
+      return;
+    }
     report({
       message: error ? `${error.name}: ${error.message}` : event.message,
       stack: error?.stack,
@@ -93,6 +110,13 @@ export function installGlobalErrorReporter() {
 
   window.addEventListener("unhandledrejection", (event) => {
     const reason = event.reason;
+
+    // Ad loaders sometimes reject their own promises; ignore those, but keep
+    // reporting real application rejections.
+    if (isAdScriptFailure(reason)) {
+      event.preventDefault();
+      return;
+    }
 
     // Third-party ad creatives sometimes call video.play() before a user
     // gesture. The rejection is expected Chrome autoplay policy noise, not an
