@@ -99,9 +99,9 @@ export default {
   "stats.custom.title": "Statistics",
   "stats.custom.heading": "{siteName} Statistics",
   "stats.custom.description":
-    "Site-wide totals, top countries, operating systems, browsers and the most viewed or downloaded public shares.",
+    "Site-wide page views, share activity, top countries, operating systems, browsers and the most viewed or downloaded public shares.",
   "stats.custom.metaDescription":
-    "Public statistics for {siteName}: total users, shares, files, storage, page views, downloads, top countries, operating systems, browsers and the most viewed or downloaded shares.",
+    "Public statistics for {siteName}: users, shares, files, storage, page views, downloads, top countries, operating systems, browsers and the most viewed or downloaded shares.",
   "stats.custom.totals.users": "Users",
   "stats.custom.totals.shares": "Shares",
   "stats.custom.totals.files": "Files",
