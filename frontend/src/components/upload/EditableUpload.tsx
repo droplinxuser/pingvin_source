@@ -224,7 +224,10 @@ const EditableUpload = ({
         toast.success(t("share.edit.notify.save-success"));
         // The save was explicit; do not ask about the edits just persisted.
         onSaved?.();
-        router.back();
+        // Open the share page explicitly. `router.back()` sent a visitor who
+        // opened the edit URL directly (bookmark, new tab, refresh) to a blank
+        // page because there was no history entry to return to.
+        void router.replace(`/share/${shareId}`);
       }
     } catch {
       toast.error(t("share.edit.notify.generic-error"));

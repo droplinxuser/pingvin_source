@@ -81,9 +81,9 @@ export default {
   "footer.custom.overview": "Overview",
   "footer.custom.activity": "Activity",
   "footer.custom.links": "Links",
-  "footer.custom.users": "Users",
-  "footer.custom.shares": "Shares",
-  "footer.custom.files": "Files",
+  "footer.custom.users": "{count, plural, one {User} other {Users}}",
+  "footer.custom.shares": "{count, plural, one {Share} other {Shares}}",
+  "footer.custom.files": "{count, plural, one {File} other {Files}}",
   "footer.custom.storage": "Storage",
   "footer.custom.views":
     "{count, plural, one {{compact} view} other {{compact} views}} in the last 24 hours",

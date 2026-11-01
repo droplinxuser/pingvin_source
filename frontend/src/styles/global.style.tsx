@@ -52,6 +52,11 @@ const GlobalStyle = () => {
         },
         ".visually-hidden": {
           position: "absolute",
+          // Without an inset the element keeps its static position, which can
+          // sit at the far right of a wide table and widen the document on
+          // phones instead of staying inside the table's scroll container.
+          left: 0,
+          top: 0,
           width: 1,
           height: 1,
           padding: 0,

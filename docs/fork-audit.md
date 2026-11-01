@@ -42,7 +42,7 @@ the suggested order for future features.
 | Contact page and Cloudflare Turnstile | `frontend/src/pages/contact.tsx`, `frontend/src/components/contact/TurnstileWidget.tsx`, `backend/src/contact/*`, `EmailService.sendContactEmail`. `CFT_KEY`/`CFT_SECRET` verify the widget server-side; the validated message is emailed to `REPORT_EMAIL` (falling back to `smtp.email`) in the background. The public config endpoint exposes only the site key. |
 | Upload paste and folder picks | Upstream `useClipboardPaste.hook.ts`, `file.util.ts`, `folder.util.ts`; the fork keeps only `share.maxFileSize` validation in `Dropzone.tsx`, the folder button and upload DTO bounds |
 | Share thumbnails / OG | `backend/src/file/file.service.ts` (share-level 300px WebP, ordered preview fallbacks, background queue, 32-day cleanup), `backend/src/share/preview.util.ts`, `GET /api/shares/:id/thumbnail`, listing cards and `Meta.tsx` |
-| Cache headers / hotlink protection | `backend/src/utils/cache.util.ts`, `frontend/src/utils/version.util.ts`, `backend/src/utils/referrer.util.ts`, `frontend/src/middleware.ts`, `frontend/next.config.js` |
+| Cache headers / hotlink protection | `backend/src/utils/cache.util.ts`, `frontend/src/utils/version.util.ts`, `backend/src/utils/referrer.util.ts` (same-origin or configured app host, relative share redirect), `frontend/src/middleware.ts`, `frontend/next.config.js` |
 | Authentication guard | `backend/src/auth/guard/jwt.guard.ts` fails closed for every normal route, so an unauthenticated caller gets 401/403 instead of reaching a handler that reads `request.user`. Only `share/guard/createShare.guard.ts` opts into the `security.allowUnauthenticatedShares` fallback for anonymous share creation. `shareSecurity.guard.ts` treats expiry as a hard stop before admin/recipient checks. |
 | Per-IP rate limiting | `backend/src/utils/visitorIdentity.util.ts`, `backend/src/cache/valkeyThrottler.storage.ts`, `backend/src/cache/throttler.config.ts`, `backend/src/main.ts` |
 | Valkey cache | `backend/src/utils/cache.util.ts`, `backend/src/share/shareState.service.ts`, `backend/src/cache/*` |
@@ -463,6 +463,30 @@ Origin responses set `Cache-Control`, `CDN-Cache-Control` and
   third-party ad and Turnstile requests, so an unreachable host surfaced as a
   service-worker error in the browser console.
 
+## Preview, redirect and layout hardening
+
+- Hotlink protection (`isRequestFromApp`) accepts a referrer whose host matches
+  the request's own `Host` as well as the configured `general.appUrl`. Previews
+  and downloads therefore keep working through an alias host (www/non-www, a
+  LAN name) and on a fresh install that still has the seeded
+  `http://localhost:3000` placeholder, while a foreign referrer is still
+  redirected to the share page. The redirect `Location` stays relative (with
+  the configured app sub-path) so it resolves against the host the visitor
+  actually used instead of publishing the placeholder host.
+- `shareService.getFileText` only renders a response whose `Content-Type` is
+  textual (not HTML/XHTML) and caps the body at 1 MB. A redirect or proxy error
+  page used to reach the Markdown renderer as an HTML string and could freeze
+  the tab; the file list still offers the download and the preview modal.
+- The `.visually-hidden` helper is pinned to `left/top: 0`. Without an inset,
+  the absolutely positioned "Actions" header sat at the far right of a wide
+  admin table and widened the document on phones instead of staying inside the
+  table's horizontal scroll container.
+- Footer stat labels use ICU plurals (`1 User`, `2 Users`), so a fresh install
+  no longer reads "1 Users".
+- Saving `/share/:id/edit` replaces the history entry with the share page
+  instead of calling `router.back()`, which sent a visitor who opened the edit
+  URL directly (bookmark, new tab, refresh) to `about:blank`.
+
 ## Security and SEO notes
 
 - Public output never uses the upstream product name. Neutral `File Share`
@@ -633,7 +657,9 @@ audit/queue/filter/removal/notification flows, reverse-share guard wiring,
 referrers, avatars and the contact form (Turnstile success/failure, background
 email queuing and header sanitization). `share-util.test.js` pins the
 epoch/expiry rule and the overflowed-size fallback; `remote-fetch.test.js`
-covers IPv4-mapped/compatible IPv6 spellings; `throttler-config.test.js` pins
+covers IPv4-mapped/compatible IPv6 spellings; `hotlink.test.js` pins the
+same-origin/configured-host referrer rule and the relative redirect (including
+a configured sub-path); `throttler-config.test.js` pins
 the shared-vs-route bucket split; `jobs.test.js` covers reverse-share upload
 cleanup; `config-service.test.js` pins the config lookup reload; and the search
 suite covers ranking order. A local mock-OIDC check signs RS256 ID tokens and

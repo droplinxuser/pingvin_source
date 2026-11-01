@@ -238,10 +238,20 @@ const Footer = () => {
   const compact = (value?: number) =>
     value == null ? "—" : getCompactNumberFormat(intl.locale).format(value);
 
+  // Labels follow the count so a fresh install does not read "1 Users".
   const overview = [
-    { value: compact(stats?.userCount), label: t("footer.custom.users") },
-    { value: compact(stats?.shareCount), label: t("footer.custom.shares") },
-    { value: compact(stats?.fileCount), label: t("footer.custom.files") },
+    {
+      value: compact(stats?.userCount),
+      label: t("footer.custom.users", { count: stats?.userCount ?? 0 }),
+    },
+    {
+      value: compact(stats?.shareCount),
+      label: t("footer.custom.shares", { count: stats?.shareCount ?? 0 }),
+    },
+    {
+      value: compact(stats?.fileCount),
+      label: t("footer.custom.files", { count: stats?.fileCount ?? 0 }),
+    },
     {
       value: stats ? byteToHumanSizeString(stats.storageSizeBytes) : "—",
       label: t("footer.custom.storage"),
