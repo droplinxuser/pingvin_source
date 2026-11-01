@@ -24,6 +24,7 @@ import { ShareService } from "src/share/share.service";
 import {
   getDownloadCacheHeaders,
   getImageCacheHeaders,
+  getInlineFileCacheHeaders,
   getZipCacheHeaders,
   isNotModified,
   NO_STORE_HEADERS,
@@ -417,13 +418,17 @@ export class FileController {
       headers["Content-Security-Policy"] = "sandbox";
     }
 
+    const isPublic = (req as FileRequest).shareIsPublic === true;
+    const etag = `"${shareId}-${fileId}-${totalSize}"`;
+    // A shared cache must not replay an inline response to a foreign embed:
+    // the Referer check only runs at the origin. Attachment downloads keep
+    // their public edge TTL because Content-Disposition prevents embedding.
     const cacheHeaders: Record<string, string> = (req as FileRequest)
       .shareDownloadLimited
       ? NO_STORE_HEADERS
-      : getDownloadCacheHeaders(
-          (req as FileRequest).shareIsPublic === true,
-          `"${shareId}-${fileId}-${totalSize}"`,
-        );
+      : isDownload
+        ? getDownloadCacheHeaders(isPublic, etag)
+        : getInlineFileCacheHeaders(isPublic, etag);
     Object.assign(headers, cacheHeaders);
 
     if (isNotModified(req, cacheHeaders.ETag)) {

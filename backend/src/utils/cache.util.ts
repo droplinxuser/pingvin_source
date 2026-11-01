@@ -96,6 +96,25 @@ export function getDownloadCacheHeaders(
 }
 
 /**
+ * Inline originals are served only after the Referer check in FileController.
+ * Keep a short shared-cache TTL so a legitimate preview benefits from the
+ * edge, while an embed that misses (or outlives) the entry is redirected to
+ * the share page. Attachment downloads use their own longer-lived header.
+ */
+export function getInlineFileCacheHeaders(
+  isPublicShare: boolean,
+  etag?: string,
+): Record<string, string> {
+  const headers: Record<string, string> = isPublicShare
+    ? cacheHeaders(
+        `public, max-age=3600, s-maxage=3600, stale-while-revalidate=60`,
+      )
+    : cacheHeaders("private");
+  if (isPublicShare && etag) headers.ETag = etag;
+  return headers;
+}
+
+/**
  * Cache headers for share thumbnails and inline WebP previews. The URL is
  * versioned by the share's update time, so the shared cache may keep the image
  * for an hour; protected shares stay private.
