@@ -635,7 +635,7 @@ const FileList = ({
                       </ActionIcon>
                     </HoverTip>
                     <Button
-                      color="cyan"
+                      color="cyan.9"
                       variant="light"
                       size="xs"
                       radius="sm"

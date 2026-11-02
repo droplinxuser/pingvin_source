@@ -46,10 +46,47 @@ const labelAdNodes = () => {
   document.querySelectorAll("iframe:not([title])").forEach((frame) => {
     frame.setAttribute("title", "Advertisement");
   });
-  document.querySelectorAll("body > div:not(#__next) > a").forEach((link) => {
-    if (!link.textContent?.trim() && !link.getAttribute("aria-label"))
-      link.setAttribute("aria-label", "Advertisement");
+  document.querySelectorAll("a[href]").forEach((link) => {
+    if (link.closest("#__next")) return;
+    if (link.getAttribute("aria-label") || link.getAttribute("aria-labelledby"))
+      return;
+    const hasText = !!link.textContent?.trim();
+    const imageAlt = link.querySelector("img[alt]:not([alt=''])");
+    if (!hasText && !imageAlt) link.setAttribute("aria-label", "Advertisement");
   });
+};
+
+/**
+ * Ad networks insert their markup after our script tag. Label newly added nodes
+ * outside the app immediately (coalesced to one pass per animation frame) so a
+ * keyboard or screen-reader user never meets an unnamed ad link, even before
+ * the next periodic pass.
+ */
+const watchAdNodes = () => {
+  let frame: number | undefined;
+  const schedule = () => {
+    if (frame !== undefined) return;
+    frame = window.requestAnimationFrame(() => {
+      frame = undefined;
+      labelAdNodes();
+    });
+  };
+  labelAdNodes();
+  const observer = new MutationObserver((records) => {
+    for (const record of records) {
+      for (const node of Array.from(record.addedNodes)) {
+        if (node instanceof Element && !node.closest("#__next")) {
+          schedule();
+          return;
+        }
+      }
+    }
+  });
+  observer.observe(document.body, { childList: true, subtree: true });
+  return () => {
+    observer.disconnect();
+    if (frame !== undefined) window.cancelAnimationFrame(frame);
+  };
 };
 
 const createScript = (
@@ -207,15 +244,17 @@ export const AfterGalleryAd = () => {
 
     let script: HTMLScriptElement | undefined;
     let cancelIdle: () => void = () => {};
+    let stopLabeling: (() => void) | undefined;
     const load = () => {
       script = createScript(PROFITON_BANNER, { type: "text/javascript" });
       container.appendChild(script);
-      labelAdNodes();
+      stopLabeling = watchAdNodes();
     };
     cancelIdle = scheduleAfterLoad(load);
 
     return () => {
       cancelIdle();
+      stopLabeling?.();
       script?.remove();
     };
   }, [isGuest]);
@@ -247,16 +286,18 @@ export const AfterCommentsAd = () => {
 
     let script: HTMLScriptElement | undefined;
     let cancelIdle: () => void = () => {};
+    let stopLabeling: (() => void) | undefined;
     const load = () => {
       script = createScript(CLICKADU_SCRIPT, { type: "text/javascript" });
       script.setAttribute("data-clbaid", "");
       container.appendChild(script);
-      labelAdNodes();
+      stopLabeling = watchAdNodes();
     };
     cancelIdle = scheduleAfterLoad(load);
 
     return () => {
       cancelIdle();
+      stopLabeling?.();
       script?.remove();
     };
   }, [isGuest]);
@@ -286,7 +327,7 @@ export const PageBottomAds = () => {
 
     let cancelled = false;
     let scripts: HTMLScriptElement[] = [];
-    let labelTimer: ReturnType<typeof setInterval> | undefined;
+    let stopLabeling: (() => void) | undefined;
 
     const load = () => {
       if (cancelled) return;
@@ -295,15 +336,14 @@ export const PageBottomAds = () => {
         createScript(POPUNDER, { async: false }),
       ];
       scripts.forEach((script) => document.body.appendChild(script));
-      labelAdNodes();
-      labelTimer = setInterval(labelAdNodes, 2000);
+      stopLabeling = watchAdNodes();
     };
     const cancelLoad = scheduleAfterLoad(load);
 
     return () => {
       cancelled = true;
       cancelLoad();
-      if (labelTimer) clearInterval(labelTimer);
+      stopLabeling?.();
       scripts.forEach((script) => script.remove());
     };
   }, [isGuest]);

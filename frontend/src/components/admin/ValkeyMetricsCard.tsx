@@ -72,9 +72,9 @@ const ValkeyMetricsCard = () => {
     : !metrics.configured
       ? { color: "gray", label: t("admin.valkey.custom.status.disabled") }
       : metrics.connected
-        ? { color: "green", label: t("admin.valkey.custom.status.connected") }
+        ? { color: "green.9", label: t("admin.valkey.custom.status.connected") }
         : {
-            color: "orange",
+            color: "orange.9",
             label: t("admin.valkey.custom.status.unreachable"),
           };
 
@@ -98,7 +98,11 @@ const ValkeyMetricsCard = () => {
               {t("admin.valkey.custom.version", { version: metrics.version })}
             </Badge>
           )}
-          {status && <Badge color={status.color}>{status.label}</Badge>}
+          {status && (
+            <Badge color={status.color} variant="dot">
+              {status.label}
+            </Badge>
+          )}
           <ActionIcon
             variant="light"
             onClick={() => void load()}

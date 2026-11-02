@@ -188,7 +188,7 @@ const Contact = ({ config }: { config: ContactConfig }) => {
         </Paper>
       ) : (
         <Alert
-          color="yellow"
+          color="red.9"
           icon={<TbAlertTriangle />}
           title={t("contact.unavailable.title")}
         >

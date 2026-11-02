@@ -220,7 +220,7 @@ export default function AppShellDemo() {
         <Container size="lg">
           {loadError ? (
             <Alert
-              color="red"
+              color="red.9"
               variant="light"
               title={t("common.error")}
               icon={<TbInfoCircle />}
@@ -278,7 +278,7 @@ export default function AppShellDemo() {
                         <Alert
                           mb={"lg"}
                           variant="light"
-                          color="yellow"
+                          color="red.9"
                           title={t("admin.config.config-file-warning.title")}
                           icon={<TbInfoCircle />}
                         >

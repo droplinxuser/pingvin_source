@@ -64,7 +64,7 @@ const ServerDependenciesCard = () => {
   const status = (dependency: DependencyCheck) => {
     if (dependency.available)
       return {
-        color: "green",
+        color: "green.9",
         label: t("admin.dependencies.custom.status.available"),
       };
     // An optional feature that is switched off is not a problem.
@@ -75,11 +75,11 @@ const ServerDependenciesCard = () => {
       };
     if (dependency.type === "required")
       return {
-        color: "red",
+        color: "red.9",
         label: t("admin.dependencies.custom.status.missing"),
       };
     return {
-      color: "orange",
+      color: "orange.9",
       label: t("admin.dependencies.custom.status.unavailable"),
     };
   };
@@ -104,7 +104,10 @@ const ServerDependenciesCard = () => {
         </Group>
         <Group spacing="xs">
           {dependencies && (
-            <Badge color={missingRequired === 0 ? "green" : "red"}>
+            <Badge
+              variant="dot"
+              color={missingRequired === 0 ? "green.9" : "red.9"}
+            >
               {missingRequired === 0
                 ? t("admin.dependencies.custom.summary.ok")
                 : t("admin.dependencies.custom.summary.missing", {
@@ -170,7 +173,7 @@ const ServerDependenciesCard = () => {
                         {dependency.version}
                       </Badge>
                     )}
-                    <Badge color={state.color} size="sm">
+                    <Badge color={state.color} size="sm" variant="dot">
                       {state.label}
                     </Badge>
                   </Group>

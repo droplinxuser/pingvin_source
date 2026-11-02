@@ -188,7 +188,7 @@ const Logs = () => {
 
       {error && (
         <Alert
-          color="red"
+          color="red.9"
           icon={<TbAlertTriangle />}
           title={t("admin.logs.custom.load-error")}
           mb="md"

@@ -159,7 +159,17 @@ the matching `utils/*.util.ts` files.
   accessibility/SEO/best-practices; trending/new ~87-96 performance; share
   pages remain limited by third-party ad scripts (best-practices 61 from their
   cookies/deprecations), while the app shell itself is error-free. Axe reports
-  zero violations on guest, member and admin pages at 390 px.
+  zero application violations on guest, member and admin pages at 390 px. The
+  only remaining findings come from ad-network overlays/frames (their own
+  shadow DOM, role and contrast choices), which are third-party content; the
+  app still labels injected ad links/iframes as soon as they appear.
+- Both `role="search"` forms have a distinct accessible name. Legal-markdown
+  links are always underlined (so they do not rely on colour alone) and the
+  horizontally scrolling cookie table is a labelled, keyboard-focusable
+  region. Dependency/Valkey status badges use the `dot` variant with dark
+  palette colours, warning/error alerts use `red.9`, and the 404 numeral uses a
+  darker neutral, so small status text meets WCAG AA contrast in light and
+  dark mode.
 
 ## Upstream sync
 

@@ -58,7 +58,7 @@ const Search = ({ query }: { query: string }) => {
         noindex
       />
       <Container>
-        <form onSubmit={submit} role="search">
+        <form onSubmit={submit} role="search" aria-label={t("search.custom.title")}>
           <Group mt="xl" mb="md" noWrap>
             <TextInput
               value={term}

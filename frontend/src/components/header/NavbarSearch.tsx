@@ -54,7 +54,12 @@ const NavbarSearch = ({
   return (
     <>
       {showForm && (
-        <form className={classes.form} onSubmit={submit} role="search">
+        <form
+          className={classes.form}
+          onSubmit={submit}
+          role="search"
+          aria-label={t("search.custom.placeholder")}
+        >
           <TextInput
             size="xs"
             radius="xl"

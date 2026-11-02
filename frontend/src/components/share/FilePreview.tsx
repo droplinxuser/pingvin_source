@@ -82,7 +82,7 @@ const FilePreview = ({
       <HoverTip label={t("common.button.download")}>
         <ActionIcon
           variant="light"
-          color="cyan"
+          color="cyan.9"
           size="lg"
           aria-label={t("common.button.download")}
           onClick={() =>

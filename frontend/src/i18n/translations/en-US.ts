@@ -47,6 +47,7 @@ export default {
     "Could not load this list. Check your connection and try again.",
   "common.custom.sort": "Sort",
   "common.custom.actions": "Actions",
+  "common.custom.scrollable-table": "Scrollable table",
   "common.custom.ad": "Ad",
   "common.custom.unit": "Unit",
   "common.custom.pagination.previous": "Previous page",

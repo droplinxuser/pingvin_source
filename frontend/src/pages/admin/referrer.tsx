@@ -97,7 +97,7 @@ const Referrers = () => {
 
       {hasError ? (
         <Alert
-          color="red"
+          color="red.9"
           icon={<TbAlertCircle />}
           title={t("admin.referrer.custom.load-error")}
         >

@@ -11,19 +11,26 @@ import { buildBreadcrumbList } from "../../utils/seo.util";
 const LegalTable = ({
   children,
   ...props
-}: HTMLAttributes<HTMLTableElement> & { children?: ReactNode }) => (
-  <div
-    style={{
-      maxWidth: "100%",
-      overflowX: "auto",
-      WebkitOverflowScrolling: "touch",
-    }}
-  >
-    <table {...props} className="md">
-      {children}
-    </table>
-  </div>
-);
+}: HTMLAttributes<HTMLTableElement> & { children?: ReactNode }) => {
+  const t = useTranslate();
+
+  return (
+    <div
+      role="region"
+      aria-label={t("common.custom.scrollable-table")}
+      tabIndex={0}
+      style={{
+        maxWidth: "100%",
+        overflowX: "auto",
+        WebkitOverflowScrolling: "touch",
+      }}
+    >
+      <table {...props} className="md">
+        {children}
+      </table>
+    </div>
+  );
+};
 
 /**
  * Shared layout for the configured imprint and privacy texts. Both pages only
@@ -87,6 +94,7 @@ const LegalDocument = ({
               props: {
                 target: "_blank",
                 rel: "noopener noreferrer",
+                style: { textDecoration: "underline" },
               },
               component: Anchor,
             },

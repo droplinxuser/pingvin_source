@@ -150,7 +150,7 @@ const VirusTotal = () => {
           </Center>
         ) : (
           <Alert
-            color="red"
+            color="red.9"
             icon={<TbAlertTriangle />}
             title={
               error
@@ -383,7 +383,7 @@ const VirusTotal = () => {
 
       {!status.apiKeyConfigured && (
         <Alert
-          color="yellow"
+          color="red.9"
           icon={<TbAlertTriangle />}
           title={t("admin.virustotal.custom.status.disabled")}
           mb="md"
@@ -393,7 +393,7 @@ const VirusTotal = () => {
       )}
       {status.authFailed && (
         <Alert
-          color="red"
+          color="red.9"
           icon={<TbAlertTriangle />}
           title={t("admin.virustotal.custom.status.auth-failed")}
           mb="md"
