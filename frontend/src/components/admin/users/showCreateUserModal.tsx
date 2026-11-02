@@ -183,7 +183,12 @@ const Body = ({
               .catch(toast.axiosError);
           },
           (errors) => {
-            if (errors.username || errors.email || errors.password) {
+            if (
+              errors.displayName ||
+              errors.username ||
+              errors.email ||
+              errors.password
+            ) {
               setActiveTab("general");
             } else {
               setActiveTab("permissions");

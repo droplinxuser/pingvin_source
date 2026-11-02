@@ -196,7 +196,7 @@ const Body = ({
               .catch(toast.axiosError);
           },
           (errors) => {
-            if (errors.username || errors.email) {
+            if (errors.displayName || errors.username || errors.email) {
               setActiveTab("general");
             } else {
               setActiveTab("permissions");

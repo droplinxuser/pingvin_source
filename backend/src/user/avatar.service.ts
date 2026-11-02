@@ -45,18 +45,38 @@ export class AvatarService {
       : null;
   }
 
-  async get(userId: string): Promise<AvatarFile | null> {
+  async get(
+    userId: string,
+    repairMissing = false,
+  ): Promise<AvatarFile | null> {
     const path = this.filePath(userId);
     if (!path) return null;
 
     try {
       const stat = await fs.stat(path);
-      return stat.isFile()
-        ? { path, size: stat.size, mtimeMs: stat.mtimeMs }
-        : null;
-    } catch {
-      return null;
+      if (stat.isFile())
+        return { path, size: stat.size, mtimeMs: stat.mtimeMs };
+    } catch (error) {
+      // Only a truly absent file means the stored avatar flag is stale. A
+      // permission or I/O error must not hide a picture that still exists.
+      if ((error as NodeJS.ErrnoException)?.code !== "ENOENT") return null;
     }
+
+    // A database restored without the data directory (or a manually removed
+    // file) leaves avatarUpdatedAt set, so every page render requests a picture
+    // that can never load. Clear the flag once so the next user payload falls
+    // back to initials without a repeated request.
+    if (repairMissing) await this.clearMissing(userId);
+    return null;
+  }
+
+  private async clearMissing(userId: string) {
+    await this.prisma.user
+      .updateMany({
+        where: { id: userId, avatarUpdatedAt: { not: null } },
+        data: { avatarUpdatedAt: null },
+      })
+      .catch(() => {});
   }
 
   async save(userId: string, file: Buffer) {

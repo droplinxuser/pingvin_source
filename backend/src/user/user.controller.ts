@@ -6,7 +6,6 @@ import {
   FileTypeValidator,
   Get,
   HttpCode,
-  NotFoundException,
   Param,
   ParseFilePipe,
   Patch,
@@ -113,8 +112,21 @@ export class UserController {
     @Req() request: Request,
     @Res({ passthrough: true }) response: Response,
   ) {
-    const avatar = await this.avatarService.get(id);
-    if (!avatar) throw new NotFoundException();
+    const avatar = await this.avatarService.get(id, true);
+    if (!avatar) {
+      // The frontend only requests this URL when the user payload says a
+      // picture exists. A missing file is stale metadata, not a broken page:
+      // answer 204 (no content) so the <img> falls back to initials without a
+      // 404 in the visitor console, and keep it out of shared caches.
+      response
+        .status(204)
+        .set({
+          "Cache-Control": "no-store",
+          "CDN-Cache-Control": "no-store",
+          "Cloudflare-CDN-Cache-Control": "no-store",
+        });
+      return;
+    }
 
     const etag = `"avatar-${id}-${Math.floor(avatar.mtimeMs)}"`;
     const versioned =

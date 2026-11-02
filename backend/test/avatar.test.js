@@ -19,6 +19,10 @@ function createService() {
         updates.push({ id: where.id, ...data });
         return { id: where.id, username: "alice", ...data };
       },
+      updateMany: async ({ where, data }) => {
+        updates.push({ id: where.id, ...data });
+        return { count: 1 };
+      },
     },
   };
   return {
@@ -106,4 +110,16 @@ test("removes the file and clears the version", async () => {
   assert.equal(fs.existsSync(stored), false);
   assert.equal(updates.at(-1).avatarUpdatedAt, null);
   assert.equal(await service.get(userId), null);
+});
+
+test("repairs a stored version whose file is gone", async () => {
+  const { service, updates } = createService();
+  const userId = crypto.randomUUID();
+  updates.length = 0;
+
+  assert.equal(await service.get(userId), null);
+  assert.equal(updates.length, 0, "a plain read does not write");
+
+  assert.equal(await service.get(userId, true), null);
+  assert.deepEqual(updates, [{ id: userId, avatarUpdatedAt: null }]);
 });
