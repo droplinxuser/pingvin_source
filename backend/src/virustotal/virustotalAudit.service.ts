@@ -53,7 +53,6 @@ export type VirusTotalUploader = {
     email: string;
   };
   country?: string;
-  city?: string;
   browser?: string;
   os?: string;
   deviceType?: string;
@@ -346,7 +345,6 @@ export class VirusTotalAuditService
             }
           : undefined,
         country: info?.country,
-        city: info?.city,
         browser: info?.browser,
         os: info?.os,
         deviceType: info?.deviceType,

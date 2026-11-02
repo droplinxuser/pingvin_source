@@ -121,8 +121,7 @@ const ShareStats = ({
               ? getCountryName(visitor.country, intl.locale)
               : undefined;
             const location =
-              [visitor.city, countryName].filter(Boolean).join(", ") ||
-              t("share.custom.stats.unknown-location");
+              countryName || t("share.custom.stats.unknown-location");
 
             return (
               <Card

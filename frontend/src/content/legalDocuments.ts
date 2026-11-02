@@ -9,7 +9,7 @@ import {
 
 export type LegalDocumentKind = "imprint" | "privacy";
 
-const LEGAL_LAST_UPDATED = "October 31, 2026";
+const LEGAL_LAST_UPDATED = "November 3, 2026";
 
 type LegalContext = {
   siteName: string;
@@ -274,8 +274,7 @@ you are not allowed to share.
 
 Share pages show technical information derived from the upload and from visits:
 
-- approximate location, such as country, region and city;
-- timezone;
+- country (city, region and timezone are not stored);
 - browser name and version;
 - operating system and device type;
 - the domain of the external site that referred a visitor;

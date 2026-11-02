@@ -58,7 +58,6 @@ export type VirusTotalUploader = {
     email: string;
   };
   country?: string;
-  city?: string;
   browser?: string;
   os?: string;
   deviceType?: string;

@@ -31,9 +31,6 @@ const UploaderInfoBadges = ({
   const country = info?.country
     ? getCountryName(info.country, intl.locale)
     : undefined;
-  const location = [info?.city, info?.region, country]
-    .filter(Boolean)
-    .join(", ");
   const uploadedAtValue =
     info?.createdAt && moment(info.createdAt).isValid()
       ? moment(info.createdAt)
@@ -42,9 +39,7 @@ const UploaderInfoBadges = ({
     ? `${uploadedAtValue.fromNow()} · ${uploadedAtValue.format("LL · LTS")}`
     : undefined;
   const details = [
-    location,
-    info?.timezone &&
-      `${t("share.custom.uploader.timezone")}: ${info.timezone}`,
+    country,
     uploadedAt && t("share.custom.uploader.uploaded-at", { date: uploadedAt }),
   ].filter(Boolean) as string[];
   const osLabel = `${info?.os || t("share.custom.uploader.unknown")}${

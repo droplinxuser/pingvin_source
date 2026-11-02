@@ -168,6 +168,12 @@ DATABASE_URL="$DB_URL" npx prisma migrate deploy
 echo "==> Compacting SQLite database"
 DATABASE_URL="$DB_URL" node scripts/maintain-db.js
 
+# Older builds kept city/region/timezone for uploaders and visitors. Remove
+# them from the on-disk JSON before the new backend starts, while uploader.json
+# and the VirusTotal state are not being written.
+echo "==> Removing legacy visitor location fields"
+DATA_DIRECTORY="$DATA_DIR" node scripts/scrub-visitor-geo.js
+
 echo "==> Installing systemd units"
 install -m 644 "$SRC_DIR/pingvin-back.service" /etc/systemd/system/pingvin-back.service
 install -m 644 "$SRC_DIR/pingvin-front.service" /etc/systemd/system/pingvin-front.service

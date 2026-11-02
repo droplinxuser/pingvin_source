@@ -9,15 +9,8 @@ import { writeFileAtomic } from "./fileWrite.util";
 
 const FILE_NAME = "uploader.json";
 export const MAX_VISITORS = 18;
-// Geo headers are display-only and come from the edge. Clamp them so a direct
-// origin request cannot store kilobytes of spoofed text in uploader.json or
-// push the "recent visitors" list far outside its intended size.
-const MAX_GEO_TEXT_LENGTH = 64;
 const FIELDS = [
   "country",
-  "city",
-  "region",
-  "timezone",
   "browser",
   "browserVersion",
   "os",
@@ -27,12 +20,14 @@ const FIELDS = [
 ] as const;
 const VISITOR_FIELDS = [
   "country",
-  "city",
   "os",
   "browser",
   "referrer",
   "createdAt",
 ] as const;
+// Older builds stored a visitor's city, region and timezone. Read them once so
+// the next write removes them from disk, but never expose or persist them.
+const LEGACY_GEO_FIELDS = ["city", "region", "timezone"] as const;
 const logger = new Logger("UploaderInfo");
 const UTF8_DECODER = new TextDecoder("utf-8", { fatal: true });
 
@@ -88,18 +83,6 @@ function getHeader(request: Request, name: string): string | undefined {
   const value = request.headers[name];
   const header = Array.isArray(value) ? value[0] : value;
   return header ? decodeText(header) : undefined;
-}
-
-function getGeoHeader(request: Request, name: string): string | undefined {
-  const value = getHeader(request, name)
-    // Control characters have no place in a city/region/timezone label.
-    // eslint-disable-next-line no-control-regex
-    ?.replace(/[\u0000-\u001f\u007f]/g, " ")
-    .replace(/\s{2,}/g, " ")
-    .trim();
-  if (!value) return undefined;
-  // Slice by code point so a multibyte name is never cut mid-character.
-  return Array.from(value).slice(0, MAX_GEO_TEXT_LENGTH).join("");
 }
 
 function parseUserAgent(
@@ -160,9 +143,6 @@ function getReferrerDomain(referrer?: string, ownHost?: string) {
 export function getUploaderInfo(request: Request): UploaderInfo {
   return {
     country: getRequestCountry(request),
-    city: getGeoHeader(request, "cf-ipcity"),
-    region: getGeoHeader(request, "cf-region"),
-    timezone: getGeoHeader(request, "cf-timezone"),
     ...parseUserAgent(
       getHeader(request, "user-agent"),
       getHeader(request, "sec-ch-ua-platform"),
@@ -189,7 +169,6 @@ export function getVisitorInfo(request: Request): ShareVisitor {
 
   return {
     country: getRequestCountry(request),
-    city: getGeoHeader(request, "cf-ipcity"),
     browser,
     os,
     referrer: getReferrerDomain(referrer, request.hostname),
@@ -237,8 +216,10 @@ export async function readUploaderInfo(
     return null;
 
   let repaired = false;
-  const pick = (fields: readonly string[], source: Record<string, unknown>) =>
-    Object.fromEntries(
+  const pick = (fields: readonly string[], source: Record<string, unknown>) => {
+    // Drop legacy location detail (city/region/timezone) on the next write.
+    if (LEGACY_GEO_FIELDS.some((field) => field in source)) repaired = true;
+    return Object.fromEntries(
       fields.flatMap((field) => {
         const value = source[field];
         if (typeof value !== "string") return [];
@@ -247,6 +228,7 @@ export async function readUploaderInfo(
         return [[field, decoded]];
       }),
     );
+  };
 
   // Keep only supported Cloudflare fields and repair older mojibake values.
   const info = pick(FIELDS, parsed) as unknown as UploaderInfo;

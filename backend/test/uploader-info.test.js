@@ -22,19 +22,32 @@ test("normalizes browser and OS names", () => {
   assert.equal(info.deviceType, "mobile");
 });
 
-test("clamps spoofed geo text to a bounded, single-line label", () => {
-  const longCity = `  Bad\u0000\nCity ${"x".repeat(200)}  `;
+test("stores only the country and ignores finer location headers", () => {
   const info = getUploaderInfo(
-    request("Mozilla/5.0", { "cf-ipcity": longCity, "cf-region": "  " }),
+    request("Mozilla/5.0", {
+      "cf-ipcountry": "ph",
+      "cf-ipcity": "Manila",
+      "cf-region": "Metro Manila",
+      "cf-timezone": "Asia/Manila",
+    }),
   );
-  assert.equal(info.city, `Bad City ${"x".repeat(55)}`);
-  assert.equal(info.city.length, 64);
+  assert.equal(info.country, "PH");
+  assert.equal(info.city, undefined);
   assert.equal(info.region, undefined);
+  assert.equal(info.timezone, undefined);
 
   const visitor = getVisitorInfo(
-    request("Mozilla/5.0", { "cf-ipcity": "Dasmariñas" }),
+    request("Mozilla/5.0", {
+      "cf-ipcountry": "PH",
+      "cf-ipcity": "Dasmariñas",
+      "cf-region": "Cavite",
+      "cf-timezone": "Asia/Manila",
+    }),
   );
-  assert.equal(visitor.city, "Dasmariñas");
+  assert.equal(visitor.country, "PH");
+  assert.equal(visitor.city, undefined);
+  assert.equal(visitor.region, undefined);
+  assert.equal(visitor.timezone, undefined);
 });
 
 test("records only external referrer domains", () => {

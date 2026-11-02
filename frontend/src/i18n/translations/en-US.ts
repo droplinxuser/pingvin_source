@@ -997,7 +997,6 @@ export default {
   "share.custom.uploader.country": "Uploader country",
   "share.custom.uploader.os": "Operating system",
   "share.custom.uploader.browser": "Browser",
-  "share.custom.uploader.timezone": "Timezone",
   "share.custom.uploader.unknown": "Unknown",
   "share.custom.report.button": "Report",
   "share.custom.report.modal.title": "Report share",

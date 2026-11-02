@@ -25,7 +25,7 @@ the suggested order for future features.
 | Admin pagination, search and sorting | `backend/src/share/share.service.ts`, `backend/src/user/user.service.ts` (quota columns paged in SQL), `frontend/src/pages/admin/*`, `frontend/src/components/core/SortIcon.tsx` |
 | Share reports | `backend/src/share/dto/reportShare.dto.ts`, `backend/src/email/email.service.ts`, `frontend/src/components/share/showReportShareModal.tsx` |
 | View-limit burn | `backend/src/share/share.controller.ts` (`GET /shares/:id`), `backend/src/share/share.service.ts` (`burnShare`, `isShareLimitReached`), `backend/src/share/shareState.service.ts` (`recordLimitedView`, rolling-expiration guard). The final allowed view renders; after a five-minute grace the share expires. Any subsequent page/SEO/HEAD request is a 404, while the last visitor's preview/file requests can finish during the grace. Files require the share token even without a password, so the view limit cannot be bypassed with a copied file URL. A rolling-expiration write is conditional on the previously read value so it cannot revive a burned share, and follow-up burn checks do not shorten an existing grace window. |
-| Uploader metadata / visitors | `backend/src/utils/uploaderInfo.util.ts`, `ShareDTO.uploaderInfo`, `frontend/src/components/share/UploaderInfoBadges.tsx`, `ShareStats.tsx`; view counts stay in `Share.views`, written in five-second batches for unlimited shares and atomically for limited ones (`shareState.service.ts`). Geo labels are clamped before storage. The recent-visitor list is shown to every visitor. |
+| Uploader metadata / visitors | `backend/src/utils/uploaderInfo.util.ts`, `ShareDTO.uploaderInfo`, `frontend/src/components/share/UploaderInfoBadges.tsx`, `ShareStats.tsx`; view counts stay in `Share.views`, written in five-second batches for unlimited shares and atomically for limited ones (`shareState.service.ts`). Only the two-letter country from `CF-IPCountry` is stored and shown; the city, region and timezone headers are ignored, and `backend/scripts/scrub-visitor-geo.js` removes legacy fields from `uploader.json` and the VirusTotal audit state during `update.sh`. The recent-visitor list is shown to every visitor. |
 | Reverse-share use limits | `backend/src/reverseShare/reverseShare.service.ts` (`reserveUse`), `backend/src/share/share.service.ts` (reserve at create, reject invalid cookies, no refund on revert) |
 | Inline media gallery | `frontend/src/components/share/MediaPreviewGallery.tsx` (up to 100 image/video cards, 12-card lazy batches, single-media square card, full-size previous/next modal), `frontend/src/components/core/LazySection.tsx` |
 | Individual downloads / legacy ZIP | `frontend/src/components/share/DownloadAllButton.tsx`, `frontend/src/services/share.service.ts`; `backend/src/share/share.service.ts` no longer creates archives, and `fileService.getZip` builds every ZIP on demand. Any pre-existing `archive.zip` is deleted by the next upload/revert/removal and is not served. The preview modal downloads through `shareService.downloadFile` too (with the recipient id), so its clicks reach the download counters. A selection of more than 150 files (`FileController.MAX_ZIP_FILE_IDS`) uses the per-file loop instead of a ZIP, so the server never silently archives a truncated subset and the `?files=` query stays inside the proxy request-line limit. |
@@ -271,8 +271,9 @@ the matching `utils/*.util.ts` files.
   metrics/logs use bounded memory fallbacks, and a dead client cannot
   hang a request (`disableOfflineQueue` + error handlers).
 - `update.sh` pulls origin/main, preserves `backend/.env` and local branding,
-  rebuilds both packages, installs the systemd units, runs migrations/seeding
-  through the backend restart, then restarts the frontend. It must run as root:
+  rebuilds both packages, runs migrations, the SQLite VACUUM and the legacy
+  visitor-location scrub, installs the systemd units, then restarts the
+  frontend. It must run as root:
   `sudo bash /var/www/pingvin_source/update.sh`.
 - Keep an up-to-date database copy at `/home/rt/Documents/pingvin-share.db`
   (`PRAGMA integrity_check` must return `ok`).

@@ -41,7 +41,6 @@ export type ShareCommentPage = {
 
 export type ShareVisitor = {
   country?: string;
-  city?: string;
   os?: string;
   browser?: string;
   referrer?: string;
@@ -50,9 +49,6 @@ export type ShareVisitor = {
 
 export type UploaderInfo = {
   country?: string;
-  city?: string;
-  region?: string;
-  timezone?: string;
   browser?: string;
   browserVersion?: string;
   os?: string;

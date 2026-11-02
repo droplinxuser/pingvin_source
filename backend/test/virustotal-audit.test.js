@@ -181,7 +181,17 @@ test("captures registered and anonymous reverse-share uploaders", async () => {
   assert.equal(registered.creator.username, "tester");
   assert.equal(registered.reverseShareCreator.username, "reverse-owner");
   assert.equal(registered.country, "PH");
+  assert.equal(registered.city, undefined);
   assert.equal(registered.browser, "Chrome");
+
+  // Reading the legacy file rewrites it without the finer location fields.
+  const scrubbed = JSON.parse(
+    fs.readFileSync(path.join(shareDirectory, "uploader.json"), "utf8"),
+  );
+  assert.equal(scrubbed.country, "PH");
+  assert.equal(scrubbed.city, undefined);
+  assert.equal(scrubbed.region, undefined);
+  assert.equal(scrubbed.timezone, undefined);
 
   const anonymousService = new VirusTotalAuditService(
     mockPrisma({
